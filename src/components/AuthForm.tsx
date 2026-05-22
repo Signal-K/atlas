@@ -28,7 +28,15 @@ const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
 // switchers with no state link between them (Clerk's footer link swaps its
 // own internal view; it has no way to also flip our `mode` tab) would just
 // reintroduce that bug in a different spot.
-const clerkAppearance = { elements: { footerAction: { display: 'none' } } }
+const clerkAppearance = {
+  elements: {
+    footerAction: { display: 'none' },
+    // Authentication providers remain configured in Clerk, but Atlas is
+    // temporarily email-and-password only. Hide the whole block so adding a
+    // provider there cannot put Google or Apple back into this UI.
+    socialButtonsRoot: { display: 'none' },
+  },
+}
 
 // Shared sign-in/sign-up form, used both embedded in Settings (signed-out
 // state) and as the full-screen AuthGate shown before onboarding. Renders
@@ -268,20 +276,8 @@ function ClerkSignInPanel({
     }
   }
 
-  async function handleGoogle() {
-    if (!signIn) return
-    setFormError(null)
-    const redirectUrl = window.location.href
-    const { error } = await signIn.sso({ strategy: 'oauth_google', redirectUrl, redirectCallbackUrl: redirectUrl })
-    if (error) setFormError(error.longMessage || error.message || 'Could not start Google sign-in.')
-  }
-
   return (
     <form className="account-form" onSubmit={handleSubmit}>
-      <button type="button" className="account-form-google" onClick={handleGoogle} disabled={busy}>
-        Continue with Google
-      </button>
-      <div className="account-form-divider">or</div>
       <div className="account-form-field">
         <label htmlFor="clerk-sign-in-email">Email address</label>
         <input

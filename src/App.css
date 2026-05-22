@@ -854,30 +854,6 @@
   cursor: default;
 }
 
-.account-form-google {
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 9px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--code-bg);
-  color: var(--text-h);
-  cursor: pointer;
-}
-
-.account-form-google:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.account-form-divider {
-  font-size: 11px;
-  text-align: center;
-  color: var(--text);
-  opacity: 0.6;
-}
-
 .account-form-spinner {
   width: 13px;
   height: 13px;

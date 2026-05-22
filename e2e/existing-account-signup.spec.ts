@@ -22,6 +22,7 @@ test('an existing PocketBase account links to Clerk on first sign-in instead of 
     await setupClerkTestingToken({ page })
     await page.goto('/app/settings')
     await page.getByRole('tab', { name: 'Create account' }).click()
+    await expect(page.getByRole('button', { name: /Google|Apple/i })).toHaveCount(0)
     await fillClerkSignUp(page, email, 'Different-clerk-password!1')
 
     // Clerk's own "Verify your email" step also renders the email as plain
