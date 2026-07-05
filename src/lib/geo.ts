@@ -5,11 +5,17 @@ const DEFAULT_SEED = hashSeed('atlas-default-sky')
 
 export type LocationStatus = 'idle' | 'pending' | 'granted' | 'denied' | 'unsupported'
 
+export interface Coordinates {
+  lat: number
+  lon: number
+}
+
 // Rounding to ~1 decimal degree (~11km) keeps the field stable across small
 // movements and avoids regenerating on every minor GPS jitter.
 export function useLocationSeed() {
   const [seed, setSeed] = useState(DEFAULT_SEED)
   const [status, setStatus] = useState<LocationStatus>('idle')
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
 
   const requestLocation = useCallback(() => {
     if (!('geolocation' in navigator)) {
@@ -22,6 +28,7 @@ export function useLocationSeed() {
         const lat = position.coords.latitude.toFixed(1)
         const lon = position.coords.longitude.toFixed(1)
         setSeed(hashSeed(`${lat},${lon}`))
+        setCoordinates({ lat: Number(lat), lon: Number(lon) })
         setStatus('granted')
       },
       () => {
@@ -35,5 +42,5 @@ export function useLocationSeed() {
     requestLocation()
   }, [requestLocation])
 
-  return { seed, status, requestLocation }
+  return { seed, status, coordinates, requestLocation }
 }

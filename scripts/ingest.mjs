@@ -7,8 +7,17 @@ import PocketBase from 'pocketbase'
 import { fetchEvents as fetchMoonPhaseEvents } from './sources/moon-phase.mjs'
 import { fetchEvents as fetchMeteorShowerEvents } from './sources/meteor-showers.mjs'
 import { fetchEvents as fetchEclipseEvents } from './sources/eclipses.mjs'
+import { fetchEvents as fetchIssPassEvents } from './sources/iss-passes.mjs'
 
-const PLUGINS = [fetchMoonPhaseEvents, fetchMeteorShowerEvents, fetchEclipseEvents]
+// Each plugin gets its own sensible window: moon phases/meteor showers/
+// eclipses are predictable a year out, but ISS pass predictions go stale
+// fast (TLE drift), so that one intentionally stays short (its own default).
+const PLUGINS = [
+  { fetch: fetchMoonPhaseEvents, windowDays: 365 },
+  { fetch: fetchMeteorShowerEvents, windowDays: 365 },
+  { fetch: fetchEclipseEvents, windowDays: 365 },
+  { fetch: fetchIssPassEvents },
+]
 
 const PB_URL = process.env.PB_URL ?? 'http://127.0.0.1:8090'
 const PB_ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL
@@ -44,8 +53,8 @@ async function main() {
   let created = 0
   let updated = 0
 
-  for (const plugin of PLUGINS) {
-    const events = await plugin({ now })
+  for (const { fetch: plugin, windowDays } of PLUGINS) {
+    const events = await plugin(windowDays ? { now, windowDays } : { now })
     for (const event of events) {
       const result = await upsert(pb, event)
       if (result.action === 'created') created += 1

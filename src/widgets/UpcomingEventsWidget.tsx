@@ -3,6 +3,7 @@ import { registerWidget } from './registry'
 import { EventRow } from './EventRow'
 import { getUpcomingEvents, pullSkyEvents } from '../lib/sync'
 import { getPinnedEventIds, togglePin } from '../lib/pins'
+import { useLocationBrowse } from '../lib/locationBrowseContext'
 import type { SkyEvent } from '../lib/db'
 
 type FilterTab = 'today' | 'week' | 'pinned' | 'all'
@@ -19,6 +20,7 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 function UpcomingEventsWidget() {
+  const { city } = useLocationBrowse()
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -33,7 +35,10 @@ function UpcomingEventsWidget() {
 
     async function load() {
       await pullSkyEvents()
-      const upcoming = await getUpcomingEvents(50)
+      // Location-specific events (ISS passes) across ~16 cities add up fast,
+      // so fetch generously rather than the old flat 8 -- filtering down to
+      // the selected city and active tab happens below.
+      const upcoming = await getUpcomingEvents(400)
       if (!cancelled) setEvents(upcoming)
     }
 
@@ -46,23 +51,31 @@ function UpcomingEventsWidget() {
     }
   }, [])
 
-  const filtered = useMemo(() => {
+  const forLocation = useMemo(() => {
     if (!events) return []
+    return events.filter((event) => {
+      if (event.kind !== 'iss_pass') return true
+      if (event.latitude == null || event.longitude == null) return false
+      return Math.abs(event.latitude - city.lat) < 0.01 && Math.abs(event.longitude - city.lon) < 0.01
+    })
+  }, [events, city])
+
+  const filtered = useMemo(() => {
     const now = new Date()
     switch (tab) {
       case 'today':
-        return events.filter((event) => isSameDay(new Date(event.startsAt), now))
+        return forLocation.filter((event) => isSameDay(new Date(event.startsAt), now))
       case 'week': {
         const weekEnd = new Date(now.getTime() + 7 * 86_400_000)
-        return events.filter((event) => new Date(event.startsAt) <= weekEnd)
+        return forLocation.filter((event) => new Date(event.startsAt) <= weekEnd)
       }
       case 'pinned':
-        return events.filter((event) => pinnedIds.has(event.id))
+        return forLocation.filter((event) => pinnedIds.has(event.id))
       case 'all':
       default:
-        return events
+        return forLocation
     }
-  }, [events, tab, pinnedIds])
+  }, [forLocation, tab, pinnedIds])
 
   async function handleTogglePin(eventId: string) {
     await togglePin(eventId, pinnedIds.has(eventId))
