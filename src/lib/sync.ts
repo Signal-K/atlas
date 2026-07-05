@@ -1,5 +1,5 @@
 import { pb } from './pocketbase'
-import { db, type SkyEvent } from './db'
+import { db, type ObservationLogEntry, type SkyEvent } from './db'
 
 // Read path (AT-003): pull sky_events into the local cache when online.
 // Every read in the app goes through Dexie, not this function directly, so
@@ -58,4 +58,23 @@ export async function getPastEvents(limit = 20): Promise<SkyEvent[]> {
   const now = new Date().toISOString()
   const all = await db.skyEvents.orderBy('startsAt').reverse().toArray()
   return all.filter((event) => event.startsAt < now).slice(0, limit)
+}
+
+// Write path: best-effort immediate push when signed in and online. The
+// entry is already saved locally by the caller before this runs, so a
+// failure here just means it stays local-only rather than being lost —
+// a full offline write queue (retrying failed pushes later) is future work.
+export async function pushObservation(entry: ObservationLogEntry): Promise<void> {
+  if (!pb.authStore.isValid || !navigator.onLine) return
+
+  try {
+    await pb.collection('atlas_observations').create({
+      user: pb.authStore.record?.id,
+      observed_at: entry.observedAt,
+      event: entry.eventId,
+      note: entry.note,
+    })
+  } catch {
+    // Stays local-only; the user still sees it in their Scrapbook.
+  }
 }

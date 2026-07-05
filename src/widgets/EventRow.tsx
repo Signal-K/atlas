@@ -1,18 +1,39 @@
 import type { SkyEvent } from '../lib/db'
 
-export function EventRow({ event, expanded, onToggle }: { event: SkyEvent; expanded: boolean; onToggle: () => void }) {
+interface EventRowProps {
+  event: SkyEvent
+  expanded: boolean
+  onToggle: () => void
+  pinned?: boolean
+  onTogglePin?: () => void
+}
+
+export function EventRow({ event, expanded, onToggle, pinned, onTogglePin }: EventRowProps) {
   return (
     <li>
-      <button type="button" className="row-trigger" onClick={onToggle} aria-expanded={expanded}>
-        <span className="row-marker" />
-        <span className="row-text">{event.title}</span>
-        <span className="row-meta">
-          {new Date(event.startsAt).toLocaleString(undefined, {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-          })}
-        </span>
-      </button>
+      <div className="row-trigger">
+        <button type="button" className="row-trigger-main" onClick={onToggle} aria-expanded={expanded}>
+          <span className="row-marker" />
+          <span className="row-text">{event.title}</span>
+          <span className="row-meta">
+            {new Date(event.startsAt).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </span>
+        </button>
+        {onTogglePin && (
+          <button
+            type="button"
+            className={`row-pin${pinned ? ' is-active' : ''}`}
+            onClick={onTogglePin}
+            aria-label={pinned ? 'Unpin event' : 'Pin event'}
+            title={pinned ? 'Unpin event' : 'Pin event'}
+          >
+            ★
+          </button>
+        )}
+      </div>
       {expanded && (
         <div className="row-detail">
           {event.imageUrl && (

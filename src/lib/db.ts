@@ -57,6 +57,11 @@ export interface SyncQueueItem {
   queuedAt: string
 }
 
+export interface PinnedEvent {
+  eventId: string // primary key
+  pinnedAt: string
+}
+
 class AtlasDB extends Dexie {
   skyEvents!: EntityTable<SkyEvent, 'id'>
   favourites!: EntityTable<Favourite, 'id'>
@@ -64,6 +69,7 @@ class AtlasDB extends Dexie {
   observations!: EntityTable<ObservationLogEntry, 'id'>
   streaks!: EntityTable<StreakState, 'userId'>
   syncQueue!: EntityTable<SyncQueueItem, 'id'>
+  pinnedEvents!: EntityTable<PinnedEvent, 'eventId'>
 
   constructor() {
     super('atlas')
@@ -74,6 +80,9 @@ class AtlasDB extends Dexie {
       observations: 'id, userId, observedAt',
       streaks: 'userId',
       syncQueue: '++id, collection, queuedAt',
+    })
+    this.version(2).stores({
+      pinnedEvents: 'eventId',
     })
   }
 }

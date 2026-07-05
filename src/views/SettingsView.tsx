@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { applyTheme, getStoredTheme, getSystemTheme, storeTheme, type Theme } from '../lib/theme'
 import type { LocationStatus } from '../lib/geo'
+import { AccountSettings } from './AccountSettings'
 
 interface SettingsViewProps {
   locationStatus: LocationStatus
@@ -32,6 +33,8 @@ export function SettingsView({ locationStatus, requestLocation, needsMotionPermi
   return (
     <section className="widget-section">
       <h2>Settings</h2>
+
+      <AccountSettings />
 
       <div className="settings-row">
         <span className="settings-label">Appearance</span>

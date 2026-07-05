@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 
-export type View = 'dashboard' | 'archive' | 'scrapbook' | 'settings'
+export type View = 'dashboard' | 'feed' | 'archive' | 'scrapbook' | 'settings'
 
 const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
   {
@@ -12,6 +12,16 @@ const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
         <rect x="11" y="3" width="6" height="6" rx="1" />
         <rect x="3" y="11" width="6" height="6" rx="1" />
         <rect x="11" y="11" width="6" height="6" rx="1" />
+      </svg>
+    ),
+  },
+  {
+    id: 'feed',
+    label: 'Feed',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M4 4h9l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+        <path d="M7 9h6M7 12h6M7 6h3" />
       </svg>
     ),
   },

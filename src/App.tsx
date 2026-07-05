@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Starfield } from './components/Starfield'
 import { Sidebar, type View } from './components/Sidebar'
 import { DashboardView } from './views/DashboardView'
+import { FeedView } from './views/FeedView'
 import { ArchiveView } from './views/ArchiveView'
 import { ScrapbookView } from './views/ScrapbookView'
 import { SettingsView } from './views/SettingsView'
@@ -11,6 +12,7 @@ import './App.css'
 
 const VIEW_SUBTITLE: Record<View, string> = {
   dashboard: 'Sky events, calendar, watchlist, and weather — offline-first.',
+  feed: 'Discoveries shared by sky-watchers.',
   archive: 'Events that have already happened.',
   scrapbook: 'Your own sky-watching notes.',
   settings: 'Appearance, location, and motion.',
@@ -35,6 +37,7 @@ function App() {
           </header>
           <hr className="hairline" />
           {view === 'dashboard' && <DashboardView />}
+          {view === 'feed' && <FeedView />}
           {view === 'archive' && <ArchiveView />}
           {view === 'scrapbook' && <ScrapbookView />}
           {view === 'settings' && (

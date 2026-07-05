@@ -1,41 +1,51 @@
 import { useEffect, useState } from 'react'
 import { db, type ObservationLogEntry } from '../lib/db'
+import { pushObservation } from '../lib/sync'
+import { useAuth } from '../lib/auth'
 
-// No auth/login flow exists yet, so entries are scoped to a fixed local
-// user until PocketBase auth lands — they still work fully offline-first.
+// Entries made while signed out are scoped to this fixed local id so the
+// Scrapbook still works fully offline-first with no account. Once signed
+// in, new entries are scoped to the real user id (and also pushed to
+// PocketBase) — entries logged before signing in stay under 'local' and
+// won't reappear once signed in; that's an acceptable gap for now.
 const LOCAL_USER_ID = 'local'
 
 export function ScrapbookView() {
+  const { user } = useAuth()
+  const scopeId = user?.id ?? LOCAL_USER_ID
   const [entries, setEntries] = useState<ObservationLogEntry[]>([])
   const [note, setNote] = useState('')
 
   async function refresh() {
-    const all = await db.observations.where('userId').equals(LOCAL_USER_ID).reverse().sortBy('observedAt')
+    const all = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
     setEntries(all)
   }
 
   useEffect(() => {
     refresh()
-  }, [])
+  }, [scopeId])
 
   async function handleSave(event: React.FormEvent) {
     event.preventDefault()
     const trimmed = note.trim()
     if (!trimmed) return
 
-    await db.observations.add({
+    const entry: ObservationLogEntry = {
       id: crypto.randomUUID(),
-      userId: LOCAL_USER_ID,
+      userId: scopeId,
       observedAt: new Date().toISOString(),
       note: trimmed,
-    })
+    }
+    await db.observations.add(entry)
     setNote('')
     await refresh()
+    await pushObservation(entry)
   }
 
   return (
     <section className="widget-section">
       <h2>Scrapbook</h2>
+      {!user && <p className="scrapbook-hint">Sign in (Settings) to sync your notes to your account.</p>}
       <form className="scrapbook-form" onSubmit={handleSave}>
         <textarea
           value={note}
