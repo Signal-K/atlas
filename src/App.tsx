@@ -16,16 +16,17 @@ function App() {
             <h1>Atlas</h1>
             <ThemeToggle />
           </div>
-          <p>Sky events, calendar, watchlist, and weather &mdash; offline-first.</p>
+          <p className="dashboard-subtitle">Sky events, calendar, watchlist, and weather &mdash; offline-first.</p>
         </header>
-        <section className="widget-grid">
+        <hr className="hairline" />
+        <div className="widget-stack">
           {widgets.map(({ id, title, Component }) => (
-            <article key={id} className="widget-card">
+            <section key={id} className="widget-section">
               <h2>{title}</h2>
               <Component />
-            </article>
+            </section>
           ))}
-        </section>
+        </div>
       </main>
     </>
   )

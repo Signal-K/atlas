@@ -32,11 +32,12 @@ function UpcomingEventsWidget() {
   }
 
   return (
-    <ul className="event-list">
+    <ul className="row-list">
       {events.map((event) => (
         <li key={event.id}>
-          <span className="event-title">{event.title}</span>
-          <span className="event-meta">
+          <span className="row-marker" />
+          <span className="row-text">{event.title}</span>
+          <span className="row-meta">
             {new Date(event.startsAt).toLocaleString(undefined, {
               dateStyle: 'medium',
               timeStyle: 'short',
