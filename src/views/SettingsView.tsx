@@ -8,6 +8,7 @@ interface SettingsViewProps {
   requestLocation: () => void
   needsMotionPermission: boolean
   requestMotionPermission: () => void
+  accountDefaultMode?: 'sign-in' | 'sign-up'
 }
 
 const LOCATION_LABEL: Record<LocationStatus, string> = {
@@ -18,7 +19,13 @@ const LOCATION_LABEL: Record<LocationStatus, string> = {
   unsupported: 'Not supported on this device',
 }
 
-export function SettingsView({ locationStatus, requestLocation, needsMotionPermission, requestMotionPermission }: SettingsViewProps) {
+export function SettingsView({
+  locationStatus,
+  requestLocation,
+  needsMotionPermission,
+  requestMotionPermission,
+  accountDefaultMode,
+}: SettingsViewProps) {
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? getSystemTheme())
 
   useEffect(() => {
@@ -34,7 +41,7 @@ export function SettingsView({ locationStatus, requestLocation, needsMotionPermi
     <section className="widget-section">
       <h2>Settings</h2>
 
-      <AccountSettings />
+      <AccountSettings defaultMode={accountDefaultMode} />
 
       <div className="settings-row">
         <span className="settings-label">Appearance</span>

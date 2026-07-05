@@ -20,8 +20,14 @@ const VIEW_SUBTITLE: Record<View, string> = {
 
 function App() {
   const [view, setView] = useState<View>('dashboard')
+  const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const location = useLocationSeed()
   const motion = useParallax()
+
+  function goToSignUp() {
+    setAccountDefaultMode('sign-up')
+    setView('settings')
+  }
 
   return (
     <>
@@ -36,7 +42,7 @@ function App() {
             <p className="dashboard-subtitle">{VIEW_SUBTITLE[view]}</p>
           </header>
           <hr className="hairline" />
-          {view === 'dashboard' && <DashboardView />}
+          {view === 'dashboard' && <DashboardView onSignUpClick={goToSignUp} />}
           {view === 'feed' && <FeedView />}
           {view === 'archive' && <ArchiveView />}
           {view === 'scrapbook' && <ScrapbookView />}
@@ -46,6 +52,7 @@ function App() {
               requestLocation={location.requestLocation}
               needsMotionPermission={motion.needsMotionPermission}
               requestMotionPermission={motion.requestMotionPermission}
+              accountDefaultMode={accountDefaultMode}
             />
           )}
         </main>

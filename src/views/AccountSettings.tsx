@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { signIn, signOut, signUp, useAuth } from '../lib/auth'
 
-export function AccountSettings() {
+export function AccountSettings({ defaultMode = 'sign-in' }: { defaultMode?: 'sign-in' | 'sign-up' }) {
   const { user } = useAuth()
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>(defaultMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
