@@ -5,18 +5,27 @@
 
 import PocketBase from 'pocketbase'
 import { fetchEvents as fetchMoonPhaseEvents } from './sources/moon-phase.mjs'
+import { fetchEvents as fetchMeteorShowerEvents } from './sources/meteor-showers.mjs'
+import { fetchEvents as fetchEclipseEvents } from './sources/eclipses.mjs'
 
-const PLUGINS = [fetchMoonPhaseEvents]
+const PLUGINS = [fetchMoonPhaseEvents, fetchMeteorShowerEvents, fetchEclipseEvents]
 
 const PB_URL = process.env.PB_URL ?? 'http://127.0.0.1:8090'
 const PB_ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL
 const PB_ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD
 
 async function upsert(pb, event) {
-  const filter = `kind = "${event.kind}" && target = "${event.target}" && starts_at = "${event.starts_at}"`
+  // PocketBase stores/returns dates space-separated ("YYYY-MM-DD HH:MM:SS.sssZ"),
+  // not ISO-with-"T" — an exact-match filter using the "T" form never matches,
+  // which silently created duplicates on every re-run until this was caught.
+  const startsAtStored = event.starts_at.replace('T', ' ')
+  const filter = `kind = "${event.kind}" && target = "${event.target}" && starts_at = "${startsAtStored}"`
   const existing = await pb.collection('sky_events').getFullList({ filter })
   if (existing.length > 0) {
-    return { event, action: 'skipped' }
+    // Update rather than skip, so re-running the ingest backfills new
+    // fields (like content/image_url) onto events seeded before they existed.
+    await pb.collection('sky_events').update(existing[0].id, event)
+    return { event, action: 'updated' }
   }
   await pb.collection('sky_events').create(event)
   return { event, action: 'created' }
@@ -33,18 +42,18 @@ async function main() {
 
   const now = new Date()
   let created = 0
-  let skipped = 0
+  let updated = 0
 
   for (const plugin of PLUGINS) {
     const events = await plugin({ now })
     for (const event of events) {
       const result = await upsert(pb, event)
       if (result.action === 'created') created += 1
-      else skipped += 1
+      else updated += 1
     }
   }
 
-  console.log(`Ingest complete: ${created} created, ${skipped} already present.`)
+  console.log(`Ingest complete: ${created} created, ${updated} updated.`)
 }
 
 main().catch((error) => {

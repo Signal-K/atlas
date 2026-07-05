@@ -9,16 +9,22 @@ const REFERENCE_NEW_MOON_MS = Date.UTC(2000, 0, 6, 18, 14)
 
 function toEvent(title, timestampMs) {
   const startsAt = new Date(timestampMs).toISOString()
+  const isFullMoon = title === 'Full Moon'
   return {
     kind: 'moon_phase',
     target: 'moon',
     title,
-    description:
-      title === 'New Moon'
-        ? 'The Moon is between Earth and the Sun and not visible — best conditions for viewing faint deep-sky objects.'
-        : 'The Moon is fully illuminated and visible all night — best conditions for lunar observation and imaging.',
+    description: isFullMoon
+      ? 'The Moon is fully illuminated and visible all night — best conditions for lunar observation and imaging.'
+      : 'The Moon is between Earth and the Sun and not visible — best conditions for viewing faint deep-sky objects.',
+    content: isFullMoon
+      ? 'A full moon rises at sunset and is visible all night. Great for lunar photography and naked-eye observation of maria and craters near the terminator in the days before/after peak fullness, though the bright sky washes out fainter deep-sky targets.'
+      : 'A new moon is not visible at all, since it rises and sets with the Sun. With no moonlight to wash out the sky, this is the best few nights of the month for viewing faint deep-sky objects like galaxies and nebulae.',
     starts_at: startsAt,
     ends_at: startsAt,
+    ...(isFullMoon
+      ? { image_url: 'https://upload.wikimedia.org/wikipedia/commons/e/e1/FullMoon2010.jpg', image_credit: 'Gregory H. Revera, Wikimedia Commons' }
+      : {}),
   }
 }
 

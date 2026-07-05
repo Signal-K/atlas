@@ -9,6 +9,9 @@ export interface SkyEvent {
   target: string // e.g. 'moon', 'perseids'
   title: string
   description: string
+  content?: string
+  imageUrl?: string
+  imageCredit?: string
   startsAt: string
   endsAt: string
   latitude?: number

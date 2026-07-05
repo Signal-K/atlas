@@ -4,7 +4,7 @@ import { db, type SkyEvent } from './db'
 // Read path (AT-003): pull sky_events into the local cache when online.
 // Every read in the app goes through Dexie, not this function directly, so
 // the dashboard still renders from cache when offline or when this fails.
-export async function pullSkyEvents(windowDays = 60): Promise<void> {
+export async function pullSkyEvents(windowDays = 270): Promise<void> {
   if (!navigator.onLine) return
 
   const now = new Date()
@@ -19,6 +19,9 @@ export async function pullSkyEvents(windowDays = 60): Promise<void> {
       target: record.target,
       title: record.title,
       description: record.description,
+      content: record.content,
+      imageUrl: record.image_url,
+      imageCredit: record.image_credit,
       startsAt: record.starts_at,
       endsAt: record.ends_at,
       latitude: record.latitude,
