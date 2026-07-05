@@ -21,6 +21,13 @@ export default defineConfig({
         // App shell + local-first data live in IndexedDB (see src/lib/db.ts);
         // this cache only needs to keep the shell itself available offline.
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // Take over immediately on every deploy instead of waiting for all
+        // tabs of the old version to close — without this, a stale SW can
+        // keep serving an index.html that references JS/CSS chunk hashes
+        // the new deploy no longer has, which shows up as a blank page.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
