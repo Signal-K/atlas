@@ -9,27 +9,30 @@ function LocationPicker() {
   const { city, setCity } = useLocationBrowse()
   return (
     <section className="widget-section">
-      <h2>Browse the world</h2>
+      <div className="map-card-header">
+        <h2>Browse the world</h2>
+        <select
+          className="map-location-select"
+          value={city.name}
+          onChange={(event) => {
+            const next = CITIES.find((c) => c.name === event.target.value)
+            if (next) setCity(next)
+          }}
+        >
+          {CITIES.map((c) => (
+            <option key={c.name} value={c.name}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="map-card">
+        <WorldMap selected={city} onSelect={setCity} />
+      </div>
       <p className="scrapbook-hint">
-        ISS passes are location-specific — click a city on the map (or use the dropdown) to see passes for that
-        location. Moon phases, meteor showers, and eclipses are shown regardless of location.
+        ISS passes are shown for <strong>{city.name}</strong>. Moon phases, meteor showers, planets, eclipses, and
+        deep-sky objects are shown regardless of location.
       </p>
-      <WorldMap selected={city} onSelect={setCity} />
-      <select
-        className="map-location-select"
-        value={city.name}
-        onChange={(event) => {
-          const next = CITIES.find((c) => c.name === event.target.value)
-          if (next) setCity(next)
-        }}
-      >
-        {CITIES.map((c) => (
-          <option key={c.name} value={c.name}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <p className="map-selected-city">Showing ISS passes for {city.name}</p>
     </section>
   )
 }
@@ -41,13 +44,13 @@ export function DashboardView({ onSignUpClick, defaultCity }: { onSignUpClick: (
     <LocationBrowseProvider defaultCity={defaultCity}>
       <div className="widget-stack">
         <OnboardingCTA onSignUpClick={onSignUpClick} />
-        <LocationPicker />
         {widgets.map(({ id, title, Component }) => (
           <section key={id} className="widget-section">
             <h2>{title}</h2>
             <Component />
           </section>
         ))}
+        <LocationPicker />
       </div>
     </LocationBrowseProvider>
   )

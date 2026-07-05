@@ -87,7 +87,9 @@ export async function fetchEvents({ now = new Date(), windowDays = 5 } = {}) {
     for (const pass of passesForCity(satrec, city, start, end)) {
       events.push({
         kind: 'iss_pass',
-        target: 'iss',
+        // Disambiguates cities for dedup purposes -- otherwise every city
+        // shares the same target and only the timestamp tells them apart.
+        target: `iss_${city.name.toLowerCase().replace(/\s+/g, '_')}`,
         title: `ISS Pass over ${city.name}`,
         description: `A visible pass of the International Space Station over ${city.name}, reaching ${Math.round(pass.maxElevation)}° above the horizon.`,
         content: `The ISS will be visible as a bright, fast-moving point of light (no telescope needed) reaching a peak elevation of about ${Math.round(pass.maxElevation)}° above the horizon. Look for it moving steadily across the sky — unlike aircraft, it won't blink and won't change direction.`,

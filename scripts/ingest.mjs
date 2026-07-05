@@ -8,14 +8,19 @@ import { fetchEvents as fetchMoonPhaseEvents } from './sources/moon-phase.mjs'
 import { fetchEvents as fetchMeteorShowerEvents } from './sources/meteor-showers.mjs'
 import { fetchEvents as fetchEclipseEvents } from './sources/eclipses.mjs'
 import { fetchEvents as fetchIssPassEvents } from './sources/iss-passes.mjs'
+import { fetchEvents as fetchPlanetEvents } from './sources/planets.mjs'
+import { fetchEvents as fetchDeepSkyEvents } from './sources/deep-sky-objects.mjs'
 
 // Each plugin gets its own sensible window: moon phases/meteor showers/
-// eclipses are predictable a year out, but ISS pass predictions go stale
-// fast (TLE drift), so that one intentionally stays short (its own default).
+// eclipses/planets/deep-sky are predictable a year out, but ISS pass
+// predictions go stale fast (TLE drift), so that one intentionally stays
+// short (its own default).
 const PLUGINS = [
   { fetch: fetchMoonPhaseEvents, windowDays: 365 },
   { fetch: fetchMeteorShowerEvents, windowDays: 365 },
   { fetch: fetchEclipseEvents, windowDays: 365 },
+  { fetch: fetchPlanetEvents, windowDays: 365 },
+  { fetch: fetchDeepSkyEvents, windowDays: 365 },
   { fetch: fetchIssPassEvents },
 ]
 
@@ -24,11 +29,19 @@ const PB_ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL
 const PB_ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD
 
 async function upsert(pb, event) {
-  // PocketBase stores/returns dates space-separated ("YYYY-MM-DD HH:MM:SS.sssZ"),
-  // not ISO-with-"T" — an exact-match filter using the "T" form never matches,
-  // which silently created duplicates on every re-run until this was caught.
-  const startsAtStored = event.starts_at.replace('T', ' ')
-  const filter = `kind = "${event.kind}" && target = "${event.target}" && starts_at = "${startsAtStored}"`
+  // A tolerant time window rather than an exact match, for two reasons:
+  // (1) PocketBase stores/returns dates space-separated ("YYYY-MM-DD
+  // HH:MM:SS.sssZ"), not ISO-with-"T", so an exact "T"-form match never
+  // worked in the first place; (2) plugins that fetch live data (ISS passes
+  // against a live TLE) recompute slightly different timestamps run to run
+  // as the source data refreshes, so exact equality breaks dedup even with
+  // the format fixed. +/-10 minutes comfortably absorbs that drift without
+  // conflating genuinely different events (the closest ISS passes for one
+  // city are ~90 minutes apart).
+  const target = new Date(event.starts_at)
+  const rangeStart = new Date(target.getTime() - 10 * 60_000).toISOString().replace('T', ' ')
+  const rangeEnd = new Date(target.getTime() + 10 * 60_000).toISOString().replace('T', ' ')
+  const filter = `kind = "${event.kind}" && target = "${event.target}" && starts_at >= "${rangeStart}" && starts_at <= "${rangeEnd}"`
   const existing = await pb.collection('sky_events').getFullList({ filter })
   if (existing.length > 0) {
     // Update rather than skip, so re-running the ingest backfills new

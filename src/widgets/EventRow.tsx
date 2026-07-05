@@ -1,5 +1,14 @@
 import type { SkyEvent } from '../lib/db'
 
+const KIND_LABELS: Record<string, string> = {
+  moon_phase: 'Moon',
+  meteor_shower: 'Meteor shower',
+  eclipse: 'Eclipse',
+  iss_pass: 'ISS pass',
+  planet_event: 'Planet',
+  deep_sky: 'Deep sky',
+}
+
 interface EventRowProps {
   event: SkyEvent
   expanded: boolean
@@ -14,6 +23,7 @@ export function EventRow({ event, expanded, onToggle, pinned, onTogglePin }: Eve
       <div className="row-trigger">
         <button type="button" className="row-trigger-main" onClick={onToggle} aria-expanded={expanded}>
           <span className="row-marker" />
+          <span className="row-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>
           <span className="row-text">{event.title}</span>
           <span className="row-meta">
             {new Date(event.startsAt).toLocaleString(undefined, {
