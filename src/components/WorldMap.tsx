@@ -32,10 +32,26 @@ export function WorldMap({ selected, onSelect }: { selected: City | null; onSele
       {CITIES.map((city) => {
         const { x, y } = project(city.lat, city.lon)
         const isActive = selected?.name === city.name
+        const labelAbove = city.lat < 0
         return (
-          <g key={city.name} className="map-pin-group" onClick={() => onSelect(city)}>
-            <circle cx={x} cy={y} r={isActive ? 4 : 2.5} className={`map-pin${isActive ? ' is-active' : ''}`} />
-            <title>{city.name}</title>
+          <g
+            key={city.name}
+            className="map-pin-group"
+            onClick={() => onSelect(city)}
+            role="button"
+            tabIndex={0}
+            aria-label={`Select ${city.name}`}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') onSelect(city)
+            }}
+          >
+            {/* Larger invisible circle so the tap/click target is comfortable
+                even though the visible dot stays small at this map scale. */}
+            <circle cx={x} cy={y} r={7} className="map-pin-hitarea" />
+            <circle cx={x} cy={y} r={isActive ? 4.5 : 3} className={`map-pin${isActive ? ' is-active' : ''}`} />
+            <text x={x} y={labelAbove ? y - 7 : y + 11} className={`map-pin-label${isActive ? ' is-active' : ''}`}>
+              {city.name}
+            </text>
           </g>
         )
       })}

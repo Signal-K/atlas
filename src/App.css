@@ -572,7 +572,7 @@
 
 .world-map {
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
   height: auto;
   display: block;
   margin: 0 auto;
@@ -596,10 +596,14 @@
   cursor: pointer;
 }
 
+.map-pin-hitarea {
+  fill: transparent;
+}
+
 .map-pin {
-  fill: var(--text);
-  opacity: 0.6;
-  transition: opacity 0.15s;
+  fill: var(--accent);
+  opacity: 0.75;
+  transition: opacity 0.15s, r 0.15s;
 }
 
 .map-pin-group:hover .map-pin {
@@ -609,6 +613,34 @@
 .map-pin.is-active {
   fill: var(--accent);
   opacity: 1;
+}
+
+.map-pin-label {
+  font-size: 6px;
+  fill: var(--text);
+  text-anchor: middle;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.map-pin-group:hover .map-pin-label,
+.map-pin-label.is-active {
+  opacity: 1;
+  fill: var(--text-h);
+}
+
+.map-location-select {
+  display: block;
+  margin: 12px auto 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+  color: var(--text-h);
+  cursor: pointer;
 }
 
 .map-selected-city {
