@@ -7,34 +7,54 @@
   pointer-events: none;
 }
 
-.sky-permissions {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
+.app-shell {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  z-index: 1;
+  min-height: 100svh;
 }
 
-.permission-banner {
-  font-size: 13px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg);
+.sidebar {
+  flex-shrink: 0;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0;
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-item {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: none;
   color: var(--text);
   cursor: pointer;
 }
 
-.permission-banner--note {
-  cursor: default;
-  opacity: 0.75;
+.sidebar-item svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar-item:hover {
+  color: var(--text-h);
+}
+
+.sidebar-item.is-active {
+  background: var(--code-bg);
+  color: var(--text-h);
 }
 
 .dashboard {
   position: relative;
+  flex: 1;
+  min-width: 0;
   max-width: 720px;
   margin: 0 auto;
   padding: 64px 24px 96px;
@@ -58,22 +78,6 @@
   margin-top: 12px;
   color: var(--text);
   font-size: 16px;
-}
-
-.theme-toggle {
-  font-size: 16px;
-  line-height: 1;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: none;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.theme-toggle:hover {
-  color: var(--text-h);
 }
 
 .hairline {
@@ -124,6 +128,10 @@
   cursor: pointer;
 }
 
+.row-trigger:hover .row-text {
+  color: var(--accent);
+}
+
 .row-marker {
   width: 14px;
   height: 14px;
@@ -169,4 +177,84 @@
   margin-top: 4px;
   font-size: 12px;
   opacity: 0.6;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-label {
+  color: var(--text-h);
+}
+
+.settings-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-status {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.settings-choice button {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.settings-choice button.is-active {
+  background: var(--text-h);
+  color: var(--bg);
+  border-color: var(--text-h);
+}
+
+.scrapbook-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.scrapbook-form textarea {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+.scrapbook-submit {
+  align-self: flex-start;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.scrapbook-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
 }

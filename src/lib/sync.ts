@@ -28,7 +28,21 @@ export async function pullSkyEvents(windowDays = 270): Promise<void> {
       longitude: record.longitude,
       updatedAt: record.updated,
     }))
-    await db.skyEvents.bulkPut(events)
+    const freshIds = new Set(events.map((event) => event.id))
+    // Reconcile, not just merge: drop cached events inside this window that
+    // the server no longer returns (e.g. removed server-side duplicates),
+    // otherwise stale entries accumulate in IndexedDB forever since bulkPut
+    // only ever adds/updates, never removes.
+    const staleIds = await db.skyEvents
+      .where('startsAt')
+      .between(now.toISOString(), end.toISOString())
+      .filter((event) => !freshIds.has(event.id))
+      .primaryKeys()
+
+    await db.transaction('rw', db.skyEvents, async () => {
+      if (staleIds.length > 0) await db.skyEvents.bulkDelete(staleIds)
+      await db.skyEvents.bulkPut(events)
+    })
   } catch {
     // Offline or PocketBase unreachable — the existing local cache stands.
   }
@@ -38,4 +52,10 @@ export async function getUpcomingEvents(limit = 10): Promise<SkyEvent[]> {
   const now = new Date().toISOString()
   const all = await db.skyEvents.orderBy('startsAt').toArray()
   return all.filter((event) => event.startsAt >= now).slice(0, limit)
+}
+
+export async function getPastEvents(limit = 20): Promise<SkyEvent[]> {
+  const now = new Date().toISOString()
+  const all = await db.skyEvents.orderBy('startsAt').reverse().toArray()
+  return all.filter((event) => event.startsAt < now).slice(0, limit)
 }

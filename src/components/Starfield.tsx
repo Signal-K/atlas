@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { mulberry32 } from '../lib/rng'
-import { useLocationSeed } from '../lib/geo'
-import { useParallax } from '../lib/motion'
+import type { RefObject } from 'react'
+import type { ParallaxOffset } from '../lib/motion'
 
 interface Star {
   x: number
@@ -95,10 +95,13 @@ function drawSmudge(ctx: CanvasRenderingContext2D, smudge: Smudge) {
   ctx.restore()
 }
 
-export function Starfield() {
+interface StarfieldProps {
+  locationSeed: number
+  targetRef: RefObject<ParallaxOffset>
+}
+
+export function Starfield({ locationSeed, targetRef }: StarfieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { seed: locationSeed, status: locationStatus, requestLocation } = useLocationSeed()
-  const { targetRef, needsMotionPermission, requestMotionPermission } = useParallax()
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -176,24 +179,5 @@ export function Starfield() {
     }
   }, [locationSeed, targetRef])
 
-  return (
-    <>
-      <canvas ref={canvasRef} className="starfield" aria-hidden="true" />
-      <div className="sky-permissions">
-        {(locationStatus === 'idle' || locationStatus === 'denied') && (
-          <button type="button" className="permission-banner" onClick={requestLocation}>
-            {locationStatus === 'denied' ? 'Location blocked — retry to use your sky' : 'Enable location-based sky'}
-          </button>
-        )}
-        {locationStatus === 'unsupported' && (
-          <span className="permission-banner permission-banner--note">Location unsupported — showing a default sky</span>
-        )}
-        {needsMotionPermission && (
-          <button type="button" className="permission-banner" onClick={requestMotionPermission}>
-            Enable motion parallax
-          </button>
-        )}
-      </div>
-    </>
-  )
+  return <canvas ref={canvasRef} className="starfield" aria-hidden="true" />
 }
