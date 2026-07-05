@@ -1,0 +1,27 @@
+.dashboard {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.dashboard header p {
+  color: var(--text-l, #94a3b8);
+}
+
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.widget-card {
+  border: 1px solid var(--border, #1e293b);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.widget-card h2 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
