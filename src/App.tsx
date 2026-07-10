@@ -13,6 +13,7 @@ import { PhotoChallengesView } from './views/PhotoChallengesView'
 import { SettingsView } from './views/SettingsView'
 import { LocalOpsView } from './views/LocalOpsView'
 import { DarkSkyView } from './views/DarkSkyView'
+import { DeepSkyPlannerView } from './views/DeepSkyPlannerView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { CITIES, findNearestCity } from './lib/cities'
@@ -28,6 +29,7 @@ const VIEW_SUBTITLE: Record<View, string> = {
   scrapbook: 'Your own sky-watching notes.',
   challenges: 'Event-tied photo challenges, moderated before going public.',
   darksky: 'Nearby dark-sky sites, ranked by distance and light pollution.',
+  planner: "Tonight's targets, ranked by how well they'll frame with your gear.",
   settings: 'Appearance, location, and motion.',
   ops: 'Local diagnostics for PocketBase, containers, and recent writes.',
 }
@@ -95,6 +97,7 @@ function App() {
           )}
           {view === 'challenges' && <PhotoChallengesView />}
           {view === 'darksky' && <DarkSkyView key={defaultCity.name} lat={defaultCity.lat} lon={defaultCity.lon} />}
+          {view === 'planner' && <DeepSkyPlannerView key={defaultCity.name} lat={defaultCity.lat} lon={defaultCity.lon} />}
           {view === 'ops' && <LocalOpsView />}
           {view === 'settings' && (
             <SettingsView
