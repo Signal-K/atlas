@@ -1495,6 +1495,77 @@
   opacity: 0.6;
 }
 
+.camera-recipe-presets {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.camera-recipe-presets h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.camera-recipe-preset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.camera-recipe-preset-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--accent-bg);
+}
+
+.camera-recipe-preset-list li.is-custom {
+  border: 1px solid var(--accent-border);
+}
+
+.camera-recipe-preset-name {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.camera-recipe-preset-source {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.6;
+}
+
+.camera-recipe-preset-detail {
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.camera-recipe-import {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.camera-recipe-import-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--danger, #c0392b);
+}
+
 .weather-day {
   flex: 1 0 100px;
   display: flex;

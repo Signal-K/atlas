@@ -60,7 +60,7 @@ export interface StreakState {
 
 export interface SyncQueueItem {
   id?: number
-  collection: 'atlas_favourites' | 'atlas_watchlist' | 'atlas_observations' | 'atlas_streaks'
+  collection: 'atlas_favourites' | 'atlas_watchlist' | 'atlas_observations' | 'atlas_streaks' | 'atlas_camera_presets'
   op: 'create' | 'update' | 'delete'
   recordId: string
   payload?: unknown
@@ -72,6 +72,32 @@ export interface PinnedEvent {
   pinnedAt: string
 }
 
+export type PresetSource = 'builtin' | 'imported' | 'community'
+
+// A single device's settings within a preset (mirrors DeviceRecipe's shape
+// in cameraRecipes.ts but as structured, matchable data rather than prose).
+export interface CameraPresetSettings {
+  mode?: string
+  lens?: string
+  iso?: number
+  whiteBalanceKelvin?: number
+  exposureSec?: number
+  filters?: string[]
+}
+
+export interface CameraPreset {
+  id: string
+  userId: string
+  device: string // DeviceId from cameraProfiles.ts, kept as string to avoid an import cycle
+  targetKey?: string // RecipeKey from cameraRecipes.ts, when this preset is target-specific
+  name: string
+  settings: CameraPresetSettings
+  source: PresetSource
+  sourceUrl?: string
+  notes?: string
+  createdAt: string
+}
+
 class AtlasDB extends Dexie {
   skyEvents!: EntityTable<SkyEvent, 'id'>
   favourites!: EntityTable<Favourite, 'id'>
@@ -80,6 +106,7 @@ class AtlasDB extends Dexie {
   streaks!: EntityTable<StreakState, 'userId'>
   syncQueue!: EntityTable<SyncQueueItem, 'id'>
   pinnedEvents!: EntityTable<PinnedEvent, 'eventId'>
+  cameraPresets!: EntityTable<CameraPreset, 'id'>
 
   constructor() {
     super('atlas')
@@ -93,6 +120,9 @@ class AtlasDB extends Dexie {
     })
     this.version(2).stores({
       pinnedEvents: 'eventId',
+    })
+    this.version(3).stores({
+      cameraPresets: 'id, userId, device, targetKey, source',
     })
     // New observation fields (targetName, deviceUsed, etc.) don't need a
     // schema/index change -- Dexie stores whatever properties are on the
