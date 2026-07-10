@@ -8,6 +8,7 @@ import { pb } from './pocketbase'
 import { db, type CameraPreset, type CameraPresetSettings } from './db'
 import { CAMERA_RECIPES, type RecipeKey } from './cameraRecipes'
 import type { DeviceId } from './cameraProfiles'
+import { communityPresetsForTarget } from './communityPresets'
 
 export function builtinPresetsForRecipe(recipeKey: RecipeKey): CameraPreset[] {
   const recipe = CAMERA_RECIPES[recipeKey]
@@ -36,7 +37,7 @@ export async function listPresetsForTarget(userId: string, targetKey: RecipeKey)
     Promise.resolve(builtinPresetsForRecipe(targetKey)),
     db.cameraPresets.where({ userId, targetKey }).toArray(),
   ])
-  return [...userPresets, ...builtin]
+  return [...userPresets, ...communityPresetsForTarget(targetKey), ...builtin]
 }
 
 const SOURCE_RANK: Record<CameraPreset['source'], number> = {
