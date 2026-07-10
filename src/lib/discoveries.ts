@@ -1,5 +1,15 @@
 import { pb } from './pocketbase'
 
+// Small fixed reaction set (mirrors the atlas_discovery_reactions "emoji"
+// enum) rather than free-form emoji picking -- lower friction than typing a
+// comment, and a fixed set keeps the tally UI simple (no unbounded emoji list).
+export const REACTIONS: Array<{ id: string; glyph: string; label: string }> = [
+  { id: 'telescope', glyph: '🔭', label: 'I saw this too' },
+  { id: 'heart', glyph: '😍', label: 'Love this' },
+  { id: 'sparkles', glyph: '✨', label: 'Beautiful' },
+  { id: 'wow', glyph: '😲', label: 'Wow' },
+]
+
 export interface Discovery {
   id: string
   caption: string
@@ -12,6 +22,8 @@ export interface Discovery {
   created: string
   voteCount: number
   hasVoted: boolean
+  reactionCounts: Record<string, number>
+  myReactions: Set<string>
 }
 
 export interface DiscoveryComment {
@@ -37,9 +49,10 @@ function requireUser() {
 }
 
 export async function listDiscoveries(): Promise<Discovery[]> {
-  const [records, votes] = await Promise.all([
+  const [records, votes, reactions] = await Promise.all([
     pb.collection('atlas_discoveries').getFullList({ sort: '-created' }),
     pb.collection('atlas_discovery_votes').getFullList(),
+    pb.collection('atlas_discovery_reactions').getFullList(),
   ])
 
   const currentUserId = pb.authStore.record?.id
@@ -48,6 +61,19 @@ export async function listDiscoveries(): Promise<Discovery[]> {
   for (const vote of votes) {
     countByDiscovery.set(vote.discovery, (countByDiscovery.get(vote.discovery) ?? 0) + 1)
     if (currentUserId && vote.user === currentUserId) votedByCurrentUser.add(vote.discovery)
+  }
+
+  const reactionCountsByDiscovery = new Map<string, Record<string, number>>()
+  const myReactionsByDiscovery = new Map<string, Set<string>>()
+  for (const reaction of reactions) {
+    const counts = reactionCountsByDiscovery.get(reaction.discovery) ?? {}
+    counts[reaction.emoji] = (counts[reaction.emoji] ?? 0) + 1
+    reactionCountsByDiscovery.set(reaction.discovery, counts)
+    if (currentUserId && reaction.user === currentUserId) {
+      const mine = myReactionsByDiscovery.get(reaction.discovery) ?? new Set<string>()
+      mine.add(reaction.emoji)
+      myReactionsByDiscovery.set(reaction.discovery, mine)
+    }
   }
 
   return records.map((record) => ({
@@ -62,6 +88,8 @@ export async function listDiscoveries(): Promise<Discovery[]> {
     created: record.created,
     voteCount: countByDiscovery.get(record.id) ?? 0,
     hasVoted: votedByCurrentUser.has(record.id),
+    reactionCounts: reactionCountsByDiscovery.get(record.id) ?? {},
+    myReactions: myReactionsByDiscovery.get(record.id) ?? new Set<string>(),
   }))
 }
 
@@ -89,6 +117,18 @@ export async function toggleVote(discoveryId: string, currentlyVoted: boolean): 
     await pb.collection('atlas_discovery_votes').delete(existing.id)
   } else {
     await pb.collection('atlas_discovery_votes').create({ discovery: discoveryId, user: user.id })
+  }
+}
+
+export async function toggleReaction(discoveryId: string, emoji: string, currentlyReacted: boolean): Promise<void> {
+  const user = requireUser()
+  if (currentlyReacted) {
+    const existing = await pb
+      .collection('atlas_discovery_reactions')
+      .getFirstListItem(`discovery = "${discoveryId}" && user = "${user.id}" && emoji = "${emoji}"`)
+    await pb.collection('atlas_discovery_reactions').delete(existing.id)
+  } else {
+    await pb.collection('atlas_discovery_reactions').create({ discovery: discoveryId, user: user.id, emoji })
   }
 }
 

@@ -41,6 +41,7 @@ const OBJECTS = [
     ra: 16.7,
     kind: 'cluster',
     description: 'One of the brightest globular star clusters in the northern sky, resolvable into individual stars in a telescope.',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/e1/The_Great_Globular_Cluster_in_Hercules_Messier_13_%28M13%29.jpg',
   },
   {
     id: 'm51',
@@ -48,6 +49,7 @@ const OBJECTS = [
     ra: 13.5,
     kind: 'galaxy',
     description: 'A classic face-on spiral galaxy interacting with a smaller companion, a favorite telescope/astrophotography target.',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/6d/Messier_51_-_The_Whirlpool_Galaxy_%2849706551451%29.jpg',
   },
   {
     id: 'm57',
@@ -55,6 +57,7 @@ const OBJECTS = [
     ra: 18.89,
     kind: 'nebula',
     description: 'A small, bright planetary nebula in Lyra — the glowing shell of a dying sun-like star.',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/f/fe/Hubble_image_of_the_Ring_Nebula_%28Messier_57%29.jpg',
   },
   {
     id: 'm8',
@@ -62,6 +65,7 @@ const OBJECTS = [
     ra: 18.06,
     kind: 'nebula',
     description: 'A large, bright star-forming nebula in Sagittarius, visible to the naked eye from a dark sky.',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Lagoon_Nebula.jpg',
   },
   {
     id: 'm27',
@@ -69,6 +73,7 @@ const OBJECTS = [
     ra: 19.99,
     kind: 'nebula',
     description: 'A bright planetary nebula in Vulpecula, one of the easiest of its kind to observe.',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/09/M27%2C_NGC_6853%2C_Dumbbell_Nebula_%28noao-02185%29.jpg',
   },
 ]
 

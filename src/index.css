@@ -11,7 +11,12 @@
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --serif: 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
   --mono: ui-monospace, Consolas, monospace;
+  /* Scrapbook is a private journal and should read as handwritten, not
+     app-UI text -- system cursive/handwriting fonts only, no webfont fetch
+     (keeps the app fully offline-capable with no network font dependency). */
+  --scrawl: 'Bradley Hand', 'Segoe Print', 'Chalkboard SE', 'Comic Sans MS', cursive;
 
   font: 16px/145% var(--sans);
   letter-spacing: 0.1px;

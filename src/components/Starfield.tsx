@@ -37,7 +37,11 @@ const LAYERS: StarLayer[] = [
 
 // Loosely inspired by the star colors visible in Hubble Deep Field imagery:
 // mostly white/blue-white points, with occasional warmer yellow/orange/red ones.
-const PALETTE: Array<{ rgb: [number, number, number]; weight: number }> = [
+// Bright pastel dots read fine against the dark theme's near-black
+// background, but are essentially invisible against the light theme's white
+// one -- LIGHT_PALETTE swaps in deep, saturated tones instead so the same
+// field is still visible when the app is in light mode.
+const DARK_PALETTE: Array<{ rgb: [number, number, number]; weight: number }> = [
   { rgb: [255, 255, 255], weight: 50 },
   { rgb: [202, 225, 255], weight: 20 },
   { rgb: [255, 244, 214], weight: 15 },
@@ -45,24 +49,44 @@ const PALETTE: Array<{ rgb: [number, number, number]; weight: number }> = [
   { rgb: [255, 160, 122], weight: 5 },
 ]
 
-function pickColor(rand: () => number): [number, number, number] {
-  const total = PALETTE.reduce((sum, entry) => sum + entry.weight, 0)
+const LIGHT_PALETTE: Array<{ rgb: [number, number, number]; weight: number }> = [
+  { rgb: [76, 29, 149], weight: 30 }, // indigo
+  { rgb: [30, 58, 138], weight: 25 }, // navy
+  { rgb: [124, 58, 237], weight: 20 }, // violet
+  { rgb: [157, 23, 77], weight: 15 }, // deep rose
+  { rgb: [51, 65, 85], weight: 10 }, // slate
+]
+
+function pickColor(rand: () => number, palette: typeof DARK_PALETTE): [number, number, number] {
+  const total = palette.reduce((sum, entry) => sum + entry.weight, 0)
   let r = rand() * total
-  for (const entry of PALETTE) {
+  for (const entry of palette) {
     if (r < entry.weight) return entry.rgb
     r -= entry.weight
   }
-  return PALETTE[0].rgb
+  return palette[0].rgb
 }
 
-function createLayerStars(width: number, height: number, layer: StarLayer, rand: () => number): Star[] {
+function isDarkTheme(): boolean {
+  const explicit = document.documentElement.dataset.theme
+  if (explicit === 'dark') return true
+  if (explicit === 'light') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+function createLayerStars(width: number, height: number, layer: StarLayer, rand: () => number, isDark: boolean): Star[] {
   const count = Math.floor((width * height) / layer.areaPerStar)
+  const palette = isDark ? DARK_PALETTE : LIGHT_PALETTE
+  // Saturated colors read as "darker" than white/pastel at the same alpha,
+  // so the light-mode palette gets a bit more opacity to stay legible
+  // against a white background without looking like a smudged mess.
+  const alphaBoost = isDark ? 1 : 1.4
   return Array.from({ length: count }, () => ({
     x: rand() * width,
     y: rand() * height,
     radius: layer.sizeRange[0] + rand() * (layer.sizeRange[1] - layer.sizeRange[0]),
-    baseAlpha: layer.alphaRange[0] + rand() * (layer.alphaRange[1] - layer.alphaRange[0]),
-    color: pickColor(rand),
+    baseAlpha: Math.min(1, (layer.alphaRange[0] + rand() * (layer.alphaRange[1] - layer.alphaRange[0])) * alphaBoost),
+    color: pickColor(rand, palette),
     twinkleSpeed: rand() * 0.015 + 0.004,
     phase: rand() * Math.PI * 2,
   }))
@@ -80,14 +104,19 @@ function createSmudges(width: number, height: number, rand: () => number): Smudg
   }))
 }
 
-function drawSmudge(ctx: CanvasRenderingContext2D, smudge: Smudge) {
+function drawSmudge(ctx: CanvasRenderingContext2D, smudge: Smudge, isDark: boolean) {
   ctx.save()
   ctx.translate(smudge.x, smudge.y)
   ctx.rotate(smudge.rotation)
   ctx.scale(smudge.rx, smudge.ry)
+  // Same pale-blue glow reads fine on a near-black background but washes
+  // out to nothing on white, so light mode uses a deeper violet at higher
+  // alpha for the same "nebula smudge" effect.
+  const [r, g, b] = isDark ? [220, 225, 255] : [124, 58, 237]
+  const alpha = isDark ? smudge.alpha : smudge.alpha * 3
   const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
-  gradient.addColorStop(0, `rgba(220, 225, 255, ${smudge.alpha})`)
-  gradient.addColorStop(1, 'rgba(220, 225, 255, 0)')
+  gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha})`)
+  gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`)
   ctx.fillStyle = gradient
   ctx.beginPath()
   ctx.arc(0, 0, 1, 0, Math.PI * 2)
@@ -115,6 +144,7 @@ export function Starfield({ locationSeed, targetRef }: StarfieldProps) {
     let height = 0
     let layerStars: Star[][] = []
     let smudges: Smudge[] = []
+    let isDark = isDarkTheme()
 
     function generate() {
       const canvas = canvasRef.current
@@ -122,12 +152,24 @@ export function Starfield({ locationSeed, targetRef }: StarfieldProps) {
       width = canvas.width = canvas.offsetWidth * window.devicePixelRatio
       height = canvas.height = canvas.offsetHeight * window.devicePixelRatio
       const rand = mulberry32(locationSeed)
-      layerStars = LAYERS.map((layer) => createLayerStars(width, height, layer, rand))
+      layerStars = LAYERS.map((layer) => createLayerStars(width, height, layer, rand, isDark))
       smudges = createSmudges(width, height, rand)
     }
 
     generate()
     window.addEventListener('resize', generate)
+
+    // Re-palette (not full regenerate -- positions stay put) whenever the
+    // theme flips, whether via the manual toggle (data-theme attribute) or
+    // an OS-level prefers-color-scheme change.
+    function handleThemeChange() {
+      isDark = isDarkTheme()
+      generate()
+    }
+    const themeObserver = new MutationObserver(handleThemeChange)
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    const colorSchemeQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    colorSchemeQuery.addEventListener('change', handleThemeChange)
 
     let frame = 0
     let rafId = 0
@@ -147,7 +189,7 @@ export function Starfield({ locationSeed, targetRef }: StarfieldProps) {
 
       ctx2.clearRect(0, 0, width, height)
 
-      for (const smudge of smudges) drawSmudge(ctx2, smudge)
+      for (const smudge of smudges) drawSmudge(ctx2, smudge, isDark)
 
       for (let i = 0; i < LAYERS.length; i += 1) {
         const layer = LAYERS[i]
@@ -175,6 +217,8 @@ export function Starfield({ locationSeed, targetRef }: StarfieldProps) {
 
     return () => {
       window.removeEventListener('resize', generate)
+      themeObserver.disconnect()
+      colorSchemeQuery.removeEventListener('change', handleThemeChange)
       cancelAnimationFrame(rafId)
     }
   }, [locationSeed, targetRef])

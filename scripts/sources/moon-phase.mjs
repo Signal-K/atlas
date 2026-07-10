@@ -1,14 +1,11 @@
-// Event-source plugin: computes new/full moon events algorithmically, no
-// external API needed. Contract: export an async fetchEvents({ now, windowDays })
+// Event-source plugin: computes new/full moon events via astronomy-engine's
+// quarter-phase search (validated against JPL data), rather than hand-rolled
+// synodic-month arithmetic. Contract: export an async fetchEvents({ now, windowDays })
 // returning normalized records ready to upsert into the sky_events collection.
+import * as Astronomy from 'astronomy-engine'
 
-const SYNODIC_MONTH_DAYS = 29.530588853
-const SYNODIC_MONTH_MS = SYNODIC_MONTH_DAYS * 86_400_000
-// A known new moon reference instant (2000-01-06 18:14 UTC).
-const REFERENCE_NEW_MOON_MS = Date.UTC(2000, 0, 6, 18, 14)
-
-function toEvent(title, timestampMs) {
-  const startsAt = new Date(timestampMs).toISOString()
+function toEvent(title, date) {
+  const startsAt = date.toISOString()
   const isFullMoon = title === 'Full Moon'
   return {
     kind: 'moon_phase',
@@ -24,25 +21,29 @@ function toEvent(title, timestampMs) {
     ends_at: startsAt,
     ...(isFullMoon
       ? { image_url: 'https://upload.wikimedia.org/wikipedia/commons/e/e1/FullMoon2010.jpg', image_credit: 'Gregory H. Revera, Wikimedia Commons' }
-      : {}),
+      // A new moon itself isn't visible, so its photo is of what a new-moon
+      // dark sky enables instead: a proper naked-eye Milky Way.
+      : { image_url: 'https://upload.wikimedia.org/wikipedia/commons/9/92/Milky_Way_Starry_sky_at_Nan%27ao.jpg', image_credit: 'Wikimedia Commons' }),
   }
 }
 
+// quarter: 0 = new moon, 1 = first quarter, 2 = full moon, 3 = third quarter.
+// Only new (0) and full (2) are worth surfacing as sky events here.
+const QUARTER_TITLE = { 0: 'New Moon', 2: 'Full Moon' }
+
 export async function fetchEvents({ now = new Date(), windowDays = 90 } = {}) {
-  const start = now.getTime()
-  const end = start + windowDays * 86_400_000
+  const end = now.getTime() + windowDays * 86_400_000
   const events = []
 
-  let k = Math.floor((start - REFERENCE_NEW_MOON_MS) / SYNODIC_MONTH_MS) - 1
-  for (;;) {
-    const newMoonMs = REFERENCE_NEW_MOON_MS + k * SYNODIC_MONTH_MS
-    if (newMoonMs > end) break
-
-    const fullMoonMs = newMoonMs + SYNODIC_MONTH_MS / 2
-    if (newMoonMs >= start && newMoonMs <= end) events.push(toEvent('New Moon', newMoonMs))
-    if (fullMoonMs >= start && fullMoonMs <= end) events.push(toEvent('Full Moon', fullMoonMs))
-
-    k += 1
+  // SearchMoonQuarter finds the first quarter phase *after* dateStart, so
+  // start a day early to also catch a quarter phase that lands right at `now`.
+  let mq = Astronomy.SearchMoonQuarter(new Date(now.getTime() - 86_400_000))
+  while (mq.time.date.getTime() <= end) {
+    const title = QUARTER_TITLE[mq.quarter]
+    if (title && mq.time.date.getTime() >= now.getTime()) {
+      events.push(toEvent(title, mq.time.date))
+    }
+    mq = Astronomy.NextMoonQuarter(mq)
   }
 
   return events

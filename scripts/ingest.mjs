@@ -10,17 +10,23 @@ import { fetchEvents as fetchEclipseEvents } from './sources/eclipses.mjs'
 import { fetchEvents as fetchIssPassEvents } from './sources/iss-passes.mjs'
 import { fetchEvents as fetchPlanetEvents } from './sources/planets.mjs'
 import { fetchEvents as fetchDeepSkyEvents } from './sources/deep-sky-objects.mjs'
+import { fetchEvents as fetchConjunctionEvents } from './sources/conjunctions.mjs'
+import { fetchEvents as fetchMelbourneNightSkyEvents } from './sources/melbourne-night-sky.mjs'
+import { fetchEvents as fetchEarthSkyMonthlyGuideEvents } from './sources/earthsky-monthly-guide.mjs'
 
 // Each plugin gets its own sensible window: moon phases/meteor showers/
-// eclipses/planets/deep-sky are predictable a year out, but ISS pass
-// predictions go stale fast (TLE drift), so that one intentionally stays
-// short (its own default).
+// eclipses/planets/deep-sky/conjunctions are predictable a year out, but ISS
+// pass predictions go stale fast (TLE drift), so that one intentionally
+// stays short (its own default).
 const PLUGINS = [
   { fetch: fetchMoonPhaseEvents, windowDays: 365 },
   { fetch: fetchMeteorShowerEvents, windowDays: 365 },
   { fetch: fetchEclipseEvents, windowDays: 365 },
   { fetch: fetchPlanetEvents, windowDays: 365 },
   { fetch: fetchDeepSkyEvents, windowDays: 365 },
+  { fetch: fetchConjunctionEvents, windowDays: 365 },
+  { fetch: fetchMelbourneNightSkyEvents },
+  { fetch: fetchEarthSkyMonthlyGuideEvents },
   { fetch: fetchIssPassEvents },
 ]
 

@@ -1,12 +1,13 @@
 import type { SkyEvent } from '../lib/db'
 
-const KIND_LABELS: Record<string, string> = {
+export const KIND_LABELS: Record<string, string> = {
   moon_phase: 'Moon',
   meteor_shower: 'Meteor shower',
   eclipse: 'Eclipse',
   iss_pass: 'ISS pass',
   planet_event: 'Planet',
   deep_sky: 'Deep sky',
+  conjunction: 'Conjunction',
 }
 
 interface EventRowProps {
@@ -15,9 +16,11 @@ interface EventRowProps {
   onToggle: () => void
   pinned?: boolean
   onTogglePin?: () => void
+  watching?: boolean
+  watchCount?: number
 }
 
-export function EventRow({ event, expanded, onToggle, pinned, onTogglePin }: EventRowProps) {
+export function EventRow({ event, expanded, onToggle, pinned, onTogglePin, watching, watchCount }: EventRowProps) {
   return (
     <li>
       <div className="row-trigger">
@@ -31,6 +34,11 @@ export function EventRow({ event, expanded, onToggle, pinned, onTogglePin }: Eve
               timeStyle: 'short',
             })}
           </span>
+          {watching && (
+            <span className="row-watch-badge" title="On your watchlist">
+              &#128276;
+            </span>
+          )}
         </button>
         {onTogglePin && (
           <button
@@ -53,6 +61,11 @@ export function EventRow({ event, expanded, onToggle, pinned, onTogglePin }: Eve
             </figure>
           )}
           <p>{event.content ?? event.description}</p>
+          {Boolean(watchCount) && (
+            <p className="row-watch-count">
+              &#128301; {watchCount} watching this{watching ? ' too' : ''}
+            </p>
+          )}
         </div>
       )}
     </li>

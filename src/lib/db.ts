@@ -33,12 +33,22 @@ export interface WatchlistEntry {
   notifyOnGoodViewing: boolean
 }
 
+export type AttemptRating = 'poor' | 'ok' | 'good' | 'great'
+
 export interface ObservationLogEntry {
   id: string
   userId: string
   observedAt: string
   eventId?: string
   note?: string
+  sharedToFeed?: boolean
+  targetName?: string
+  deviceUsed?: string
+  cameraRecipeUsed?: string
+  locationLabel?: string
+  conditionSummary?: string
+  attemptRating?: AttemptRating
+  photo?: Blob
 }
 
 export interface StreakState {
@@ -84,6 +94,10 @@ class AtlasDB extends Dexie {
     this.version(2).stores({
       pinnedEvents: 'eventId',
     })
+    // New observation fields (targetName, deviceUsed, etc.) don't need a
+    // schema/index change -- Dexie stores whatever properties are on the
+    // object -- so no version(3) bump is needed for those. Kept here as a
+    // marker comment since it's easy to assume a new field always needs one.
   }
 }
 

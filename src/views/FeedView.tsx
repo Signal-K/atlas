@@ -5,10 +5,17 @@ import {
   createDiscovery,
   listComments,
   listDiscoveries,
+  REACTIONS,
+  toggleReaction,
   toggleVote,
   type Discovery,
   type DiscoveryComment,
 } from '../lib/discoveries'
+import {
+  PHOTO_CHALLENGES,
+  discoveryCaptionForChallenge,
+  type PhotoChallenge,
+} from '../lib/photoChallenges'
 
 function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: () => void }) {
   const { user } = useAuth()
@@ -27,6 +34,12 @@ function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: 
   async function handleVote() {
     if (!user) return
     await toggleVote(discovery.id, discovery.hasVoted)
+    onVoted()
+  }
+
+  async function handleReact(emoji: string) {
+    if (!user) return
+    await toggleReaction(discovery.id, emoji, discovery.myReactions.has(emoji))
     onVoted()
   }
 
@@ -64,6 +77,24 @@ function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: 
             Comments{comments ? ` (${comments.length})` : ''}
           </button>
         </div>
+        <div className="discovery-reactions">
+          {REACTIONS.map((reaction) => {
+            const mine = discovery.myReactions.has(reaction.id)
+            const count = discovery.reactionCounts[reaction.id] ?? 0
+            return (
+              <button
+                key={reaction.id}
+                type="button"
+                className={`discovery-reaction${mine ? ' is-active' : ''}`}
+                onClick={() => handleReact(reaction.id)}
+                disabled={!user}
+                title={reaction.label}
+              >
+                {reaction.glyph} {count > 0 ? count : ''}
+              </button>
+            )
+          })}
+        </div>
         {expanded && (
           <div className="discovery-comments">
             {comments === null && <p>Loading&hellip;</p>}
@@ -92,6 +123,25 @@ function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: 
   )
 }
 
+function ChallengePicker({ selectedId, onSelect }: { selectedId: string; onSelect: (challenge: PhotoChallenge) => void }) {
+  return (
+    <div className="challenge-strip">
+      {PHOTO_CHALLENGES.map((challenge) => (
+        <button
+          key={challenge.id}
+          type="button"
+          className={`challenge-card${selectedId === challenge.id ? ' is-active' : ''}`}
+          onClick={() => onSelect(challenge)}
+        >
+          <span className="challenge-title">{challenge.title}</span>
+          <span className="challenge-prompt">{challenge.prompt}</span>
+          <span className="challenge-tip">{challenge.tip}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function PostForm({ onPosted }: { onPosted: () => void }) {
   const [caption, setCaption] = useState('')
   const [target, setTarget] = useState('')
@@ -99,7 +149,14 @@ function PostForm({ onPosted }: { onPosted: () => void }) {
   const [telescope, setTelescope] = useState('')
   const [filters, setFilters] = useState('')
   const [image, setImage] = useState<File | null>(null)
+  const [selectedChallengeId, setSelectedChallengeId] = useState('')
   const [busy, setBusy] = useState(false)
+
+  function selectChallenge(challenge: PhotoChallenge) {
+    setSelectedChallengeId(challenge.id)
+    setTarget((current) => current || challenge.target)
+    setCaption((current) => current || discoveryCaptionForChallenge(challenge))
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -113,6 +170,7 @@ function PostForm({ onPosted }: { onPosted: () => void }) {
       setTelescope('')
       setFilters('')
       setImage(null)
+      setSelectedChallengeId('')
       onPosted()
     } finally {
       setBusy(false)
@@ -121,6 +179,7 @@ function PostForm({ onPosted }: { onPosted: () => void }) {
 
   return (
     <form className="discovery-form" onSubmit={handleSubmit}>
+      <ChallengePicker selectedId={selectedChallengeId} onSelect={selectChallenge} />
       <textarea value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="What did you capture?" rows={2} required />
       <div className="discovery-form-grid">
         <input type="text" value={target} onChange={(event) => setTarget(event.target.value)} placeholder="Target (e.g. Orion Nebula)" />

@@ -3,6 +3,7 @@
 // and greatest elongations of Mercury/Venus (furthest from the Sun's glare,
 // best viewing as a morning/evening "star").
 import * as Astronomy from 'astronomy-engine'
+import { PLANET_IMAGES } from './planet-images.mjs'
 
 const OPPOSITION_BODIES = ['Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune']
 const ELONGATION_BODIES = ['Mercury', 'Venus']
@@ -27,6 +28,8 @@ function oppositionEvents(now, end) {
           content: `${bodyName} rises at sunset and is visible all night, reaching its highest point around midnight. This is the best time of year to observe ${bodyName}, whether with the naked eye, binoculars, or a telescope.`,
           starts_at: startsAt,
           ends_at: startsAt,
+          image_url: PLANET_IMAGES[bodyName].url,
+          image_credit: PLANET_IMAGES[bodyName].credit,
         })
       }
       cursor = new Date(time.date.getTime() + 86_400_000)
@@ -53,6 +56,8 @@ function elongationEvents(now, end) {
           content: `${bodyName} is as far from the Sun's glare as it gets this apparition (${event.elongation.toFixed(0)}° separation) — the best window to spot it low in the ${when} sky.`,
           starts_at: startsAt,
           ends_at: startsAt,
+          image_url: PLANET_IMAGES[bodyName].url,
+          image_credit: PLANET_IMAGES[bodyName].credit,
         })
       }
       cursor = new Date(event.time.date.getTime() + 86_400_000)

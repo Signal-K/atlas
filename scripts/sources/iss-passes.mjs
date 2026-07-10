@@ -11,7 +11,10 @@ import { CITIES } from './cities.mjs'
 
 const TLE_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE'
 const STEP_MS = 60_000 // 1 minute
-const MIN_ELEVATION_DEG = 10 // above this = "worth looking up for"
+// Raised from 10: at 16 cities, low grazing passes (10-20 above the horizon,
+// often behind buildings/trees) were drowning out every other event kind in
+// the feed. 20 keeps genuinely worth-looking-up-for passes only.
+const MIN_ELEVATION_DEG = 20
 const SUN_DARKNESS_DEG = -6 // civil twilight or darker at the observer
 const AU_KM = 149_597_870.7
 
@@ -97,6 +100,8 @@ export async function fetchEvents({ now = new Date(), windowDays = 5 } = {}) {
         ends_at: pass.end.toISOString(),
         latitude: city.lat,
         longitude: city.lon,
+        image_url: 'https://upload.wikimedia.org/wikipedia/commons/c/c9/STS-134_International_Space_Station_after_undocking.jpg',
+        image_credit: 'NASA, Wikimedia Commons',
       })
     }
   }

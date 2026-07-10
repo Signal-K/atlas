@@ -3,15 +3,17 @@ import { registerWidget } from './registry'
 import { EventRow } from './EventRow'
 import { getUpcomingEvents, pullSkyEvents } from '../lib/sync'
 import { getPinnedEventIds, togglePin } from '../lib/pins'
+import { getWatchCountForEvent, getWatchCounts, getWatchlist, matchesWatchlist, type WatchlistItem } from '../lib/watchlist'
 import { useLocationBrowse } from '../lib/locationBrowseContext'
 import type { SkyEvent } from '../lib/db'
 
-type FilterTab = 'today' | 'week' | 'pinned' | 'all'
+type FilterTab = 'today' | 'week' | 'pinned' | 'watching' | 'all'
 
 const TABS: Array<{ id: FilterTab; label: string }> = [
   { id: 'today', label: 'Today' },
   { id: 'week', label: 'This Week' },
   { id: 'pinned', label: 'Pinned' },
+  { id: 'watching', label: 'Watching' },
   { id: 'all', label: 'All' },
 ]
 
@@ -23,6 +25,8 @@ function UpcomingEventsWidget() {
   const { city } = useLocationBrowse()
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+  const [watchCounts, setWatchCounts] = useState<Map<string, number>>(new Map())
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [tab, setTab] = useState<FilterTab>('all')
 
@@ -40,6 +44,8 @@ function UpcomingEventsWidget() {
       // the selected city and active tab happens below.
       const upcoming = await getUpcomingEvents(400)
       if (!cancelled) setEvents(upcoming)
+      if (!cancelled) setWatchlist(await getWatchlist())
+      if (!cancelled) setWatchCounts(await getWatchCounts())
     }
 
     load()
@@ -54,8 +60,7 @@ function UpcomingEventsWidget() {
   const forLocation = useMemo(() => {
     if (!events) return []
     return events.filter((event) => {
-      if (event.kind !== 'iss_pass') return true
-      if (event.latitude == null || event.longitude == null) return false
+      if (event.latitude == null || event.longitude == null) return true
       return Math.abs(event.latitude - city.lat) < 0.01 && Math.abs(event.longitude - city.lon) < 0.01
     })
   }, [events, city])
@@ -71,11 +76,13 @@ function UpcomingEventsWidget() {
       }
       case 'pinned':
         return forLocation.filter((event) => pinnedIds.has(event.id))
+      case 'watching':
+        return forLocation.filter((event) => matchesWatchlist(event, watchlist))
       case 'all':
       default:
         return forLocation
     }
-  }, [forLocation, tab, pinnedIds])
+  }, [forLocation, tab, pinnedIds, watchlist])
 
   async function handleTogglePin(eventId: string) {
     await togglePin(eventId, pinnedIds.has(eventId))
@@ -111,6 +118,8 @@ function UpcomingEventsWidget() {
               onToggle={() => setExpandedId((current) => (current === event.id ? null : event.id))}
               pinned={pinnedIds.has(event.id)}
               onTogglePin={() => handleTogglePin(event.id)}
+              watching={matchesWatchlist(event, watchlist)}
+              watchCount={getWatchCountForEvent(event, watchCounts)}
             />
           ))}
         </ul>

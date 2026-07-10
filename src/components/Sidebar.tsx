@@ -1,8 +1,17 @@
 import type { ReactElement } from 'react'
 
-export type View = 'dashboard' | 'feed' | 'archive' | 'scrapbook' | 'settings'
+export type View = 'tonight' | 'dashboard' | 'calendar' | 'feed' | 'archive' | 'scrapbook' | 'challenges' | 'settings' | 'ops'
 
 const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
+  {
+    id: 'tonight',
+    label: 'Tonight',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M14.5 11.2A5.5 5.5 0 0 1 8.8 5.5c0-.7.1-1.4.4-2A6.5 6.5 0 1 0 16.5 10.8c-.7.3-1.4.4-2 .4Z" />
+      </svg>
+    ),
+  },
   {
     id: 'dashboard',
     label: 'Dashboard',
@@ -12,6 +21,16 @@ const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
         <rect x="11" y="3" width="6" height="6" rx="1" />
         <rect x="3" y="11" width="6" height="6" rx="1" />
         <rect x="11" y="11" width="6" height="6" rx="1" />
+      </svg>
+    ),
+  },
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="4" width="14" height="13" rx="1.5" />
+        <path d="M3 8h14M7 3v3M13 3v3" />
       </svg>
     ),
   },
@@ -46,12 +65,35 @@ const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
     ),
   },
   {
+    id: 'challenges',
+    label: 'Photo Challenges',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="5" width="14" height="11" rx="1.5" />
+        <path d="M7 5 8.2 3h3.6L13 5" />
+        <circle cx="10" cy="10.5" r="3" />
+      </svg>
+    ),
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <circle cx="10" cy="10" r="3" />
         <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.36 4.64l-1.41 1.41M6.05 13.95l-1.41 1.41M15.36 15.36l-1.41-1.41M6.05 6.05 4.64 4.64" />
+      </svg>
+    ),
+  },
+  {
+    id: 'ops',
+    label: 'Local ops',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M4 5.5h12M4 10h12M4 14.5h12" />
+        <circle cx="6" cy="5.5" r="1" fill="currentColor" stroke="none" />
+        <circle cx="10" cy="10" r="1" fill="currentColor" stroke="none" />
+        <circle cx="14" cy="14.5" r="1" fill="currentColor" stroke="none" />
       </svg>
     ),
   },

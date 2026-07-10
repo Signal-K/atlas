@@ -1,0 +1,24 @@
+name: Photo challenge moderation scan
+
+# Surfaces pending Photo Challenge submissions (shadowbanned by default)
+# for admin approval a few times a day. Does not auto-approve -- see
+# scripts/moderate-photo-challenges.mjs.
+on:
+  schedule:
+    - cron: '0 2,10,18 * * *' # a few times a day
+  workflow_dispatch: {}
+
+jobs:
+  moderate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run moderate
+        env:
+          PB_URL: ${{ secrets.PB_URL }}
+          PB_ADMIN_EMAIL: ${{ secrets.PB_ADMIN_EMAIL }}
+          PB_ADMIN_PASSWORD: ${{ secrets.PB_ADMIN_PASSWORD }}

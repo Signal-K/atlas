@@ -7,6 +7,7 @@ const EVENT_KINDS = [
   { id: 'meteor_shower', label: 'Meteor showers' },
   { id: 'eclipse', label: 'Eclipses' },
   { id: 'iss_pass', label: 'ISS passes' },
+  { id: 'conjunction', label: 'Planet/Moon conjunctions' },
 ]
 
 export const ONBOARDING_COMPLETE_KEY = 'atlas-onboarding-complete'

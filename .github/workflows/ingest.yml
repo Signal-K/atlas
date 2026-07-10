@@ -1,0 +1,24 @@
+name: Ingest sky events
+
+# Runs all registered event-source plugins (scripts/sources/*.mjs) on a
+# schedule and upserts the results into the shared PocketBase sky_events
+# collection. See scripts/ingest.mjs.
+on:
+  schedule:
+    - cron: '17 4 * * *' # once a day, off the hour to avoid GitHub's scheduling pileup
+  workflow_dispatch: {}
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run ingest
+        env:
+          PB_URL: ${{ secrets.PB_URL }}
+          PB_ADMIN_EMAIL: ${{ secrets.PB_ADMIN_EMAIL }}
+          PB_ADMIN_PASSWORD: ${{ secrets.PB_ADMIN_PASSWORD }}

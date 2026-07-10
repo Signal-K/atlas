@@ -1,0 +1,26 @@
+name: Watchlist notifications
+
+# Checks every user's watchlist against upcoming sky_events + weather and
+# sends web-push notifications for good viewing opportunities. See
+# scripts/notify.mjs.
+on:
+  schedule:
+    - cron: '0 13 * * *' # once a day, ahead of typical evening viewing
+  workflow_dispatch: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run notify
+        env:
+          PB_URL: ${{ secrets.PB_URL }}
+          PB_ADMIN_EMAIL: ${{ secrets.PB_ADMIN_EMAIL }}
+          PB_ADMIN_PASSWORD: ${{ secrets.PB_ADMIN_PASSWORD }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}

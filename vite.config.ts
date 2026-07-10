@@ -7,6 +7,14 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // injectManifest (a custom src/sw.ts) instead of the default
+      // generateSW, so the service worker can also handle `push` /
+      // `notificationclick` events for AT-011's watchlist notifications —
+      // generateSW's Workbox-generated worker has no hook for custom event
+      // listeners.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       manifest: {
         name: 'Atlas',
@@ -15,19 +23,16 @@ export default defineConfig({
         theme_color: '#0b1120',
         background_color: '#0b1120',
         display: 'standalone',
-        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+        icons: [
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' },
+          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
+        ],
       },
-      workbox: {
+      injectManifest: {
         // App shell + local-first data live in IndexedDB (see src/lib/db.ts);
         // this cache only needs to keep the shell itself available offline.
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
-        // Take over immediately on every deploy instead of waiting for all
-        // tabs of the old version to close — without this, a stale SW can
-        // keep serving an index.html that references JS/CSS chunk hashes
-        // the new deploy no longer has, which shows up as a blank page.
-        skipWaiting: true,
-        clientsClaim: true,
-        cleanupOutdatedCaches: true,
       },
     }),
   ],
