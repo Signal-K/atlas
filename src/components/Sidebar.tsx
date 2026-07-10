@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 
-export type View = 'tonight' | 'dashboard' | 'calendar' | 'feed' | 'archive' | 'scrapbook' | 'challenges' | 'settings' | 'ops'
+export type View = 'tonight' | 'dashboard' | 'calendar' | 'feed' | 'archive' | 'scrapbook' | 'challenges' | 'darksky' | 'settings' | 'ops'
 
 const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
   {
@@ -72,6 +72,17 @@ const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
         <rect x="3" y="5" width="14" height="11" rx="1.5" />
         <path d="M7 5 8.2 3h3.6L13 5" />
         <circle cx="10" cy="10.5" r="3" />
+      </svg>
+    ),
+  },
+  {
+    id: 'darksky',
+    label: 'Dark-sky trips',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M3 15c3-6 5-9 7-9s4 3 7 9" />
+        <circle cx="10" cy="4.5" r="1.5" fill="currentColor" stroke="none" />
+        <path d="M2 15h16" />
       </svg>
     ),
   },

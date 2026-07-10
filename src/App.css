@@ -1856,3 +1856,61 @@
   color: var(--text);
   opacity: 0.75;
 }
+
+.darksky-hint {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.75;
+  margin: 0 0 12px;
+}
+
+.darksky-site {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.darksky-site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.darksky-site-name {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.darksky-bortle {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.darksky-site-meta,
+.darksky-site-notes {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.85;
+  margin: 0;
+}
+
+.darksky-directions {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.darksky-directions:hover {
+  color: var(--text-h);
+  border-color: var(--text-h);
+}

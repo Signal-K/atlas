@@ -26,7 +26,7 @@ export const CITIES: City[] = [
   { name: 'Auckland', lat: -36.8485, lon: 174.7633 },
 ]
 
-function haversineKm(a: City, b: { lat: number; lon: number }): number {
+export function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const R = 6371
   const dLat = ((b.lat - a.lat) * Math.PI) / 180
   const dLon = ((b.lon - a.lon) * Math.PI) / 180

@@ -12,6 +12,7 @@ import { ScrapbookView } from './views/ScrapbookView'
 import { PhotoChallengesView } from './views/PhotoChallengesView'
 import { SettingsView } from './views/SettingsView'
 import { LocalOpsView } from './views/LocalOpsView'
+import { DarkSkyView } from './views/DarkSkyView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { CITIES, findNearestCity } from './lib/cities'
@@ -26,6 +27,7 @@ const VIEW_SUBTITLE: Record<View, string> = {
   archive: 'Events that have already happened.',
   scrapbook: 'Your own sky-watching notes.',
   challenges: 'Event-tied photo challenges, moderated before going public.',
+  darksky: 'Nearby dark-sky sites, ranked by distance and light pollution.',
   settings: 'Appearance, location, and motion.',
   ops: 'Local diagnostics for PocketBase, containers, and recent writes.',
 }
@@ -92,6 +94,7 @@ function App() {
             <ScrapbookView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />
           )}
           {view === 'challenges' && <PhotoChallengesView />}
+          {view === 'darksky' && <DarkSkyView key={defaultCity.name} lat={defaultCity.lat} lon={defaultCity.lon} />}
           {view === 'ops' && <LocalOpsView />}
           {view === 'settings' && (
             <SettingsView
