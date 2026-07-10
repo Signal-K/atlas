@@ -3,6 +3,7 @@ import { db, type AttemptRating, type ObservationLogEntry } from '../lib/db'
 import { pushObservation } from '../lib/sync'
 import { recordWeeklyActivity } from '../lib/streaks'
 import { createDiscovery } from '../lib/discoveries'
+import { shareObservation } from '../lib/sharing'
 import { getScrapbookPrompt } from '../lib/scrapbookPrompt'
 import { useAuth } from '../lib/auth'
 import { ObservationCard } from '../components/ObservationCard'
@@ -37,6 +38,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [prompt, setPrompt] = useState('What did you see tonight?')
   const [rating, setRating] = useState<AttemptRating | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
+  const [shareStatus, setShareStatus] = useState<{ entryId: string; message: string } | null>(null)
 
   async function refresh() {
     const all = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
@@ -95,6 +97,21 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     if (!entry.note) return
     await createDiscovery({ caption: entry.note, target: entry.targetName ?? '', camera: entry.deviceUsed ?? '', telescope: '', filters: '', image: null })
     await db.observations.update(entry.id, { sharedToFeed: true })
+    await refresh()
+  }
+
+  // Distinct from handleShare above: this generates a public, single-entry
+  // card URL (STS-175), rather than forwarding a caption-only post to the
+  // Feed.
+  async function handleShareCard(entry: ObservationLogEntry) {
+    try {
+      const url = await shareObservation(entry)
+      await navigator.clipboard.writeText(url)
+      setShareStatus({ entryId: entry.id, message: 'Link copied!' })
+      trackEvent('Shared public card')
+    } catch {
+      setShareStatus({ entryId: entry.id, message: 'Sign in to share a public card.' })
+    }
     await refresh()
   }
 
@@ -158,6 +175,12 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
                     {entry.sharedToFeed ? 'Shared to Feed' : 'Share to Feed'}
                   </button>
                 )}
+                {user && (
+                  <button type="button" className="scrapbook-share-card" onClick={() => handleShareCard(entry)}>
+                    {entry.isPublic ? 'Copy public link' : 'Get public link'}
+                  </button>
+                )}
+                {shareStatus?.entryId === entry.id && <span className="scrapbook-share-status">{shareStatus.message}</span>}
               </div>
             </li>
           ))}

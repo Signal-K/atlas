@@ -584,6 +584,79 @@
   margin: 0 0 12px;
 }
 
+.scrapbook-share-card {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.scrapbook-share-card:hover {
+  color: var(--text-h);
+  border-color: var(--text-h);
+}
+
+.scrapbook-share-status {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.share-page {
+  max-width: 480px;
+  margin: 48px auto;
+  padding: 0 16px;
+}
+
+.share-page-status {
+  text-align: center;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.share-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--bg);
+}
+
+.share-card-photo img {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+
+.share-card-target {
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.share-card-meta {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.75;
+  margin: 0;
+}
+
+.share-card-rating {
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.share-card-note {
+  margin: 0;
+}
+
 .discovery-form {
   display: flex;
   flex-direction: column;

@@ -49,6 +49,12 @@ export interface ObservationLogEntry {
   conditionSummary?: string
   attemptRating?: AttemptRating
   photo?: Blob
+  // STS-175 (public share card): the PocketBase record id, captured once
+  // this entry has been pushed remotely -- distinct from `id` above, which
+  // is a locally generated crypto.randomUUID() and never matches PocketBase's
+  // own id format. A public share link points at remoteId, not id.
+  remoteId?: string
+  isPublic?: boolean
 }
 
 export interface StreakState {
