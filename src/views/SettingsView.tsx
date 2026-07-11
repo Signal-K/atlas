@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { applyTheme, getStoredTheme, getSystemTheme, storeTheme, type Theme } from '../lib/theme'
 import type { LocationStatus } from '../lib/geo'
+import { CITIES, type City } from '../lib/cities'
+import type { CurrentLocation } from '../lib/currentLocation'
 import { getOptInName, optIn, optOut } from '../lib/leaderboard'
 import { useAuth } from '../lib/auth'
 import { recordWeeklyActivity } from '../lib/streaks'
@@ -11,6 +13,9 @@ import { PushSettings } from '../components/PushSettings'
 interface SettingsViewProps {
   locationStatus: LocationStatus
   requestLocation: () => void
+  currentLocation: CurrentLocation
+  manualCity: City | null
+  setManualLocation: (city: City | null) => void
   needsMotionPermission: boolean
   requestMotionPermission: () => void
   accountDefaultMode?: 'sign-in' | 'sign-up'
@@ -22,6 +27,12 @@ const LOCATION_LABEL: Record<LocationStatus, string> = {
   granted: 'Enabled',
   denied: 'Blocked by browser',
   unsupported: 'Not supported on this device',
+}
+
+const SOURCE_LABEL: Record<CurrentLocation['source'], string> = {
+  geolocation: 'from your browser’s location',
+  manual: 'set manually',
+  default: 'default — no location set yet',
 }
 
 function LeaderboardSettings() {
@@ -96,6 +107,9 @@ function LeaderboardSettings() {
 export function SettingsView({
   locationStatus,
   requestLocation,
+  currentLocation,
+  manualCity,
+  setManualLocation,
   needsMotionPermission,
   requestMotionPermission,
   accountDefaultMode,
@@ -138,6 +152,34 @@ export function SettingsView({
               {locationStatus === 'denied' ? 'Retry' : 'Enable'}
             </button>
           )}
+        </div>
+      </div>
+
+      <div className="settings-row">
+        <div>
+          <span className="settings-label">Your location</span>
+          <p className="settings-help">
+            Currently <strong>{currentLocation.name}</strong> ({SOURCE_LABEL[currentLocation.source]}). Your location is
+            only stored on this device — we don't see it, and it's only ever sent from your own browser directly to
+            the weather/astronomy services used to build tonight's plan.
+          </p>
+        </div>
+        <div className="settings-choice">
+          <select
+            className="map-location-select"
+            value={manualCity?.name ?? ''}
+            onChange={(event) => {
+              const next = CITIES.find((c) => c.name === event.target.value)
+              setManualLocation(next ?? null)
+            }}
+          >
+            <option value="">Use my browser location</option>
+            {CITIES.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

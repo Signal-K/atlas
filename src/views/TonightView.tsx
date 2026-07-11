@@ -7,7 +7,7 @@ import { CameraRecipe } from '../components/CameraRecipe'
 import { getDefaultDevice, CAMERA_PROFILES } from '../lib/cameraProfiles'
 import { trackEvent } from '../lib/analytics'
 import type { ObservationDraft } from '../lib/observationDraft'
-import type { City } from '../lib/cities'
+import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
 
 const RATING_LABEL: Record<TonightPlan['rating'], string> = {
@@ -47,7 +47,7 @@ function isTwilightNow(window: TonightPlan['darknessWindow'], now: Date): boolea
 }
 
 interface TonightViewProps {
-  city: City
+  city: CurrentLocation
   locationStatus: LocationStatus
   onLogAttempt: (draft: ObservationDraft) => void
 }
@@ -127,7 +127,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
       {(locationStatus === 'denied' || locationStatus === 'unsupported') && (
         <p className="scrapbook-hint">
           Location access {locationStatus === 'denied' ? 'was denied' : "isn't available"} — showing {city.name} instead.
-          Pick your real city on the Dashboard's map, or grant location in Settings.
+          Set your city manually in Settings, or grant location access there.
         </p>
       )}
       <div className={`tonight-rating tonight-rating--${plan.rating}`}>
@@ -141,6 +141,18 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
         )}
         {darknessLabel && <p className="tonight-darkness">{darknessLabel}</p>}
       </div>
+
+      {plan.generalPhotoWindow && (
+        <div className="tonight-target">
+          <div className="tonight-target-header">
+            <span className="row-text">Best time tonight for a general sky photo</span>
+          </div>
+          <p className="row-meta">
+            {formatTime(plan.generalPhotoWindow.startsAt)}–{formatTime(plan.generalPhotoWindow.endsAt)}
+          </p>
+          <p className="tonight-target-reason">{plan.generalPhotoWindow.reason}</p>
+        </div>
+      )}
 
       {twilightNow && (
         <div className="tonight-target">
@@ -190,7 +202,8 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                     <span className="row-kind">{DIFFICULTY_LABEL[target.difficulty]}</span>
                   </div>
                   <p className="row-meta">
-                    {formatTime(target.bestTime)} · {target.phoneFriendly ? 'Phone-friendly' : 'Tough for a phone'}
+                    {formatTime(target.bestTime)} · {target.phoneFriendly ? 'Phone-friendly' : 'Tough for a phone'} ·{' '}
+                    {target.nakedEyeVisible ? 'Naked-eye' : 'Needs binoculars or a scope'}
                     {target.direction && (
                       <>
                         {' '}
@@ -202,6 +215,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                     <p className="tonight-target-turn">{turnInstruction(compass.headingDeg, target.direction.azimuthDeg)}</p>
                   )}
                   <p className="tonight-target-reason">{target.reason}</p>
+                  <p className="tonight-target-reason">{target.viewingNote}</p>
                   <div className="tonight-target-actions">
                     {recipeKey && (
                       <button

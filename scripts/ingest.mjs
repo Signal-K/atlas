@@ -13,11 +13,16 @@ import { fetchEvents as fetchDeepSkyEvents } from './sources/deep-sky-objects.mj
 import { fetchEvents as fetchConjunctionEvents } from './sources/conjunctions.mjs'
 import { fetchEvents as fetchMelbourneNightSkyEvents } from './sources/melbourne-night-sky.mjs'
 import { fetchEvents as fetchEarthSkyMonthlyGuideEvents } from './sources/earthsky-monthly-guide.mjs'
+import { fetchEvents as fetchSatelliteFlareEvents } from './sources/satellite-flares.mjs'
+import { fetchEvents as fetchAuroraEvents } from './sources/aurora.mjs'
+import { fetchEvents as fetchCometEvents } from './sources/comets.mjs'
 
 // Each plugin gets its own sensible window: moon phases/meteor showers/
 // eclipses/planets/deep-sky/conjunctions are predictable a year out, but ISS
-// pass predictions go stale fast (TLE drift), so that one intentionally
-// stays short (its own default).
+// and other satellite pass predictions go stale fast (TLE drift), aurora
+// forecasts only exist a few days out, and the comet tracker link doesn't
+// need a window at all -- so those intentionally stay short (their own
+// defaults).
 const PLUGINS = [
   { fetch: fetchMoonPhaseEvents, windowDays: 365 },
   { fetch: fetchMeteorShowerEvents, windowDays: 365 },
@@ -28,6 +33,9 @@ const PLUGINS = [
   { fetch: fetchMelbourneNightSkyEvents },
   { fetch: fetchEarthSkyMonthlyGuideEvents },
   { fetch: fetchIssPassEvents },
+  { fetch: fetchSatelliteFlareEvents },
+  { fetch: fetchAuroraEvents },
+  { fetch: fetchCometEvents },
 ]
 
 const PB_URL = process.env.PB_URL ?? 'http://127.0.0.1:8090'
@@ -71,17 +79,36 @@ async function main() {
   const now = new Date()
   let created = 0
   let updated = 0
+  let failed = 0
 
+  // One plugin's fetch failing (a dead API) or one event failing to upsert
+  // (e.g. a `kind` not yet added to the sky_events select field) used to
+  // abort the entire run via the uncaught rejection below -- silently
+  // skipping every plugin listed after it. Isolating failures per plugin
+  // and per event means a single bad source degrades gracefully instead of
+  // starving the rest of the ingest.
   for (const { fetch: plugin, windowDays } of PLUGINS) {
-    const events = await plugin(windowDays ? { now, windowDays } : { now })
+    let events
+    try {
+      events = await plugin(windowDays ? { now, windowDays } : { now })
+    } catch (error) {
+      console.error(`Plugin ${plugin.name} failed to fetch events:`, error.message)
+      failed += 1
+      continue
+    }
     for (const event of events) {
-      const result = await upsert(pb, event)
-      if (result.action === 'created') created += 1
-      else updated += 1
+      try {
+        const result = await upsert(pb, event)
+        if (result.action === 'created') created += 1
+        else updated += 1
+      } catch (error) {
+        console.error(`Failed to upsert "${event.title}" (${event.kind}/${event.target}):`, error.message)
+        failed += 1
+      }
     }
   }
 
-  console.log(`Ingest complete: ${created} created, ${updated} updated.`)
+  console.log(`Ingest complete: ${created} created, ${updated} updated, ${failed} failed.`)
 }
 
 main().catch((error) => {

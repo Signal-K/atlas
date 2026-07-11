@@ -90,8 +90,16 @@ export async function pullSkyEvents(windowDays = 270): Promise<void> {
       imageCredit: record.image_credit,
       startsAt: record.starts_at,
       endsAt: record.ends_at,
-      latitude: record.latitude,
-      longitude: record.longitude,
+      // PocketBase's `latitude`/`longitude` are non-required number fields,
+      // but a non-required *number* field still defaults to 0 (not null)
+      // when a plugin doesn't set it for a genuinely global event (moon
+      // phase, meteor showers, aurora, ...). (0, 0) isn't a real seeded
+      // city, so treat that pair as "no location" rather than literally
+      // the Gulf of Guinea -- otherwise every global event would get
+      // wrongly treated as location-specific when filtering "tonight near
+      // me" (see getTonightPlan in tonightTargets.ts).
+      latitude: record.latitude === 0 && record.longitude === 0 ? undefined : record.latitude,
+      longitude: record.latitude === 0 && record.longitude === 0 ? undefined : record.longitude,
       updatedAt: record.updated,
     }))
     const mergedEvents = [...events, ...localNightSkyFallbackEvents(now)]

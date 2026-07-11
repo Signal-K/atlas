@@ -1,6 +1,14 @@
-import type { ReactElement } from 'react'
+import { Fragment, type ReactElement } from 'react'
 
-export type View = 'tonight' | 'dashboard' | 'calendar' | 'feed' | 'archive' | 'scrapbook' | 'challenges' | 'darksky' | 'planner' | 'settings' | 'ops'
+// Reduced from 11 flat slots to 6: related views now share a single slot
+// and are switched between via an in-page TabbedSection instead of each
+// getting its own sidebar entry (see App.tsx) --
+//   Explore   = Dashboard + Calendar
+//   Community = Feed + Photo Challenges
+//   History   = Archive + Scrapbook
+//   Plan      = Dark-sky trips + Deep-sky planner
+//   Settings  = Settings + Local ops (diagnostics)
+export type View = 'tonight' | 'explore' | 'community' | 'history' | 'plan' | 'settings'
 
 const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
   {
@@ -13,8 +21,8 @@ const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
     ),
   },
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: 'explore',
+    label: 'Explore',
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="3" y="3" width="6" height="6" rx="1" />
@@ -25,59 +33,8 @@ const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
     ),
   },
   {
-    id: 'calendar',
-    label: 'Calendar',
-    icon: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="3" y="4" width="14" height="13" rx="1.5" />
-        <path d="M3 8h14M7 3v3M13 3v3" />
-      </svg>
-    ),
-  },
-  {
-    id: 'feed',
-    label: 'Feed',
-    icon: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M4 4h9l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
-        <path d="M7 9h6M7 12h6M7 6h3" />
-      </svg>
-    ),
-  },
-  {
-    id: 'archive',
-    label: 'Archive',
-    icon: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="3" y="4" width="14" height="4" rx="1" />
-        <path d="M4 8v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8" />
-        <path d="M8 11h4" />
-      </svg>
-    ),
-  },
-  {
-    id: 'scrapbook',
-    label: 'Scrapbook',
-    icon: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M5 3h10a1 1 0 0 1 1 1v13l-6-3-6 3V4a1 1 0 0 1 1-1Z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'challenges',
-    label: 'Photo Challenges',
-    icon: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="3" y="5" width="14" height="11" rx="1.5" />
-        <path d="M7 5 8.2 3h3.6L13 5" />
-        <circle cx="10" cy="10.5" r="3" />
-      </svg>
-    ),
-  },
-  {
-    id: 'darksky',
-    label: 'Dark-sky trips',
+    id: 'plan',
+    label: 'Plan a trip',
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M3 15c3-6 5-9 7-9s4 3 7 9" />
@@ -87,13 +44,23 @@ const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
     ),
   },
   {
-    id: 'planner',
-    label: 'Deep-sky planner',
+    id: 'community',
+    label: 'Community',
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="4" y="4" width="12" height="12" rx="2" />
-        <circle cx="10" cy="10" r="2.5" />
-        <path d="M10 4v2M10 14v2M4 10h2M14 10h2" />
+        <path d="M4 4h9l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+        <path d="M7 9h6M7 12h6M7 6h3" />
+      </svg>
+    ),
+  },
+  {
+    id: 'history',
+    label: 'History',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="4" width="14" height="4" rx="1" />
+        <path d="M4 8v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8" />
+        <path d="M8 11h4" />
       </svg>
     ),
   },
@@ -107,35 +74,25 @@ const ITEMS: Array<{ id: View; label: string; icon: ReactElement }> = [
       </svg>
     ),
   },
-  {
-    id: 'ops',
-    label: 'Local ops',
-    icon: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M4 5.5h12M4 10h12M4 14.5h12" />
-        <circle cx="6" cy="5.5" r="1" fill="currentColor" stroke="none" />
-        <circle cx="10" cy="10" r="1" fill="currentColor" stroke="none" />
-        <circle cx="14" cy="14.5" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
 ]
 
 export function Sidebar({ active, onSelect }: { active: View; onSelect: (view: View) => void }) {
   return (
     <nav className="sidebar" aria-label="Primary">
-      {ITEMS.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          className={`sidebar-item${active === item.id ? ' is-active' : ''}`}
-          onClick={() => onSelect(item.id)}
-          aria-label={item.label}
-          aria-current={active === item.id}
-          title={item.label}
-        >
-          {item.icon}
-        </button>
+      {ITEMS.map((item, index) => (
+        <Fragment key={item.id}>
+          {index === 1 && <hr className="sidebar-divider" />}
+          <button
+            type="button"
+            className={`sidebar-item${active === item.id ? ' is-active' : ''}`}
+            onClick={() => onSelect(item.id)}
+            aria-label={item.label}
+            aria-current={active === item.id}
+            title={item.label}
+          >
+            {item.icon}
+          </button>
+        </Fragment>
       ))}
     </nav>
   )

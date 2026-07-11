@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Starfield } from './components/Starfield'
 import { applyTheme, getStoredTheme, getSystemTheme } from './lib/theme'
 import { Sidebar, type View } from './components/Sidebar'
+import { TabbedSection } from './components/TabbedSection'
 import { OnboardingModal, ONBOARDING_COMPLETE_KEY } from './components/OnboardingModal'
 import { TonightView } from './views/TonightView'
 import { DashboardView } from './views/DashboardView'
@@ -16,31 +17,31 @@ import { DarkSkyView } from './views/DarkSkyView'
 import { DeepSkyPlannerView } from './views/DeepSkyPlannerView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
-import { CITIES, findNearestCity } from './lib/cities'
+import { useCurrentLocation } from './lib/currentLocation'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
 const VIEW_SUBTITLE: Record<View, string> = {
   tonight: 'Is tonight worth going outside, and what to point your phone at.',
-  dashboard: 'Sky events, calendar, watchlist, and weather — offline-first.',
-  calendar: 'Browse the month and see what’s happening on any given day.',
-  feed: 'Discoveries shared by sky-watchers.',
-  archive: 'Events that have already happened.',
-  scrapbook: 'Your own sky-watching notes.',
-  challenges: 'Event-tied photo challenges, moderated before going public.',
-  darksky: 'Nearby dark-sky sites, ranked by distance and light pollution.',
-  planner: "Tonight's targets, ranked by how well they'll frame with your gear.",
-  settings: 'Appearance, location, and motion.',
-  ops: 'Local diagnostics for PocketBase, containers, and recent writes.',
+  explore: 'Sky events, calendar, watchlist, and weather — offline-first.',
+  plan: 'Dark-sky trips and deep-sky targets, ranked for your gear.',
+  community: 'Discoveries shared by sky-watchers, and event-tied photo challenges.',
+  history: 'Events that have already happened, and your own sky-watching notes.',
+  settings: 'Appearance, location, motion, and local diagnostics.',
 }
 
 function App() {
   const [view, setView] = useState<View>('tonight')
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
+  // "History" defaults to the Archive tab, except right after logging an
+  // attempt from Tonight, where it should open straight to Scrapbook --
+  // see logAttempt below, and TabbedSection's defaultActiveId/key contract.
+  const [historyDefaultTab, setHistoryDefaultTab] = useState<'archive' | 'scrapbook'>('archive')
   const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem(ONBOARDING_COMPLETE_KEY) !== '1')
   const location = useLocationSeed()
   const motion = useParallax()
+  const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
 
   // Applied here (not just from SettingsView's own effect) so a stored
   // manual theme choice -- or just the system preference -- takes effect
@@ -49,13 +50,11 @@ function App() {
     applyTheme(getStoredTheme() ?? getSystemTheme())
   }, [])
 
-  const defaultCity = useMemo(() => {
-    if (location.coordinates) return findNearestCity(location.coordinates.lat, location.coordinates.lon)
-    if (Intl.DateTimeFormat().resolvedOptions().timeZone === 'Australia/Melbourne') {
-      return CITIES.find((city) => city.name === 'Melbourne') ?? CITIES[0]
-    }
-    return CITIES[0]
-  }, [location.coordinates])
+  // Remounts location-dependent views once per real location change (a
+  // GPS fix arriving, or a manual pick) without thrashing on every minor
+  // GPS jitter -- rounded coordinates match the ~11km stability window
+  // useLocationSeed already uses.
+  const locationKey = `${currentLocation.source}:${currentLocation.lat.toFixed(1)},${currentLocation.lon.toFixed(1)}`
 
   function goToSignUp() {
     setAccountDefaultMode('sign-up')
@@ -64,7 +63,8 @@ function App() {
 
   function logAttempt(draft: ObservationDraft) {
     setObservationDraft(draft)
-    setView('scrapbook')
+    setHistoryDefaultTab('scrapbook')
+    setView('history')
   }
 
   return (
@@ -82,30 +82,82 @@ function App() {
           </header>
           <hr className="hairline" />
           {view === 'tonight' && (
-            <TonightView key={defaultCity.name} city={defaultCity} locationStatus={location.status} onLogAttempt={logAttempt} />
+            <TonightView key={locationKey} city={currentLocation} locationStatus={location.status} onLogAttempt={logAttempt} />
           )}
-          {view === 'dashboard' && (
-            // Keyed so the location provider re-initializes once geolocation
-            // resolves to a real nearest city (it starts as CITIES[0] before that).
-            <DashboardView key={defaultCity.name} onSignUpClick={goToSignUp} defaultCity={defaultCity} />
+          {view === 'explore' && (
+            <TabbedSection
+              tabs={[
+                {
+                  id: 'dashboard',
+                  label: 'Dashboard',
+                  // Keyed so the location provider re-initializes once the
+                  // real location (geolocation fix or manual pick) settles
+                  // -- it starts as the Melbourne default before that.
+                  content: <DashboardView key={locationKey} onSignUpClick={goToSignUp} defaultCity={currentLocation} />,
+                },
+                { id: 'calendar', label: 'Calendar', content: <CalendarView /> },
+              ]}
+            />
           )}
-          {view === 'calendar' && <CalendarView />}
-          {view === 'feed' && <FeedView />}
-          {view === 'archive' && <ArchiveView />}
-          {view === 'scrapbook' && (
-            <ScrapbookView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />
+          {view === 'plan' && (
+            <TabbedSection
+              tabs={[
+                {
+                  id: 'darksky',
+                  label: 'Dark-sky trips',
+                  content: <DarkSkyView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />,
+                },
+                {
+                  id: 'planner',
+                  label: 'Deep-sky planner',
+                  content: <DeepSkyPlannerView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />,
+                },
+              ]}
+            />
           )}
-          {view === 'challenges' && <PhotoChallengesView />}
-          {view === 'darksky' && <DarkSkyView key={defaultCity.name} lat={defaultCity.lat} lon={defaultCity.lon} />}
-          {view === 'planner' && <DeepSkyPlannerView key={defaultCity.name} lat={defaultCity.lat} lon={defaultCity.lon} />}
-          {view === 'ops' && <LocalOpsView />}
+          {view === 'community' && (
+            <TabbedSection
+              tabs={[
+                { id: 'feed', label: 'Feed', content: <FeedView /> },
+                { id: 'challenges', label: 'Photo Challenges', content: <PhotoChallengesView /> },
+              ]}
+            />
+          )}
+          {view === 'history' && (
+            <TabbedSection
+              key={historyDefaultTab}
+              defaultActiveId={historyDefaultTab}
+              tabs={[
+                { id: 'archive', label: 'Archive', content: <ArchiveView /> },
+                {
+                  id: 'scrapbook',
+                  label: 'Scrapbook',
+                  content: <ScrapbookView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />,
+                },
+              ]}
+            />
+          )}
           {view === 'settings' && (
-            <SettingsView
-              locationStatus={location.status}
-              requestLocation={location.requestLocation}
-              needsMotionPermission={motion.needsMotionPermission}
-              requestMotionPermission={motion.requestMotionPermission}
-              accountDefaultMode={accountDefaultMode}
+            <TabbedSection
+              tabs={[
+                {
+                  id: 'settings',
+                  label: 'Settings',
+                  content: (
+                    <SettingsView
+                      locationStatus={location.status}
+                      requestLocation={location.requestLocation}
+                      currentLocation={currentLocation}
+                      manualCity={manualCity}
+                      setManualLocation={setManualLocation}
+                      needsMotionPermission={motion.needsMotionPermission}
+                      requestMotionPermission={motion.requestMotionPermission}
+                      accountDefaultMode={accountDefaultMode}
+                    />
+                  ),
+                },
+                { id: 'ops', label: 'Diagnostics', content: <LocalOpsView /> },
+              ]}
             />
           )}
         </main>

@@ -33,3 +33,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: atlas
           directory: dist
+          # cloudflare/pages-action@v1 defaults to installing wrangler v2
+          # via npx if this isn't set -- v2 is EOL and crashes under the
+          # Node 24 runners GitHub Actions now uses by default.
+          wranglerVersion: '3'

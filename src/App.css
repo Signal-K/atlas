@@ -24,6 +24,14 @@
   border-right: 1px solid var(--border);
 }
 
+.sidebar-divider {
+  width: 28px;
+  height: 1px;
+  margin: 6px 0;
+  border: none;
+  background: var(--border);
+}
+
 .sidebar-item {
   width: 40px;
   height: 40px;
@@ -49,6 +57,34 @@
 .sidebar-item.is-active {
   background: var(--code-bg);
   color: var(--text-h);
+}
+
+.tabbed-section-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabbed-section-tab {
+  padding: 8px 4px;
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tabbed-section-tab:hover {
+  color: var(--text-h);
+}
+
+.tabbed-section-tab.is-active {
+  color: var(--text-h);
+  border-bottom-color: var(--text-h);
+  font-weight: 600;
 }
 
 .dashboard {

@@ -13,6 +13,7 @@ import { LocationBrowseProvider, useLocationBrowse } from '../lib/locationBrowse
 import { CITIES, type City } from '../lib/cities'
 import { getUpcomingEvents, pullSkyEvents } from '../lib/sync'
 import type { SkyEvent } from '../lib/db'
+import type { CurrentLocation } from '../lib/currentLocation'
 
 function eventsForCity(events: SkyEvent[], city: City): SkyEvent[] {
   return events.filter((event) => {
@@ -74,14 +75,14 @@ function LocationPicker() {
       <p className="scrapbook-hint">
         {events === null ? 'Loading event counts. ' : `${selectedCount} upcoming events are available for ${city.name}. `}
         ISS passes are shown for <strong>{city.name}</strong>. Moon phases, meteor showers, planets, eclipses, and
-        deep-sky objects are shown regardless of location. Not your location? Pick your city above or on the map —
-        it's remembered from now on, even if your browser's geolocation guesses wrong.
+        deep-sky objects are shown regardless of location. This is just for browsing other places — your own
+        default location is set in Settings.
       </p>
     </section>
   )
 }
 
-export function DashboardView({ onSignUpClick, defaultCity }: { onSignUpClick: () => void; defaultCity: City }) {
+export function DashboardView({ onSignUpClick, defaultCity }: { onSignUpClick: () => void; defaultCity: CurrentLocation }) {
   const widgets = getOrderedWidgets().filter((widget) => widget.enabled)
 
   return (

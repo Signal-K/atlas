@@ -8,78 +8,12 @@
 // window here would be misleading rather than more useful.
 import * as satellite from 'satellite.js'
 import { CITIES } from './cities.mjs'
+import { fetchTle, passesForCity } from './satellitePasses.mjs'
 
 const TLE_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE'
-const STEP_MS = 60_000 // 1 minute
-// Raised from 10: at 16 cities, low grazing passes (10-20 above the horizon,
-// often behind buildings/trees) were drowning out every other event kind in
-// the feed. 20 keeps genuinely worth-looking-up-for passes only.
-const MIN_ELEVATION_DEG = 20
-const SUN_DARKNESS_DEG = -6 // civil twilight or darker at the observer
-const AU_KM = 149_597_870.7
-
-async function fetchTle() {
-  const res = await fetch(TLE_URL)
-  if (!res.ok) throw new Error(`Celestrak TLE fetch failed: ${res.status}`)
-  const lines = (await res.text()).trim().split('\n')
-  return { line1: lines[1], line2: lines[2] }
-}
-
-function elevationDegrees(observerGd, ecf) {
-  return satellite.radiansToDegrees(satellite.ecfToLookAngles(observerGd, ecf).elevation)
-}
-
-function passesForCity(satrec, city, start, end) {
-  const passes = []
-  const observerGd = {
-    latitude: satellite.degreesToRadians(city.lat),
-    longitude: satellite.degreesToRadians(city.lon),
-    height: 0.05,
-  }
-
-  let current = null
-
-  for (let t = start; t <= end; t += STEP_MS) {
-    const date = new Date(t)
-    const gmst = satellite.gstime(date)
-    const posVel = satellite.propagate(satrec, date)
-    if (!posVel.position) continue
-
-    const satEcf = satellite.eciToEcf(posVel.position, gmst)
-    const satElevation = elevationDegrees(observerGd, satEcf)
-
-    if (satElevation >= MIN_ELEVATION_DEG) {
-      if (!current) current = { start: date, maxElevation: satElevation }
-      else current.maxElevation = Math.max(current.maxElevation, satElevation)
-      current.end = date
-    } else if (current) {
-      passes.push(current)
-      current = null
-    }
-  }
-  if (current) passes.push(current)
-
-  // Only passes that are actually visible: dark at the observer, and the
-  // ISS itself sunlit (not in Earth's shadow) at the pass's peak.
-  return passes.filter((pass) => {
-    const midTime = new Date((pass.start.getTime() + pass.end.getTime()) / 2)
-    const gmst = satellite.gstime(midTime)
-
-    const sunEciAu = satellite.sunPos(satellite.jday(midTime)).rsun
-    const sunEciKm = { x: sunEciAu.x * AU_KM, y: sunEciAu.y * AU_KM, z: sunEciAu.z * AU_KM }
-    const sunEcf = satellite.eciToEcf(sunEciKm, gmst)
-    const sunElevation = elevationDegrees(observerGd, sunEcf)
-    if (sunElevation > SUN_DARKNESS_DEG) return false
-
-    const posVel = satellite.propagate(satrec, midTime)
-    if (!posVel.position) return false
-    const shadow = satellite.shadowFraction(sunEciAu, posVel.position)
-    return shadow < 0.99
-  })
-}
 
 export async function fetchEvents({ now = new Date(), windowDays = 5 } = {}) {
-  const { line1, line2 } = await fetchTle()
+  const { line1, line2 } = await fetchTle(TLE_URL)
   const satrec = satellite.twoline2satrec(line1, line2)
 
   const start = now.getTime()
