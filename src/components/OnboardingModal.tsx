@@ -46,6 +46,16 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
     }
   }
 
+  function skip() {
+    // Persist completion the moment the user opts out of account
+    // creation, not only once they finish the preferences step after it --
+    // otherwise a refresh (or just closing the tab) before clicking "Get
+    // started" there means nothing was ever saved, and the whole modal
+    // reappears from step one every time.
+    localStorage.setItem(ONBOARDING_COMPLETE_KEY, '1')
+    setStep('preferences')
+  }
+
   function toggleKind(kind: string) {
     setSelectedKinds((current) => {
       const next = new Set(current)
@@ -90,7 +100,7 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
               </div>
               {error && <p className="account-form-error">{error}</p>}
             </form>
-            <button type="button" className="onboarding-skip" onClick={() => setStep('preferences')}>
+            <button type="button" className="onboarding-skip" onClick={skip}>
               Skip for now
             </button>
           </>
