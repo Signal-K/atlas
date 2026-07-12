@@ -13,6 +13,40 @@
   min-height: 100svh;
 }
 
+/* Mobile Safari/Chrome auto-zoom the whole viewport when a text input's
+   computed font-size is under 16px at the moment it gains focus, and don't
+   zoom back out afterwards -- which reads exactly like "tapping on things
+   just zooms in". Every form in this app (account, leaderboard, discovery
+   comments, ...) sets its own smaller font-size at higher specificity than
+   a plain `input` rule, so this needs !important to actually win; scoped to
+   the mobile breakpoint so desktop keeps each form's compact sizing.
+   touch-action: manipulation on interactive controls removes the ~300ms
+   double-tap-to-zoom delay/misfire on repeated taps. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  button,
+  a,
+  select,
+  .sidebar-item,
+  .tabbed-section-tab,
+  .row-trigger-main {
+    touch-action: manipulation;
+  }
+
+  .dashboard {
+    padding: 32px 16px 64px;
+  }
+
+  .dashboard-title h1 {
+    font-size: 32px;
+  }
+}
+
 .sidebar {
   flex-shrink: 0;
   width: 64px;

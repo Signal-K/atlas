@@ -26,8 +26,17 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
     setError(null)
     setBusy(true)
     try {
-      if (mode === 'sign-in') await signIn(email, password)
-      else await signUp(email, password)
+      if (mode === 'sign-in') {
+        // An existing account signing in has already made their interest
+        // picks (or chosen not to) -- routing them through the "what do
+        // you like" step again on every sign-in is what caused onboarding
+        // to never actually complete for returning users.
+        await signIn(email, password)
+        localStorage.setItem(ONBOARDING_COMPLETE_KEY, '1')
+        onComplete()
+        return
+      }
+      await signUp(email, password)
       setStep('preferences')
     } catch (error) {
       const fallback = mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed.'
