@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { signIn, signOut, signUp, useAuth } from '../lib/auth'
+import { authErrorMessage, signIn, signOut, signUp, useAuth } from '../lib/auth'
 
 export function AccountSettings({ defaultMode = 'sign-in' }: { defaultMode?: 'sign-in' | 'sign-up' }) {
   const { user } = useAuth()
@@ -30,8 +30,9 @@ export function AccountSettings({ defaultMode = 'sign-in' }: { defaultMode?: 'si
     try {
       if (mode === 'sign-in') await signIn(email, password)
       else await signUp(email, password)
-    } catch {
-      setError(mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed — password needs at least 8 characters.')
+    } catch (error) {
+      const fallback = mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed.'
+      setError(authErrorMessage(error, fallback))
     } finally {
       setBusy(false)
     }

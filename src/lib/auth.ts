@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ClientResponseError } from 'pocketbase'
 import { pb } from './pocketbase'
 
 export interface AuthUser {
@@ -38,4 +39,18 @@ export async function signUp(email: string, password: string): Promise<void> {
 
 export function signOut(): void {
   pb.authStore.clear()
+}
+
+// Surfaces PocketBase's actual per-field validation message (e.g. "email
+// already exists", the real password rule) instead of a fixed guess --
+// sign-in/sign-up were previously showing the same hardcoded string for
+// every failure, which misled users when the real cause was unrelated
+// (e.g. this account already existing) to the message shown.
+export function authErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ClientResponseError) {
+    const fieldErrors = Object.values(error.response?.data ?? {}) as Array<{ message?: string }>
+    const firstFieldMessage = fieldErrors.find((field) => field?.message)?.message
+    return firstFieldMessage ?? error.response?.message ?? fallback
+  }
+  return fallback
 }

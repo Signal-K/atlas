@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { signIn, signUp } from '../lib/auth'
+import { authErrorMessage, signIn, signUp } from '../lib/auth'
 import { saveEventTypeFavourites } from '../lib/favourites'
 
 const EVENT_KINDS = [
@@ -29,8 +29,9 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
       if (mode === 'sign-in') await signIn(email, password)
       else await signUp(email, password)
       setStep('preferences')
-    } catch {
-      setError(mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed — password needs at least 8 characters.')
+    } catch (error) {
+      const fallback = mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed.'
+      setError(authErrorMessage(error, fallback))
     } finally {
       setBusy(false)
     }
