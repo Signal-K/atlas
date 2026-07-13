@@ -12,6 +12,10 @@ export interface WatchlistItem {
   value: string
 }
 
+export function formatWatchValue(value: string): string {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 export async function getWatchlist(): Promise<WatchlistItem[]> {
   const user = scopeId()
   const entries = await db.watchlist.where('userId').equals(user).toArray()

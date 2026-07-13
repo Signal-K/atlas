@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react'
 import { registerWidget } from './registry'
-import { addToWatchlist, getWatchableTargets, getWatchlist, isWatching, removeFromWatchlist, type WatchlistItem } from '../lib/watchlist'
+import {
+  addToWatchlist,
+  formatWatchValue,
+  getWatchableTargets,
+  getWatchlist,
+  isWatching,
+  removeFromWatchlist,
+  type WatchlistItem,
+} from '../lib/watchlist'
 
-const EVENT_KINDS = [
+export const EVENT_KINDS = [
   { value: 'moon_phase', label: 'Moon phases' },
   { value: 'meteor_shower', label: 'Meteor showers' },
   { value: 'eclipse', label: 'Eclipses' },
@@ -11,10 +19,6 @@ const EVENT_KINDS = [
   { value: 'deep_sky', label: 'Deep-sky objects' },
   { value: 'conjunction', label: 'Conjunctions' },
 ]
-
-function formatTarget(target: string): string {
-  return target.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
 
 function WatchlistWidget() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[] | null>(null)
@@ -68,7 +72,7 @@ function WatchlistWidget() {
                   className={`chip${watching ? ' is-active' : ''}`}
                   onClick={() => toggle('target', target, watching)}
                 >
-                  {formatTarget(target)}
+                  {formatWatchValue(target)}
                 </button>
               )
             })}

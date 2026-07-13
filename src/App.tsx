@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Starfield } from './components/Starfield'
 import { applyTheme, getStoredTheme, getSystemTheme } from './lib/theme'
 import { Sidebar, type View } from './components/Sidebar'
+import { MobileShell } from './components/MobileShell'
+import { useIsMobile } from './lib/useIsMobile'
 import { TabbedSection } from './components/TabbedSection'
 import { OnboardingModal, ONBOARDING_COMPLETE_KEY } from './components/OnboardingModal'
 import { TonightView } from './views/TonightView'
@@ -42,6 +44,7 @@ function App() {
   const location = useLocationSeed()
   const motion = useParallax()
   const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
+  const isMobile = useIsMobile()
 
   // Applied here (not just from SettingsView's own effect) so a stored
   // manual theme choice -- or just the system preference -- takes effect
@@ -65,6 +68,24 @@ function App() {
     setObservationDraft(draft)
     setHistoryDefaultTab('scrapbook')
     setView('history')
+  }
+
+  if (isMobile) {
+    return (
+      <>
+        <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
+        {showOnboarding && <OnboardingModal onComplete={() => setShowOnboarding(false)} />}
+        <MobileShell
+          currentLocation={currentLocation}
+          locationStatus={location.status}
+          requestLocation={location.requestLocation}
+          manualCity={manualCity}
+          setManualLocation={setManualLocation}
+          needsMotionPermission={motion.needsMotionPermission}
+          requestMotionPermission={motion.requestMotionPermission}
+        />
+      </>
+    )
   }
 
   return (
