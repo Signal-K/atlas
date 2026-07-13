@@ -111,9 +111,13 @@ export async function submitPhotoChallenge(input: NewPhotoChallengeSubmission): 
 // covers both "my submissions" (including pending) and "the public feed"
 // depending on how the caller filters/labels the result.
 export async function listPhotoChallengeSubmissions(): Promise<PhotoChallengeSubmission[]> {
-  const records = await pb.collection('atlas_photo_challenge_submissions').getFullList({
-    sort: '-created',
-    expand: 'event',
-  })
-  return records.map(mapSubmission)
+  try {
+    const records = await pb.collection('atlas_photo_challenge_submissions').getFullList({
+      sort: '-created',
+      expand: 'event',
+    })
+    return records.map(mapSubmission)
+  } catch {
+    return []
+  }
 }

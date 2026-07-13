@@ -9,13 +9,17 @@ function DigestWidget() {
 
   useEffect(() => {
     let cancelled = false
-    listDiscoveries().then((all) => {
-      if (cancelled) return
-      const weekAgo = Date.now() - WEEK_MS
-      const recent = all.filter((discovery) => new Date(discovery.created).getTime() >= weekAgo)
-      const ranked = [...recent].sort((a, b) => b.voteCount - a.voteCount).slice(0, 3)
-      setTop(ranked)
-    })
+    listDiscoveries()
+      .then((all) => {
+        if (cancelled) return
+        const weekAgo = Date.now() - WEEK_MS
+        const recent = all.filter((discovery) => new Date(discovery.created).getTime() >= weekAgo)
+        const ranked = [...recent].sort((a, b) => b.voteCount - a.voteCount).slice(0, 3)
+        setTop(ranked)
+      })
+      .catch(() => {
+        if (!cancelled) setTop([])
+      })
     return () => {
       cancelled = true
     }

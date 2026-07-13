@@ -1834,6 +1834,25 @@
   margin-bottom: 24px;
 }
 
+.ops-demo-mode {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+}
+
+.ops-demo-mode label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.ops-demo-mode .scrapbook-hint {
+  margin: 6px 0 0 24px;
+}
+
 .ops-header h2 {
   margin-bottom: 6px;
 }
