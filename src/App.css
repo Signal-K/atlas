@@ -1652,6 +1652,13 @@
   margin: 6px 0 0;
 }
 
+.camera-recipe-shop-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .camera-recipe-placeholder {
   margin-top: 10px;
   font-size: 12px;
@@ -2034,6 +2041,14 @@
   margin: 0;
 }
 
+.darksky-site-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
 .darksky-directions {
   align-self: flex-start;
   font-size: 12px;
@@ -2043,12 +2058,19 @@
   background: none;
   color: var(--text);
   cursor: pointer;
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .darksky-directions:hover {
   color: var(--text-h);
   border-color: var(--text-h);
+}
+
+.darksky-tour-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .planner-hint {

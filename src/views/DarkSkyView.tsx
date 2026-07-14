@@ -1,5 +1,6 @@
 import { rankDarkSkySites, directionsUrl, type RankedDarkSkySite } from '../lib/darkSky'
 import { trackEvent } from '../lib/analytics'
+import { tourAffiliateUrl } from '../lib/affiliate'
 
 // STS-172: dark-sky site finder + trip planning. Separate from
 // LocalOpsView.tsx/localOps.ts (an unrelated local PocketBase diagnostics
@@ -32,9 +33,22 @@ export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
               {site.estimatedTravelMinutes % 60}m drive (estimated)
             </p>
             <p className="darksky-site-notes">{site.notes}</p>
-            <button type="button" className="darksky-directions" onClick={() => openDirections(site)}>
-              Get directions
-            </button>
+            <div className="darksky-site-actions">
+              <button type="button" className="darksky-directions" onClick={() => openDirections(site)}>
+                Get directions
+              </button>
+              {tourAffiliateUrl(site.name) && (
+                <a
+                  href={tourAffiliateUrl(site.name)!}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  className="darksky-tour-link"
+                  onClick={() => trackEvent('Opened dark-sky tour link', { site: site.id })}
+                >
+                  Find tours &amp; stays nearby
+                </a>
+              )}
+            </div>
           </li>
         ))}
       </ul>

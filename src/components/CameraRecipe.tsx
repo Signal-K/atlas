@@ -5,6 +5,7 @@ import { trackEvent } from '../lib/analytics'
 import { importPresetFile, PresetImportError, recommendPresetsForTarget } from '../lib/cameraPresets'
 import type { CameraPreset } from '../lib/db'
 import { useAuth } from '../lib/auth'
+import { gearAffiliateUrl } from '../lib/affiliate'
 
 const TRIPOD_LABEL: Record<string, string> = {
   required: 'Tripod required',
@@ -58,6 +59,7 @@ export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
 
   const recipe = CAMERA_RECIPES[recipeKey]
   const deviceRecipe = recipe.devices[device]
+  const tripodShopUrl = gearAffiliateUrl('phone tripod astrophotography')
 
   return (
     <div className="camera-recipe">
@@ -80,6 +82,13 @@ export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
         </div>
         <div>
           <dt>{TRIPOD_LABEL[deviceRecipe.tripod]}</dt>
+          {deviceRecipe.tripod !== 'optional' && tripodShopUrl && (
+            <dd>
+              <a href={tripodShopUrl} target="_blank" rel="noopener noreferrer sponsored" className="camera-recipe-shop-link">
+                Shop tripods
+              </a>
+            </dd>
+          )}
         </div>
         <div>
           <dt>Exposure</dt>
