@@ -10,7 +10,8 @@
 .app-shell {
   position: relative;
   display: flex;
-  min-height: 100svh;
+  height: 100svh;
+  overflow: hidden;
 }
 
 /* Mobile Safari/Chrome auto-zoom the whole viewport when a text input's
@@ -50,12 +51,14 @@
 .sidebar {
   flex-shrink: 0;
   width: 64px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   padding: 24px 0;
   border-right: 1px solid var(--border);
+  overflow-y: auto;
 }
 
 .sidebar-divider {
@@ -126,8 +129,11 @@
   flex: 1;
   min-width: 0;
   max-width: 720px;
+  width: 100%;
   margin: 0 auto;
   padding: 64px 24px 96px;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .dashboard-title {
