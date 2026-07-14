@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { hashSeed } from './rng'
 
 const DEFAULT_SEED = hashSeed('atlas-default-sky')
@@ -52,6 +52,12 @@ export function useLocationSeed() {
   const [seed, setSeed] = useState(cached ? hashSeed(`${cached.lat},${cached.lon}`) : DEFAULT_SEED)
   const [status, setStatus] = useState<LocationStatus>(cached ? 'granted' : 'idle')
   const [coordinates, setCoordinates] = useState<Coordinates | null>(cached ? { lat: cached.lat, lon: cached.lon } : null)
+  // Guards against firing getCurrentPosition() twice concurrently -- e.g.
+  // React StrictMode's dev-only double-invoke of effects (mount -> cleanup
+  // -> mount again), which would otherwise stack two native OS location
+  // prompts on top of each other. Dismissing the visible one just reveals
+  // an identical second one underneath, which reads as "won't dismiss."
+  const requestInFlight = useRef(false)
 
   const requestLocation = useCallback((force = false) => {
     if (!force) {
@@ -67,9 +73,12 @@ export function useLocationSeed() {
       setStatus('unsupported')
       return
     }
+    if (requestInFlight.current) return
+    requestInFlight.current = true
     setStatus('pending')
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        requestInFlight.current = false
         const lat = Number(position.coords.latitude.toFixed(1))
         const lon = Number(position.coords.longitude.toFixed(1))
         writeCache({ lat, lon, cachedAt: Date.now() })
@@ -78,6 +87,7 @@ export function useLocationSeed() {
         setStatus('granted')
       },
       () => {
+        requestInFlight.current = false
         setStatus('denied')
       },
       { timeout: 8000, maximumAge: 3_600_000 },
