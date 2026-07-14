@@ -71,3 +71,20 @@ export function moveWidget(id: string, direction: 'up' | 'down') {
   prefs.order = ordered
   savePrefs(prefs)
 }
+
+// Drops `id` into the position `targetId` currently occupies (used by
+// pointer/touch drag-reorder in WidgetSettings — the up/down buttons above
+// stay as the keyboard/screen-reader-accessible equivalent, per AT decision
+// 212: drag-reorder is additive, not a replacement for the button controls).
+export function reorderWidget(id: string, targetId: string) {
+  if (id === targetId) return
+  const ordered = getOrderedWidgets().map((w) => w.id)
+  const from = ordered.indexOf(id)
+  const to = ordered.indexOf(targetId)
+  if (from < 0 || to < 0) return
+  ordered.splice(from, 1)
+  ordered.splice(to, 0, id)
+  const prefs = loadPrefs()
+  prefs.order = ordered
+  savePrefs(prefs)
+}

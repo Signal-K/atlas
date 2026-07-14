@@ -168,6 +168,28 @@
   margin: 0 0 16px;
 }
 
+.scrapbook-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scrapbook-header h2 {
+  margin: 0 0 16px;
+}
+
+.scrapbook-export {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  height: fit-content;
+}
+
 .filter-tabs {
   display: flex;
   gap: 6px;
@@ -1795,6 +1817,31 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
+  flex: 1;
+}
+
+.widget-settings-row {
+  cursor: grab;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.widget-settings-row.is-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.widget-settings-row.is-drag-over {
+  border-color: var(--accent);
+}
+
+.widget-drag-handle {
+  color: var(--text);
+  opacity: 0.4;
+  font-size: 14px;
+  letter-spacing: -2px;
+  line-height: 1;
+  padding-right: 4px;
+  user-select: none;
 }
 
 .row-watch-badge {

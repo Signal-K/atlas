@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth'
 import { ObservationCard } from '../components/ObservationCard'
 import { trackEvent } from '../lib/analytics'
 import type { ObservationDraft } from '../lib/observationDraft'
+import { downloadObservationsCsv } from '../lib/observationExport'
 
 // Entries made while signed out are scoped to this fixed local id so the
 // Scrapbook still works fully offline-first with no account. Once signed
@@ -115,9 +116,21 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     await refresh()
   }
 
+  function handleExport() {
+    downloadObservationsCsv(entries)
+    trackEvent('Exported observations', { count: entries.length })
+  }
+
   return (
     <section className="widget-section">
-      <h2>Scrapbook</h2>
+      <div className="scrapbook-header">
+        <h2>Scrapbook</h2>
+        {entries.length > 0 && (
+          <button type="button" className="scrapbook-export" onClick={handleExport}>
+            Export CSV
+          </button>
+        )}
+      </div>
       {!user && <p className="scrapbook-hint">Sign in (Settings) to sync your notes to your account.</p>}
       {draft && (
         <div className="scrapbook-draft-banner">
