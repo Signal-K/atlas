@@ -38,8 +38,12 @@ export function HubView({ city, onOpenTab }: HubViewProps) {
       setAdvisory(advisoryDays[0] ?? null)
       if (!clarityTouched) setClarity(advisoryDays[0] ? 100 - advisoryDays[0].cloudCoverPct : 70)
 
+      const cloudCoverPct = advisoryDays[0]?.cloudCoverPct
       const withStatus = await Promise.all(
-        items.map(async (item) => ({ ...item, status: await getWatchTargetStatus(item, city.lat, city.lon) })),
+        items.map(async (item) => ({
+          ...item,
+          status: await getWatchTargetStatus(item, city.lat, city.lon, new Date(), cloudCoverPct),
+        })),
       )
       if (!cancelled) setWatchlist(withStatus)
     }
@@ -146,7 +150,10 @@ export function HubView({ city, onOpenTab }: HubViewProps) {
           <div className="mobile-watch-grid">
             {watchlist.slice(0, 2).map((item) => (
               <div key={`${item.kind}:${item.value}`} className="mobile-watch-cell">
-                <div className="mobile-watch-cell-name">{formatWatchValue(item.value)}</div>
+                <div className="mobile-watch-cell-name">
+                  {formatWatchValue(item.value)}
+                  {item.status.isGoodViewing && <span className="mobile-good-viewing-badge" title="Good viewing tonight" />}
+                </div>
                 <div className="mobile-watch-cell-status" data-status={item.status.status}>
                   {item.status.statusLabel} &middot; {item.status.timeLabel}
                 </div>

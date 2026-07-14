@@ -2379,6 +2379,16 @@
   color: var(--text-h);
 }
 
+.mobile-good-viewing-badge {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--status-good);
+  vertical-align: middle;
+}
+
 .mobile-watch-cell-status,
 .mobile-watch-row-status {
   font-size: 11px;

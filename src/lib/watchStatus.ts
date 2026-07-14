@@ -13,7 +13,14 @@ export interface WatchStatus {
   status: WatchStatusKind
   statusLabel: string
   timeLabel: string
+  // A watchlist item is a "good viewing opportunity" (the notify_on_good_viewing
+  // flag every watchlist entry is created with, see watchlist.ts) when it's
+  // visible right now AND the sky is clear/partly-clear -- the same <70%
+  // cloud-cover cutoff weather.ts already uses to call a night "not cloudy".
+  isGoodViewing: boolean
 }
+
+const GOOD_VIEWING_CLOUD_COVER_MAX = 70
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
@@ -26,23 +33,45 @@ async function matchingEvents(item: WatchlistItem): Promise<SkyEvent[]> {
     : all.filter((event) => event.target.toLowerCase() === item.value.toLowerCase())
 }
 
-function fromNextEvent(events: SkyEvent[], now: Date): WatchStatus {
+function isGoodViewing(status: WatchStatusKind, cloudCoverPct: number | undefined): boolean {
+  return status === 'visible' && cloudCoverPct !== undefined && cloudCoverPct < GOOD_VIEWING_CLOUD_COVER_MAX
+}
+
+function fromNextEvent(events: SkyEvent[], now: Date, cloudCoverPct: number | undefined): WatchStatus {
   const upcoming = events.filter((event) => event.startsAt >= now.toISOString()).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const ongoing = events.find((event) => event.startsAt <= now.toISOString() && event.endsAt >= now.toISOString())
 
   if (ongoing) {
-    return { status: 'visible', statusLabel: 'Visible', timeLabel: `Until ${formatTime(new Date(ongoing.endsAt))}` }
+    return {
+      status: 'visible',
+      statusLabel: 'Visible',
+      timeLabel: `Until ${formatTime(new Date(ongoing.endsAt))}`,
+      isGoodViewing: isGoodViewing('visible', cloudCoverPct),
+    }
   }
   if (upcoming.length > 0) {
-    return { status: 'pending', statusLabel: 'Pending', timeLabel: formatTime(new Date(upcoming[0].startsAt)) }
+    return {
+      status: 'pending',
+      statusLabel: 'Pending',
+      timeLabel: formatTime(new Date(upcoming[0].startsAt)),
+      isGoodViewing: false,
+    }
   }
-  return { status: 'below-horizon', statusLabel: 'No data', timeLabel: '—' }
+  return { status: 'below-horizon', statusLabel: 'No data', timeLabel: '—', isGoodViewing: false }
 }
 
 // Tries a real rise/set/altitude computation for bodies astronomy-engine can
 // resolve (Moon, planets); falls back to the next matching cached SkyEvent's
 // timing for everything else (ISS passes, deep-sky objects, meteor showers).
-export async function getWatchTargetStatus(item: WatchlistItem, lat: number, lon: number, now = new Date()): Promise<WatchStatus> {
+// `cloudCoverPct` is optional (callers that haven't fetched weather yet just
+// never get a "good viewing" true) -- see fetchViewingAdvisory in weather.ts.
+export async function getWatchTargetStatus(
+  item: WatchlistItem,
+  lat: number,
+  lon: number,
+  now = new Date(),
+  cloudCoverPct?: number,
+): Promise<WatchStatus> {
   const events = await matchingEvents(item)
 
   if (item.kind === 'target') {
@@ -59,6 +88,7 @@ export async function getWatchTargetStatus(item: WatchlistItem, lat: number, lon
           status: 'visible',
           statusLabel: 'Visible',
           timeLabel: setResult ? `Set ${formatTime(setResult.date)}` : 'Above horizon',
+          isGoodViewing: isGoodViewing('visible', cloudCoverPct),
         }
       }
       const riseResult = Astronomy.SearchRiseSet(body, observer, 1, now, 2)
@@ -66,9 +96,10 @@ export async function getWatchTargetStatus(item: WatchlistItem, lat: number, lon
         status: 'pending',
         statusLabel: 'Pending',
         timeLabel: riseResult ? `Rise ${formatTime(riseResult.date)}` : 'Below horizon',
+        isGoodViewing: false,
       }
     }
   }
 
-  return fromNextEvent(events, now)
+  return fromNextEvent(events, now, cloudCoverPct)
 }

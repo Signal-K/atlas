@@ -10,6 +10,7 @@ import {
   type WatchlistItem,
 } from '../../lib/watchlist'
 import { getWatchTargetStatus, type WatchStatus } from '../../lib/watchStatus'
+import { fetchViewingAdvisory } from '../../lib/weather'
 import type { CurrentLocation } from '../../lib/currentLocation'
 
 interface WatchViewProps {
@@ -21,9 +22,17 @@ export function WatchView({ city }: WatchViewProps) {
   const [targets, setTargets] = useState<string[]>([])
 
   async function refresh() {
-    const [items, targetList] = await Promise.all([getWatchlist(), getWatchableTargets()])
+    const [items, targetList, advisoryDays] = await Promise.all([
+      getWatchlist(),
+      getWatchableTargets(),
+      fetchViewingAdvisory(city.lat, city.lon, 1).catch(() => []),
+    ])
+    const cloudCoverPct = advisoryDays[0]?.cloudCoverPct
     const withStatus = await Promise.all(
-      items.map(async (item) => ({ ...item, status: await getWatchTargetStatus(item, city.lat, city.lon) })),
+      items.map(async (item) => ({
+        ...item,
+        status: await getWatchTargetStatus(item, city.lat, city.lon, new Date(), cloudCoverPct),
+      })),
     )
     setWatchlist(withStatus)
     setTargets(targetList)
@@ -53,7 +62,10 @@ export function WatchView({ city }: WatchViewProps) {
             {watchlist.map((item) => (
               <li key={`${item.kind}:${item.value}`} className="mobile-watch-row">
                 <div className="mobile-watch-row-main">
-                  <span className="mobile-watch-row-name">{formatWatchValue(item.value)}</span>
+                  <span className="mobile-watch-row-name">
+                    {formatWatchValue(item.value)}
+                    {item.status.isGoodViewing && <span className="mobile-good-viewing-badge" title="Good viewing tonight" />}
+                  </span>
                   <span className="mobile-watch-row-status" data-status={item.status.status}>
                     {item.status.statusLabel} &middot; {item.status.timeLabel}
                   </span>
