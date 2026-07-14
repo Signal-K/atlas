@@ -10,14 +10,59 @@ export interface Coordinates {
   lon: number
 }
 
+const CACHE_KEY = 'atlas-location-cache'
+// Matches the maximumAge passed to getCurrentPosition below: within this
+// window we trust a cached fix instead of re-asking the browser, since a
+// fresh getCurrentPosition() call re-triggers the OS-level location prompt
+// on every page load/reload even when permission was already granted --
+// most visibly on macOS, where the prompt caps "remember" at one day and
+// otherwise reappears on every mount of this hook.
+const CACHE_TTL_MS = 3_600_000
+
+interface CachedFix {
+  lat: number
+  lon: number
+  cachedAt: number
+}
+
+function readCache(): CachedFix | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as CachedFix
+    if (Date.now() - parsed.cachedAt > CACHE_TTL_MS) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCache(fix: CachedFix) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(fix))
+  } catch {
+    // Best-effort; a failed cache write just means the next mount re-asks.
+  }
+}
+
 // Rounding to ~1 decimal degree (~11km) keeps the field stable across small
 // movements and avoids regenerating on every minor GPS jitter.
 export function useLocationSeed() {
-  const [seed, setSeed] = useState(DEFAULT_SEED)
-  const [status, setStatus] = useState<LocationStatus>('idle')
-  const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
+  const cached = readCache()
+  const [seed, setSeed] = useState(cached ? hashSeed(`${cached.lat},${cached.lon}`) : DEFAULT_SEED)
+  const [status, setStatus] = useState<LocationStatus>(cached ? 'granted' : 'idle')
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(cached ? { lat: cached.lat, lon: cached.lon } : null)
 
-  const requestLocation = useCallback(() => {
+  const requestLocation = useCallback((force = false) => {
+    if (!force) {
+      const fresh = readCache()
+      if (fresh) {
+        setSeed(hashSeed(`${fresh.lat},${fresh.lon}`))
+        setCoordinates({ lat: fresh.lat, lon: fresh.lon })
+        setStatus('granted')
+        return
+      }
+    }
     if (!('geolocation' in navigator)) {
       setStatus('unsupported')
       return
@@ -25,10 +70,11 @@ export function useLocationSeed() {
     setStatus('pending')
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const lat = position.coords.latitude.toFixed(1)
-        const lon = position.coords.longitude.toFixed(1)
+        const lat = Number(position.coords.latitude.toFixed(1))
+        const lon = Number(position.coords.longitude.toFixed(1))
+        writeCache({ lat, lon, cachedAt: Date.now() })
         setSeed(hashSeed(`${lat},${lon}`))
-        setCoordinates({ lat: Number(lat), lon: Number(lon) })
+        setCoordinates({ lat, lon })
         setStatus('granted')
       },
       () => {
@@ -40,7 +86,10 @@ export function useLocationSeed() {
 
   useEffect(() => {
     requestLocation()
-  }, [requestLocation])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
+  // `requestLocation(true)` forces a fresh browser prompt (e.g. a "Retry"
+  // button after a denial) bypassing the cache.
   return { seed, status, coordinates, requestLocation }
 }
