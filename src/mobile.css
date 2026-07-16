@@ -1,3 +1,7 @@
+/* Body serif for the Daily Transit hub redesign -- not self-hosted, same
+   Google Fonts substitution the source design system uses. */
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700;8..60,800&display=swap');
+
 /* Daily Transit design system webfonts -- mobile shell only (see the
    .mobile-shell rule further down). Turret Road for headings, Oxanium for
    the tactical/data-label voice already used throughout the mobile CSS via
@@ -24,10 +28,6 @@
   font-style: normal;
   font-display: swap;
 }
-
-/* Body serif for the Daily Transit hub redesign -- not self-hosted, same
-   Google Fonts substitution the source design system uses. */
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700;8..60,800&display=swap');
 
 /* ---------------------------------------------------------------------- */
 /* Mobile shell (Atlas.dc.html) -- top-console app, mounted for phone and */

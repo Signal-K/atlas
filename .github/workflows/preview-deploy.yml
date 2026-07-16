@@ -9,6 +9,10 @@ on:
     branches-ignore: [master]
   workflow_dispatch: {}
 
+concurrency:
+  group: pages-preview-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   preview:
     runs-on: ubuntu-latest
@@ -20,8 +24,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - run: npm ci
-      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
         env:
           VITE_PB_URL: ${{ vars.VITE_PB_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}

@@ -20,7 +20,7 @@ export default defineConfig({
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
-    env: { VITE_PB_URL: process.env.VITE_PB_URL ?? 'http://localhost:8094' },
+    env: { VITE_PB_URL: process.env.VITE_PB_URL || 'http://localhost:8094' },
     timeout: 30_000,
   },
 })
