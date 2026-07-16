@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Starfield } from './components/Starfield'
 import { applyTheme, getStoredTheme, getSystemTheme } from './lib/theme'
 import { Sidebar, type View } from './components/Sidebar'
 import { MobileShell } from './components/MobileShell'
 import { useIsMobile } from './lib/useIsMobile'
 import { TabbedSection } from './components/TabbedSection'
-import { OnboardingModal, ONBOARDING_COMPLETE_KEY } from './components/OnboardingModal'
+import { LandingPage } from './views/LandingPage'
 import { TonightView } from './views/TonightView'
 import { DashboardView } from './views/DashboardView'
 import { CalendarView } from './views/CalendarView'
@@ -17,11 +18,32 @@ import { SettingsView } from './views/SettingsView'
 import { LocalOpsView } from './views/LocalOpsView'
 import { DarkSkyView } from './views/DarkSkyView'
 import { DeepSkyPlannerView } from './views/DeepSkyPlannerView'
+import { EventCategoryPlanView } from './views/EventCategoryPlanView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { useCurrentLocation } from './lib/currentLocation'
+import { useAuth } from './lib/auth'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
+
+// Real, bookmarkable/back-button-able routes per desktop view.
+const VIEW_PATH: Record<View, string> = {
+  tonight: '/tonight',
+  explore: '/explore',
+  plan: '/plan',
+  community: '/community',
+  history: '/history',
+  settings: '/settings',
+}
+
+const PATH_VIEW: Record<string, View> = {
+  '/tonight': 'tonight',
+  '/explore': 'explore',
+  '/plan': 'plan',
+  '/community': 'community',
+  '/history': 'history',
+  '/settings': 'settings',
+}
 
 const VIEW_SUBTITLE: Record<View, string> = {
   tonight: 'Is tonight worth going outside, and what to point your phone at.',
@@ -32,15 +54,22 @@ const VIEW_SUBTITLE: Record<View, string> = {
   settings: 'Appearance, location, motion, and local diagnostics.',
 }
 
+// Set once a visitor either enters the app from the landing page or is
+// already signed in, so `/` stops showing the landing page for them again
+// on future visits (bookmarks/return traffic keep working as before).
+const ENTERED_KEY = 'atlas-entered'
+
 function App() {
-  const [view, setView] = useState<View>('tonight')
+  const routerLocation = useLocation()
+  const navigate = useNavigate()
+  const view = PATH_VIEW[routerLocation.pathname] ?? 'tonight'
+  const { user } = useAuth()
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
   // "History" defaults to the Archive tab, except right after logging an
   // attempt from Tonight, where it should open straight to Scrapbook --
   // see logAttempt below, and TabbedSection's defaultActiveId/key contract.
   const [historyDefaultTab, setHistoryDefaultTab] = useState<'archive' | 'scrapbook'>('archive')
-  const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem(ONBOARDING_COMPLETE_KEY) !== '1')
   const location = useLocationSeed()
   const motion = useParallax()
   const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
@@ -53,11 +82,25 @@ function App() {
     applyTheme(getStoredTheme() ?? getSystemTheme())
   }, [])
 
+  // Bare "/" lands on the default tab/view for whichever shell is active,
+  // rewritten to a real route rather than staying un-bookmarkable -- but
+  // only for visitors who've already been through (or skipped) the landing
+  // page, otherwise this would redirect away before they ever see it.
+  useEffect(() => {
+    const alreadyEntered = user || localStorage.getItem(ENTERED_KEY) === '1'
+    if (routerLocation.pathname === '/' && !isMobile && alreadyEntered) navigate(VIEW_PATH.tonight, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only redirect the bare landing path once isMobile/user is known
+  }, [isMobile, user])
+
   // Remounts location-dependent views once per real location change (a
   // GPS fix arriving, or a manual pick) without thrashing on every minor
   // GPS jitter -- rounded coordinates match the ~11km stability window
   // useLocationSeed already uses.
   const locationKey = `${currentLocation.source}:${currentLocation.lat.toFixed(1)},${currentLocation.lon.toFixed(1)}`
+
+  function setView(nextView: View) {
+    navigate(VIEW_PATH[nextView])
+  }
 
   function goToSignUp() {
     setAccountDefaultMode('sign-up')
@@ -70,11 +113,33 @@ function App() {
     setView('history')
   }
 
+  // First-time/unauthenticated visitors at "/" see the landing page instead
+  // of being dropped straight into the full app shell -- see market
+  // validation notes on why the previous "/" -> app redirect wasn't
+  // converting. Signed-in users and anyone who has already entered once
+  // (flag persisted below) skip straight past this, same as before.
+  const showLanding = routerLocation.pathname === '/' && !user && localStorage.getItem(ENTERED_KEY) !== '1'
+
+  function enterApp() {
+    localStorage.setItem(ENTERED_KEY, '1')
+    navigate(isMobile ? '/today' : VIEW_PATH.tonight, { replace: true })
+  }
+
+  if (showLanding) {
+    return (
+      <LandingPage
+        isMobile={isMobile}
+        requestLocation={() => location.requestLocation(true)}
+        setManualLocation={setManualLocation}
+        onEnter={enterApp}
+      />
+    )
+  }
+
   if (isMobile) {
     return (
       <>
         <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
-        {showOnboarding && <OnboardingModal onComplete={() => setShowOnboarding(false)} />}
         <MobileShell
           currentLocation={currentLocation}
           locationStatus={location.status}
@@ -91,7 +156,6 @@ function App() {
   return (
     <>
       <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
-      {showOnboarding && <OnboardingModal onComplete={() => setShowOnboarding(false)} />}
       <div className="app-shell">
         <Sidebar active={view} onSelect={setView} />
         <main className="dashboard">
@@ -123,6 +187,18 @@ function App() {
           {view === 'plan' && (
             <TabbedSection
               tabs={[
+                {
+                  id: 'events',
+                  label: 'Event plan',
+                  content: (
+                    <EventCategoryPlanView
+                      key={locationKey}
+                      lat={currentLocation.lat}
+                      lon={currentLocation.lon}
+                      cityName={currentLocation.name}
+                    />
+                  ),
+                },
                 {
                   id: 'darksky',
                   label: 'Dark-sky trips',

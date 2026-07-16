@@ -6,6 +6,15 @@ import { recipeKeyForEventKind } from '../lib/cameraRecipes'
 import { CameraRecipe } from '../components/CameraRecipe'
 import { getDefaultDevice, CAMERA_PROFILES } from '../lib/cameraProfiles'
 import { trackEvent } from '../lib/analytics'
+import {
+  dismissEquipmentPrompt,
+  EQUIPMENT_OPTIONS,
+  getEquipmentChoice,
+  recordLocalTargetTap,
+  saveEquipmentChoice,
+  shouldAskForEquipment,
+  type EquipmentChoice,
+} from '../lib/firstPlanJourney'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
@@ -33,6 +42,27 @@ function formatDarknessWindow(window: TonightPlan['darknessWindow']): string | n
   return `Astronomically dark ${formatTime(window.astronomicalDuskAt)}–${formatTime(window.astronomicalDawnAt)}`
 }
 
+function whatYouWouldSee(target: TonightPlan['targets'][number]): string {
+  if (target.kind === 'iss_pass' || target.kind === 'satellite_flare') {
+    return 'You would see a bright point moving steadily across the sky for a few minutes.'
+  }
+  if (target.kind === 'deep_sky') {
+    return target.nakedEyeVisible
+      ? 'You would see a faint smudge or patch in a dark sky.'
+      : 'You would likely need binoculars or a telescope to see more than a faint patch.'
+  }
+  if (target.kind === 'meteor_shower') {
+    return 'You would wait under a dark sky for quick streaks of light, one at a time.'
+  }
+  if (target.kind === 'moon_phase' || target.kind === 'eclipse') {
+    return 'You would see the Moon clearly, with shape, shadow, or surface detail visible by eye.'
+  }
+  if (target.kind === 'planet_event' || target.kind === 'conjunction') {
+    return 'You would see one or more bright star-like points; binoculars may reveal nearby moons or separation.'
+  }
+  return target.nakedEyeVisible ? 'You would see it with your eyes as a bright or distinct sky feature.' : 'You would need optical help to see it well.'
+}
+
 // True during evening or morning twilight -- after the Sun sets (civil dusk)
 // but before it's fully dark (astronomical dusk), or the morning mirror of
 // that. Used to surface the twilight-sky camera recipe, which otherwise has
@@ -56,6 +86,9 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
   const [plan, setPlan] = useState<TonightPlan | null>(null)
   const [error, setError] = useState(false)
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null)
+  const [expandedPreview, setExpandedPreview] = useState<string | null>(null)
+  const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
+  const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
   const [showTwilightRecipe, setShowTwilightRecipe] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const compass = useDeviceCompass()
@@ -120,6 +153,26 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
   const hasDirectionalTargets = plan.targets.some((target) => target.direction !== null)
   const twilightNow = isTwilightNow(plan.darknessWindow, new Date())
 
+  function expandTarget(target: TonightPlan['targets'][number]) {
+    recordLocalTargetTap(target, 'tonight', city.name)
+    trackEvent('Tapped visible target', { targetId: target.eventId, title: target.title, kind: target.kind, source: 'tonight' })
+    setExpandedPreview((current) => (current === target.eventId ? null : target.eventId))
+    if (!equipment && shouldAskForEquipment()) setShowEquipmentPrompt(true)
+  }
+
+  function chooseEquipment(choice: EquipmentChoice) {
+    saveEquipmentChoice(choice)
+    setEquipment(choice)
+    setShowEquipmentPrompt(false)
+    trackEvent('Answered equipment prompt', { choice, source: 'tonight' })
+  }
+
+  function skipEquipment() {
+    dismissEquipmentPrompt()
+    setShowEquipmentPrompt(false)
+    trackEvent('Skipped equipment prompt', { source: 'tonight' })
+  }
+
   return (
     <section className="widget-section">
       <h2>Tonight near {city.name}</h2>
@@ -141,6 +194,25 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
         )}
         {darknessLabel && <p className="tonight-darkness">{darknessLabel}</p>}
       </div>
+
+      {showEquipmentPrompt && (
+        <div className="equipment-prompt">
+          <div>
+            <strong>What do you have with you?</strong>
+            <span>Atlas will adjust tonight&apos;s plan from now on.</span>
+          </div>
+          <div className="equipment-prompt-options">
+            {EQUIPMENT_OPTIONS.map((option) => (
+              <button type="button" key={option.id} onClick={() => chooseEquipment(option.id)}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="equipment-prompt-skip" onClick={skipEquipment}>
+            Skip for now
+          </button>
+        </div>
+      )}
 
       {plan.generalPhotoWindow && (
         <div className="tonight-target">
@@ -195,27 +267,36 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
             {plan.targets.map((target) => {
               const recipeKey = recipeKeyForEventKind(target.kind)
               const expanded = expandedRecipe === target.eventId
+              const previewExpanded = expandedPreview === target.eventId
               return (
                 <li key={target.eventId} className="tonight-target">
-                  <div className="tonight-target-header">
-                    <span className="row-text">{target.title}</span>
-                    <span className="row-kind">{DIFFICULTY_LABEL[target.difficulty]}</span>
-                  </div>
-                  <p className="row-meta">
-                    {formatTime(target.bestTime)} · {target.phoneFriendly ? 'Phone-friendly' : 'Tough for a phone'} ·{' '}
-                    {target.nakedEyeVisible ? 'Naked-eye' : 'Needs binoculars or a scope'}
-                    {target.direction && (
-                      <>
-                        {' '}
-                        · {target.direction.compassLabel} ({Math.round(target.direction.altitudeDeg)}° up)
-                      </>
+                  <button
+                    type="button"
+                    className="tonight-target-main"
+                    onClick={() => expandTarget(target)}
+                    aria-expanded={previewExpanded}
+                  >
+                    <span className="tonight-target-header">
+                      <span className="row-text">{target.title}</span>
+                      <span className="row-kind">{DIFFICULTY_LABEL[target.difficulty]}</span>
+                    </span>
+                    <span className="row-meta">
+                      {formatTime(target.bestTime)} · {target.phoneFriendly ? 'Phone-friendly' : 'Tough for a phone'} ·{' '}
+                      {target.nakedEyeVisible ? 'Naked-eye' : 'Needs binoculars or a scope'}
+                      {target.direction && (
+                        <>
+                          {' '}
+                          · {target.direction.compassLabel} ({Math.round(target.direction.altitudeDeg)}° up)
+                        </>
+                      )}
+                    </span>
+                    {target.direction && compass.status === 'active' && compass.headingDeg != null && (
+                      <span className="tonight-target-turn">{turnInstruction(compass.headingDeg, target.direction.azimuthDeg)}</span>
                     )}
-                  </p>
-                  {target.direction && compass.status === 'active' && compass.headingDeg != null && (
-                    <p className="tonight-target-turn">{turnInstruction(compass.headingDeg, target.direction.azimuthDeg)}</p>
-                  )}
-                  <p className="tonight-target-reason">{target.reason}</p>
-                  <p className="tonight-target-reason">{target.viewingNote}</p>
+                    <span className="tonight-target-reason">{target.reason}</span>
+                    <span className="tonight-target-reason">{target.viewingNote}</span>
+                  </button>
+                  {previewExpanded && <p className="tonight-target-preview">{whatYouWouldSee(target)}</p>}
                   <div className="tonight-target-actions">
                     {recipeKey && (
                       <button
