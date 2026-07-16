@@ -21,7 +21,7 @@ import { DeepSkyPlannerView } from './views/DeepSkyPlannerView'
 import { EventCategoryPlanView } from './views/EventCategoryPlanView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
-import { useCurrentLocation } from './lib/currentLocation'
+import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { useAuth } from './lib/auth'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
@@ -64,13 +64,15 @@ function App() {
   const navigate = useNavigate()
   const view = PATH_VIEW[routerLocation.pathname] ?? 'tonight'
   const { user } = useAuth()
+  const alreadyEntered = user || localStorage.getItem(ENTERED_KEY) === '1'
+  const hasManualLocation = localStorage.getItem(MANUAL_LOCATION_KEY) != null
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
   // "History" defaults to the Archive tab, except right after logging an
   // attempt from Tonight, where it should open straight to Scrapbook --
   // see logAttempt below, and TabbedSection's defaultActiveId/key contract.
   const [historyDefaultTab, setHistoryDefaultTab] = useState<'archive' | 'scrapbook'>('archive')
-  const location = useLocationSeed()
+  const location = useLocationSeed({ autoRequest: !!alreadyEntered && !hasManualLocation })
   const motion = useParallax()
   const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
   const isMobile = useIsMobile()
@@ -87,10 +89,9 @@ function App() {
   // only for visitors who've already been through (or skipped) the landing
   // page, otherwise this would redirect away before they ever see it.
   useEffect(() => {
-    const alreadyEntered = user || localStorage.getItem(ENTERED_KEY) === '1'
     if (routerLocation.pathname === '/' && !isMobile && alreadyEntered) navigate(VIEW_PATH.tonight, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only redirect the bare landing path once isMobile/user is known
-  }, [isMobile, user])
+  }, [alreadyEntered, isMobile])
 
   // Remounts location-dependent views once per real location change (a
   // GPS fix arriving, or a manual pick) without thrashing on every minor
@@ -118,7 +119,7 @@ function App() {
   // validation notes on why the previous "/" -> app redirect wasn't
   // converting. Signed-in users and anyone who has already entered once
   // (flag persisted below) skip straight past this, same as before.
-  const showLanding = routerLocation.pathname === '/' && !user && localStorage.getItem(ENTERED_KEY) !== '1'
+  const showLanding = routerLocation.pathname === '/' && !user && !alreadyEntered
 
   function enterApp() {
     localStorage.setItem(ENTERED_KEY, '1')

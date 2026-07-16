@@ -2984,24 +2984,6 @@
   color: var(--text-h);
 }
 
-.landing-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 2px;
-}
-
-.landing-suggestions button {
-  font: 600 12px/1 var(--sans);
-  padding: 7px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
-}
-
 @media (max-width: 620px) {
   .landing-input-row {
     grid-template-columns: 1fr;

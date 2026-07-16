@@ -47,7 +47,7 @@ function writeCache(fix: CachedFix) {
 
 // Rounding to ~1 decimal degree (~11km) keeps the field stable across small
 // movements and avoids regenerating on every minor GPS jitter.
-export function useLocationSeed() {
+export function useLocationSeed({ autoRequest = true }: { autoRequest?: boolean } = {}) {
   const cached = readCache()
   const [seed, setSeed] = useState(cached ? hashSeed(`${cached.lat},${cached.lon}`) : DEFAULT_SEED)
   const [status, setStatus] = useState<LocationStatus>(cached ? 'granted' : 'idle')
@@ -95,9 +95,9 @@ export function useLocationSeed() {
   }, [])
 
   useEffect(() => {
+    if (!autoRequest) return
     requestLocation()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [autoRequest, requestLocation])
 
   // `requestLocation(true)` forces a fresh browser prompt (e.g. a "Retry"
   // button after a denial) bypassing the cache.

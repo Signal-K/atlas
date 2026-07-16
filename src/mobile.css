@@ -3253,24 +3253,6 @@
   margin: 0;
 }
 
-.dt-landing-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 2px;
-}
-
-.dt-landing-suggestions button {
-  font: 700 0.72rem/1 var(--dt-font-data);
-  padding: 8px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--dt-rule);
-  background: transparent;
-  color: var(--dt-ink-muted);
-  cursor: pointer;
-}
-
 .dt-landing-secondary {
   width: 100%;
   max-width: 400px;

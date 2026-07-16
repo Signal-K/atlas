@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { trackEvent } from '../lib/analytics'
 import { CITIES, type City } from '../lib/cities'
 import '../mobile.css'
@@ -28,7 +28,6 @@ function findCity(query: string): City | null {
 export function LandingPage({ isMobile, requestLocation, setManualLocation, onEnter }: LandingPageProps) {
   const [locationQuery, setLocationQuery] = useState('')
   const [error, setError] = useState('')
-  const suggestions = useMemo(() => CITIES.slice(0, 12), [])
 
   useEffect(() => {
     trackEvent('Viewed landing page', { isMobile })
@@ -45,14 +44,14 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
       return
     }
     setManualLocation(city)
-    trackEvent('Landing CTA clicked', { method: 'manual_city', city: city.name, isMobile })
+    trackEvent('Landing primary CTA clicked', { method: 'manual_city', city: city.name, isMobile })
     onEnter()
   }
 
   function enterWithBrowserLocation() {
     setManualLocation(null)
     requestLocation()
-    trackEvent('Landing CTA clicked', { method: 'browser_geolocation', isMobile })
+    trackEvent('Landing primary CTA clicked', { method: 'browser_geolocation', isMobile })
     onEnter()
   }
 
@@ -85,20 +84,6 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
         Use my current location
       </button>
       {error && <p className={isMobile ? 'dt-landing-error' : 'landing-error'}>{error}</p>}
-      <div className={isMobile ? 'dt-landing-suggestions' : 'landing-suggestions'} aria-label="Suggested cities">
-        {suggestions.map((city) => (
-          <button
-            type="button"
-            key={city.name}
-            onClick={() => {
-              setLocationQuery(city.name)
-              setError('')
-            }}
-          >
-            {city.name}
-          </button>
-        ))}
-      </div>
     </form>
   )
 
