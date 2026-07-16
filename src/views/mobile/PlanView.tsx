@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { KIND_LABELS } from '../../widgets/EventRow'
 import { isLocalEvent } from '../../lib/eventFilters'
-import { addGetReadyReminder, ensureNotificationPermission, listGetReadyReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
+import {
+  addGetReadyReminder,
+  ensureNotificationPermission,
+  listGetReadyReminders,
+  listPendingReminderFeedback,
+  recordReminderFeedback,
+  type GetReadyReminder,
+  type ReminderFeedbackOutcome,
+} from '../../lib/getReadyReminders'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
 import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
@@ -44,10 +52,12 @@ export function PlanView({
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
+  const [pendingFeedback, setPendingFeedback] = useState<GetReadyReminder[]>(() => listPendingReminderFeedback())
   const [selected, setSelected] = useState<SkyEvent | null>(null)
   const [status, setStatus] = useState('')
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
   const [toolPanel, setToolPanel] = useState<ToolPanel>(null)
+  const [feedbackNotes, setFeedbackNotes] = useState<Record<string, string>>({})
   const { pointActionFor, overlay: pointingOverlay } = useEventPointing(city)
 
   async function load() {
@@ -58,6 +68,7 @@ export function PlanView({
     setEvents(upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon)))
     setWatchlist(watched)
     setReminders(listGetReadyReminders())
+    setPendingFeedback(listPendingReminderFeedback())
   }
 
   useEffect(() => {
@@ -72,11 +83,14 @@ export function PlanView({
       })
     function refreshReminders() {
       setReminders(listGetReadyReminders())
+      setPendingFeedback(listPendingReminderFeedback())
     }
     window.addEventListener('atlas:get-ready-reminders-changed', refreshReminders)
+    window.addEventListener('atlas:reminder-feedback-changed', refreshReminders)
     return () => {
       cancelled = true
       window.removeEventListener('atlas:get-ready-reminders-changed', refreshReminders)
+      window.removeEventListener('atlas:reminder-feedback-changed', refreshReminders)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- city identity is the intended reload boundary
   }, [city])
@@ -126,8 +140,15 @@ export function PlanView({
     await addGetReadyReminder({
       eventId: event.id,
       title: event.title,
+      kind: event.kind,
+      target: event.target,
       startsAt: event.startsAt,
+      endsAt: event.endsAt,
       deviceName: CAMERA_PROFILES[getDefaultDevice()].name,
+      lat: city.lat,
+      lon: city.lon,
+      cloudCoverPct: advisoryFor(event)?.cloudCoverPct,
+      precipitationChancePct: advisoryFor(event)?.precipitationChancePct,
     })
     setReminders(listGetReadyReminders())
     setStatus(hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.')
@@ -138,6 +159,16 @@ export function PlanView({
     if (isWatching(watchlist, 'target', event.target)) await removeFromWatchlist('target', event.target)
     else await addToWatchlist('target', event.target)
     setWatchlist(await getWatchlist())
+  }
+
+  function submitFeedback(reminder: GetReadyReminder, outcome: ReminderFeedbackOutcome) {
+    recordReminderFeedback(reminder.id, {
+      outcome,
+      note: feedbackNotes[reminder.id]?.trim() || undefined,
+    })
+    setPendingFeedback(listPendingReminderFeedback())
+    setStatus(outcome === 'saw_it' ? 'Sighting logged. Atlas will trust harder targets a little more.' : 'Feedback saved.')
+    trackEvent('Submitted reminder feedback', { outcome, target: reminder.title, kind: reminder.kind })
   }
 
   const selectedReminder = selected ? reminders.find((reminder) => reminder.eventId === selected.id) : null
@@ -212,6 +243,41 @@ export function PlanView({
               })}
             </div>
           )}
+        </section>
+      )}
+
+      {pendingFeedback.length > 0 && (
+        <section className="mobile-card mobile-feedback-checkin">
+          <div className="mobile-card-eyebrow">After your window</div>
+          <h3>Did you see it?</h3>
+          {pendingFeedback.slice(0, 3).map((reminder) => (
+            <div className="mobile-feedback-card" key={reminder.id}>
+              <div>
+                <strong>{reminder.title}</strong>
+                <span>
+                  {new Date(reminder.startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                  {reminder.skippedReason ? ' · weather blocked the nudge' : ''}
+                </span>
+              </div>
+              <div className="mobile-feedback-actions">
+                <button type="button" onClick={() => submitFeedback(reminder, 'saw_it')}>
+                  Saw it
+                </button>
+                <button type="button" onClick={() => submitFeedback(reminder, 'partial')}>
+                  Partially
+                </button>
+                <button type="button" onClick={() => submitFeedback(reminder, 'clouded_out')}>
+                  Clouded out
+                </button>
+              </div>
+              <textarea
+                value={feedbackNotes[reminder.id] ?? ''}
+                onChange={(event) => setFeedbackNotes((current) => ({ ...current, [reminder.id]: event.target.value }))}
+                placeholder="Optional note"
+                rows={2}
+              />
+            </div>
+          ))}
         </section>
       )}
 

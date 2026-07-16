@@ -68,8 +68,14 @@ export function DeepSkyPlannerView({ lat, lon }: { lat: number; lon: number }) {
     await addGetReadyReminder({
       eventId: target.eventId,
       title: target.title,
+      kind: target.kind,
+      target: target.title,
       startsAt: target.bestTime,
+      endsAt: new Date(new Date(target.bestTime).getTime() + 45 * 60_000).toISOString(),
       deviceName: CAMERA_PROFILES[device].name,
+      lat,
+      lon,
+      directionLabel: target.direction ? `${target.direction.compassLabel}, ${Math.round(target.direction.altitudeDeg)} degrees up` : undefined,
     })
     setReminderMessage(
       hasPermission

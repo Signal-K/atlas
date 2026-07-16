@@ -60,8 +60,15 @@ export function EventsView({ city, onLogAttempt }: { city: CurrentLocation; onLo
     await addGetReadyReminder({
       eventId: event.id,
       title: event.title,
+      kind: event.kind,
+      target: event.target,
       startsAt: event.startsAt,
+      endsAt: event.endsAt,
       deviceName: CAMERA_PROFILES[getDefaultDevice()].name,
+      lat: city.lat,
+      lon: city.lon,
+      cloudCoverPct: advisoryFor(event)?.cloudCoverPct,
+      precipitationChancePct: advisoryFor(event)?.precipitationChancePct,
     })
     setReminders(listGetReadyReminders())
     trackEvent('Added get ready reminder', { target: event.title, hasPermission, source: 'mobile_events' })
