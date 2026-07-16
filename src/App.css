@@ -1301,6 +1301,75 @@
   width: auto;
 }
 
+.signup-welcome-beat {
+  text-align: center;
+  animation: signup-welcome-pop 0.32s ease-out both;
+}
+
+.signup-welcome-beat small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.signup-welcome-orbit {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 18px;
+  border: 1px solid var(--accent-border);
+  border-radius: 50%;
+}
+
+.signup-welcome-orbit::before {
+  content: '';
+  position: absolute;
+  inset: 23px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 24px rgba(110, 192, 227, 0.42);
+}
+
+.signup-welcome-orbit span {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: 50%;
+  animation: signup-welcome-orbit 3s linear infinite;
+}
+
+.signup-welcome-orbit span:nth-child(2) {
+  inset: 14px;
+  animation-duration: 2.2s;
+  animation-direction: reverse;
+}
+
+.signup-welcome-orbit span:nth-child(3) {
+  inset: 0;
+  animation-duration: 4.6s;
+}
+
+@keyframes signup-welcome-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes signup-welcome-orbit {
+  from {
+    transform: rotate(0deg) scaleX(1);
+  }
+  to {
+    transform: rotate(360deg) scaleX(0.72);
+  }
+}
+
 .onboarding-skip {
   display: block;
   margin: 16px auto 0;

@@ -10,6 +10,7 @@ import {
   type WatchlistItem,
 } from '../lib/watchlist'
 import { SignupWallModal } from '../components/SignupWallModal'
+import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
 import { useSignupWall } from '../lib/useSignupWall'
 
 export const EVENT_KINDS = [
@@ -31,6 +32,7 @@ function WatchlistWidget() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[] | null>(null)
   const [targets, setTargets] = useState<string[]>([])
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
+  const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const signupWall = useSignupWall()
 
   async function refresh() {
@@ -64,10 +66,21 @@ function WatchlistWidget() {
           onDismiss={signupWall.dismiss}
           onSignedUp={(mergedCount) => {
             signupWall.complete()
-            setMergeStatus(
-              mergedCount > 0 ? `Account created — brought over ${mergedCount} saved item${mergedCount === 1 ? '' : 's'}.` : 'Account created.',
-            )
+            setWelcomeMergedCount(mergedCount)
             refresh()
+          }}
+        />
+      )}
+      {welcomeMergedCount != null && (
+        <SignupWelcomeBeat
+          mergedCount={welcomeMergedCount}
+          onDone={() => {
+            setMergeStatus(
+              welcomeMergedCount > 0
+                ? `Account created — brought over ${welcomeMergedCount} saved item${welcomeMergedCount === 1 ? '' : 's'}.`
+                : 'Account created.',
+            )
+            setWelcomeMergedCount(null)
           }}
         />
       )}

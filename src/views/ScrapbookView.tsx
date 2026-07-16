@@ -11,6 +11,7 @@ import { trackEvent } from '../lib/analytics'
 import type { ObservationDraft } from '../lib/observationDraft'
 import { downloadObservationsCsv } from '../lib/observationExport'
 import { SignupWallModal } from '../components/SignupWallModal'
+import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
 import { useSignupWall } from '../lib/useSignupWall'
 
 // Entries made while signed out are scoped to this fixed local id so the
@@ -43,6 +44,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [photo, setPhoto] = useState<File | null>(null)
   const [shareStatus, setShareStatus] = useState<{ entryId: string; message: string } | null>(null)
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
+  const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const signupWall = useSignupWall()
 
   async function refresh() {
@@ -144,10 +146,21 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
           onDismiss={signupWall.dismiss}
           onSignedUp={(mergedCount) => {
             signupWall.complete()
-            setMergeStatus(
-              mergedCount > 0 ? `Account created — brought over ${mergedCount} saved item${mergedCount === 1 ? '' : 's'}.` : 'Account created.',
-            )
+            setWelcomeMergedCount(mergedCount)
             refresh()
+          }}
+        />
+      )}
+      {welcomeMergedCount != null && (
+        <SignupWelcomeBeat
+          mergedCount={welcomeMergedCount}
+          onDone={() => {
+            setMergeStatus(
+              welcomeMergedCount > 0
+                ? `Account created — brought over ${welcomeMergedCount} saved item${welcomeMergedCount === 1 ? '' : 's'}.`
+                : 'Account created.',
+            )
+            setWelcomeMergedCount(null)
           }}
         />
       )}
