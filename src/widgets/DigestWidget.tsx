@@ -4,7 +4,7 @@ import { listDiscoveries, type Discovery } from '../lib/discoveries'
 
 const WEEK_MS = 7 * 86_400_000
 
-function DigestWidget() {
+export function DigestWidget() {
   const [top, setTop] = useState<Discovery[] | null>(null)
 
   useEffect(() => {

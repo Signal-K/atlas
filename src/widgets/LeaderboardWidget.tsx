@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { registerWidget } from './registry'
 import { listLeaderboard, type LeaderboardEntry } from '../lib/leaderboard'
 
-function LeaderboardWidget() {
+export function LeaderboardWidget() {
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null)
 
   useEffect(() => {

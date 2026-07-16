@@ -6,6 +6,8 @@
 // So the minimum geomagnetic latitude for visibility at this Kp is encoded
 // in the `target` string (parsed back out client-side in tonightTargets.ts)
 // rather than requiring a schema change for a new numeric field.
+import { searchCommonsImage } from './commons-image.mjs'
+
 const KP_FORECAST_URL = 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json'
 
 // Only worth surfacing from Kp 5 (minor storm) up -- below that, aurora is
@@ -28,6 +30,10 @@ export async function fetchEvents({ now = new Date() } = {}) {
   // UTC timestamp without a "Z" suffix -- ISO-parseable once appended).
   const rows = await res.json()
 
+  // No fixed aurora photo makes sense (every storm looks different) -- one
+  // representative real photo beats a blank cover image on every card.
+  const image = await searchCommonsImage('aurora borealis night sky')
+
   const events = []
   for (const row of rows) {
     const startsAt = new Date(`${row.time_tag}Z`)
@@ -47,8 +53,8 @@ export async function fetchEvents({ now = new Date() } = {}) {
       content: `A geomagnetic storm (Kp ${kp.toFixed(1)}) is forecast. If you're at or above about ${latThreshold}° latitude (north or south), look toward the poleward horizon after dark for a green or red glow -- a phone in night mode on a tripod often picks up color the naked eye can't.`,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
-      image_url: '',
-      image_credit: 'NOAA Space Weather Prediction Center',
+      image_url: image?.url ?? '',
+      image_credit: image?.credit ?? 'NOAA Space Weather Prediction Center',
     })
   }
 

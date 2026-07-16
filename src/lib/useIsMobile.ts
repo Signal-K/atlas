@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 
-// Matches the mobile breakpoint already used throughout App.css (see the
-// comment on the max-width: 640px block there).
-const QUERY = '(max-width: 640px)'
+// The Atlas mobile app shell should be used for phones, tablet-ish browser
+// widths, and installed/touch-first contexts. The desktop shell remains for
+// full-width desktop where the sidebar layout has room to breathe.
+const QUERY = '(max-width: 1180px), (pointer: coarse)'
 
 export function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia(QUERY).matches)

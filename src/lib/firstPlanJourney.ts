@@ -75,3 +75,24 @@ export function dismissEquipmentPrompt() {
 export function shouldAskForEquipment(): boolean {
   return listLocalTargetTaps().length > 0 && !getEquipmentChoice() && localStorage.getItem(EQUIPMENT_PROMPT_DISMISSED_KEY) !== '1'
 }
+
+export function describeWhatYouWouldSee(target: TonightTarget): string {
+  if (target.kind === 'iss_pass' || target.kind === 'satellite_flare') {
+    return 'You would see a bright point moving steadily across the sky for a few minutes.'
+  }
+  if (target.kind === 'deep_sky') {
+    return target.nakedEyeVisible
+      ? 'You would see a faint smudge or patch in a dark sky.'
+      : 'You would likely need binoculars or a telescope to see more than a faint patch.'
+  }
+  if (target.kind === 'meteor_shower') {
+    return 'You would wait under a dark sky for quick streaks of light, one at a time.'
+  }
+  if (target.kind === 'moon_phase' || target.kind === 'eclipse') {
+    return 'You would see the Moon clearly, with shape, shadow, or surface detail visible by eye.'
+  }
+  if (target.kind === 'planet_event' || target.kind === 'conjunction') {
+    return 'You would see one or more bright star-like points; binoculars may reveal nearby moons or separation.'
+  }
+  return target.nakedEyeVisible ? 'You would see it with your eyes as a bright or distinct sky feature.' : 'You would need optical help to see it well.'
+}

@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react'
-import { CAMERA_PROFILES, getDefaultDevice, setDefaultDevice, type DeviceId } from '../lib/cameraProfiles'
-import { CAMERA_RECIPES, type RecipeKey } from '../lib/cameraRecipes'
+import {
+  CAMERA_PROFILES,
+  MAKER_LABELS,
+  MAKER_ORDER,
+  getDefaultDevice,
+  makerForDevice,
+  modelsForMaker,
+  setDefaultDevice,
+  type DeviceId,
+  type DeviceMaker,
+} from '../lib/cameraProfiles'
+import { CAMERA_RECIPES, deviceRecipeFor, type RecipeKey } from '../lib/cameraRecipes'
 import { trackEvent } from '../lib/analytics'
 import { importPresetFile, PresetImportError, recommendPresetsForTarget } from '../lib/cameraPresets'
 import type { CameraPreset } from '../lib/db'
 import { useAuth } from '../lib/auth'
 import { gearAffiliateUrl } from '../lib/affiliate'
+import { createPresetBundle, downloadPresetBundle } from '../lib/presetBundles'
 
 const TRIPOD_LABEL: Record<string, string> = {
   required: 'Tripod required',
@@ -13,13 +24,42 @@ const TRIPOD_LABEL: Record<string, string> = {
   optional: 'Tripod optional',
 }
 
-const DEVICE_ORDER: DeviceId[] = ['iphone-16-pro', 'nothing-phone-3a', 'generic']
 const LOCAL_USER_ID = 'local'
+
+const SETUP_STEPS: Record<DeviceMaker, string[]> = {
+  apple: [
+    'Open Camera and choose the lens listed below before the target rises.',
+    'iOS does not install generic web preset files into Camera, so use the downloaded Atlas bundle as a setup card.',
+    'Lock the phone on a tripod, start the capture early, and avoid touching the screen during exposure.',
+  ],
+  google: [
+    'Open Pixel Camera and choose Night Sight for dark sky work.',
+    'Put the phone on a tripod or stable support so Astrophotography can engage when available.',
+    'Use the downloaded Atlas bundle as the setup card; Pixel Camera does not install third-party web preset files.',
+  ],
+  nothing: [
+    'Open Nothing Camera before the event and select the lens below. Use the main camera for dark sky, ISS, meteors, and Milky Way attempts.',
+    'For Moon or bright planets, use the telephoto lens if your model has one, then reduce exposure until highlights stop blooming.',
+    'Download the Atlas preset bundle now; native Nothing Camera installation needs a confirmed import format or backend mapper.',
+  ],
+  samsung: [
+    'Open Camera Pro mode or Expert RAW if available.',
+    'Copy the exposure/focus guidance below into Pro controls.',
+    'Save the setup in Samsung where the app allows it; Atlas also downloads the bundle for reuse.',
+  ],
+  other: [
+    'Open your camera app, enable Night mode if available, and select the main lens.',
+    'If your camera has manual controls, copy the exposure and focus guidance below.',
+    'Brace the phone or use a tripod; stability matters more than zoom.',
+  ],
+}
 
 export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
   const { user } = useAuth()
   const scopeId = user?.id ?? LOCAL_USER_ID
-  const [device, setDevice] = useState<DeviceId>(() => getDefaultDevice())
+  const initialDevice = getDefaultDevice()
+  const [device, setDevice] = useState<DeviceId>(initialDevice)
+  const [maker, setMaker] = useState<DeviceMaker>(() => makerForDevice(initialDevice))
   const [presets, setPresets] = useState<CameraPreset[]>([])
   const [importError, setImportError] = useState<string | null>(null)
 
@@ -53,21 +93,59 @@ export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
 
   function selectDevice(id: DeviceId) {
     setDevice(id)
+    setMaker(makerForDevice(id))
     setDefaultDevice(id)
     trackEvent('Changed device profile', { device: id })
   }
 
+  function selectMaker(next: DeviceMaker) {
+    setMaker(next)
+    selectDevice(modelsForMaker(next)[0].id)
+  }
+
   const recipe = CAMERA_RECIPES[recipeKey]
-  const deviceRecipe = recipe.devices[device]
+  const deviceRecipe = deviceRecipeFor(recipeKey, device)
+  const profile = CAMERA_PROFILES[device]
+  const bundle = createPresetBundle(recipeKey, device)
   const tripodShopUrl = gearAffiliateUrl('phone tripod astrophotography')
 
   return (
     <div className="camera-recipe">
-      <div className="filter-tabs">
-        {DEVICE_ORDER.map((id) => (
-          <button key={id} type="button" className={device === id ? 'is-active' : ''} onClick={() => selectDevice(id)}>
-            {CAMERA_PROFILES[id].name}
-          </button>
+      <div className="camera-device-flow">
+        <span className="camera-flow-label">1. Phone maker</span>
+        <div className="filter-tabs camera-maker-tabs">
+          {MAKER_ORDER.map((id) => (
+            <button key={id} type="button" className={maker === id ? 'is-active' : ''} onClick={() => selectMaker(id)}>
+              {MAKER_LABELS[id]}
+            </button>
+          ))}
+        </div>
+
+        <label className="camera-model-select">
+          <span className="camera-flow-label">2. Model</span>
+          <select value={device} onChange={(event) => selectDevice(event.target.value as DeviceId)}>
+            {modelsForMaker(maker).map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="camera-preset-download">
+        <div>
+          <span className="camera-flow-label">3. Preset bundle</span>
+          <p>{bundle.install.notes}</p>
+        </div>
+        <button type="button" onClick={() => downloadPresetBundle(recipeKey, device)}>
+          Download Atlas preset
+        </button>
+      </div>
+
+      <div className="camera-mode-summary">
+        {profile.supportedModes.slice(0, 3).map((mode) => (
+          <span key={mode}>{mode}</span>
         ))}
       </div>
 
@@ -100,13 +178,22 @@ export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
         </div>
       </dl>
 
+      <div className="camera-recipe-setup">
+        <h4>Set up {profile.name}</h4>
+        <ol>
+          {SETUP_STEPS[maker].map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </div>
+
       <p className="camera-recipe-tip">{recipe.compositionTip}</p>
       <p className="camera-recipe-expected">Expect: {recipe.expectedResult}</p>
 
       <div className="camera-recipe-presets">
-        <h4>Recommended presets for this device</h4>
+        <h4>Recommended presets for this model</h4>
         <ul className="camera-recipe-preset-list">
-          {presets.map((preset) => (
+          {presets.slice(0, 4).map((preset) => (
             <li key={preset.id} className={preset.source === 'builtin' ? 'is-builtin' : 'is-custom'}>
               <span className="camera-recipe-preset-name">{preset.name}</span>
               <span className="camera-recipe-preset-source">{preset.source}</span>
@@ -117,11 +204,19 @@ export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
           ))}
         </ul>
 
-        <label className="camera-recipe-import">
-          Import a preset file
-          <input type="file" accept="application/json,.json" onChange={(e) => handleImportFile(e.target.files)} />
-        </label>
-        {importError && <p className="camera-recipe-import-error">{importError}</p>}
+        {maker !== 'nothing' ? (
+          <>
+            <label className="camera-recipe-import">
+              Import an Atlas preset file
+              <input type="file" accept="application/json,.json,.atlas-preset" onChange={(e) => handleImportFile(e.target.files)} />
+            </label>
+            {importError && <p className="camera-recipe-import-error">{importError}</p>}
+          </>
+        ) : (
+          <p className="camera-recipe-import-error">
+            Nothing preset bundles download from Atlas now. Native Nothing Camera install requires a confirmed import format or a PocketBase mapper.
+          </p>
+        )}
       </div>
     </div>
   )

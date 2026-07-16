@@ -47,9 +47,9 @@ export const COMMUNITY_PRESET_SEEDS: CommunityPresetSeed[] = [
     notes: 'The Moon is far brighter than the surrounding sky is metered for -- a fast shutter at base ISO avoids the blown-out disc that auto-exposure produces.',
   },
   {
-    id: 'community-meteor_shower-generic-1',
+    id: 'community-meteor_shower-other-phone-1',
     targetKey: 'meteor_shower',
-    device: 'generic',
+    device: 'other-phone',
     name: 'Wide-field meteor capture (repeated frames)',
     settings: { mode: 'Night mode, repeated', lens: 'Main', exposureSec: 15 },
     notes: 'Community advice for basic phones without full manual control: prioritise a wide field of view and volume of frames over any single frame being perfect.',

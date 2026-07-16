@@ -17,22 +17,55 @@ services:
       retries: 5
       start_period: 15s
 
+  # Default `make up` target: the actual Vite dev server (Dockerfile's `dev`
+  # stage) with the repo bind-mounted in, so source edits on the host are
+  # picked up live via Vite's file watcher -- no image rebuild, ever. The
+  # node_modules named volume shadows the host's (possibly absent/stale)
+  # node_modules with the one `npm ci` produced inside the image.
   atlas:
     build:
       context: .
-      args:
-        # Browser-facing URL (client-side SPA), not the docker-internal hostname —
-        # the backend's published host port, matching its "backend" service above.
-        VITE_PB_URL: ${ATLAS_PB_URL:-http://localhost:8094}
+      target: dev
+    environment:
+      VITE_PB_URL: ${ATLAS_PB_URL:-http://localhost:8094}
     ports:
-      - "4179:4173"
+      - "4179:5173"
+    volumes:
+      - .:/app
+      - atlas_node_modules:/app/node_modules
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # Opt-in production-parity check: the real `npm run build` + `vite preview`
+  # image, same as `atlas` built before this change. Not started by `make
+  # up` -- only `make preview` (profile-gated so plain `docker compose up`
+  # can't accidentally start two atlas containers on the same port).
+  atlas-preview:
+    profiles: ["preview"]
+    build:
+      context: .
+      target: runner
+      args:
+        VITE_PB_URL: ${ATLAS_PB_URL:-http://localhost:8094}
+    ports:
+      - "4180:4173"
+    depends_on:
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4173"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
+
+volumes:
+  atlas_node_modules:

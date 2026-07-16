@@ -1,0 +1,324 @@
+import { useEffect, useMemo, useState } from 'react'
+import { KIND_LABELS } from '../../widgets/EventRow'
+import { isLocalEvent } from '../../lib/eventFilters'
+import { addGetReadyReminder, ensureNotificationPermission, listGetReadyReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
+import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
+import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
+import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
+import { addToWatchlist, getWatchlist, isWatching, matchesWatchlist, removeFromWatchlist, type WatchlistItem } from '../../lib/watchlist'
+import { fetchViewingAdvisory, type DailyViewingAdvisory } from '../../lib/weather'
+import { scoreTonight, type TonightRating } from '../../lib/tonightScore'
+import { trackEvent } from '../../lib/analytics'
+import { moonIlluminationPctAt } from '../../lib/moonPhase'
+import { formatEventDate, daysUntil } from '../../lib/eventFormat'
+import { DarkSitesPanel, darkSitesSummary } from '../../components/mobile/DarkSitesPanel'
+import { GearFitPanel, defaultGearFitSummary } from '../../components/mobile/GearFitPanel'
+import { EventDetailPanel } from '../../components/mobile/EventDetailPanel'
+import { useEventPointing } from '../../components/mobile/EventPointing'
+import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
+import { MobileIcon } from '../../components/mobile/MobileIcon'
+import type { CurrentLocation } from '../../lib/currentLocation'
+import type { SkyEvent } from '../../lib/db'
+import type { ObservationDraft } from '../../lib/observationDraft'
+import { WatchView } from './WatchView'
+
+type PlanMode = 'ready' | 'watchlist' | 'calendar' | 'browse'
+type ToolPanel = 'dark-sites' | 'gear-fit' | null
+
+function ratingToStatus(rating: TonightRating): 'go' | 'marginal' | 'poor' {
+  if (rating === 'great' || rating === 'good') return 'go'
+  if (rating === 'maybe') return 'marginal'
+  return 'poor'
+}
+
+export function PlanView({
+  city,
+  onOpenEvents,
+  onLogAttempt,
+}: {
+  city: CurrentLocation
+  onOpenEvents: () => void
+  onLogAttempt: (draft: ObservationDraft) => void
+}) {
+  const [mode, setMode] = useState<PlanMode>('browse')
+  const [events, setEvents] = useState<SkyEvent[] | null>(null)
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+  const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
+  const [selected, setSelected] = useState<SkyEvent | null>(null)
+  const [status, setStatus] = useState('')
+  const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
+  const [toolPanel, setToolPanel] = useState<ToolPanel>(null)
+  const { pointActionFor, overlay: pointingOverlay } = useEventPointing(city)
+
+  async function load() {
+    await pullSkyEvents()
+    const now = new Date()
+    const planEnd = new Date(now.getTime() + 90 * 86_400_000)
+    const [upcoming, watched] = await Promise.all([getEventsInRange(now, planEnd), getWatchlist()])
+    setEvents(upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon)))
+    setWatchlist(watched)
+    setReminders(listGetReadyReminders())
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    load()
+    fetchViewingAdvisory(city.lat, city.lon, 7)
+      .then((days) => {
+        if (!cancelled) setAdvisory(days)
+      })
+      .catch(() => {
+        if (!cancelled) setAdvisory([])
+      })
+    function refreshReminders() {
+      setReminders(listGetReadyReminders())
+    }
+    window.addEventListener('atlas:get-ready-reminders-changed', refreshReminders)
+    return () => {
+      cancelled = true
+      window.removeEventListener('atlas:get-ready-reminders-changed', refreshReminders)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- city identity is the intended reload boundary
+  }, [city])
+
+  const plannedEvents = useMemo(() => {
+    const reminderIds = new Set(reminders.map((reminder) => reminder.eventId))
+    return (events ?? [])
+      .filter((event) => reminderIds.has(event.id) || matchesWatchlist(event, watchlist))
+      .filter((event) => new Date(event.startsAt).getTime() <= Date.now() + 7 * 86_400_000)
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+      .slice(0, 5)
+  }, [events, reminders, watchlist])
+
+  const calendarGroups = useMemo(() => {
+    const reminderIds = new Set(reminders.map((reminder) => reminder.eventId))
+    const planned = (events ?? [])
+      .filter((event) => reminderIds.has(event.id) || matchesWatchlist(event, watchlist))
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    const groups: Array<{ dateKey: string; events: SkyEvent[] }> = []
+    for (const event of planned) {
+      const dateKey = event.startsAt.slice(0, 10)
+      const last = groups[groups.length - 1]
+      if (last?.dateKey === dateKey) last.events.push(event)
+      else groups.push({ dateKey, events: [event] })
+    }
+    return groups
+  }, [events, reminders, watchlist])
+
+  function advisoryFor(event: SkyEvent): DailyViewingAdvisory | null {
+    return advisory.find((day) => day.date === event.startsAt.slice(0, 10)) ?? null
+  }
+
+  function statusForEvent(event: SkyEvent): 'go' | 'marginal' | 'poor' | null {
+    const day = advisoryFor(event)
+    if (!day) return null
+    const { rating } = scoreTonight({
+      cloudCoverPct: day.cloudCoverPct,
+      precipitationChancePct: day.precipitationChancePct,
+      moonIlluminationPct: 50,
+      hasBrightTarget: true,
+    })
+    return ratingToStatus(rating)
+  }
+
+  async function addReminder(event: SkyEvent) {
+    const hasPermission = await ensureNotificationPermission()
+    await addGetReadyReminder({
+      eventId: event.id,
+      title: event.title,
+      startsAt: event.startsAt,
+      deviceName: CAMERA_PROFILES[getDefaultDevice()].name,
+    })
+    setReminders(listGetReadyReminders())
+    setStatus(hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.')
+    trackEvent('Added get ready reminder', { target: event.title, hasPermission, source: 'mobile_plan' })
+  }
+
+  async function toggleWatch(event: SkyEvent) {
+    if (isWatching(watchlist, 'target', event.target)) await removeFromWatchlist('target', event.target)
+    else await addToWatchlist('target', event.target)
+    setWatchlist(await getWatchlist())
+  }
+
+  const selectedReminder = selected ? reminders.find((reminder) => reminder.eventId === selected.id) : null
+  const selectedRecipeKey = selected ? recipeKeyForEventKind(selected.kind) : null
+  const selectedAdvisory = selected ? advisoryFor(selected) : null
+
+  const darkSites = useMemo(() => darkSitesSummary(city.lat, city.lon), [city.lat, city.lon])
+  const gearFit = useMemo(() => defaultGearFitSummary(), [])
+
+  if (toolPanel === 'dark-sites') {
+    return <DarkSitesPanel lat={city.lat} lon={city.lon} cityName={city.name} onBack={() => setToolPanel(null)} />
+  }
+
+  if (toolPanel === 'gear-fit') {
+    return <GearFitPanel onBack={() => setToolPanel(null)} />
+  }
+
+  return (
+    <div className="mobile-plan">
+      <section className="mobile-card mobile-plan-index">
+        <div className="mobile-plan-readout">
+          <span className="mobile-plan-readout-count">
+            <span className="mobile-plan-readout-dot" />
+            {(events ?? []).length} EVENTS
+          </span>
+          <span className="mobile-plan-readout-window">NEXT 90 DAYS</span>
+        </div>
+        <div className="mobile-community-tabs" aria-label="Plan sections">
+          <button type="button" className={mode === 'browse' ? 'is-active' : ''} onClick={() => setMode('browse')}>
+            Explore
+          </button>
+          <button type="button" className={mode === 'ready' ? 'is-active' : ''} onClick={() => setMode('ready')}>
+            Ready<span className="mobile-plan-tab-count">{plannedEvents.length}</span>
+          </button>
+          <button type="button" className={mode === 'watchlist' ? 'is-active' : ''} onClick={() => setMode('watchlist')}>
+            Watch
+          </button>
+          <button type="button" className={mode === 'calendar' ? 'is-active' : ''} onClick={() => setMode('calendar')}>
+            Calendar
+          </button>
+        </div>
+        {status && <p className="planner-reminder-status">{status}</p>}
+      </section>
+
+      {mode === 'ready' && (
+        <section className="mobile-card">
+          <div className="mobile-card-eyebrow">Next 7 days near {city.name}</div>
+          {events === null ? (
+            <p className="mobile-empty-hint">Loading&hellip;</p>
+          ) : plannedEvents.length === 0 ? (
+            <div className="mobile-plan-empty">
+              <p className="mobile-empty-hint">Nothing planned yet. Watch an event type or find a specific event to prepare for.</p>
+              <button type="button" className="mobile-primary-button" onClick={onOpenEvents}>
+                Find events
+              </button>
+            </div>
+          ) : (
+            <div className="mobile-mini-list">
+              {plannedEvents.map((event) => {
+                const reminder = reminders.find((item) => item.eventId === event.id)
+                const recipeKey = recipeKeyForEventKind(event.kind)
+                return (
+                  <button type="button" className="mobile-mini-row mobile-plan-row" key={event.id} onClick={() => setSelected(event)}>
+                    <span className="mobile-event-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>
+                    <span className="mobile-mini-row-name">{event.title}</span>
+                    <span className="mobile-mini-row-meta">{daysUntil(event.startsAt)}</span>
+                    <span className="mobile-plan-row-status">
+                      {reminder ? 'Reminder set' : 'Needs reminder'} · {recipeKey ? 'Setup ready' : 'Check gear'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {mode === 'watchlist' && <WatchView city={city} />}
+
+      {mode === 'calendar' && (
+        <section className="mobile-card">
+          <div className="mobile-card-eyebrow">Planned calendar</div>
+          {events === null ? (
+            <p className="mobile-empty-hint">Loading&hellip;</p>
+          ) : calendarGroups.length === 0 ? (
+            <p className="mobile-empty-hint">No planned or watched events in the next 90 days.</p>
+          ) : (
+            <div className="mobile-plan-calendar">
+              {calendarGroups.map((group) => {
+                const date = new Date(`${group.dateKey}T00:00:00`)
+                return (
+                  <section className="mobile-plan-day" key={group.dateKey}>
+                    <div className="mobile-plan-day-stamp">
+                      <strong>{date.getDate()}</strong>
+                      <span>{date.toLocaleDateString(undefined, { month: 'short', weekday: 'short' })}</span>
+                    </div>
+                    <div className="mobile-mini-list">
+                      {group.events.map((event) => (
+                        <button type="button" className="mobile-mini-row mobile-plan-row" key={event.id} onClick={() => setSelected(event)}>
+                          <span className="mobile-event-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>
+                          <span className="mobile-mini-row-name">{event.title}</span>
+                          <span className="mobile-mini-row-meta">{formatEventDate(event.startsAt)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {mode === 'browse' && (
+        <>
+          <SkyEventBrowser events={events} onSelect={setSelected} statusForEvent={statusForEvent} />
+
+          <section className="mobile-card">
+            <div className="mobile-card-eyebrow">Planning tools</div>
+            <div className="mobile-tool-cards">
+              <button type="button" className="mobile-tool-card" onClick={() => setToolPanel('dark-sites')}>
+                <span className="mobile-tool-card-icon mobile-tool-card-icon--rust">
+                  <MobileIcon name="mountain" />
+                </span>
+                <span className="mobile-tool-card-body">
+                  <strong>Dark sites</strong>
+                  <span>Nearest dark-sky trip options</span>
+                  <span className="mobile-tool-card-meta">
+                    {darkSites.count} SITES · {darkSites.nearestMinutes ?? '—'} MIN
+                  </span>
+                </span>
+                <MobileIcon name="chevron" />
+              </button>
+              <button type="button" className="mobile-tool-card" onClick={() => setToolPanel('gear-fit')}>
+                <span className="mobile-tool-card-icon mobile-tool-card-icon--plum">
+                  <MobileIcon name="camera" />
+                </span>
+                <span className="mobile-tool-card-body">
+                  <strong>Gear fit</strong>
+                  <span>Frame a target with your lens</span>
+                  <span className="mobile-tool-card-meta">
+                    {gearFit.focalLength} MM · {gearFit.sensorLabel}
+                  </span>
+                </span>
+                <MobileIcon name="chevron" />
+              </button>
+            </div>
+          </section>
+        </>
+      )}
+
+      {selected && (
+        <EventDetailPanel
+          event={selected}
+          onClose={() => setSelected(null)}
+          bestViewingLabel={`${formatEventDate(selected.startsAt)} – ${new Date(selected.endsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}
+          relevance={isLocalEvent(selected, city.lat, city.lon) ? 'local' : 'global'}
+          conditions={{
+            moonPct: moonIlluminationPctAt(new Date(selected.startsAt)),
+            cloudPct: selectedAdvisory ? selectedAdvisory.cloudCoverPct : null,
+            rainPct: selectedAdvisory ? selectedAdvisory.precipitationChancePct : null,
+          }}
+          forecastUnavailableHint={selectedAdvisory ? undefined : 'Cloud/rain forecast unavailable this far out — check closer to the date.'}
+          watching={isWatching(watchlist, 'target', selected.target)}
+          onToggleWatch={() => toggleWatch(selected)}
+          reminderActive={!!selectedReminder}
+          onRemind={() => addReminder(selected)}
+          point={pointActionFor(selected)}
+          onLogAttempt={() =>
+            onLogAttempt({
+              eventId: selected.id,
+              targetName: selected.title,
+              deviceUsed: CAMERA_PROFILES[getDefaultDevice()].name,
+              cameraRecipeUsed: selectedRecipeKey ?? undefined,
+              locationLabel: city.name,
+            })
+          }
+          recipeKey={selectedRecipeKey}
+        />
+      )}
+      {pointingOverlay}
+    </div>
+  )
+}

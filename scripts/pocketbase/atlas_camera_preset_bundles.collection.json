@@ -1,0 +1,63 @@
+{
+  "name": "atlas_camera_preset_bundles",
+  "type": "base",
+  "system": false,
+  "schema": [
+    {
+      "name": "user",
+      "type": "relation",
+      "required": false,
+      "options": {
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": false,
+        "maxSelect": 1
+      }
+    },
+    {
+      "name": "target_key",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "device_maker",
+      "type": "select",
+      "required": true,
+      "options": {
+        "maxSelect": 1,
+        "values": ["apple", "google", "nothing", "samsung", "other"]
+      }
+    },
+    {
+      "name": "device_model",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "bundle",
+      "type": "json",
+      "required": true
+    },
+    {
+      "name": "native_install_supported",
+      "type": "bool",
+      "required": false
+    },
+    {
+      "name": "install_method",
+      "type": "select",
+      "required": true,
+      "options": {
+        "maxSelect": 1,
+        "values": ["atlas-json", "manual-copy", "shortcut-or-manual"]
+      }
+    }
+  ],
+  "indexes": [
+    "CREATE INDEX idx_atlas_camera_preset_bundles_target_device ON atlas_camera_preset_bundles (target_key, device_maker, device_model)"
+  ],
+  "listRule": "user = @request.auth.id || user = null",
+  "viewRule": "user = @request.auth.id || user = null",
+  "createRule": "@request.auth.id != ''",
+  "updateRule": "user = @request.auth.id",
+  "deleteRule": "user = @request.auth.id"
+}

@@ -1,23 +1,98 @@
-import { useEffect, useState } from 'react'
-import { BottomNav, type MobileTab } from './BottomNav'
+import { useEffect, useState, type ReactElement } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import '../mobile.css'
 import { HubView } from '../views/mobile/HubView'
 import { EventsView } from '../views/mobile/EventsView'
-import { CalendarView } from '../views/CalendarView'
-import { WatchView } from '../views/mobile/WatchView'
-import { ScrapbookView } from '../views/ScrapbookView'
+import { PlanView } from '../views/mobile/PlanView'
+import { JournalView } from '../views/mobile/JournalView'
 import { SettingsView } from '../views/SettingsView'
+import { signOut, useAuth } from '../lib/auth'
 import { applyTheme, getStoredTheme, getSystemTheme, storeTheme } from '../lib/theme'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
 import type { City } from '../lib/cities'
 import type { ObservationDraft } from '../lib/observationDraft'
 
-const TAB_LABEL: Record<MobileTab, string> = {
-  hub: 'HUB',
+export type MobileTab = 'hub' | 'events' | 'calendar' | 'journal'
+
+const ROUTES: Array<{ id: MobileTab; label: string; consoleClass: string; icon: ReactElement }> = [
+  {
+    id: 'hub',
+    label: 'Today',
+    consoleClass: 'tab-sky',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor">
+        <circle cx="10" cy="10" r="7" />
+        <path d="M10 3v3M10 14v3M3 10h3M14 10h3" />
+      </svg>
+    ),
+  },
+  {
+    id: 'events',
+    label: 'Events',
+    consoleClass: 'tab-events',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor">
+        <circle cx="10" cy="10" r="2.2" />
+        <path d="M10 2v3M10 15v3M2 10h3M15 10h3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'calendar',
+    label: 'Plan',
+    consoleClass: 'tab-plan',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor">
+        <rect x="3" y="4" width="14" height="13" rx="1.5" />
+        <path d="M3 8h14M7 2v4M13 2v4" />
+      </svg>
+    ),
+  },
+  {
+    id: 'journal',
+    label: 'Journal',
+    consoleClass: 'tab-journal',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor">
+        <path d="M4 3.5h9l3 3v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
+        <path d="M7 8.5h6M7 11.5h6M7 5.5h3" />
+      </svg>
+    ),
+  },
+]
+
+const SEARCH_ICON = (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor">
+    <circle cx="9" cy="9" r="6" />
+    <path d="M17 17l-3.5-3.5" strokeLinecap="round" />
+  </svg>
+)
+
+const TAB_CONTEXT: Record<MobileTab, string> = {
+  hub: 'TODAY',
   events: 'SKY EVENTS',
-  calendar: 'CALENDAR',
-  watch: 'WATCHLIST',
+  calendar: 'PLAN',
   journal: 'JOURNAL',
+}
+
+// Real, bookmarkable/back-button-able routes per tab (STS: mobile routing).
+const TAB_PATH: Record<MobileTab, string> = {
+  hub: '/today',
+  events: '/events',
+  calendar: '/plan',
+  journal: '/journal',
+}
+
+const PATH_TAB: Record<string, MobileTab> = {
+  '/today': 'hub',
+  '/events': 'events',
+  '/plan': 'calendar',
+  '/journal': 'journal',
+}
+
+function tabFromPathname(pathname: string): MobileTab {
+  return PATH_TAB[pathname] ?? 'hub'
 }
 
 interface MobileShellProps {
@@ -39,29 +114,74 @@ export function MobileShell({
   needsMotionPermission,
   requestMotionPermission,
 }: MobileShellProps) {
-  const [tab, setTab] = useState<MobileTab>('hub')
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const settingsOpen = location.pathname === '/settings'
+  const tab = tabFromPathname(location.pathname)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
   const [isDark, setIsDark] = useState(() => (getStoredTheme() ?? getSystemTheme()) === 'dark')
+  const { user } = useAuth()
 
   useEffect(() => {
     applyTheme(isDark ? 'dark' : 'light')
     storeTheme(isDark ? 'dark' : 'light')
   }, [isDark])
 
+  useEffect(() => {
+    if (location.pathname === '/') navigate(TAB_PATH.hub, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only redirect the bare landing path once
+  }, [])
+
   function toggleTheme() {
     setIsDark((current) => !current)
   }
 
+  function openSettings() {
+    setProfileOpen(false)
+    navigate('/settings')
+  }
+
+  function goToTab(nextTab: MobileTab) {
+    setProfileOpen(false)
+    setSearchOpen(false)
+    navigate(TAB_PATH[nextTab])
+  }
+
+  function logAttempt(draft: ObservationDraft) {
+    setObservationDraft(draft)
+    setProfileOpen(false)
+    navigate(TAB_PATH.journal)
+  }
+
+  const locationLabel = `${currentLocation.name.toUpperCase()} · ${TAB_CONTEXT[tab]}`
+  const accountLabel = user?.email ?? 'Offline profile'
+  const accountInitial = user?.email?.[0]?.toUpperCase() ?? 'A'
+
   if (settingsOpen) {
     return (
       <div className="mobile-shell">
-        <header className="mobile-header">
-          <button type="button" className="mobile-back" onClick={() => setSettingsOpen(false)} aria-label="Back">
-            &larr;
-          </button>
-          <span className="mobile-header-tab-label">SETTINGS</span>
-          <span className="mobile-header-spacer" />
+        <header className="mobile-header top-console">
+          <div className="sync-strip">
+            <button type="button" className="mobile-back" onClick={() => navigate(-1)} aria-label="Back to Atlas">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7">
+                <path d="M12.5 4.5 7 10l5.5 5.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <span>
+              <strong>CONFIG</strong>
+            </span>
+            <span>{locationLabel}</span>
+          </div>
+          <div className="mobile-profile-card">
+            <div className="mobile-profile-avatar">{accountInitial}</div>
+            <div>
+              <span className="mobile-profile-kicker">Profile</span>
+              <strong>{accountLabel}</strong>
+            </div>
+          </div>
         </header>
         <div className="mobile-content">
           <SettingsView
@@ -80,47 +200,96 @@ export function MobileShell({
 
   return (
     <div className="mobile-shell">
-      <header className="mobile-header">
-        <div className="mobile-header-top">
-          <span className="mobile-wordmark">ATLAS</span>
-          <div className="mobile-header-actions">
-            <button type="button" className="mobile-avatar" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-              <svg viewBox="0 0 20 20" fill="currentColor" stroke="none">
-                <circle cx="10" cy="7" r="3.2" />
-                <path d="M3.5 17c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
-              </svg>
+      <header>
+        <div className="dt-brand-row">
+          <button type="button" className="dt-brand-btn" onClick={() => goToTab('hub')} aria-label="Open Atlas sky hub">
+            <span className="dt-wordmark">ATLAS</span>
+            <span className="dt-brand-subtitle">Field console</span>
+          </button>
+          <div className="dt-avatar-wrap">
+            <button
+              type="button"
+              className="dt-avatar"
+              onClick={() => setProfileOpen((current) => !current)}
+              aria-label="Open profile menu"
+              aria-expanded={profileOpen}
+            >
+              {accountInitial}
             </button>
-            <button type="button" className="mobile-theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-                {isDark ? (
-                  <>
-                    <circle cx="10" cy="10" r="3.5" />
-                    <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.36 4.64l-1.41 1.41M6.05 13.95l-1.41 1.41M15.36 15.36l-1.41-1.41M6.05 6.05 4.64 4.64" />
-                  </>
-                ) : (
-                  <path d="M15.5 11.2A5.5 5.5 0 0 1 9.8 5.5c0-.7.1-1.4.4-2A6.5 6.5 0 1 0 17.5 10.8c-.7.3-1.4.4-2 .4Z" />
+            {profileOpen && (
+              <div className="dt-profile-menu">
+                <div className="dt-profile-menu-head">
+                  <span>Profile</span>
+                  <strong>{accountLabel}</strong>
+                </div>
+                <button type="button" onClick={openSettings}>
+                  Account & settings
+                </button>
+                <button type="button" onClick={toggleTheme}>
+                  {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                </button>
+                {user && (
+                  <button type="button" onClick={signOut}>
+                    Sign out
+                  </button>
                 )}
-              </svg>
-            </button>
+              </div>
+            )}
           </div>
         </div>
-        <div className="mobile-header-meta">
-          <span className="mobile-header-tab-label">{TAB_LABEL[tab]}</span>
-          <span className="mobile-header-sync">SYNC {new Date().toISOString().slice(0, 10)}</span>
-        </div>
+        <nav className="dt-tabbar" aria-label="Primary">
+          {ROUTES.map((route) => (
+            <button
+              type="button"
+              key={route.id}
+              className={`dt-tab${!searchOpen && tab === route.id ? ' is-active' : ''}`}
+              onClick={() => goToTab(route.id)}
+              aria-current={!searchOpen && tab === route.id ? 'page' : undefined}
+            >
+              {route.icon}
+              <span>{route.label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`dt-tab${searchOpen ? ' is-active' : ''}`}
+            onClick={() => {
+              setProfileOpen(false)
+              setSearchOpen((current) => !current)
+            }}
+            aria-current={searchOpen ? 'page' : undefined}
+          >
+            {SEARCH_ICON}
+            <span>Search</span>
+          </button>
+        </nav>
       </header>
 
       <div className="mobile-content">
-        {tab === 'hub' && <HubView city={currentLocation} onOpenTab={setTab} />}
-        {tab === 'events' && <EventsView />}
-        {tab === 'calendar' && <CalendarView />}
-        {tab === 'watch' && <WatchView city={currentLocation} />}
-        {tab === 'journal' && (
-          <ScrapbookView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />
+        {searchOpen ? (
+          <div className="dt-search-panel">
+            <div className="dt-section-eyebrow">Search</div>
+            <div className="dt-search-input-row">
+              {SEARCH_ICON}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search events, targets, catalog IDs…"
+                autoFocus
+              />
+            </div>
+            <p className="dt-empty-hint">Start typing to search tonight&rsquo;s events, the watchlist, and the catalog.</p>
+          </div>
+        ) : (
+          <>
+            {tab === 'hub' && <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} />}
+            {tab === 'events' && <EventsView city={currentLocation} onLogAttempt={logAttempt} />}
+            {tab === 'calendar' && <PlanView city={currentLocation} onOpenEvents={() => goToTab('events')} onLogAttempt={logAttempt} />}
+            {tab === 'journal' && <JournalView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />}
+          </>
         )}
       </div>
-
-      <BottomNav active={tab} onSelect={setTab} />
     </div>
   )
 }

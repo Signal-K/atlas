@@ -19,3 +19,12 @@ export function trackEvent(name: string, properties?: Record<string, unknown>) {
   if (!initialized) return
   posthog.capture(name, properties)
 }
+
+// Mailing-list capture, separate from account creation -- lets a visitor
+// opt into product updates without creating a PocketBase account. `$set`
+// attaches the email to the PostHog person profile (not just the event) so
+// it shows up on the contact and can be used for cohorts/exports.
+export function subscribeForUpdates(email: string, properties?: Record<string, unknown>) {
+  if (!initialized) return
+  posthog.capture('Subscribed for updates', { email, $set: { email }, ...properties })
+}

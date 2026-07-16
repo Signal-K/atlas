@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 
 export type CompassStatus = 'idle' | 'unsupported' | 'denied' | 'active'
 
+export interface DevicePointing {
+  headingDeg: number | null
+  pitchDeg: number | null
+  rollDeg: number | null
+}
+
 interface WebkitDeviceOrientationEvent extends DeviceOrientationEvent {
   webkitCompassHeading?: number
 }
@@ -9,9 +15,13 @@ interface WebkitDeviceOrientationEvent extends DeviceOrientationEvent {
 // iOS Safari gates orientation access behind a user-gesture permission
 // prompt; other browsers expose it directly. Heading is degrees clockwise
 // from true north, matching the azimuth convention astronomy-engine uses.
+// beta/gamma are retained as pitch/roll inputs for the real sky-map overlay;
+// they are noisy and browser-dependent, so renderer code should smooth them.
 export function useDeviceCompass() {
   const [status, setStatus] = useState<CompassStatus>('idle')
   const [headingDeg, setHeadingDeg] = useState<number | null>(null)
+  const [pitchDeg, setPitchDeg] = useState<number | null>(null)
+  const [rollDeg, setRollDeg] = useState<number | null>(null)
 
   useEffect(() => {
     if (status !== 'active') return
@@ -22,6 +32,8 @@ export function useDeviceCompass() {
       // compass heading, but it's the best cross-browser fallback available.
       const heading = event.webkitCompassHeading ?? (event.alpha != null ? 360 - event.alpha : null)
       if (heading != null) setHeadingDeg(heading)
+      setPitchDeg(event.beta ?? null)
+      setRollDeg(event.gamma ?? null)
     }
 
     window.addEventListener('deviceorientation', handleOrientation)
@@ -49,7 +61,7 @@ export function useDeviceCompass() {
     setStatus('active')
   }, [])
 
-  return { status, headingDeg, enable }
+  return { status, headingDeg, pitchDeg, rollDeg, pointing: { headingDeg, pitchDeg, rollDeg } satisfies DevicePointing, enable }
 }
 
 export function turnInstruction(headingDeg: number, targetAzimuthDeg: number): string {
