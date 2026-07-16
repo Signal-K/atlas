@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "desk": {
+      "command": "node",
+      "args": ["/Users/scroobz/Documents/Desk/mcp/server.js"],
+      "cwd": "/Users/scroobz/Documents/Desk"
+    }
+  }
+}
