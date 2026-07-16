@@ -1618,6 +1618,195 @@
   opacity: 0.7;
 }
 
+.tonight-weather {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.tonight-weather-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.tonight-weather-next {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.85;
+}
+
+.tonight-target-plan {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tonight-target-plan .tonight-target-preview {
+  margin: 0;
+  padding: 0;
+  background: none;
+}
+
+.tonight-target-plan-section h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.tonight-target-plan-section p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.tonight-target-plan-direction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.best-time-timeline {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 8px;
+  height: 64px;
+}
+
+.best-time-timeline-bar {
+  position: relative;
+  width: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.best-time-timeline-dark-window {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-radius: 3px;
+  background: var(--text-h);
+  opacity: 0.35;
+}
+
+.best-time-timeline-now {
+  position: absolute;
+  left: -3px;
+  width: 12px;
+  height: 2px;
+  background: var(--text);
+  opacity: 0.6;
+}
+
+.best-time-timeline-target {
+  position: absolute;
+  left: -4px;
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.best-time-timeline-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.sky-direction-compass-ring {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.sky-direction-compass-label {
+  font-size: 9px;
+  fill: var(--text);
+  opacity: 0.6;
+}
+
+.sky-direction-compass-needle {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.sky-direction-compass-dot {
+  fill: var(--accent);
+}
+
+.camera-preset-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.camera-preset-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.camera-preset-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.camera-preset-card-copy {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.camera-preset-card-facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.camera-preset-card-facts dt {
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.camera-preset-card-facts dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-h);
+}
+
+.camera-preset-card-stabilization {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.85;
+}
+
 .tonight-compass-button {
   width: 100%;
   margin-bottom: 12px;

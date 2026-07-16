@@ -4,10 +4,14 @@ import { pullSkyEvents } from '../lib/sync'
 import { useDeviceCompass, turnInstruction } from '../lib/deviceCompass'
 import { recipeKeyForEventKind } from '../lib/cameraRecipes'
 import { CameraRecipe } from '../components/CameraRecipe'
+import { CameraPresetCard } from '../components/CameraPresetCard'
+import { BestTimeTimeline } from '../components/BestTimeTimeline'
+import { SkyDirectionCompass } from '../components/SkyDirectionCompass'
 import { getDefaultDevice, CAMERA_PROFILES } from '../lib/cameraProfiles'
 import { trackEvent } from '../lib/analytics'
 import {
   dismissEquipmentPrompt,
+  describeWhatYouWouldSee,
   EQUIPMENT_OPTIONS,
   getEquipmentChoice,
   recordLocalTargetTap,
@@ -37,30 +41,13 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
+function formatDayLabel(dateStr: string): string {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long' })
+}
+
 function formatDarknessWindow(window: TonightPlan['darknessWindow']): string | null {
   if (!window.astronomicalDuskAt || !window.astronomicalDawnAt) return null
   return `Astronomically dark ${formatTime(window.astronomicalDuskAt)}–${formatTime(window.astronomicalDawnAt)}`
-}
-
-function whatYouWouldSee(target: TonightPlan['targets'][number]): string {
-  if (target.kind === 'iss_pass' || target.kind === 'satellite_flare') {
-    return 'You would see a bright point moving steadily across the sky for a few minutes.'
-  }
-  if (target.kind === 'deep_sky') {
-    return target.nakedEyeVisible
-      ? 'You would see a faint smudge or patch in a dark sky.'
-      : 'You would likely need binoculars or a telescope to see more than a faint patch.'
-  }
-  if (target.kind === 'meteor_shower') {
-    return 'You would wait under a dark sky for quick streaks of light, one at a time.'
-  }
-  if (target.kind === 'moon_phase' || target.kind === 'eclipse') {
-    return 'You would see the Moon clearly, with shape, shadow, or surface detail visible by eye.'
-  }
-  if (target.kind === 'planet_event' || target.kind === 'conjunction') {
-    return 'You would see one or more bright star-like points; binoculars may reveal nearby moons or separation.'
-  }
-  return target.nakedEyeVisible ? 'You would see it with your eyes as a bright or distinct sky feature.' : 'You would need optical help to see it well.'
 }
 
 // True during evening or morning twilight -- after the Sun sets (civil dusk)
@@ -195,6 +182,20 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
         {darknessLabel && <p className="tonight-darkness">{darknessLabel}</p>}
       </div>
 
+      {plan.todayAdvisory && (
+        <div className={`tonight-weather tonight-weather--${plan.todayAdvisory.quality}`}>
+          <span className="tonight-weather-badge">
+            {Math.round(plan.todayAdvisory.cloudCoverPct)}% cloud · {Math.round(plan.todayAdvisory.precipitationChancePct)}% rain chance
+          </span>
+          {plan.nextClearWindow && (
+            <p className="tonight-weather-next">
+              Clouded out tonight — {formatDayLabel(plan.nextClearWindow.date)} looks better (
+              {Math.round(plan.nextClearWindow.cloudCoverPct)}% cloud).
+            </p>
+          )}
+        </div>
+      )}
+
       {showEquipmentPrompt && (
         <div className="equipment-prompt">
           <div>
@@ -296,7 +297,36 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                     <span className="tonight-target-reason">{target.reason}</span>
                     <span className="tonight-target-reason">{target.viewingNote}</span>
                   </button>
-                  {previewExpanded && <p className="tonight-target-preview">{whatYouWouldSee(target)}</p>}
+                  {previewExpanded && (
+                    <div className="tonight-target-plan">
+                      <p className="tonight-target-preview">{describeWhatYouWouldSee(target)}</p>
+                      <div className="tonight-target-plan-section">
+                        <h4>Best time</h4>
+                        <p>{formatTime(target.bestTime)} is the best time to look tonight.</p>
+                        <BestTimeTimeline darknessWindow={plan.darknessWindow} targetTime={target.bestTime} />
+                      </div>
+                      {target.direction && (
+                        <div className="tonight-target-plan-section">
+                          <h4>Where to look</h4>
+                          <div className="tonight-target-plan-direction">
+                            <SkyDirectionCompass azimuthDeg={target.direction.azimuthDeg} altitudeDeg={target.direction.altitudeDeg} />
+                            <p>
+                              {target.direction.compassLabel}, {Math.round(target.direction.altitudeDeg)}° above the horizon.
+                              {compass.status === 'active' && compass.headingDeg != null && (
+                                <> {turnInstruction(compass.headingDeg, target.direction.azimuthDeg)}</>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {recipeKey && (
+                        <div className="tonight-target-plan-section">
+                          <h4>Camera preset</h4>
+                          <CameraPresetCard recipeKey={recipeKey} />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="tonight-target-actions">
                     {recipeKey && (
                       <button
