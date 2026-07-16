@@ -93,7 +93,10 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
       try {
         await pullSkyEvents()
         const result = await getTonightPlan(city.lat, city.lon)
-        if (!cancelled) setPlan(result)
+        if (!cancelled) {
+          setPlan(result)
+          trackEvent('Generated tonight plan', { rating: result.rating, targetCount: result.targets.length, city: city.name })
+        }
       } catch {
         if (!cancelled) setError(true)
       }

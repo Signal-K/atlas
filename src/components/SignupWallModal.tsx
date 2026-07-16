@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { authErrorMessage, signIn, signUp } from '../lib/auth'
-import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
+import { mergeLocalDataIntoAccount, type MergeResult } from '../lib/accountMerge'
 import { pb } from '../lib/pocketbase'
 import { trackEvent } from '../lib/analytics'
 
@@ -46,10 +46,19 @@ export function SignupWallModal({ reason, onDismiss, onSignedUp }: SignupWallMod
       else await signIn(email, password)
 
       const userId = pb.authStore.record?.id as string | undefined
-      const result = userId ? await mergeLocalDataIntoAccount(userId) : { total: 0 }
+      const emptyResult: MergeResult = { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, total: 0 }
+      const result = userId ? await mergeLocalDataIntoAccount(userId) : emptyResult
       trackEvent(mode === 'sign-up' ? 'Sign up completed' : 'Sign in completed', {
         source: `signup_wall_${reason}`,
         mergedCount: result.total,
+      })
+      trackEvent('Merge result', {
+        source: `signup_wall_${reason}`,
+        favourites: result.favourites,
+        watchlist: result.watchlist,
+        observations: result.observations,
+        cameraPresets: result.cameraPresets,
+        total: result.total,
       })
       onSignedUp(result.total)
     } catch (submitError) {
