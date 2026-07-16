@@ -33,3 +33,13 @@ export async function fetchViewingAdvisory(lat: number, lon: number, days = 7): 
     }
   })
 }
+
+// STS-319: when tonight is cloudy, the plan screen's weather section offers
+// the nearest better night instead of just saying "skip" — the first
+// upcoming day (today excluded) that isn't fully clouded, or, failing that,
+// whichever upcoming day has the least cloud cover.
+export function findNextClearWindow(advisory: DailyViewingAdvisory[]): DailyViewingAdvisory | null {
+  const upcoming = advisory.slice(1)
+  if (upcoming.length === 0) return null
+  return upcoming.find((day) => day.quality !== 'cloudy') ?? upcoming.reduce((best, day) => (day.cloudCoverPct < best.cloudCoverPct ? day : best))
+}

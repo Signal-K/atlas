@@ -9,12 +9,16 @@ import { useAuth } from '../lib/auth'
 import { ObservationCard } from '../components/ObservationCard'
 import { trackEvent } from '../lib/analytics'
 import type { ObservationDraft } from '../lib/observationDraft'
+import { downloadObservationsCsv } from '../lib/observationExport'
+import { SignupWallModal } from '../components/SignupWallModal'
+import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
+import { useSignupWall } from '../lib/useSignupWall'
 
 // Entries made while signed out are scoped to this fixed local id so the
 // Scrapbook still works fully offline-first with no account. Once signed
-// in, new entries are scoped to the real user id (and also pushed to
-// PocketBase) — entries logged before signing in stay under 'local' and
-// won't reappear once signed in; that's an acceptable gap for now.
+// in, new entries are scoped to the real user id. Entries logged before
+// signing in are folded into the account on signup by the signup-wall
+// modal below (STS-322's mergeLocalDataIntoAccount).
 const LOCAL_USER_ID = 'local'
 
 const RATING_OPTIONS: AttemptRating[] = ['poor', 'ok', 'good', 'great']
@@ -39,6 +43,9 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [rating, setRating] = useState<AttemptRating | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
   const [shareStatus, setShareStatus] = useState<{ entryId: string; message: string } | null>(null)
+  const [mergeStatus, setMergeStatus] = useState<string | null>(null)
+  const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
+  const signupWall = useSignupWall()
 
   async function refresh() {
     const all = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
@@ -88,6 +95,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     await refresh()
     await pushObservation(entry)
     await recordWeeklyActivity()
+    signupWall.promptAfterSave('log_observation')
   }
 
   // Reuses the Discoveries feed's own post creation (src/lib/discoveries.ts)
@@ -115,10 +123,47 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     await refresh()
   }
 
+  function handleExport() {
+    downloadObservationsCsv(entries)
+    trackEvent('Exported observations', { count: entries.length })
+  }
+
   return (
     <section className="widget-section">
-      <h2>Scrapbook</h2>
+      <div className="scrapbook-header">
+        <h2>Scrapbook</h2>
+        {entries.length > 0 && (
+          <button type="button" className="scrapbook-export" onClick={handleExport}>
+            Export CSV
+          </button>
+        )}
+      </div>
       {!user && <p className="scrapbook-hint">Sign in (Settings) to sync your notes to your account.</p>}
+      {mergeStatus && <p className="scrapbook-hint">{mergeStatus}</p>}
+      {signupWall.reason && (
+        <SignupWallModal
+          reason={signupWall.reason}
+          onDismiss={signupWall.dismiss}
+          onSignedUp={(mergedCount) => {
+            signupWall.complete()
+            setWelcomeMergedCount(mergedCount)
+            refresh()
+          }}
+        />
+      )}
+      {welcomeMergedCount != null && (
+        <SignupWelcomeBeat
+          mergedCount={welcomeMergedCount}
+          onDone={() => {
+            setMergeStatus(
+              welcomeMergedCount > 0
+                ? `Account created — brought over ${welcomeMergedCount} saved item${welcomeMergedCount === 1 ? '' : 's'}.`
+                : 'Account created.',
+            )
+            setWelcomeMergedCount(null)
+          }}
+        />
+      )}
       {draft && (
         <div className="scrapbook-draft-banner">
           <span>

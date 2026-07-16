@@ -1,14 +1,21 @@
-// Camera device profiles (AT epic 2, task 1). Scoped to the three devices
-// the sprint brief names -- no attempt at a general device database.
-export type DeviceId = 'iphone-16-pro' | 'nothing-phone-3a' | 'generic'
+export type DeviceMaker = 'apple' | 'google' | 'nothing' | 'samsung' | 'other'
+export type RecipeFamily = DeviceMaker
 
-// STS-177 gear prerequisite: focal length is stored as its 35mm-equivalent
-// (the industry-standard way phone cameras quote zoom reach), paired with
-// the 35mm full-frame-equivalent sensor width -- that pairing is what makes
-// the field-of-view formula in framing.ts correct without needing each
-// device's true physical sensor size. `focalLengthMm` is the best lens for
-// astro framing on that device (its telephoto, if it has one), not
-// necessarily the default/main lens.
+export type DeviceId =
+  | 'iphone-17-pro'
+  | 'iphone-16-pro'
+  | 'iphone-15-pro'
+  | 'pixel-10-pro'
+  | 'pixel-9-pro'
+  | 'pixel-8-pro'
+  | 'nothing-phone-3'
+  | 'nothing-phone-3a'
+  | 'nothing-phone-2'
+  | 'galaxy-s26-ultra'
+  | 'galaxy-s25-ultra'
+  | 'galaxy-s24-ultra'
+  | 'other-phone'
+
 export interface GearProfile {
   focalLengthMm: number
   sensorWidthMm: number
@@ -16,6 +23,8 @@ export interface GearProfile {
 
 export interface CameraProfile {
   id: DeviceId
+  maker: DeviceMaker
+  recipeFamily: RecipeFamily
   name: string
   supportedModes: string[]
   notes: string
@@ -24,26 +33,132 @@ export interface CameraProfile {
 
 const FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM = 36
 
+export const MAKER_LABELS: Record<DeviceMaker, string> = {
+  apple: 'Apple',
+  google: 'Google',
+  nothing: 'Nothing',
+  samsung: 'Samsung',
+  other: 'Other',
+}
+
+export const MAKER_ORDER: DeviceMaker[] = ['google', 'nothing', 'apple', 'samsung', 'other']
+
 export const CAMERA_PROFILES: Record<DeviceId, CameraProfile> = {
+  'iphone-17-pro': {
+    id: 'iphone-17-pro',
+    maker: 'apple',
+    recipeFamily: 'apple',
+    name: 'iPhone 17 Pro',
+    supportedModes: ['Night mode', 'Photographic Styles', 'ProRAW', 'telephoto'],
+    notes: 'Strong automatic night capture. Use native Camera for most shots; use a manual app only when you need fixed focus/exposure.',
+    gear: { focalLengthMm: 120, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
   'iphone-16-pro': {
     id: 'iphone-16-pro',
+    maker: 'apple',
+    recipeFamily: 'apple',
     name: 'iPhone 16 Pro',
-    supportedModes: ['Night mode', 'ProRAW', '5x telephoto', 'Manual exposure via third-party apps (e.g. Halide)'],
-    notes: 'The strongest camera in this lineup — best telephoto reach and the most manual control when you need it.',
+    supportedModes: ['Night mode', 'Photographic Styles', 'ProRAW', '5x telephoto'],
+    notes: 'Strong telephoto reach and flexible photographic styles, but native preset import is not exposed as a file install.',
     gear: { focalLengthMm: 120, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'iphone-15-pro': {
+    id: 'iphone-15-pro',
+    maker: 'apple',
+    recipeFamily: 'apple',
+    name: 'iPhone 15 Pro',
+    supportedModes: ['Night mode', 'ProRAW', 'telephoto'],
+    notes: 'Good low-light defaults. Keep setup simple and stable.',
+    gear: { focalLengthMm: 77, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'pixel-10-pro': {
+    id: 'pixel-10-pro',
+    maker: 'google',
+    recipeFamily: 'google',
+    name: 'Pixel 10 Pro',
+    supportedModes: ['Night Sight', 'Astrophotography', 'Pro controls'],
+    notes: 'Pixel is the cleanest default path for sky shots: Night Sight plus a stable tripod unlocks astro behavior.',
+    gear: { focalLengthMm: 120, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'pixel-9-pro': {
+    id: 'pixel-9-pro',
+    maker: 'google',
+    recipeFamily: 'google',
+    name: 'Pixel 9 Pro',
+    supportedModes: ['Night Sight', 'Astrophotography', 'Pro controls'],
+    notes: 'Use Night Sight/Astrophotography for the least fiddly phone sky setup.',
+    gear: { focalLengthMm: 113, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'pixel-8-pro': {
+    id: 'pixel-8-pro',
+    maker: 'google',
+    recipeFamily: 'google',
+    name: 'Pixel 8 Pro',
+    supportedModes: ['Night Sight', 'Astrophotography', 'Pro controls'],
+    notes: 'Good astro automation when stationary, with Pro controls available on the Pro model.',
+    gear: { focalLengthMm: 113, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'nothing-phone-3': {
+    id: 'nothing-phone-3',
+    maker: 'nothing',
+    recipeFamily: 'nothing',
+    name: 'Nothing Phone 3',
+    supportedModes: ['Night mode', '50MP main', 'telephoto', 'Nothing presets'],
+    notes: 'Use the main camera for dark-sky work. Nothing has visual presets, but public user preset file install is not reliably documented.',
+    gear: { focalLengthMm: 70, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
   },
   'nothing-phone-3a': {
     id: 'nothing-phone-3a',
-    name: 'Nothing Phone 3a',
-    supportedModes: ['Night mode', '50MP main sensor', '2x optical-quality zoom'],
-    notes: 'Solid night mode, but less manual control than the iPhone — lean on its automatic multi-frame capture rather than fighting it.',
-    gear: { focalLengthMm: 48, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+    maker: 'nothing',
+    recipeFamily: 'nothing',
+    name: 'Nothing Phone 3a / 3a Pro',
+    supportedModes: ['Night mode', '50MP main with OIS', '2x telephoto on 3a', '3x periscope on 3a Pro'],
+    notes: 'Use main camera for dark sky and moving targets. Use telephoto for Moon/planet framing only.',
+    gear: { focalLengthMm: 50, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
   },
-  generic: {
-    id: 'generic',
-    name: 'Generic phone',
-    supportedModes: ['Night mode (if available)', 'Digital zoom only'],
-    notes: 'Assume no manual controls and no true optical zoom. Stability and framing matter more than settings here.',
+  'nothing-phone-2': {
+    id: 'nothing-phone-2',
+    maker: 'nothing',
+    recipeFamily: 'nothing',
+    name: 'Nothing Phone 2',
+    supportedModes: ['Night mode', '50MP main', 'ultrawide'],
+    notes: 'No real telephoto. Use main camera and stability.',
+    gear: { focalLengthMm: 24, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'galaxy-s26-ultra': {
+    id: 'galaxy-s26-ultra',
+    maker: 'samsung',
+    recipeFamily: 'samsung',
+    name: 'Galaxy S26 Ultra',
+    supportedModes: ['Nightography', 'Pro mode', 'Expert RAW', 'telephoto'],
+    notes: 'Best Samsung path is Pro mode or Expert RAW when available; otherwise use Night mode.',
+    gear: { focalLengthMm: 115, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'galaxy-s25-ultra': {
+    id: 'galaxy-s25-ultra',
+    maker: 'samsung',
+    recipeFamily: 'samsung',
+    name: 'Galaxy S25 Ultra',
+    supportedModes: ['Nightography', 'Pro mode', 'Expert RAW', '5x telephoto'],
+    notes: 'Use Expert RAW/Pro mode for repeatable astro settings.',
+    gear: { focalLengthMm: 115, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'galaxy-s24-ultra': {
+    id: 'galaxy-s24-ultra',
+    maker: 'samsung',
+    recipeFamily: 'samsung',
+    name: 'Galaxy S24 Ultra',
+    supportedModes: ['Nightography', 'Pro mode', 'Expert RAW', '5x telephoto'],
+    notes: 'Strong manual path through Pro mode and Expert RAW.',
+    gear: { focalLengthMm: 115, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'other-phone': {
+    id: 'other-phone',
+    maker: 'other',
+    recipeFamily: 'other',
+    name: 'Other Android phone',
+    supportedModes: ['Night mode if available', 'manual camera app if needed'],
+    notes: 'Assume no native preset install. Stability and simple setup matter most.',
     gear: { focalLengthMm: 26, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
   },
 }
@@ -51,17 +166,38 @@ export const CAMERA_PROFILES: Record<DeviceId, CameraProfile> = {
 const DEFAULT_DEVICE_KEY = 'atlas-default-camera-device'
 const CUSTOM_FOCAL_LENGTH_KEY = 'atlas-custom-lens-focal-length-mm'
 
+export function modelsForMaker(maker: DeviceMaker): CameraProfile[] {
+  return Object.values(CAMERA_PROFILES).filter((profile) => profile.maker === maker)
+}
+
+export function makerForDevice(id: DeviceId): DeviceMaker {
+  return CAMERA_PROFILES[id].maker
+}
+
+export function detectDeviceFromUserAgent(userAgent = navigator.userAgent): DeviceId {
+  const ua = userAgent.toLowerCase()
+  if (ua.includes('iphone')) return 'iphone-17-pro'
+  if (ua.includes('pixel')) return 'pixel-10-pro'
+  if (ua.includes('samsung') || ua.includes('sm-')) return 'galaxy-s26-ultra'
+  if (ua.includes('nothing') || ua.includes('a059') || ua.includes('a059p')) return 'nothing-phone-3a'
+  return 'other-phone'
+}
+
+export function normalizeDeviceId(value: string | null): DeviceId | null {
+  if (!value) return null
+  if (value === 'generic') return 'other-phone'
+  if (value in CAMERA_PROFILES) return value as DeviceId
+  return null
+}
+
 export function getDefaultDevice(): DeviceId {
-  const stored = localStorage.getItem(DEFAULT_DEVICE_KEY)
-  return stored != null && stored in CAMERA_PROFILES ? (stored as DeviceId) : 'generic'
+  return normalizeDeviceId(localStorage.getItem(DEFAULT_DEVICE_KEY)) ?? detectDeviceFromUserAgent()
 }
 
 export function setDefaultDevice(id: DeviceId) {
   localStorage.setItem(DEFAULT_DEVICE_KEY, id)
 }
 
-// Optional override for a real external/attachment lens (e.g. a clip-on
-// telephoto), in 35mm-equivalent mm. Applies regardless of selected device.
 export function getCustomLensFocalLengthMm(): number | null {
   const stored = localStorage.getItem(CUSTOM_FOCAL_LENGTH_KEY)
   const parsed = stored != null ? Number(stored) : NaN

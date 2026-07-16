@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { authErrorMessage, signIn, signUp } from '../lib/auth'
 import { saveEventTypeFavourites } from '../lib/favourites'
 
 const EVENT_KINDS = [
@@ -12,48 +11,16 @@ const EVENT_KINDS = [
 
 export const ONBOARDING_COMPLETE_KEY = 'atlas-onboarding-complete'
 
+// Account creation now happens on the landing page (the first thing a new
+// visitor sees), so this modal only ever asks about viewing preferences --
+// it used to also offer sign-up/sign-in first, which competed with the
+// landing page's own CTA for the same "just arrived" moment.
 export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
-  const [step, setStep] = useState<'account' | 'preferences'>('account')
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-up')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
   const [selectedKinds, setSelectedKinds] = useState<Set<string>>(new Set())
 
-  async function handleAuthSubmit(event: React.FormEvent) {
-    event.preventDefault()
-    setError(null)
-    setBusy(true)
-    try {
-      if (mode === 'sign-in') {
-        // An existing account signing in has already made their interest
-        // picks (or chosen not to) -- routing them through the "what do
-        // you like" step again on every sign-in is what caused onboarding
-        // to never actually complete for returning users.
-        await signIn(email, password)
-        localStorage.setItem(ONBOARDING_COMPLETE_KEY, '1')
-        onComplete()
-        return
-      }
-      await signUp(email, password)
-      setStep('preferences')
-    } catch (error) {
-      const fallback = mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed.'
-      setError(authErrorMessage(error, fallback))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  function skip() {
-    // Persist completion the moment the user opts out of account
-    // creation, not only once they finish the preferences step after it --
-    // otherwise a refresh (or just closing the tab) before clicking "Get
-    // started" there means nothing was ever saved, and the whole modal
-    // reappears from step one every time.
+  function notNow() {
     localStorage.setItem(ONBOARDING_COMPLETE_KEY, '1')
-    setStep('preferences')
+    onComplete()
   }
 
   function toggleKind(kind: string) {
@@ -76,51 +43,22 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="onboarding-overlay">
       <div className="onboarding-modal">
-        {step === 'account' ? (
-          <>
-            <h2>Welcome to Atlas</h2>
-            <p>Create an account to sync your notes and pins across devices — or skip and use it fully offline.</p>
-            <form className="account-form" onSubmit={handleAuthSubmit}>
-              <input type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={8}
-                required
-              />
-              <div className="account-form-actions">
-                <button type="submit" disabled={busy}>
-                  {mode === 'sign-in' ? 'Sign in' : 'Create account'}
-                </button>
-                <button type="button" className="account-form-switch" onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}>
-                  {mode === 'sign-in' ? 'Need an account?' : 'Have an account?'}
-                </button>
-              </div>
-              {error && <p className="account-form-error">{error}</p>}
-            </form>
-            <button type="button" className="onboarding-skip" onClick={skip}>
-              Skip for now
-            </button>
-          </>
-        ) : (
-          <>
-            <h2>What do you like to see?</h2>
-            <p>Pick what you&apos;re most interested in — you can change this later in Settings.</p>
-            <div className="onboarding-kinds">
-              {EVENT_KINDS.map((kind) => (
-                <label key={kind.id} className="onboarding-kind">
-                  <input type="checkbox" checked={selectedKinds.has(kind.id)} onChange={() => toggleKind(kind.id)} />
-                  {kind.label}
-                </label>
-              ))}
-            </div>
-            <button type="button" className="onboarding-cta-primary" onClick={finish}>
-              Get started
-            </button>
-          </>
-        )}
+        <h2>What do you like to see?</h2>
+        <p>Pick what you&apos;re most interested in — you can change this later in Settings.</p>
+        <div className="onboarding-kinds">
+          {EVENT_KINDS.map((kind) => (
+            <label key={kind.id} className="onboarding-kind">
+              <input type="checkbox" checked={selectedKinds.has(kind.id)} onChange={() => toggleKind(kind.id)} />
+              {kind.label}
+            </label>
+          ))}
+        </div>
+        <button type="button" className="onboarding-cta-primary" onClick={finish}>
+          Get started
+        </button>
+        <button type="button" className="onboarding-skip" onClick={notNow}>
+          Not now
+        </button>
       </div>
     </div>
   )

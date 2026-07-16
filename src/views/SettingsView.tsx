@@ -129,7 +129,7 @@ export function SettingsView({
     <section className="widget-section">
       <h2>Settings</h2>
 
-      <AccountSettings defaultMode={accountDefaultMode} />
+      <AccountSettings defaultMode={accountDefaultMode} source="settings" />
 
       <div className="settings-row">
         <span className="settings-label">Appearance</span>

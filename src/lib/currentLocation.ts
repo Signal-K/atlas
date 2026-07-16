@@ -11,7 +11,7 @@ export interface CurrentLocation {
   source: LocationSource
 }
 
-const MANUAL_LOCATION_KEY = 'atlas-manual-location'
+export const MANUAL_LOCATION_KEY = 'atlas-manual-location'
 
 // Ultimate fallback when the user has neither granted geolocation nor
 // picked a manual location -- arbitrary but has to be something, and this

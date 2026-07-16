@@ -1,5 +1,6 @@
 import { db, type ObservationLogEntry, type StreakState, type SyncQueueItem } from './db'
 import { pocketBaseUrl } from './pocketbase'
+import { isDemoMode } from './demoMode'
 
 export interface LocalOpsLink {
   label: string
@@ -73,8 +74,9 @@ function streakTransaction(entry: StreakState): LocalTransaction {
 }
 
 export async function getLocalOpsSnapshot(): Promise<LocalOpsSnapshot> {
+  const demoMode = isDemoMode()
   const [pbStatus, observations, queued, streaks] = await Promise.all([
-    probePocketBase(),
+    demoMode ? Promise.resolve<LocalOpsContainer['status']>('local-only') : probePocketBase(),
     db.observations.orderBy('observedAt').reverse().limit(8).toArray(),
     db.syncQueue.orderBy('queuedAt').reverse().limit(8).toArray(),
     db.streaks.toArray(),
@@ -113,7 +115,11 @@ export async function getLocalOpsSnapshot(): Promise<LocalOpsSnapshot> {
         kind: 'PocketBase',
         url: base,
         status: pbStatus,
-        detail: pbStatus === 'online' ? 'Health endpoint responded.' : 'No health response from configured PocketBase URL.',
+        detail: demoMode
+          ? 'Demo mode is on: PocketBase calls are skipped, using cached/fixture data.'
+          : pbStatus === 'online'
+            ? 'Health endpoint responded.'
+            : 'No health response from configured PocketBase URL.',
       },
       {
         name: 'atlas-web',

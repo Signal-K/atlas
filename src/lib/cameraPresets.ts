@@ -6,18 +6,20 @@
 // data-driven layer that user-imported and community presets also live in.
 import { pb } from './pocketbase'
 import { db, type CameraPreset, type CameraPresetSettings } from './db'
-import { CAMERA_RECIPES, type RecipeKey } from './cameraRecipes'
-import type { DeviceId } from './cameraProfiles'
+import { CAMERA_RECIPES, deviceRecipeFor, type RecipeKey } from './cameraRecipes'
+import { CAMERA_PROFILES, type DeviceId } from './cameraProfiles'
 import { communityPresetsForTarget } from './communityPresets'
 
 export function builtinPresetsForRecipe(recipeKey: RecipeKey): CameraPreset[] {
   const recipe = CAMERA_RECIPES[recipeKey]
-  return (Object.entries(recipe.devices) as [DeviceId, (typeof recipe.devices)[DeviceId]][]).map(([device, deviceRecipe]) => ({
+  return (Object.keys(CAMERA_PROFILES) as DeviceId[]).map((device) => {
+    const deviceRecipe = deviceRecipeFor(recipeKey, device)
+    return {
     id: `builtin-${recipeKey}-${device}`,
     userId: 'builtin',
     device,
     targetKey: recipeKey,
-    name: `${recipe.title} (${device})`,
+    name: `${recipe.title} (${CAMERA_PROFILES[device].name})`,
     settings: {
       mode: deviceRecipe.mode,
       lens: deviceRecipe.lens,
@@ -25,7 +27,8 @@ export function builtinPresetsForRecipe(recipeKey: RecipeKey): CameraPreset[] {
     source: 'builtin' as const,
     notes: `${deviceRecipe.exposure} — ${deviceRecipe.focus}`,
     createdAt: '2026-01-01T00:00:00.000Z',
-  }))
+  }
+  })
 }
 
 export async function listPresetsForUser(userId: string): Promise<CameraPreset[]> {
@@ -111,7 +114,12 @@ export function parseNothingPresetFile(fileContents: string, device: DeviceId): 
     throw new PresetImportError('File is not valid JSON. The Nothing Camera export format has not been confirmed yet — see the open question in this ticket.')
   }
 
-  const rawEntries = Array.isArray(parsed) ? parsed : [parsed]
+  const rawEntries =
+    typeof parsed === 'object' && parsed !== null && (parsed as Record<string, unknown>).format === 'atlas-camera-preset-bundle'
+      ? [(parsed as Record<string, unknown>).settings]
+      : Array.isArray(parsed)
+        ? parsed
+        : [parsed]
 
   return rawEntries.map((raw, index) => {
     if (typeof raw !== 'object' || raw === null) {

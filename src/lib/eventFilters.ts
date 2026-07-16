@@ -1,0 +1,32 @@
+import { haversineKm } from './cities'
+import type { SkyEvent } from './db'
+
+const LOCAL_EVENT_RADIUS_KM = 120
+const MAX_ISS_PASSES = 1
+
+export function isLocalEvent(event: SkyEvent, lat: number, lon: number): boolean {
+  if (event.latitude == null || event.longitude == null) return true
+  return haversineKm({ lat, lon }, { lat: event.latitude, lon: event.longitude }) <= LOCAL_EVENT_RADIUS_KM
+}
+
+export function localEventDistanceKm(event: SkyEvent, lat: number, lon: number): number | null {
+  if (event.latitude == null || event.longitude == null) return null
+  return haversineKm({ lat, lon }, { lat: event.latitude, lon: event.longitude })
+}
+
+export function diversifyEvents(events: SkyEvent[], limit = 6): SkyEvent[] {
+  const sorted = [...events].sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  const selected: SkyEvent[] = []
+  const kindCounts = new Map<string, number>()
+
+  for (const event of sorted) {
+    const count = kindCounts.get(event.kind) ?? 0
+    if (event.kind === 'iss_pass' && count >= MAX_ISS_PASSES) continue
+    if (count >= 2) continue
+    selected.push(event)
+    kindCounts.set(event.kind, count + 1)
+    if (selected.length >= limit) break
+  }
+
+  return selected
+}

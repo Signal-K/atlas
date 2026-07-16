@@ -1,3 +1,5 @@
+import { searchCommonsImage } from './commons-image.mjs'
+
 const EARTHSKY_URL = 'https://earthsky.org/astronomy-essentials/visible-planets-tonight-mars-jupiter-venus-saturn-mercury/'
 
 function nextEvening(now) {
@@ -9,6 +11,7 @@ function nextEvening(now) {
 
 export async function fetchEvents({ now = new Date() } = {}) {
   const startsAt = nextEvening(now)
+  const image = await searchCommonsImage('night sky stars milky way')
   return [
     {
       kind: 'night_sky_guide',
@@ -18,8 +21,8 @@ export async function fetchEvents({ now = new Date() } = {}) {
       content: `Use EarthSky's monthly visible-planets guide to cross-check tonight's planet targets before observing: ${EARTHSKY_URL}`,
       starts_at: startsAt.toISOString(),
       ends_at: new Date(startsAt.getTime() + 3 * 3_600_000).toISOString(),
-      image_url: '',
-      image_credit: EARTHSKY_URL,
+      image_url: image?.url ?? '',
+      image_credit: image?.credit ?? EARTHSKY_URL,
     },
   ]
 }

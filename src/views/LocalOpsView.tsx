@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getLocalOpsSnapshot, type LocalOpsSnapshot } from '../lib/localOps'
+import { isDemoMode, isDemoModeForcedByEnv, setDemoMode } from '../lib/demoMode'
 
 function statusLabel(status: string): string {
   if (status === 'online') return 'Online'
@@ -30,6 +31,28 @@ export function LocalOpsView() {
           Refresh
         </button>
       </div>
+
+      {import.meta.env.DEV && (
+        <div className="ops-demo-mode">
+          <label>
+            <input
+              type="checkbox"
+              checked={isDemoMode()}
+              disabled={isDemoModeForcedByEnv()}
+              onChange={(event) => {
+                setDemoMode(event.target.checked)
+                window.location.reload()
+              }}
+            />
+            Demo mode — skip PocketBase, use cached/fixture data only (no Docker needed)
+          </label>
+          <p className="scrapbook-hint">
+            {isDemoModeForcedByEnv()
+              ? 'Forced on via VITE_DEMO_MODE (make demo) — restart the dev server without it to turn off.'
+              : 'Local dev only. Reloads the page when toggled.'}
+          </p>
+        </div>
+      )}
 
       {snapshot === null ? (
         <p>Loading&hellip;</p>

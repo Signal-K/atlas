@@ -9,6 +9,8 @@
 // list of specific comet names/dates/magnitudes that would go stale (or
 // simply be wrong) the moment a new comet is discovered or an expected one
 // underperforms.
+import { searchCommonsImage } from './commons-image.mjs'
+
 const COMET_TRACKER_URL = 'https://theskylive.com/comets'
 
 function nextEvening(now) {
@@ -20,6 +22,9 @@ function nextEvening(now) {
 
 export async function fetchEvents({ now = new Date() } = {}) {
   const startsAt = nextEvening(now)
+  // No specific comet is fixed a year out (see file header) -- fall back to
+  // a real comet photo instead of leaving the card image-less.
+  const image = await searchCommonsImage('comet night sky photograph')
   return [
     {
       kind: 'comet',
@@ -29,8 +34,8 @@ export async function fetchEvents({ now = new Date() } = {}) {
       content: `Comet visibility changes often and isn't practical to predict a year in advance the way eclipses or meteor showers are. Check a live comet tracker for what's actually bright right now before planning a trip out: ${COMET_TRACKER_URL}. Most comets need binoculars or a small scope -- only rare, exceptionally bright ones are naked-eye visible.`,
       starts_at: startsAt.toISOString(),
       ends_at: new Date(startsAt.getTime() + 3 * 3_600_000).toISOString(),
-      image_url: '',
-      image_credit: COMET_TRACKER_URL,
+      image_url: image?.url ?? '',
+      image_credit: image?.credit ?? COMET_TRACKER_URL,
     },
   ]
 }

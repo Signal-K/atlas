@@ -1,3 +1,5 @@
+import { searchCommonsImage } from './commons-image.mjs'
+
 const TIMEANDDATE_URL = 'https://www.timeanddate.com/astronomy/night/australia/melbourne'
 const EARTHSKY_URL = 'https://earthsky.org/astronomy-essentials/visible-planets-tonight-mars-jupiter-venus-saturn-mercury/'
 const MELBOURNE = { latitude: -37.8136, longitude: 144.9631 }
@@ -90,9 +92,18 @@ async function timeAndDateEvents(now) {
   return events
 }
 
-function toSkyEvent(item) {
+// A generic, always-real fallback for whichever planet's own search comes
+// back empty or non-photo -- resolved once per run, not per planet.
+let genericSkyImagePromise = null
+function genericSkyImage() {
+  genericSkyImagePromise ??= searchCommonsImage('night sky stars milky way')
+  return genericSkyImagePromise
+}
+
+async function toSkyEvent(item) {
   const startsAt = item.startsAt.toISOString()
   const endsAt = new Date(item.startsAt.getTime() + 2 * 3_600_000).toISOString()
+  const image = (await searchCommonsImage(`${item.planet} planet photograph`)) ?? (await genericSkyImage())
   return {
     kind: 'local_night_sky',
     target: `melbourne_${item.planet.toLowerCase().replace(/\s+/g, '_')}`,
@@ -103,8 +114,8 @@ function toSkyEvent(item) {
     ends_at: endsAt,
     latitude: MELBOURNE.latitude,
     longitude: MELBOURNE.longitude,
-    image_url: '',
-    image_credit: `Timeanddate: ${TIMEANDDATE_URL}; EarthSky: ${EARTHSKY_URL}`,
+    image_url: image?.url ?? '',
+    image_credit: image?.credit ?? `Timeanddate: ${TIMEANDDATE_URL}; EarthSky: ${EARTHSKY_URL}`,
   }
 }
 
@@ -115,5 +126,5 @@ export async function fetchEvents({ now = new Date() } = {}) {
   } catch {
     events = fallbackEvents(now)
   }
-  return events.map(toSkyEvent)
+  return Promise.all(events.map(toSkyEvent))
 }

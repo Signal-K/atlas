@@ -1,4 +1,6 @@
+import type { RecordModel } from 'pocketbase'
 import { pb } from './pocketbase'
+import { isDemoMode } from './demoMode'
 
 // Small fixed reaction set (mirrors the atlas_discovery_reactions "emoji"
 // enum) rather than free-form emoji picking -- lower friction than typing a
@@ -48,12 +50,44 @@ function requireUser() {
   return user
 }
 
+// Local-only fixtures for demo mode (see demoMode.ts) so the Feed/Digest
+// widgets have something to render without a PocketBase backend.
+const DEMO_DISCOVERIES: Discovery[] = [
+  {
+    id: 'demo-discovery-jupiter',
+    caption: 'Jupiter and three Galilean moons, handheld binoculars',
+    authorName: 'demo_observer',
+    target: 'Jupiter',
+    created: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    voteCount: 4,
+    hasVoted: false,
+    reactionCounts: { telescope: 2, sparkles: 1 },
+    myReactions: new Set(),
+  },
+  {
+    id: 'demo-discovery-moon',
+    caption: 'Terminator detail on the Moon through a 6" dob',
+    authorName: 'demo_observer',
+    target: 'Moon',
+    created: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+    voteCount: 2,
+    hasVoted: false,
+    reactionCounts: { heart: 1 },
+    myReactions: new Set(),
+  },
+]
+
 export async function listDiscoveries(): Promise<Discovery[]> {
-  const [records, votes, reactions] = await Promise.all([
-    pb.collection('atlas_discoveries').getFullList({ sort: '-created' }),
-    pb.collection('atlas_discovery_votes').getFullList(),
-    pb.collection('atlas_discovery_reactions').getFullList(),
-  ])
+  let records: RecordModel[], votes: RecordModel[], reactions: RecordModel[]
+  try {
+    ;[records, votes, reactions] = await Promise.all([
+      pb.collection('atlas_discoveries').getFullList({ sort: '-created' }),
+      pb.collection('atlas_discovery_votes').getFullList(),
+      pb.collection('atlas_discovery_reactions').getFullList(),
+    ])
+  } catch {
+    return isDemoMode() ? DEMO_DISCOVERIES : []
+  }
 
   const currentUserId = pb.authStore.record?.id
   const countByDiscovery = new Map<string, number>()
@@ -133,16 +167,20 @@ export async function toggleReaction(discoveryId: string, emoji: string, current
 }
 
 export async function listComments(discoveryId: string): Promise<DiscoveryComment[]> {
-  const records = await pb.collection('atlas_discovery_comments').getFullList({
-    filter: `discovery = "${discoveryId}"`,
-    sort: 'created',
-  })
-  return records.map((record) => ({
-    id: record.id,
-    authorName: record.author_name,
-    text: record.text,
-    created: record.created,
-  }))
+  try {
+    const records = await pb.collection('atlas_discovery_comments').getFullList({
+      filter: `discovery = "${discoveryId}"`,
+      sort: 'created',
+    })
+    return records.map((record) => ({
+      id: record.id,
+      authorName: record.author_name,
+      text: record.text,
+      created: record.created,
+    }))
+  } catch {
+    return []
+  }
 }
 
 export async function addComment(discoveryId: string, text: string): Promise<void> {

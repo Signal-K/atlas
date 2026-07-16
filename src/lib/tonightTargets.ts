@@ -5,9 +5,10 @@
 import * as Astronomy from 'astronomy-engine'
 import { getEventsInRange } from './sync'
 import type { SkyEvent } from './db'
-import { fetchViewingAdvisory } from './weather'
+import { fetchViewingAdvisory, findNextClearWindow, type DailyViewingAdvisory } from './weather'
 import { scoreTonight, type TonightRating } from './tonightScore'
-import { bodyForTarget, getHorizontalPosition, type HorizontalPosition } from './skyPosition'
+import { bodyForTarget, type HorizontalPosition } from './skyPosition'
+import { getPrimarySkyMapObjectForEvent } from './skyMapLayers'
 import { haversineKm } from './cities'
 
 export type TargetDifficulty = 'easy' | 'moderate' | 'hard'
@@ -54,6 +55,11 @@ export interface TonightPlan {
   moonIlluminationPct: number
   darknessWindow: DarknessWindow
   weatherAvailable: boolean
+  // Tonight's own forecast day, and, when tonight is cloudy, the nearest
+  // upcoming night worth waiting for instead (STS-319's plan-screen weather
+  // section). Both null when the forecast couldn't be reached.
+  todayAdvisory: DailyViewingAdvisory | null
+  nextClearWindow: DailyViewingAdvisory | null
   // Best window tonight for a general "just point my phone at the sky"
   // photo -- independent of any specific event target, for users who don't
   // have (or don't want) a particular thing to photograph. Null only when
@@ -312,8 +318,14 @@ function rankTargets(
     .filter((event) => isAuroraRelevant(event, lat))
     .map((event) => {
       const bestTime = resolveBestTime(event, lat, lon, start, end)
-      const body = bodyForTarget(event.kind, event.target)
-      const direction = body ? getHorizontalPosition(body, bestTime, lat, lon) : null
+      const primaryObject = getPrimarySkyMapObjectForEvent(event, bestTime, lat, lon)
+      const direction = primaryObject
+        ? {
+            altitudeDeg: primaryObject.altitudeDeg,
+            azimuthDeg: primaryObject.azimuthDeg,
+            compassLabel: primaryObject.compassLabel,
+          }
+        : null
       return { event, bestTime, direction }
     })
     .sort((a, b) => {
@@ -349,7 +361,7 @@ export async function getTonightPlan(lat: number, lon: number, now = new Date())
 
   const [allEvents, advisory] = await Promise.all([
     getEventsInRange(start, end),
-    fetchViewingAdvisory(lat, lon, 1).catch(() => []),
+    fetchViewingAdvisory(lat, lon, 7).catch(() => []),
   ])
   const events = allEvents.filter((event) => isLocationRelevant(event, lat, lon))
 
@@ -384,6 +396,8 @@ export async function getTonightPlan(lat: number, lon: number, now = new Date())
     moonIlluminationPct,
     darknessWindow,
     weatherAvailable,
+    todayAdvisory: today ?? null,
+    nextClearWindow: today && today.quality === 'cloudy' ? findNextClearWindow(advisory) : null,
     generalPhotoWindow: getGeneralPhotoWindow(darknessWindow, moonIlluminationPct, cloudCoverPct),
   }
 }
