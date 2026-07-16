@@ -31,3 +31,46 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+
+  pocketbase-write-e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Checkout local PocketBase backend
+        run: |
+          git clone --depth 1 https://github.com/Signal-K/tickets-please.git ../backend
+          rm -rf ../backend/pb_data
+          mkdir -p ../backend/pb_data
+          chmod 777 ../backend/pb_data
+      - name: Start local PocketBase
+        run: docker compose up -d --build backend
+        env:
+          PB_ENCRYPTION_KEY: ci-local-pocketbase
+      - name: Wait for PocketBase health
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8094/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs backend
+          exit 1
+      - name: Run write-action E2E against local PocketBase
+        run: npm run test:e2e:writes
+        env:
+          VITE_PB_URL: http://127.0.0.1:8094
+      - name: Show PocketBase logs on failure
+        if: failure()
+        run: docker compose logs backend
+      - name: Stop local PocketBase
+        if: always()
+        run: docker compose down --remove-orphans
