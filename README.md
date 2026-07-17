@@ -29,7 +29,7 @@ Star Sailors ecosystem, not just Atlas.
 
 | What | Link | Notes |
 | --- | --- | --- |
-| Production app | https://atlas-4xz.pages.dev/ | Cloudflare Pages project `atlas`. **Not** `atlas.pages.dev` — that subdomain belongs to an unrelated third party (FieldMaps). |
+| Production app | https://youratlas.cc/ | Custom domain on Cloudflare Pages project `atlas`, added 2026-07-17 (zone purchased via Cloudflare Domains). Falls back to https://atlas-4xz.pages.dev/ — **not** `atlas.pages.dev`, that subdomain belongs to an unrelated third party (FieldMaps). |
 | Cloudflare Pages dashboard | https://dash.cloudflare.com/ → Workers & Pages → `atlas` | Build logs, deployment history, custom domains, env vars. Requires the account behind `CLOUDFLARE_ACCOUNT_ID`. |
 | Production PocketBase (API) | https://signal-k-starsailors.fly.dev | Shared Star Sailors backend — also used by other apps in the ecosystem, not Atlas-specific. Same value as the `PB_URL` / `VITE_PB_URL` secrets/vars below. |
 | PocketBase admin UI | https://signal-k-starsailors.fly.dev/_/ | Superuser login required — this is where to inspect/edit `sky_events`, `atlas_observations`, users, etc. directly, and where to clean up any test data. |
