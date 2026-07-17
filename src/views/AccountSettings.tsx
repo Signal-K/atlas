@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { authErrorMessage, refreshEntitlement, signIn, signOut, signUp, useAuth } from '../lib/auth'
 import { trackEvent } from '../lib/analytics'
 import { POLAR_CHECKOUT_URL } from '../lib/entitlement'
+import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
+import { pb } from '../lib/pocketbase'
+import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
 
 export function AccountSettings({
   defaultMode = 'sign-in',
@@ -20,6 +23,7 @@ export function AccountSettings({
   // with the form -- not on every keystroke.
   const startedRef = useRef(false)
   const [checkingEntitlement, setCheckingEntitlement] = useState(false)
+  const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
 
   function trackFormStarted() {
     if (startedRef.current) return
@@ -43,6 +47,9 @@ export function AccountSettings({
   if (user) {
     return (
       <div className="settings-row">
+        {welcomeMergedCount != null && (
+          <SignupWelcomeBeat mergedCount={welcomeMergedCount} onDone={() => setWelcomeMergedCount(null)} />
+        )}
         <span className="settings-label">Account</span>
         <div className="settings-choice">
           <span className="settings-status">{user.email}</span>
@@ -83,9 +90,26 @@ export function AccountSettings({
     setBusy(true)
     trackEvent('Account form submitted', { source, mode })
     try {
-      if (mode === 'sign-in') await signIn(email, password)
-      else await signUp(email, password)
-      trackEvent(mode === 'sign-in' ? 'Sign in completed' : 'Sign up completed', { source })
+      if (mode === 'sign-in') {
+        await signIn(email, password)
+        trackEvent('Sign in completed', { source })
+      } else {
+        await signUp(email, password)
+        const userId = pb.authStore.record?.id as string | undefined
+        const result = userId
+          ? await mergeLocalDataIntoAccount(userId)
+          : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, total: 0 }
+        trackEvent('Sign up completed', { source, mergedCount: result.total })
+        trackEvent('Merge result', {
+          source,
+          favourites: result.favourites,
+          watchlist: result.watchlist,
+          observations: result.observations,
+          cameraPresets: result.cameraPresets,
+          total: result.total,
+        })
+        setWelcomeMergedCount(result.total)
+      }
     } catch (error) {
       const fallback = mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed.'
       setError(authErrorMessage(error, fallback))
