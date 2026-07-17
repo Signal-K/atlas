@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react'
-import { authErrorMessage, signIn, signOut, signUp, useAuth } from '../lib/auth'
+import { useEffect, useRef, useState } from 'react'
+import { authErrorMessage, refreshEntitlement, signIn, signOut, signUp, useAuth } from '../lib/auth'
 import { trackEvent } from '../lib/analytics'
+import { POLAR_CHECKOUT_URL } from '../lib/entitlement'
 
 export function AccountSettings({
   defaultMode = 'sign-in',
@@ -18,11 +19,25 @@ export function AccountSettings({
   // Only fire "started" once per mount, on the visitor's first interaction
   // with the form -- not on every keystroke.
   const startedRef = useRef(false)
+  const [checkingEntitlement, setCheckingEntitlement] = useState(false)
 
   function trackFormStarted() {
     if (startedRef.current) return
     startedRef.current = true
     trackEvent('Account form started', { source, mode })
+  }
+
+  // Picks up entitlement flipped by the Polar webhook after checkout --
+  // the cached auth record otherwise only refreshes on the next sign-in.
+  useEffect(() => {
+    if (user) refreshEntitlement()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-check once per sign-in, not on every user object identity change
+  }, [user?.id])
+
+  async function handleRefreshEntitlement() {
+    setCheckingEntitlement(true)
+    await refreshEntitlement()
+    setCheckingEntitlement(false)
   }
 
   if (user) {
@@ -34,6 +49,29 @@ export function AccountSettings({
           <button type="button" onClick={signOut}>
             Sign out
           </button>
+        </div>
+        <div className="settings-choice">
+          <span className="settings-status">
+            {user.entitled ? 'Sky Pass active' : 'Sky Pass not active'}
+          </span>
+          {user.entitled ? null : (
+            <>
+              {POLAR_CHECKOUT_URL && (
+                <a
+                  className="paywall-card-cta"
+                  href={POLAR_CHECKOUT_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => trackEvent('Paywall checkout clicked', { feature: 'settings' })}
+                >
+                  Get the Sky Pass
+                </a>
+              )}
+              <button type="button" onClick={handleRefreshEntitlement} disabled={checkingEntitlement}>
+                {checkingEntitlement ? 'Checking…' : 'Refresh status'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     )

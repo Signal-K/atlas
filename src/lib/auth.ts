@@ -5,12 +5,13 @@ import { pb } from './pocketbase'
 export interface AuthUser {
   id: string
   email: string
+  entitled: boolean
 }
 
 function currentUser(): AuthUser | null {
   const model = pb.authStore.record
   if (!model) return null
-  return { id: model.id as string, email: model.email as string }
+  return { id: model.id as string, email: model.email as string, entitled: Boolean(model.entitled) }
 }
 
 // Reactive wrapper around pb.authStore so components re-render on
@@ -39,6 +40,19 @@ export async function signUp(email: string, password: string): Promise<void> {
 
 export function signOut(): void {
   pb.authStore.clear()
+}
+
+// Re-fetches the signed-in user's record (e.g. `entitled`, flipped
+// server-side by the Polar webhook after a purchase) since the cached
+// authStore snapshot only otherwise updates on the next sign-in.
+export async function refreshEntitlement(): Promise<void> {
+  if (!pb.authStore.isValid) return
+  try {
+    await pb.collection('users').authRefresh()
+  } catch {
+    // Best-effort -- e.g. offline or PocketBase unreachable; the cached
+    // snapshot stays as-is until the next successful refresh.
+  }
 }
 
 // Surfaces PocketBase's actual per-field validation message (e.g. "email

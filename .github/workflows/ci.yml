@@ -61,8 +61,11 @@ jobs:
             --http=127.0.0.1:8094 \
             --dir=/tmp/atlas-pocketbase/pb_data \
             --migrationsDir="${GITHUB_WORKSPACE}/pocketbase/migrations" \
+            --hooksDir="${GITHUB_WORKSPACE}/pocketbase/pb_hooks" \
             > /tmp/pocketbase.log 2>&1 &
           echo "$!" > /tmp/pocketbase.pid
+        env:
+          POLAR_WEBHOOK_SECRET: whsec_test_secret_not_used_by_write_e2e
       - name: Wait for PocketBase health
         run: |
           for i in {1..60}; do

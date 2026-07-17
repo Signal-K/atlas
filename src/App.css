@@ -463,6 +463,46 @@
   margin: 0;
 }
 
+.paywall-card {
+  max-width: 420px;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+}
+
+.paywall-card h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.paywall-card p {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.paywall-card-note {
+  opacity: 0.75;
+}
+
+.paywall-card-actions {
+  margin-top: 16px;
+}
+
+.paywall-card-actions button,
+.paywall-card-cta {
+  display: inline-block;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--text-h);
+  color: var(--bg);
+  cursor: pointer;
+  text-decoration: none;
+}
+
 .scrapbook-form {
   display: flex;
   flex-direction: column;

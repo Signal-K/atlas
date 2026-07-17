@@ -6,6 +6,7 @@ import { EventsView } from '../views/mobile/EventsView'
 import { PlanView } from '../views/mobile/PlanView'
 import { JournalView } from '../views/mobile/JournalView'
 import { SettingsView } from '../views/SettingsView'
+import { PaywallGate } from './PaywallGate'
 import { signOut, useAuth } from '../lib/auth'
 import { applyTheme, getStoredTheme, getSystemTheme, storeTheme } from '../lib/theme'
 import { getUpcomingEvents } from '../lib/sync'
@@ -369,7 +370,16 @@ export function MobileShell({
           <>
             {tab === 'hub' && <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} />}
             {tab === 'events' && <EventsView city={currentLocation} onLogAttempt={logAttempt} />}
-            {tab === 'calendar' && <PlanView city={currentLocation} onOpenEvents={() => goToTab('events')} onLogAttempt={logAttempt} />}
+            {tab === 'calendar' && (
+              <PaywallGate
+                user={user}
+                feature="Planning"
+                description="Rank dark-sky trips and deep-sky targets for your gear and upcoming events."
+                onSignInClick={openSettings}
+              >
+                <PlanView city={currentLocation} onOpenEvents={() => goToTab('events')} onLogAttempt={logAttempt} />
+              </PaywallGate>
+            )}
             {tab === 'journal' && <JournalView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />}
           </>
         )}

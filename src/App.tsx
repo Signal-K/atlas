@@ -23,6 +23,7 @@ import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { useAuth } from './lib/auth'
+import { PaywallGate } from './components/PaywallGate'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
@@ -181,52 +182,92 @@ function App() {
                   // -- it starts as the Melbourne default before that.
                   content: <DashboardView key={locationKey} onSignUpClick={goToSignUp} defaultCity={currentLocation} />,
                 },
-                { id: 'calendar', label: 'Calendar', content: <CalendarView /> },
+                {
+                  id: 'calendar',
+                  label: 'Calendar',
+                  content: (
+                    <PaywallGate
+                      user={user}
+                      feature="The event calendar"
+                      description="See sky events beyond tonight and plan ahead."
+                      onSignInClick={goToSignUp}
+                    >
+                      <CalendarView />
+                    </PaywallGate>
+                  ),
+                },
               ]}
             />
           )}
           {view === 'plan' && (
-            <TabbedSection
-              tabs={[
-                {
-                  id: 'events',
-                  label: 'Event plan',
-                  content: (
-                    <EventCategoryPlanView
-                      key={locationKey}
-                      lat={currentLocation.lat}
-                      lon={currentLocation.lon}
-                      cityName={currentLocation.name}
-                    />
-                  ),
-                },
-                {
-                  id: 'darksky',
-                  label: 'Dark-sky trips',
-                  content: <DarkSkyView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />,
-                },
-                {
-                  id: 'planner',
-                  label: 'Deep-sky planner',
-                  content: <DeepSkyPlannerView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />,
-                },
-              ]}
-            />
+            <PaywallGate
+              user={user}
+              feature="Planning"
+              description="Rank dark-sky trips and deep-sky targets for your gear and upcoming events."
+              onSignInClick={goToSignUp}
+            >
+              <TabbedSection
+                tabs={[
+                  {
+                    id: 'events',
+                    label: 'Event plan',
+                    content: (
+                      <EventCategoryPlanView
+                        key={locationKey}
+                        lat={currentLocation.lat}
+                        lon={currentLocation.lon}
+                        cityName={currentLocation.name}
+                      />
+                    ),
+                  },
+                  {
+                    id: 'darksky',
+                    label: 'Dark-sky trips',
+                    content: <DarkSkyView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />,
+                  },
+                  {
+                    id: 'planner',
+                    label: 'Deep-sky planner',
+                    content: <DeepSkyPlannerView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />,
+                  },
+                ]}
+              />
+            </PaywallGate>
           )}
           {view === 'community' && (
-            <TabbedSection
-              tabs={[
-                { id: 'feed', label: 'Feed', content: <FeedView /> },
-                { id: 'challenges', label: 'Photo Challenges', content: <PhotoChallengesView /> },
-              ]}
-            />
+            <PaywallGate
+              user={user}
+              feature="Community"
+              description="See discoveries shared by other sky-watchers and join event-tied photo challenges."
+              onSignInClick={goToSignUp}
+            >
+              <TabbedSection
+                tabs={[
+                  { id: 'feed', label: 'Feed', content: <FeedView /> },
+                  { id: 'challenges', label: 'Photo Challenges', content: <PhotoChallengesView /> },
+                ]}
+              />
+            </PaywallGate>
           )}
           {view === 'history' && (
             <TabbedSection
               key={historyDefaultTab}
               defaultActiveId={historyDefaultTab}
               tabs={[
-                { id: 'archive', label: 'Archive', content: <ArchiveView /> },
+                {
+                  id: 'archive',
+                  label: 'Archive',
+                  content: (
+                    <PaywallGate
+                      user={user}
+                      feature="The event archive"
+                      description="Browse past sky events beyond tonight's."
+                      onSignInClick={goToSignUp}
+                    >
+                      <ArchiveView />
+                    </PaywallGate>
+                  ),
+                },
                 {
                   id: 'scrapbook',
                   label: 'Scrapbook',
