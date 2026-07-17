@@ -1,8 +1,16 @@
 import { rankDarkSkySites, directionsUrl } from '../../lib/darkSky'
 import { BackIcon, MobileIcon } from './MobileIcon'
 
+// Sites this far out are more "theoretical" than "trip-worthy" -- the
+// underlying catalog (src/lib/darkSky.ts) is currently weighted toward
+// Europe/NZ/Australia/the Americas, so anyone in, say, East or South Asia
+// sees only very distant options. Rather than let that read as broken,
+// call out the coverage gap once it's this extreme.
+const FAR_TRAVEL_MINUTES_THRESHOLD = 240
+
 export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lon: number; cityName: string; onBack: () => void }) {
   const darkSites = rankDarkSkySites(lat, lon)
+  const nearestMinutes = darkSites[0]?.estimatedTravelMinutes ?? 0
 
   return (
     <div className="mobile-plan">
@@ -14,6 +22,12 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
           <MobileIcon name="mountain" /> Dark sites
         </div>
         <p className="mobile-empty-hint">Nearest dark-sky trip options ranked by drive time from {cityName}.</p>
+        {nearestMinutes > FAR_TRAVEL_MINUTES_THRESHOLD && (
+          <p className="mobile-empty-hint">
+            Our dark-sky site database is still Europe/US/Australia-focused, so nearby options can be sparse elsewhere — these are the
+            closest known sites, not necessarily close by.
+          </p>
+        )}
         <div className="mobile-tool-list">
           {darkSites.map((site) => {
             const qualityPct = Math.round(((9 - site.bortleClass) / 8) * 100)

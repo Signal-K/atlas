@@ -6,8 +6,16 @@ import { tourAffiliateUrl } from '../lib/affiliate'
 // LocalOpsView.tsx/localOps.ts (an unrelated local PocketBase diagnostics
 // dashboard) -- despite the ticket's original name, this is new, unrelated
 // functionality.
+// Sites this far out are more "theoretical" than "trip-worthy" -- the
+// underlying catalog (src/lib/darkSky.ts) is currently weighted toward
+// Europe/NZ/Australia/the Americas, so anyone in, say, East or South Asia
+// sees only very distant options. Rather than let that read as broken,
+// call out the coverage gap once it's this extreme.
+const FAR_TRAVEL_MINUTES_THRESHOLD = 240
+
 export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
   const sites: RankedDarkSkySite[] = rankDarkSkySites(lat, lon)
+  const nearestMinutes = sites[0]?.estimatedTravelMinutes ?? 0
 
   function openDirections(site: RankedDarkSkySite) {
     trackEvent('Opened dark-sky directions', { site: site.id })
@@ -21,6 +29,12 @@ export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
         Nearby dark-sky sites ranked by distance from your current location, with an approximate Bortle scale rating
         (1 = darkest, 9 = inner-city).
       </p>
+      {nearestMinutes > FAR_TRAVEL_MINUTES_THRESHOLD && (
+        <p className="darksky-hint">
+          Our dark-sky site database is still Europe/US/Australia-focused, so nearby options can be sparse elsewhere — these are the
+          closest known sites, not necessarily close by.
+        </p>
+      )}
       <ul className="row-list darksky-list">
         {sites.map((site) => (
           <li key={site.id} className="darksky-site">

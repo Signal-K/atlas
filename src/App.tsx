@@ -254,7 +254,7 @@ function App() {
                     />
                   ),
                 },
-                { id: 'ops', label: 'Diagnostics', content: <LocalOpsView /> },
+                ...(import.meta.env.DEV ? [{ id: 'ops', label: 'Diagnostics', content: <LocalOpsView /> }] : []),
               ]}
             />
           )}

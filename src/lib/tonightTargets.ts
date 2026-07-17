@@ -196,7 +196,15 @@ function tonightWindow(now: Date): { start: Date; end: Date } {
 // "no confirmed twilight/darkness boundary."
 function getDarknessWindow(lat: number, lon: number, start: Date, end: Date): DarknessWindow {
   const observer = new Astronomy.Observer(lat, lon, 0)
-  const limitDays = (end.getTime() - start.getTime()) / 86_400_000
+  // `end` is "6am tomorrow" in the *browser's* local timezone (see
+  // tonightWindow), which can be well under 24h away. That's too short a
+  // span to reliably contain a distant city's own dusk/dawn crossing when
+  // the browser and target location sit in very different timezones (e.g.
+  // a US-timezone browser viewing Tokyo or Melbourne) -- the search would
+  // come up empty and every affected tile would render as "--". Always
+  // search at least a full 2 days so the location's own evening is covered
+  // regardless of the viewer's timezone.
+  const limitDays = Math.max(2, (end.getTime() - start.getTime()) / 86_400_000)
   const search = (direction: number, altitude: number) => {
     const result = Astronomy.SearchAltitude(Astronomy.Body.Sun, observer, direction, start, limitDays, altitude)
     return result ? result.date.toISOString() : null

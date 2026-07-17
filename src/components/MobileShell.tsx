@@ -8,9 +8,13 @@ import { JournalView } from '../views/mobile/JournalView'
 import { SettingsView } from '../views/SettingsView'
 import { signOut, useAuth } from '../lib/auth'
 import { applyTheme, getStoredTheme, getSystemTheme, storeTheme } from '../lib/theme'
+import { getUpcomingEvents } from '../lib/sync'
+import { formatEventDate } from '../lib/eventFormat'
+import { addToWatchlist, formatWatchValue, getWatchableTargets, getWatchlist, isWatching, removeFromWatchlist, type WatchlistItem } from '../lib/watchlist'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
 import type { City } from '../lib/cities'
+import type { SkyEvent } from '../lib/db'
 import type { ObservationDraft } from '../lib/observationDraft'
 
 export type MobileTab = 'hub' | 'events' | 'calendar' | 'journal'
@@ -121,6 +125,9 @@ export function MobileShell({
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchEvents, setSearchEvents] = useState<SkyEvent[]>([])
+  const [searchTargets, setSearchTargets] = useState<string[]>([])
+  const [searchWatchlist, setSearchWatchlist] = useState<WatchlistItem[]>([])
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
   const [isDark, setIsDark] = useState(() => (getStoredTheme() ?? getSystemTheme()) === 'dark')
   const { user } = useAuth()
@@ -134,6 +141,48 @@ export function MobileShell({
     if (location.pathname === '/') navigate(TAB_PATH.hub, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only redirect the bare landing path once
   }, [])
+
+  useEffect(() => {
+    if (!searchOpen) return
+    let cancelled = false
+    async function load() {
+      const [events, targets, watched] = await Promise.all([getUpcomingEvents(300), getWatchableTargets(), getWatchlist()])
+      if (cancelled) return
+      setSearchEvents(events)
+      setSearchTargets(targets)
+      setSearchWatchlist(watched)
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [searchOpen])
+
+  async function toggleSearchWatch(target: string) {
+    if (isWatching(searchWatchlist, 'target', target)) await removeFromWatchlist('target', target)
+    else await addToWatchlist('target', target)
+    setSearchWatchlist(await getWatchlist())
+  }
+
+  const trimmedSearchQuery = searchQuery.trim().toLocaleLowerCase()
+  const matchedSearchEvents = trimmedSearchQuery
+    ? searchEvents.filter(
+        (event) =>
+          event.title.toLocaleLowerCase().includes(trimmedSearchQuery) ||
+          event.target.toLocaleLowerCase().includes(trimmedSearchQuery) ||
+          event.kind.toLocaleLowerCase().includes(trimmedSearchQuery),
+      )
+    : []
+  const matchedSearchTargets = trimmedSearchQuery
+    ? searchTargets.filter((target) => target.toLocaleLowerCase().includes(trimmedSearchQuery))
+    : []
+  const hasSearchQuery = trimmedSearchQuery.length > 0
+  const hasSearchResults = matchedSearchEvents.length > 0 || matchedSearchTargets.length > 0
+
+  function openSearchEvent() {
+    setSearchOpen(false)
+    goToTab('events')
+  }
 
   function toggleTheme() {
     setIsDark((current) => !current)
@@ -279,7 +328,42 @@ export function MobileShell({
                 autoFocus
               />
             </div>
-            <p className="dt-empty-hint">Start typing to search tonight&rsquo;s events, the watchlist, and the catalog.</p>
+            {!hasSearchQuery && (
+              <p className="dt-empty-hint">Start typing to search tonight&rsquo;s events, the watchlist, and the catalog.</p>
+            )}
+            {hasSearchQuery && !hasSearchResults && (
+              <p className="dt-empty-hint">No matches for &ldquo;{searchQuery.trim()}&rdquo;. Try a target name like &ldquo;Jupiter&rdquo; or an event type like &ldquo;meteor&rdquo;.</p>
+            )}
+            {matchedSearchTargets.length > 0 && (
+              <>
+                <div className="dt-section-eyebrow">Targets</div>
+                <ul className="dt-search-results">
+                  {matchedSearchTargets.map((target) => (
+                    <li key={target} className="dt-search-result-row">
+                      <span>{formatWatchValue(target)}</span>
+                      <button type="button" onClick={() => toggleSearchWatch(target)}>
+                        {isWatching(searchWatchlist, 'target', target) ? 'Watching' : 'Watch'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {matchedSearchEvents.length > 0 && (
+              <>
+                <div className="dt-section-eyebrow">Events</div>
+                <ul className="dt-search-results">
+                  {matchedSearchEvents.map((event) => (
+                    <li key={event.id} className="dt-search-result-row">
+                      <button type="button" className="dt-search-result-event" onClick={openSearchEvent}>
+                        <span>{event.title}</span>
+                        <small>{formatEventDate(event.startsAt)}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         ) : (
           <>
