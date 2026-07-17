@@ -405,6 +405,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
                   {expanded && (
                     <div className="dt-feed-preview">
                       <p>{describeWhatYouWouldSee(target)}</p>
+                      <p className="dt-feed-equipment-note">{target.viewingNote}</p>
                       {equipmentFitNote(target, equipment) && <p className="dt-feed-equipment-note">{equipmentFitNote(target, equipment)}</p>}
                       <button type="button" onClick={() => onOpenTab('events')}>
                         Open details

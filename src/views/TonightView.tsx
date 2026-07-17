@@ -334,6 +334,11 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                           <CameraPresetCard recipeKey={recipeKey} />
                         </div>
                       )}
+                      <div className="tonight-target-plan-section">
+                        <h4>Weather check</h4>
+                        <p>{target.viewingNote}</p>
+                        {plan.generalPhotoWindow && <p>{plan.generalPhotoWindow.reason}</p>}
+                      </div>
                     </div>
                   )}
                   <div className="tonight-target-actions">
