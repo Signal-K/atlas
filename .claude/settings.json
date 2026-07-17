@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plate__get_task",
+      "mcp__plate__list_tasks",
+      "mcp__plate__list_workspaces",
+      "mcp__plate__list_projects",
+      "mcp__plate__list_sections",
+      "mcp__plate__list_statuses",
+      "mcp__claude_ai_Craft__craft_read",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "mcp__computer-use__screenshot",
+      "mcp__zennotes__search_by_title",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(npx vitest *)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm run test:unit)"
+    ]
+  }
+}

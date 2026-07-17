@@ -466,9 +466,22 @@
 .paywall-card {
   max-width: 420px;
   padding: 24px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--code-bg);
+}
+
+.paywall-card-badge {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .paywall-card h2 {
@@ -490,17 +503,27 @@
   margin-top: 16px;
 }
 
-.paywall-card-actions button,
 .paywall-card-cta {
   display: inline-block;
   font-size: 13px;
+  font-weight: 600;
   padding: 8px 16px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--text-h);
+  border: 1px solid var(--accent);
+  background: var(--accent);
   color: var(--bg);
   cursor: pointer;
   text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.paywall-card-cta:hover {
+  opacity: 0.88;
+}
+
+.paywall-card-cta:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .scrapbook-form {
@@ -3114,4 +3137,125 @@
   font-size: 13px;
   color: var(--status-good);
   margin: 0;
+}
+
+.feedback-dock {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 50;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  font-family: var(--sans);
+}
+
+.feedback-dock-trigger {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--text-h);
+  color: var(--bg);
+  padding: 9px 14px;
+  font: 700 12px/1 var(--sans);
+  cursor: pointer;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+}
+
+.feedback-panel {
+  width: min(340px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.24);
+}
+
+.feedback-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.feedback-panel-head strong {
+  color: var(--text-h);
+  font-size: 14px;
+}
+
+.feedback-panel-head button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--code-bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.feedback-panel-body {
+  display: grid;
+  gap: 10px;
+}
+
+.feedback-panel-body p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.feedback-panel-body textarea,
+.feedback-panel-body input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  font: 500 13px/1.35 var(--sans);
+  padding: 10px;
+  resize: vertical;
+}
+
+.feedback-score-row,
+.feedback-option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.feedback-score-row button,
+.feedback-option-row button,
+.feedback-submit {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  font: 700 12px/1 var(--sans);
+  padding: 8px 11px;
+  cursor: pointer;
+}
+
+.feedback-score-row button.is-selected,
+.feedback-submit {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.feedback-submit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (max-width: 640px) {
+  .feedback-dock {
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+  }
+
+  .feedback-dock-trigger {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
 }

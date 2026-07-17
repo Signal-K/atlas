@@ -39,12 +39,13 @@ export function PaywallGate({ user, feature, description, onSignInClick, childre
 
   return (
     <div className="paywall-card">
+      <span className="paywall-card-badge">Sky Pass</span>
       <h2>{feature} is part of the Sky Pass</h2>
       <p>{description}</p>
       {!user && <p className="paywall-card-note">Create a free account first, then upgrade.</p>}
       <div className="paywall-card-actions">
         {!user ? (
-          <button type="button" onClick={onSignInClick}>
+          <button type="button" className="paywall-card-cta" onClick={onSignInClick}>
             Sign in / create account
           </button>
         ) : (

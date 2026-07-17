@@ -100,7 +100,11 @@ Needs, in this repo's GitHub settings:
 - Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit permission), `CLOUDFLARE_ACCOUNT_ID`.
 - Variables (Settings &rarr; Secrets and variables &rarr; Actions &rarr;
   Variables, not secrets — these end up in the public client bundle):
-  `VITE_PB_URL`, `VITE_VAPID_PUBLIC_KEY`.
+  `VITE_PB_URL`, `VITE_VAPID_PUBLIC_KEY`, `VITE_POSTHOG_KEY`,
+  `VITE_POSTHOG_HOST`.
+- Optional repository/environment secrets for server-side analytics tooling:
+  `POSTHOG_PROJECT_ID`, `POSTHOG_PERSONAL_API_KEY`. Do not add the personal
+  API key as a `VITE_*` variable.
 - A Cloudflare Pages project named `atlas` (create it once via the Cloudflare
   dashboard or `wrangler pages project create atlas`); the workflow deploys
   to it by name, it doesn't create it.

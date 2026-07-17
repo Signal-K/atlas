@@ -576,6 +576,45 @@
   text-transform: uppercase;
 }
 
+.mobile-shell .paywall-card {
+  max-width: none;
+  padding: 18px 16px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--mobile-line);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 48%),
+    var(--mobile-surface-strong);
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.035);
+}
+
+.mobile-shell .paywall-card-badge {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--accent-bg);
+  font: 800 10px/1.2 var(--mono);
+}
+
+.mobile-shell .paywall-card h2 {
+  font-family: var(--font-display);
+  color: var(--text-h);
+}
+
+.mobile-shell .paywall-card p {
+  color: var(--mobile-muted);
+}
+
+.mobile-shell .paywall-card-cta {
+  min-height: 38px;
+  padding: 0 20px;
+  border-radius: 8px;
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: var(--mobile-primary-text);
+  font-family: var(--font-data);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
 .mobile-widget-icon,
 .mobile-card-eyebrow--icon {
   display: inline-flex;
@@ -916,6 +955,9 @@
   position: fixed;
   inset: 0;
   z-index: 40;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   background:
@@ -961,16 +1003,38 @@
 }
 
 .mobile-map-overlay-head button {
-  min-height: 36px;
-  border: 1px solid rgba(124, 196, 255, 0.24);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--mobile-ink) 64%, transparent);
-  color: var(--accent);
+  position: relative;
+  flex: 0 0 40px;
+  width: 40px;
+  min-height: 40px;
+  border: 1px solid rgba(236, 237, 240, 0.72);
+  border-radius: 50%;
+  background: rgba(236, 237, 240, 0.94);
+  color: #111316;
   cursor: pointer;
-  font: 850 10px/1 var(--mono);
-  letter-spacing: 0.08em;
-  padding: 0 12px;
-  text-transform: uppercase;
+  font-size: 0;
+  padding: 0;
+  box-shadow: 0 10px 28px -16px rgba(0, 0, 0, 0.9);
+}
+
+.mobile-map-overlay-head button::before,
+.mobile-map-overlay-head button::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.mobile-map-overlay-head button::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.mobile-map-overlay-head button::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .mobile-map-overlay-body {
@@ -2810,6 +2874,12 @@
     var(--mobile-surface-strong);
 }
 
+:root[data-theme='light'] .mobile-shell .paywall-card {
+  background:
+    linear-gradient(160deg, rgba(14, 165, 233, 0.06), transparent 52%),
+    var(--mobile-surface-strong);
+}
+
 :root[data-theme='light'] .mobile-pointing-panel {
   background:
     linear-gradient(90deg, rgba(245, 158, 11, 0.12), transparent 42%),
@@ -3024,20 +3094,21 @@
 
 .mobile-sheet-close {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  border: 1px solid var(--mobile-line);
-  background: var(--mobile-panel-bg);
-  color: var(--mobile-muted);
+  border: 1px solid rgba(236, 237, 240, 0.6);
+  background: rgba(236, 237, 240, 0.92);
+  color: #111316;
   cursor: pointer;
+  box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.9);
 }
 
 .mobile-sheet-close svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
 }
 
 .mobile-sheet-facts {
@@ -3525,7 +3596,8 @@
 .dt-tabbar {
   position: sticky;
   top: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   background: color-mix(in srgb, var(--dt-bg-page) 94%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -3534,33 +3606,34 @@
 }
 
 .dt-tab {
+  min-width: 0;
+  min-height: 55px;
   background: none;
   border: 0;
-  font: 700 0.68rem/1.1 var(--dt-font-data);
-  letter-spacing: 0.07em;
+  font: 700 0.6rem/1.05 var(--dt-font-data);
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--dt-ink-faded);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px 2px 10px;
+  padding: 8px 1px 9px;
   cursor: pointer;
   border-bottom: 3px solid transparent;
-  flex: 1;
-  min-width: 0;
 }
 
 .dt-tab svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   stroke-width: 1.6;
 }
 
 .dt-tab span {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
@@ -4450,6 +4523,179 @@
   color: var(--dt-bg-page);
 }
 
+/* -- Journal tab: keep the notebook content, align controls with Daily Transit. -- */
+
+.mobile-journal {
+  min-height: 100%;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 18px 16px 28px;
+  margin: -16px -15px calc(-1 * (env(safe-area-inset-bottom, 0px) + 20px));
+  background: var(--dt-bg-page);
+  color: var(--dt-ink);
+  font-family: var(--dt-font-serif);
+}
+
+.dt-journal-switcher {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 3px double var(--dt-ink);
+}
+
+.dt-journal-switcher-head {
+  min-width: 0;
+}
+
+.dt-journal-tabs {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex-shrink: 1;
+  background: var(--dt-bg-page);
+}
+
+.dt-journal-tabs button {
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 8px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.dt-journal-panel,
+.dt-journal-panel .widget-section {
+  display: grid;
+  gap: 16px;
+}
+
+.dt-journal-panel .widget-section,
+.dt-journal-panel .archive-section {
+  color: var(--dt-ink);
+}
+
+.dt-journal-panel .scrapbook-header {
+  margin: 0;
+}
+
+.dt-journal-panel .scrapbook-header h2,
+.dt-journal-panel .archive-section h2 {
+  margin: 0;
+  font-family: var(--dt-font-display);
+  font-size: 1.4rem;
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: var(--dt-ink);
+}
+
+.dt-journal-panel .scrapbook-hint {
+  color: var(--dt-ink-muted);
+  opacity: 1;
+}
+
+.dt-journal-panel .scrapbook-form {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--dt-rule);
+  border-radius: 0;
+  background: repeating-linear-gradient(
+    var(--scrapbook-paper, #fbf6e9) 0px,
+    var(--scrapbook-paper, #fbf6e9) 27px,
+    var(--scrapbook-rule, rgba(91, 99, 111, 0.14)) 28px
+  );
+  box-shadow: none;
+}
+
+.dt-journal-panel .scrapbook-form textarea {
+  min-height: 94px;
+  border-color: color-mix(in srgb, var(--dt-ink-muted) 42%, transparent);
+  color: var(--dt-ink);
+}
+
+.dt-journal-panel .scrapbook-draft-banner {
+  margin: 0;
+  border-color: var(--dt-rule);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--dt-primary) 10%, var(--dt-bg-page));
+  color: var(--dt-ink);
+}
+
+.dt-journal-panel .scrapbook-export,
+.dt-journal-panel .scrapbook-submit,
+.dt-journal-panel .scrapbook-share,
+.dt-journal-panel .scrapbook-share-card,
+.dt-journal-panel .scrapbook-draft-banner button {
+  min-height: 34px;
+  border: 1px solid var(--dt-rule);
+  border-radius: 0;
+  background: var(--dt-bg-page);
+  color: var(--dt-ink);
+  cursor: pointer;
+  font: 700 0.68rem/1.1 var(--dt-font-data);
+  letter-spacing: 0.06em;
+  padding: 0 12px;
+  text-transform: uppercase;
+}
+
+.dt-journal-panel .scrapbook-submit {
+  border-color: var(--dt-ink);
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+}
+
+.dt-journal-panel .scrapbook-rating-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid var(--dt-rule);
+}
+
+.dt-journal-panel .scrapbook-rating-picker button {
+  min-width: 0;
+  min-height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--dt-ink-muted);
+  cursor: pointer;
+  font: 700 0.64rem/1.1 var(--dt-font-data);
+  letter-spacing: 0.04em;
+  padding: 0 6px;
+  text-transform: uppercase;
+}
+
+.dt-journal-panel .scrapbook-rating-picker button + button {
+  border-left: 1px solid var(--dt-rule);
+}
+
+.dt-journal-panel .scrapbook-rating-picker button.is-active {
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+}
+
+.dt-journal-panel .scrapbook-entry {
+  box-shadow: 0 1px 0 var(--dt-rule);
+}
+
+.dt-journal-panel .archive-day-group,
+.dt-journal-panel .archive-entry {
+  border-color: var(--dt-rule);
+}
+
+.dt-journal-panel .archive-day-number,
+.dt-journal-panel .archive-entry-title {
+  color: var(--dt-ink);
+}
+
+.dt-journal-panel .archive-day-meta,
+.dt-journal-panel .archive-entry-kind,
+.dt-journal-panel .archive-entry-desc,
+.dt-journal-panel .archive-entry-time {
+  color: var(--dt-ink-muted);
+}
+
 .dt-day-strip {
   display: flex;
   gap: 6px;
@@ -4575,4 +4821,22 @@
 
 .dt-status-dot--poor {
   background: var(--dt-rust-400);
+}
+
+.mobile-shell ~ .feedback-dock .feedback-dock-trigger,
+.mobile-shell + .feedback-dock .feedback-dock-trigger {
+  border-color: var(--mobile-line);
+  border-radius: 8px;
+  background: var(--mobile-surface-strong);
+  color: var(--mobile-primary-text);
+  font-family: var(--font-data);
+  letter-spacing: 0.02em;
+}
+
+.mobile-shell ~ .feedback-dock .feedback-panel,
+.mobile-shell + .feedback-dock .feedback-panel {
+  border-color: var(--mobile-line);
+  border-radius: 12px;
+  background: var(--mobile-surface-strong);
+  color: var(--mobile-muted);
 }

@@ -24,6 +24,7 @@ import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { useAuth } from './lib/auth'
 import { PaywallGate } from './components/PaywallGate'
+import { FeedbackDock } from './components/FeedbackDock'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
@@ -151,6 +152,7 @@ function App() {
           needsMotionPermission={motion.needsMotionPermission}
           requestMotionPermission={motion.requestMotionPermission}
         />
+        <FeedbackDock />
       </>
     )
   }
@@ -301,6 +303,7 @@ function App() {
           )}
         </main>
       </div>
+      <FeedbackDock />
     </>
   )
 }

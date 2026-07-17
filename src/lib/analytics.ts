@@ -16,6 +16,7 @@ export function initAnalytics() {
 }
 
 export function trackEvent(name: string, properties?: Record<string, unknown>) {
+  window.dispatchEvent(new CustomEvent('atlas:analytics-event', { detail: { name, properties } }))
   if (!initialized) return
   posthog.capture(name, properties)
 }

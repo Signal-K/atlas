@@ -29,14 +29,14 @@ export function JournalView({
 
   return (
     <div className="mobile-journal">
-      <section className="mobile-card mobile-community-switcher">
-        <div className="mobile-card-header">
+      <section className="dt-journal-switcher">
+        <div className="dt-journal-switcher-head">
           <div>
-            <div className="mobile-card-eyebrow">Journal</div>
-            <h2>Private and public sky log</h2>
+            <div className="dt-section-eyebrow">Journal</div>
+            <h2 className="dt-h2">Private and public sky log</h2>
           </div>
         </div>
-        <div className="mobile-community-tabs" aria-label="Journal sections">
+        <div className="dt-view-toggle dt-journal-tabs" aria-label="Journal sections">
           {MODES.map((item) => (
             <button
               key={item.id}
@@ -49,7 +49,7 @@ export function JournalView({
           ))}
         </div>
       </section>
-      <div className="mobile-community-panel">{content[mode]}</div>
+      <div className="dt-journal-panel">{content[mode]}</div>
     </div>
   )
 }
