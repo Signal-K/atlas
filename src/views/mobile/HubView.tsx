@@ -16,10 +16,12 @@ import {
   describeWhatYouWouldSee,
   dismissEquipmentPrompt,
   EQUIPMENT_OPTIONS,
+  equipmentFitNote,
   getEquipmentChoice,
   recordLocalTargetTap,
   saveEquipmentChoice,
   shouldAskForEquipment,
+  sortTargetsByEquipment,
   type EquipmentChoice,
 } from '../../lib/firstPlanJourney'
 import type { ObservationDraft } from '../../lib/observationDraft'
@@ -180,7 +182,8 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
     return <div className="mobile-hub-loading">Loading tonight&rsquo;s sky&hellip;</div>
   }
 
-  const topTarget = plan.targets[0]
+  const rankedTargets = sortTargetsByEquipment(plan.targets, equipment)
+  const topTarget = rankedTargets[0]
   const sunsetAt = plan.darknessWindow.civilDuskAt
   const darkAt = plan.darknessWindow.astronomicalDuskAt
   const cloudCover = advisory ? `${Math.round(advisory.cloudCoverPct)}%` : '—'
@@ -377,7 +380,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
               <span>TODAY</span>
               <span />
             </div>
-            {plan.targets.slice(0, 3).map((target) => {
+            {rankedTargets.slice(0, 3).map((target) => {
               const kicker = kickerFor(target.kind)
               const expanded = expandedTargetId === target.eventId
               return (
@@ -402,6 +405,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
                   {expanded && (
                     <div className="dt-feed-preview">
                       <p>{describeWhatYouWouldSee(target)}</p>
+                      {equipmentFitNote(target, equipment) && <p className="dt-feed-equipment-note">{equipmentFitNote(target, equipment)}</p>}
                       <button type="button" onClick={() => onOpenTab('events')}>
                         Open details
                       </button>

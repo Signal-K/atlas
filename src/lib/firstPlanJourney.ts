@@ -76,6 +76,41 @@ export function shouldAskForEquipment(): boolean {
   return listLocalTargetTaps().length > 0 && !getEquipmentChoice() && localStorage.getItem(EQUIPMENT_PROMPT_DISMISSED_KEY) !== '1'
 }
 
+type EquipmentRankable = Pick<TonightTarget, 'phoneFriendly' | 'nakedEyeVisible' | 'difficulty'>
+
+function matchesEquipment(target: EquipmentRankable, equipment: EquipmentChoice): boolean {
+  if (equipment === 'eyes') return target.nakedEyeVisible
+  if (equipment === 'phone') return target.phoneFriendly
+  if (equipment === 'binoculars') return target.difficulty !== 'hard'
+  return true // a telescope can handle anything on the list
+}
+
+// Reorders targets so ones that suit the user's stated equipment come first,
+// without changing relative order within each group -- lets someone with
+// "just my eyes" see naked-eye targets before phone/binocular/telescope-only
+// ones, instead of equipment being collected but never acted on.
+export function sortTargetsByEquipment<T extends EquipmentRankable>(targets: T[], equipment: EquipmentChoice | null): T[] {
+  if (!equipment) return targets
+  return targets
+    .map((target, index) => ({ target, index, matches: matchesEquipment(target, equipment) ? 0 : 1 }))
+    .sort((a, b) => a.matches - b.matches || a.index - b.index)
+    .map(({ target }) => target)
+}
+
+export function equipmentFitNote(target: EquipmentRankable, equipment: EquipmentChoice | null): string | null {
+  if (!equipment) return null
+  if (equipment === 'eyes') {
+    return target.nakedEyeVisible ? 'Good match for eyes only.' : 'You may need binoculars or a telescope to see this well.'
+  }
+  if (equipment === 'phone') {
+    return target.phoneFriendly ? 'Good match for a phone camera.' : 'Tough to capture with just a phone.'
+  }
+  if (equipment === 'binoculars') {
+    return target.difficulty === 'hard' ? 'A telescope will show more than binoculars here.' : 'Binoculars should work well for this.'
+  }
+  return 'Your telescope can handle this one.'
+}
+
 export function describeWhatYouWouldSee(target: TonightTarget): string {
   if (target.kind === 'iss_pass' || target.kind === 'satellite_flare') {
     return 'You would see a bright point moving steadily across the sky for a few minutes.'

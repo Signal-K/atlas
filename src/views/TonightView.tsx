@@ -13,10 +13,12 @@ import {
   dismissEquipmentPrompt,
   describeWhatYouWouldSee,
   EQUIPMENT_OPTIONS,
+  equipmentFitNote,
   getEquipmentChoice,
   recordLocalTargetTap,
   saveEquipmentChoice,
   shouldAskForEquipment,
+  sortTargetsByEquipment,
   type EquipmentChoice,
 } from '../lib/firstPlanJourney'
 import type { ObservationDraft } from '../lib/observationDraft'
@@ -140,6 +142,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
   }
 
   const darknessLabel = formatDarknessWindow(plan.darknessWindow)
+  const rankedTargets = sortTargetsByEquipment(plan.targets, equipment)
   const hasDirectionalTargets = plan.targets.some((target) => target.direction !== null)
   const twilightNow = isTwilightNow(plan.darknessWindow, new Date())
 
@@ -268,7 +271,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
             <p className="scrapbook-hint">Compass access was denied — direction is still shown below, just not the live turn hint.</p>
           )}
           <ul className="row-list">
-            {plan.targets.map((target) => {
+            {rankedTargets.map((target) => {
               const recipeKey = recipeKeyForEventKind(target.kind)
               const expanded = expandedRecipe === target.eventId
               const previewExpanded = expandedPreview === target.eventId
@@ -299,6 +302,9 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                     )}
                     <span className="tonight-target-reason">{target.reason}</span>
                     <span className="tonight-target-reason">{target.viewingNote}</span>
+                    {equipmentFitNote(target, equipment) && (
+                      <span className="tonight-target-reason tonight-target-equipment-note">{equipmentFitNote(target, equipment)}</span>
+                    )}
                   </button>
                   {previewExpanded && (
                     <div className="tonight-target-plan">
