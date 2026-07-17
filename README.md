@@ -21,6 +21,27 @@ the ticket breakdown.
   out-of-band via scheduled GitHub Actions workflows, not in the app
   runtime (AT-004, AT-010, AT-011).
 
+## Cloud infra (production)
+
+Quick-reference links for everything Atlas actually runs on. All of these
+are shared infrastructure — changes here can affect other apps in the
+Star Sailors ecosystem, not just Atlas.
+
+| What | Link | Notes |
+| --- | --- | --- |
+| Production app | https://atlas-4xz.pages.dev/ | Cloudflare Pages project `atlas`. **Not** `atlas.pages.dev` — that subdomain belongs to an unrelated third party (FieldMaps). |
+| Cloudflare Pages dashboard | https://dash.cloudflare.com/ → Workers & Pages → `atlas` | Build logs, deployment history, custom domains, env vars. Requires the account behind `CLOUDFLARE_ACCOUNT_ID`. |
+| Production PocketBase (API) | https://signal-k-starsailors.fly.dev | Shared Star Sailors backend — also used by other apps in the ecosystem, not Atlas-specific. Same value as the `PB_URL` / `VITE_PB_URL` secrets/vars below. |
+| PocketBase admin UI | https://signal-k-starsailors.fly.dev/_/ | Superuser login required — this is where to inspect/edit `sky_events`, `atlas_observations`, users, etc. directly, and where to clean up any test data. |
+| Fly.io app dashboard | https://fly.io/apps/signal-k-starsailors | Machine status, logs, restarts for the PocketBase host. |
+| GitHub Actions runs | https://github.com/Signal-K/atlas/actions | CI, deploys, and the three scheduled jobs below. |
+| GitHub repo secrets/vars | https://github.com/Signal-K/atlas/settings/secrets/actions | Where `PB_URL`, `CLOUDFLARE_API_TOKEN`, etc. (below) actually live. |
+
+Local dev talks to the same production PocketBase by default
+(`.env.example` → `VITE_PB_URL=https://signal-k-starsailors.fly.dev`) unless
+you override it with a local/Docker instance — see `docker-compose.yml` and
+`make demo` for running against a local PocketBase instead.
+
 ## Setup
 
 ```bash
@@ -33,17 +54,23 @@ Set `VITE_PB_URL` in `.env.local` to the PocketBase instance to use.
 
 ## GitHub Actions
 
-Two scheduled workflows run against the shared PocketBase instance directly
-(not through the app runtime):
+CI and deploys (`.github/workflows/ci.yml`, `deploy.yml`, `preview-deploy.yml`)
+run on every push/PR — see [Deploy target](#deploy-target) below.
+
+Three scheduled workflows run against the shared PocketBase instance
+directly (not through the app runtime, and not gated on CI passing):
 
 - `.github/workflows/ingest.yml` — runs every event-source plugin daily and
   upserts into `sky_events` (`npm run ingest` / `scripts/ingest.mjs`).
 - `.github/workflows/notify.yml` — checks each user's watchlist against
   upcoming events + weather and sends web-push notifications
   (`npm run notify` / `scripts/notify.mjs`).
+- `.github/workflows/moderate.yml` — surfaces pending Photo Challenge
+  submissions for admin approval a few times a day (`npm run moderate` /
+  `scripts/moderate-photo-challenges.mjs`); doesn't auto-approve anything.
 
-Both need these repo secrets set (Settings &rarr; Secrets and variables &rarr;
-Actions):
+All three need these repo secrets set (Settings &rarr; Secrets and
+variables &rarr; Actions):
 
 - `PB_URL` — the shared PocketBase URL (same value as `VITE_PB_URL`).
 - `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` — a PocketBase superuser account,
@@ -59,8 +86,14 @@ Actions):
 Cloudflare Pages (AT-012) — Atlas is a static SPA build with no server
 component, so a static host is simpler and cheaper than a Fly.io app that
 would just be serving files. `.github/workflows/deploy.yml` builds and
-pushes `dist/` to Cloudflare Pages on every push to `main`, using
+pushes `dist/` to Cloudflare Pages on every push to `master` (this repo's
+default branch — not `main`), using
 [`cloudflare/pages-action`](https://github.com/cloudflare/pages-action).
+`.github/workflows/preview-deploy.yml` does the same for every push to any
+other branch, landing on a Cloudflare Pages preview URL instead of
+production. Both run the full test suite (`npm test`, including a real
+local PocketBase for the write-action E2E) before deploying — see
+`ci.yml`/`deploy.yml` for the exact gate.
 
 Needs, in this repo's GitHub settings:
 
