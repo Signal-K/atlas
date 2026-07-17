@@ -25,6 +25,7 @@ import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { useAuth } from './lib/auth'
 import { PaywallGate } from './components/PaywallGate'
 import { FeedbackDock } from './components/FeedbackDock'
+import { InstallPrompt } from './components/InstallPrompt'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
@@ -153,6 +154,7 @@ function App() {
           requestMotionPermission={motion.requestMotionPermission}
         />
         <FeedbackDock />
+        <InstallPrompt />
       </>
     )
   }
@@ -304,6 +306,7 @@ function App() {
         </main>
       </div>
       <FeedbackDock />
+      <InstallPrompt />
     </>
   )
 }

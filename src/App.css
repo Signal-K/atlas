@@ -3259,3 +3259,68 @@
     font-size: 11px;
   }
 }
+
+.install-prompt {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.24);
+  font-family: var(--sans);
+}
+
+.install-prompt p {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.install-prompt-icon {
+  font-style: normal;
+}
+
+.install-prompt-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.install-prompt-cta,
+.install-prompt-dismiss {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font: 700 12px/1 var(--sans);
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.install-prompt-cta {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.install-prompt-dismiss {
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+@media (max-width: 640px) {
+  .install-prompt {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+  }
+}
