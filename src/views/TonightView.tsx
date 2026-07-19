@@ -47,6 +47,10 @@ function formatDayLabel(dateStr: string): string {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long' })
 }
 
+function formatWeatherSummary(advisory: NonNullable<TonightPlan['todayAdvisory']>): string {
+  return `${Math.round(advisory.cloudCoverPct)}% cloud · ${Math.round(advisory.precipitationChancePct)}% rain chance for the viewing window.`
+}
+
 function formatDarknessWindow(window: TonightPlan['darknessWindow']): string | null {
   if (!window.astronomicalDuskAt || !window.astronomicalDawnAt) return null
   return `Astronomically dark ${formatTime(window.astronomicalDuskAt)}–${formatTime(window.astronomicalDawnAt)}`
@@ -336,8 +340,21 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                       )}
                       <div className="tonight-target-plan-section">
                         <h4>Weather check</h4>
-                        <p>{target.viewingNote}</p>
-                        {plan.generalPhotoWindow && <p>{plan.generalPhotoWindow.reason}</p>}
+                        {plan.todayAdvisory ? (
+                          <>
+                            <p>{formatWeatherSummary(plan.todayAdvisory)}</p>
+                            <p>{target.viewingNote}</p>
+                            {plan.nextClearWindow && (
+                              <p>
+                                Clouded out tonight — {formatDayLabel(plan.nextClearWindow.date)} looks better (
+                                {Math.round(plan.nextClearWindow.cloudCoverPct)}% cloud ·{' '}
+                                {Math.round(plan.nextClearWindow.precipitationChancePct)}% rain chance).
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p>Weather is unavailable right now — use the time and direction above, then check the sky before going out.</p>
+                        )}
                       </div>
                     </div>
                   )}
