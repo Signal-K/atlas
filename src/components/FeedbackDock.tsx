@@ -265,12 +265,15 @@ export function FeedbackDock() {
                   </button>
                 ))}
               </div>
-              <textarea
-                value={microNote}
-                onChange={(event) => setMicroNote(event.target.value)}
-                placeholder="Optional note"
-                rows={2}
-              />
+              <label className="feedback-field">
+                <span>Note</span>
+                <textarea
+                  value={microNote}
+                  onChange={(event) => setMicroNote(event.target.value)}
+                  placeholder="Optional note"
+                  rows={2}
+                />
+              </label>
             </div>
           )}
 
