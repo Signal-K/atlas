@@ -253,7 +253,10 @@ export function MobileShell({
       <header>
         <div className="dt-brand-row">
           <button type="button" className="dt-brand-btn" onClick={() => goToTab('hub')} aria-label="Open Atlas sky hub">
-            <span className="dt-wordmark">ATLAS</span>
+            <span className="dt-brand-lockup">
+              <img src="/atlas-icon.png" alt="" className="dt-brand-mark" />
+              <span className="dt-wordmark">ATLAS</span>
+            </span>
             <span className="dt-brand-subtitle">Field console</span>
           </button>
           <div className="dt-avatar-wrap">

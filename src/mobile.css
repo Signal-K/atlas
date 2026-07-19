@@ -3509,6 +3509,22 @@
   color: inherit;
 }
 
+.dt-brand-lockup {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dt-brand-mark {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 18px rgba(36, 28, 14, 0.18);
+}
+
 .dt-wordmark {
   font-family: var(--dt-font-display);
   font-weight: 800;

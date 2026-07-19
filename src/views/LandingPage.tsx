@@ -91,6 +91,7 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
     return (
       <div className="dt-landing">
         <div className="dt-landing-hero">
+          <img src="/atlas-icon.png" alt="" className="brand-mark brand-mark--landing" />
           <h1>What can I see in the sky tonight?</h1>
           <p>Enter your location and Atlas will show what is visible, when to go outside, and where to look.</p>
           {form}
@@ -102,6 +103,7 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
   return (
     <div className="landing-page">
       <div className="landing-hero">
+        <img src="/atlas-icon.png" alt="" className="brand-mark brand-mark--landing" />
         <h1>What can I see in the sky tonight?</h1>
         <p>Enter your location and Atlas will show what is visible, when to go outside, and where to look.</p>
         {form}

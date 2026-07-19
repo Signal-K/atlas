@@ -172,7 +172,10 @@ function App() {
         <main className="dashboard">
           <header>
             <div className="dashboard-title">
-              <h1>Atlas</h1>
+              <h1>
+                <img src="/atlas-icon.png" alt="" className="brand-mark brand-mark--desktop" />
+                <span>Atlas</span>
+              </h1>
             </div>
             <p className="dashboard-subtitle">{VIEW_SUBTITLE[view]}</p>
           </header>

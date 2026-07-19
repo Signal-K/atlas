@@ -46,6 +46,11 @@
   .dashboard-title h1 {
     font-size: 32px;
   }
+
+  .brand-mark--desktop {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .sidebar {
@@ -144,10 +149,26 @@
 }
 
 .dashboard-title h1 {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
   margin: 0;
   font-size: 48px;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+.brand-mark {
+  display: inline-block;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 12px 34px rgba(12, 18, 30, 0.26);
+}
+
+.brand-mark--desktop {
+  width: 56px;
+  height: 56px;
 }
 
 .dashboard-subtitle {
@@ -3032,6 +3053,12 @@
   line-height: 1.15;
   color: var(--text-h);
   margin: 0 0 16px;
+}
+
+.brand-mark--landing {
+  width: clamp(64px, 12vw, 96px);
+  height: clamp(64px, 12vw, 96px);
+  margin-bottom: 18px;
 }
 
 .landing-hero p {

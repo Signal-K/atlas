@@ -26,7 +26,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title ?? 'Atlas', {
       body: payload.body ?? 'A good viewing opportunity is coming up.',
-      icon: '/favicon.svg',
+      icon: '/pwa-192.png',
       data: { url: payload.url ?? '/' },
     }),
   )
