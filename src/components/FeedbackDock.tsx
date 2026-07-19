@@ -102,6 +102,7 @@ export function FeedbackDock() {
   const { user } = useAuth()
   const [mode, setMode] = useState<FeedbackMode>(null)
   const [activityCount, setActivityCount] = useState(() => readNumber(ACTIVITY_KEY))
+  const [npsTrigger, setNpsTrigger] = useState<string | null>(null)
   const [npsScore, setNpsScore] = useState<number | null>(null)
   const [npsReason, setNpsReason] = useState('')
   const [featureText, setFeatureText] = useState('')
@@ -122,6 +123,7 @@ export function FeedbackDock() {
         setActivityCount(nextCount)
 
         if (!npsSubmitted && !npsDismissedRecently && nextCount >= ACTIVITY_THRESHOLD) {
+          setNpsTrigger(detail.name)
           setMode((current) => current ?? 'nps')
         }
       }
@@ -164,6 +166,7 @@ export function FeedbackDock() {
     trackEvent('NPS survey submitted', {
       score: npsScore,
       reason: npsReason.trim() || undefined,
+      trigger: npsTrigger,
       activityCount,
       source: 'feedback_dock',
     })
@@ -238,12 +241,15 @@ export function FeedbackDock() {
                   </button>
                 ))}
               </div>
-              <textarea
-                value={npsReason}
-                onChange={(event) => setNpsReason(event.target.value)}
-                placeholder="Optional: what shaped that score?"
-                rows={3}
-              />
+              <label className="feedback-field">
+                <span>Reason</span>
+                <textarea
+                  value={npsReason}
+                  onChange={(event) => setNpsReason(event.target.value)}
+                  placeholder="Optional: what shaped that score?"
+                  rows={3}
+                />
+              </label>
               <button type="button" className="feedback-submit" onClick={submitNps} disabled={!canSubmitNps}>
                 Send
               </button>
@@ -272,23 +278,23 @@ export function FeedbackDock() {
             <form className="feedback-panel-body" onSubmit={submitFeature}>
               <label className="feedback-field">
                 <span>Feature idea</span>
-              <textarea
-                value={featureText}
-                onChange={(event) => setFeatureText(event.target.value)}
-                placeholder="What should Atlas add or improve?"
-                rows={4}
-                required
-              />
+                <textarea
+                  value={featureText}
+                  onChange={(event) => setFeatureText(event.target.value)}
+                  placeholder="What should Atlas add or improve?"
+                  rows={4}
+                  required
+                />
               </label>
               {!user && (
                 <label className="feedback-field">
                   <span>Email for follow-up</span>
-                <input
-                  type="email"
-                  value={featureEmail}
-                  onChange={(event) => setFeatureEmail(event.target.value)}
-                  placeholder="Email for follow-up (optional)"
-                />
+                  <input
+                    type="email"
+                    value={featureEmail}
+                    onChange={(event) => setFeatureEmail(event.target.value)}
+                    placeholder="Email for follow-up (optional)"
+                  />
                 </label>
               )}
               <button type="submit" className="feedback-submit" disabled={!canSubmitFeature}>
