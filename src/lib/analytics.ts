@@ -21,6 +21,16 @@ export function trackEvent(name: string, properties?: Record<string, unknown>) {
   posthog.capture(name, properties)
 }
 
+export function identifyAnalyticsUser(user: { id: string; email: string; entitled: boolean } | null) {
+  if (!initialized) return
+  if (!user) return
+  posthog.identify(user.id, {
+    email: user.email,
+    atlas_user_id: user.id,
+    entitled: user.entitled,
+  })
+}
+
 // Mailing-list capture, separate from account creation -- lets a visitor
 // opt into product updates without creating a PocketBase account. `$set`
 // attaches the email to the PostHog person profile (not just the event) so

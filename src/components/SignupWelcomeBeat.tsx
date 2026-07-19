@@ -8,7 +8,7 @@ interface SignupWelcomeBeatProps {
 
 export function SignupWelcomeBeat({ mergedCount, onDone }: SignupWelcomeBeatProps) {
   useEffect(() => {
-    trackEvent('Signup welcome shown', { mergedCount })
+    trackEvent('Completed welcome beat', { mergedCount })
     const timeout = window.setTimeout(onDone, 3000)
     return () => window.clearTimeout(timeout)
   }, [mergedCount, onDone])

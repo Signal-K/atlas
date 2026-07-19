@@ -40,6 +40,52 @@ const MICRO_SURVEY_TRIGGERS: Record<string, { id: string; question: string; opti
   },
 }
 
+function compactRecord(record: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value != null && value !== ''))
+}
+
+function cleanText(value: string | null | undefined, maxLength = 120): string | undefined {
+  const text = value?.replace(/\s+/g, ' ').trim()
+  if (!text) return undefined
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text
+}
+
+function isVisible(element: Element): boolean {
+  const rect = element.getBoundingClientRect()
+  const style = window.getComputedStyle(element)
+  return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden'
+}
+
+function collectVisibleText(selector: string, limit: number): string[] {
+  return Array.from(document.querySelectorAll(selector))
+    .filter(isVisible)
+    .map((element) => cleanText(element.textContent))
+    .filter((text): text is string => Boolean(text))
+    .slice(0, limit)
+}
+
+function collectFeatureRequestContext() {
+  const activePrimaryNav = document.querySelector('[aria-current="true"]')?.getAttribute('aria-label')
+  const activeTabs = collectVisibleText('[role="tab"][aria-selected="true"]', 4)
+  const visibleHeadings = collectVisibleText('main h1, main h2, main h3, .mobile-content h1, .mobile-content h2, .mobile-content h3', 6)
+  const visibleSections = collectVisibleText(
+    '.dashboard-subtitle, .mobile-profile-kicker, .dt-brand-subtitle, .settings-status, .paywall-copy strong',
+    6,
+  )
+
+  return compactRecord({
+    currentUrl: window.location.href,
+    path: window.location.pathname,
+    route: window.location.pathname,
+    pageTitle: cleanText(document.title),
+    activePrimaryNav: cleanText(activePrimaryNav),
+    activeTabs,
+    visibleHeadings,
+    visibleSections,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+  })
+}
+
 function readNumber(key: string): number {
   const value = Number(localStorage.getItem(key))
   return Number.isFinite(value) ? value : 0
@@ -139,12 +185,23 @@ export function FeedbackDock() {
   function submitFeature(event: React.FormEvent) {
     event.preventDefault()
     if (!canSubmitFeature) return
-    trackEvent('Feature request submitted', {
-      request: featureText.trim(),
-      email: user?.email ?? (featureEmail.trim() || undefined),
+    const trimmedRequest = featureText.trim()
+    const contactEmail = user?.email ?? (featureEmail.trim() || undefined)
+    const personProperties = compactRecord({
+      email: contactEmail,
+      atlas_user_id: user?.id,
+      entitled: user?.entitled,
       signedIn: Boolean(user),
-      path: window.location.pathname,
+    })
+    trackEvent('Feature request submitted', {
+      request: trimmedRequest,
+      requestLength: trimmedRequest.length,
+      email: contactEmail,
+      signedIn: Boolean(user),
+      userId: user?.id,
       source: 'feedback_dock',
+      ...collectFeatureRequestContext(),
+      ...(Object.keys(personProperties).length > 0 ? { $set: personProperties } : {}),
     })
     setFeatureText('')
     setFeatureEmail('')

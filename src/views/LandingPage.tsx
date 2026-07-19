@@ -44,14 +44,14 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
       return
     }
     setManualLocation(city)
-    trackEvent('Landing primary CTA clicked', { method: 'manual_city', city: city.name, isMobile })
+    trackEvent('Landing CTA clicked', { method: 'manual_city', city: city.name, isMobile })
     onEnter()
   }
 
   function enterWithBrowserLocation() {
     setManualLocation(null)
     requestLocation()
-    trackEvent('Landing primary CTA clicked', { method: 'browser_geolocation', isMobile })
+    trackEvent('Landing CTA clicked', { method: 'browser_geolocation', isMobile })
     onEnter()
   }
 

@@ -23,6 +23,7 @@ import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { useAuth } from './lib/auth'
+import { identifyAnalyticsUser } from './lib/analytics'
 import { PaywallGate } from './components/PaywallGate'
 import { FeedbackDock } from './components/FeedbackDock'
 import { InstallPrompt } from './components/InstallPrompt'
@@ -86,6 +87,10 @@ function App() {
   useEffect(() => {
     applyTheme(getStoredTheme() ?? getSystemTheme())
   }, [])
+
+  useEffect(() => {
+    identifyAnalyticsUser(user)
+  }, [user])
 
   // Bare "/" lands on the default tab/view for whichever shell is active,
   // rewritten to a real route rather than staying un-bookmarkable -- but

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SkyMapCanvas } from '../../components/SkyMapCanvas'
 import { SkyMapOverlay } from '../../components/SkyMapOverlay'
 import { getTonightPlan, type TonightPlan } from '../../lib/tonightTargets'
@@ -143,6 +143,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   const [expandedTargetId, setExpandedTargetId] = useState<string | null>(null)
   const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
   const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
+  const trackedFeedLoadRef = useRef<string | null>(null)
   const compass = useDeviceCompass()
 
   useEffect(() => {
@@ -164,6 +165,12 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
       cancelled = true
     }
   }, [city])
+
+  useEffect(() => {
+    if (!plan || trackedFeedLoadRef.current === city.name) return
+    trackedFeedLoadRef.current = city.name
+    trackEvent('Viewed Tonight page', { city: city.name, surface: 'mobile_hub' })
+  }, [city.name, plan])
 
   useEffect(() => {
     scheduleStoredReminders()
