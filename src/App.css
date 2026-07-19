@@ -3231,6 +3231,16 @@
   font-size: 13px;
 }
 
+.feedback-field {
+  display: grid;
+  gap: 6px;
+}
+
+.feedback-field span {
+  color: var(--text-h);
+  font: 700 12px/1 var(--sans);
+}
+
 .feedback-panel-body textarea,
 .feedback-panel-body input {
   width: 100%;

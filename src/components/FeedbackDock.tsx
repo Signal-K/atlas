@@ -270,6 +270,8 @@ export function FeedbackDock() {
 
           {mode === 'feature' && (
             <form className="feedback-panel-body" onSubmit={submitFeature}>
+              <label className="feedback-field">
+                <span>Feature idea</span>
               <textarea
                 value={featureText}
                 onChange={(event) => setFeatureText(event.target.value)}
@@ -277,13 +279,17 @@ export function FeedbackDock() {
                 rows={4}
                 required
               />
+              </label>
               {!user && (
+                <label className="feedback-field">
+                  <span>Email for follow-up</span>
                 <input
                   type="email"
                   value={featureEmail}
                   onChange={(event) => setFeatureEmail(event.target.value)}
                   placeholder="Email for follow-up (optional)"
                 />
+                </label>
               )}
               <button type="submit" className="feedback-submit" disabled={!canSubmitFeature}>
                 Send request
