@@ -23,7 +23,6 @@ export default defineConfig({
     env: {
       VITE_PB_URL: process.env.VITE_PB_URL || 'http://localhost:8094',
       VITE_POLAR_CHECKOUT_URL: process.env.VITE_POLAR_CHECKOUT_URL || 'http://localhost:5173/fallback-checkout',
-      VITE_SKY_PASS_ENABLED: process.env.VITE_SKY_PASS_ENABLED || 'true',
     },
     timeout: 30_000,
   },

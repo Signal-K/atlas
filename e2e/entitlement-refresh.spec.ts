@@ -119,3 +119,30 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
 
   await expect(page).toHaveURL('http://localhost:5173/fallback-checkout')
 })
+
+test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailable', async ({ page }) => {
+  await seedSignedInUser(page, false)
+
+  await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token: E2E_TOKEN,
+        record: {
+          id: 'e2e-user',
+          email: 'atlas-entitlement-e2e@example.com',
+          entitled: false,
+        },
+      }),
+    })
+  })
+  await page.route(`${PB_URL}/checkout/polar`, async (route) => {
+    await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'checkout unavailable' }) })
+  })
+
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
+
+  await expect(page).toHaveURL('http://localhost:5173/fallback-checkout')
+})

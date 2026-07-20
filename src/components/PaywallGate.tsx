@@ -15,20 +15,15 @@ interface PaywallGateProps {
 // Wraps a view/tab that requires the one-time Atlas Sky Pass purchase.
 // Renders its children unchanged for entitled users; everyone else sees an
 // upgrade card instead of the gated content underneath.
-// Kill switch for the whole paywall, independent of entitlement -- e.g. for
-// stretches where checkout can't actually complete (Polar account pending
-// approval, webhook outage) and gating would just lock paying-intent users
-// out of the app for no reason. Defaults to enabled; set
-// VITE_SKY_PASS_ENABLED=false to unlock every gated surface for everyone.
-const SKY_PASS_ENABLED = import.meta.env.VITE_SKY_PASS_ENABLED !== 'false'
-
 export function PaywallGate({ user, feature, description, onSignInClick, children, freeNote }: PaywallGateProps) {
   const [isStartingCheckout, setIsStartingCheckout] = useState(false)
+  const [checkoutError, setCheckoutError] = useState('')
 
-  if (!SKY_PASS_ENABLED || user?.entitled) return <>{children}</>
+  if (user?.entitled) return <>{children}</>
 
   async function handleCheckoutClick() {
     trackEvent('Paywall checkout clicked', { feature })
+    setCheckoutError('')
     setIsStartingCheckout(true)
     try {
       const url = await startPolarCheckout()
@@ -40,6 +35,7 @@ export function PaywallGate({ user, feature, description, onSignInClick, childre
       if (POLAR_CHECKOUT_URL) {
         window.location.href = POLAR_CHECKOUT_URL
       } else {
+        setCheckoutError('Checkout is unavailable right now. Try again shortly.')
         setIsStartingCheckout(false)
       }
     }
@@ -68,6 +64,7 @@ export function PaywallGate({ user, feature, description, onSignInClick, childre
           </button>
         )}
       </div>
+      {checkoutError && <p className="paywall-card-note">{checkoutError}</p>}
     </div>
   )
 }

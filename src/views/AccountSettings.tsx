@@ -24,6 +24,7 @@ export function AccountSettings({
   const startedRef = useRef(false)
   const [checkingEntitlement, setCheckingEntitlement] = useState(false)
   const [startingCheckout, setStartingCheckout] = useState(false)
+  const [checkoutError, setCheckoutError] = useState('')
   const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
 
   function trackFormStarted() {
@@ -47,6 +48,7 @@ export function AccountSettings({
 
   async function handleCheckoutClick() {
     setStartingCheckout(true)
+    setCheckoutError('')
     trackEvent('Paywall checkout clicked', { feature: 'settings' })
     try {
       const url = await startPolarCheckout()
@@ -55,6 +57,7 @@ export function AccountSettings({
       if (POLAR_CHECKOUT_URL) {
         window.location.href = POLAR_CHECKOUT_URL
       } else {
+        setCheckoutError('Checkout is unavailable right now. Try again shortly.')
         setStartingCheckout(false)
       }
     }
@@ -85,6 +88,7 @@ export function AccountSettings({
               <button type="button" onClick={handleRefreshEntitlement} disabled={checkingEntitlement}>
                 {checkingEntitlement ? 'Checking…' : 'Refresh status'}
               </button>
+              {checkoutError && <span className="settings-status">{checkoutError}</span>}
             </>
           )}
         </div>
