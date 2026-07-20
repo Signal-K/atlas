@@ -30,6 +30,7 @@ routerAdd(
       '352cfa25-638e-4f6e-bbcf-00e4d4b12854', // Atlas Sky Pass Lifetime, CHF 55
       '1bf30516-1449-4b67-8fdb-c5616d5d4232', // Legacy Atlas Sky Pass, CHF 5 one-time
     ]
+    const defaultCompProductId = '352cfa25-638e-4f6e-bbcf-00e4d4b12854'
     const productIds = productIdsEnv
       ? productIdsEnv
           .split(',')
@@ -78,6 +79,9 @@ routerAdd(
           }
 
     if (discountId) {
+      const compProductId = String($os.getenv('POLAR_COMP_PRODUCT_ID') || defaultCompProductId).trim()
+      delete checkoutBody.products
+      checkoutBody.product_id = compProductId
       checkoutBody.discount_id = discountId
       checkoutBody.allow_discount_codes = false
       checkoutBody.customer_metadata = {
