@@ -88,20 +88,45 @@ routerAdd(
       checkoutBody.allow_discount_codes = allowDiscountCodes
     }
 
-    let res
-    try {
-      res = $http.send({
+    const createCheckout = (body) =>
+      $http.send({
         url: 'https://api.polar.sh/v1/checkouts/',
         method: 'POST',
         headers: {
           Authorization: 'Bearer ' + accessToken,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(checkoutBody),
+        body: JSON.stringify(body),
       })
+
+    let res
+    try {
+      res = createCheckout(checkoutBody)
     } catch (err) {
       console.error('Polar checkout request failed: ' + err)
       throw new BadRequestError('Could not reach Polar.')
+    }
+
+    if (res.statusCode >= 400) {
+      if (discountId) {
+        console.error(
+          'Polar checkout creation with comp discount failed; retrying without discount_id ' +
+            discountId +
+            ': ' +
+            res.statusCode +
+            ' ' +
+            res.raw,
+        )
+        const retryBody = Object.assign({}, checkoutBody, { allow_discount_codes: true })
+        delete retryBody.discount_id
+        delete retryBody.customer_metadata
+        try {
+          res = createCheckout(retryBody)
+        } catch (err) {
+          console.error('Polar checkout retry failed: ' + err)
+          throw new BadRequestError('Could not reach Polar.')
+        }
+      }
     }
 
     if (res.statusCode >= 400) {
