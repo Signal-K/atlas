@@ -45,6 +45,48 @@ routerAdd(
     }
 
     const email = e.auth.get('email')
+    const normalizedEmail = String(email || '').trim().toLowerCase()
+    const allowDiscountCodes = $os.getenv('POLAR_ALLOW_DISCOUNT_CODES') !== 'false'
+    const now = new Date().toISOString()
+    let compGrant = null
+
+    try {
+      compGrant = $app.findFirstRecordByFilter(
+        'atlas_polar_comp_access',
+        'email_normalized = {:email} && active = true && (expires_at = "" || expires_at >= {:now})',
+        { email: normalizedEmail, now },
+      )
+    } catch {
+      // The collection is optional until its migration is deployed. Missing or
+      // empty comp access should never block a normal paid checkout.
+      compGrant = null
+    }
+
+    const discountId = compGrant ? String(compGrant.get('discount_id') || '').trim() : ''
+
+    const checkoutBody =
+      productIds.length > 1
+        ? {
+            products: productIds,
+            success_url: successUrl,
+            customer_email: email,
+          }
+        : {
+            product_id: productIds[0],
+            success_url: successUrl,
+            customer_email: email,
+          }
+
+    if (discountId) {
+      checkoutBody.discount_id = discountId
+      checkoutBody.allow_discount_codes = false
+      checkoutBody.customer_metadata = {
+        atlas_comp_access_id: compGrant.id,
+        atlas_comp_access_reason: compGrant.get('reason') || 'comped',
+      }
+    } else {
+      checkoutBody.allow_discount_codes = allowDiscountCodes
+    }
 
     let res
     try {
@@ -55,19 +97,7 @@ routerAdd(
           Authorization: 'Bearer ' + accessToken,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(
-          productIds.length > 1
-            ? {
-                products: productIds,
-                success_url: successUrl,
-                customer_email: email,
-              }
-            : {
-                product_id: productIds[0],
-                success_url: successUrl,
-                customer_email: email,
-              },
-        ),
+        body: JSON.stringify(checkoutBody),
       })
     } catch (err) {
       console.error('Polar checkout request failed: ' + err)
