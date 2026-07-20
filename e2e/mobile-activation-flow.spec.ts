@@ -107,6 +107,8 @@ test('mobile signed-out user can browse but cannot add a target to a plan', asyn
   await page.getByRole('button', { name: 'Watch' }).first().click()
 
   await expect(page.getByText('Sky Pass is required to add targets to a plan. Browsing and check-ins stay free.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Add to plan is part of the Sky Pass' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sign in / create account' })).toBeVisible()
   await expect(page.locator('.account-form')).toHaveCount(0)
 })
 

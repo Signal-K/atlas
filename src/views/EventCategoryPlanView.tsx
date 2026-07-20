@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { KIND_LABELS } from '../widgets/EventRow'
 import { isLocalEvent } from '../lib/eventFilters'
 import { getUpcomingEvents, pullSkyEvents } from '../lib/sync'
+import { addGetReadyReminder } from '../lib/getReadyReminders'
+import { getDefaultDevice, CAMERA_PROFILES } from '../lib/cameraProfiles'
+import { trackEvent } from '../lib/analytics'
+import { useAuth } from '../lib/auth'
+import { PaywallGate } from '../components/PaywallGate'
 import type { SkyEvent } from '../lib/db'
 
 interface EventCategory {
@@ -37,10 +42,24 @@ function typeSummary(events: SkyEvent[]): string {
     .join(' / ')
 }
 
-export function EventCategoryPlanView({ lat, lon, cityName }: { lat: number; lon: number; cityName: string }) {
+export function EventCategoryPlanView({
+  lat,
+  lon,
+  cityName,
+  onSignInClick,
+}: {
+  lat: number
+  lon: number
+  cityName: string
+  onSignInClick: () => void
+}) {
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [selectedKind, setSelectedKind] = useState<string>('all')
+  const [status, setStatus] = useState('')
+  const [blockedPlanAdd, setBlockedPlanAdd] = useState(false)
+  const { user } = useAuth()
+  const hasPremium = Boolean(user?.entitled)
 
   useEffect(() => {
     let cancelled = false
@@ -90,6 +109,29 @@ export function EventCategoryPlanView({ lat, lon, cityName }: { lat: number; lon
     setSelectedKind('all')
   }
 
+  async function addEventToPlan(event: SkyEvent) {
+    if (!hasPremium) {
+      setBlockedPlanAdd(true)
+      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+      trackEvent('Blocked free plan add', { action: 'event_plan', source: 'desktop_plan' })
+      return
+    }
+
+    await addGetReadyReminder({
+      eventId: event.id,
+      title: event.title,
+      kind: event.kind,
+      target: event.target,
+      startsAt: event.startsAt,
+      endsAt: event.endsAt,
+      deviceName: CAMERA_PROFILES[getDefaultDevice()].name,
+      lat,
+      lon,
+    })
+    setStatus(`${event.title} added to your plan.`)
+    trackEvent('Added event to desktop plan', { eventId: event.id, kind: event.kind })
+  }
+
   return (
     <section className="widget-section event-plan">
       <div className="event-plan-header">
@@ -99,6 +141,18 @@ export function EventCategoryPlanView({ lat, lon, cityName }: { lat: number; lon
         </div>
         <span className="event-plan-count">{events?.length ?? '...'}</span>
       </div>
+      {status && <p className="planner-reminder-status">{status}</p>}
+      {blockedPlanAdd && !hasPremium && (
+        <PaywallGate
+          user={user}
+          feature="Add to plan"
+          description="Saving events to a plan, get-ready reminders, and holiday planning are part of the Sky Pass."
+          freeNote="You can keep browsing every local event type for the next two weeks for free."
+          onSignInClick={onSignInClick}
+        >
+          {null}
+        </PaywallGate>
+      )}
 
       {events === null ? (
         <p>Loading events…</p>
@@ -151,6 +205,9 @@ export function EventCategoryPlanView({ lat, lon, cityName }: { lat: number; lon
                     <span className="row-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>
                     <strong>{event.title}</strong>
                     <small>{formatEventDate(event.startsAt)}</small>
+                    <button type="button" className="event-plan-add-button" onClick={() => addEventToPlan(event)}>
+                      Add to plan
+                    </button>
                   </article>
                 ))}
               </div>

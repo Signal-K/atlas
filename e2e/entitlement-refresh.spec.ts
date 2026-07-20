@@ -31,6 +31,40 @@ function seedSignedInUser(page: Page, entitled: boolean) {
   )
 }
 
+async function mockPlanEvent(page: Page) {
+  await page.route('**/api/collections/sky_events/records**', async (route) => {
+    const now = new Date()
+    const startsAt = new Date(now.getTime() + 2 * 3_600_000)
+    const endsAt = new Date(now.getTime() + 3 * 3_600_000)
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            id: 'e2e-entitlement-plan-event',
+            kind: 'moon_phase',
+            target: 'moon',
+            title: 'Full Moon',
+            description: 'The Moon reaches its fullest point tonight.',
+            content: 'The Moon reaches its fullest point tonight.',
+            starts_at: startsAt.toISOString(),
+            ends_at: endsAt.toISOString(),
+            latitude: 0,
+            longitude: 0,
+            updated: now.toISOString(),
+          },
+        ],
+        page: 1,
+        perPage: 500,
+        totalItems: 1,
+        totalPages: 1,
+      }),
+    })
+  })
+}
+
 test('refreshes Sky Pass access after webhook-updated entitlement', async ({ page }) => {
   await seedSignedInUser(page, false)
 
@@ -76,9 +110,11 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
   await page.route(`${PB_URL}/checkout/polar`, async (route) => {
     await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'checkout unavailable' }) })
   })
+  await mockPlanEvent(page)
 
   await page.goto('/plan')
-  await expect(page.getByText('Planning is part of the Sky Pass')).toBeVisible()
+  await page.getByRole('button', { name: 'Add to plan' }).first().click()
+  await expect(page.getByText('Add to plan is part of the Sky Pass')).toBeVisible()
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
   await expect(page).toHaveURL('http://localhost:5173/fallback-checkout')

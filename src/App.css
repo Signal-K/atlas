@@ -3135,6 +3135,18 @@
   line-height: 1.25;
 }
 
+.event-plan-add-button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 @media (max-width: 640px) {
   .planner-topbar {
     align-items: center;

@@ -14,6 +14,7 @@ import { addToWatchlist, formatWatchValue, getWatchableTargets, getWatchlist, is
 import { trackEvent } from '../lib/analytics'
 import { SignupWallModal } from './SignupWallModal'
 import { SignupWelcomeBeat } from './SignupWelcomeBeat'
+import { PaywallGate } from './PaywallGate'
 import { useSignupWall } from '../lib/useSignupWall'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
@@ -130,6 +131,7 @@ export function MobileShell({
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchStatus, setSearchStatus] = useState('')
+  const [searchBlockedPlanAdd, setSearchBlockedPlanAdd] = useState(false)
   const [searchEvents, setSearchEvents] = useState<SkyEvent[]>([])
   const [searchTargets, setSearchTargets] = useState<string[]>([])
   const [searchWatchlist, setSearchWatchlist] = useState<WatchlistItem[]>([])
@@ -167,6 +169,7 @@ export function MobileShell({
 
   async function toggleSearchWatch(target: string) {
     if (!user?.entitled) {
+      setSearchBlockedPlanAdd(true)
       setSearchStatus('Sky Pass is required to add targets to a plan. Browsing and check-ins stay free.')
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_search' })
       return
@@ -324,6 +327,7 @@ export function MobileShell({
             onClick={() => {
               setProfileOpen(false)
               setSearchStatus('')
+              setSearchBlockedPlanAdd(false)
               setSearchOpen((current) => !current)
             }}
             aria-current={searchOpen ? 'page' : undefined}
@@ -358,6 +362,7 @@ export function MobileShell({
                 value={searchQuery}
                 onChange={(event) => {
                   setSearchStatus('')
+                  setSearchBlockedPlanAdd(false)
                   setSearchQuery(event.target.value)
                 }}
                 placeholder="Search events, targets, catalog IDs…"
@@ -365,6 +370,17 @@ export function MobileShell({
               />
             </div>
             {searchStatus && <p className="planner-reminder-status">{searchStatus}</p>}
+            {searchBlockedPlanAdd && (
+              <PaywallGate
+                user={user}
+                feature="Add to plan"
+                description="Saving targets, reminders, and holiday planning are part of the Sky Pass."
+                freeNote="You can keep browsing local events and checking in for free."
+                onSignInClick={openSettings}
+              >
+                {null}
+              </PaywallGate>
+            )}
             {!hasSearchQuery && (
               <p className="dt-empty-hint">Start typing to search tonight&rsquo;s events, the watchlist, and the catalog.</p>
             )}

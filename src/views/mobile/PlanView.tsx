@@ -64,6 +64,7 @@ export function PlanView({
   const [status, setStatus] = useState('')
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
   const [toolPanel, setToolPanel] = useState<ToolPanel>(null)
+  const [blockedPlanAdd, setBlockedPlanAdd] = useState(false)
   const [feedbackNotes, setFeedbackNotes] = useState<Record<string, string>>({})
   const { pointActionFor, overlay: pointingOverlay } = useEventPointing(city)
   const { user } = useAuth()
@@ -147,6 +148,7 @@ export function PlanView({
 
   async function addReminder(event: SkyEvent) {
     if (!hasPremium) {
+      setBlockedPlanAdd(true)
       setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
       trackEvent('Blocked free plan add', { action: 'reminder', source: 'mobile_plan' })
       return
@@ -172,6 +174,7 @@ export function PlanView({
 
   async function toggleWatch(event: SkyEvent) {
     if (!hasPremium) {
+      setBlockedPlanAdd(true)
       setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_plan' })
       return
@@ -196,6 +199,7 @@ export function PlanView({
   }
 
   function blockFreePlanAdd(source: string) {
+    setBlockedPlanAdd(true)
     setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
     trackEvent('Blocked free plan add', { action: 'watch', source })
   }
@@ -261,6 +265,19 @@ export function PlanView({
         </div>
         {status && <p className="planner-reminder-status">{status}</p>}
       </section>
+      {blockedPlanAdd && !hasPremium && (
+        <PaywallGate
+          user={user}
+          feature="Add to plan"
+          description="Saving targets, reminders, and holiday planning are part of the Sky Pass."
+          freeNote="You can keep browsing local events and checking in for free."
+          onSignInClick={() => {
+            window.location.href = '/settings'
+          }}
+        >
+          {null}
+        </PaywallGate>
+      )}
 
       {mode === 'ready' && (
         <section className="mobile-card">

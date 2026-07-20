@@ -223,6 +223,7 @@ function App() {
                       lat={currentLocation.lat}
                       lon={currentLocation.lon}
                       cityName={currentLocation.name}
+                      onSignInClick={goToSignUp}
                     />
                   ),
                 },
