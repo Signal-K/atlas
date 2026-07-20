@@ -9,8 +9,23 @@ actual implementation as of this session:
 - `src/lib/db.ts` (Dexie) — favourites/watchlist/observations/camera presets,
   scoped by a fixed `'local'` user id until signup
 - `src/lib/accountMerge.ts` — the local → account merge, run on signup
-- `src/lib/getReadyReminders.ts` — reminders, account-independent, always
-  `localStorage`-only (never migrated, since they're not scoped by user id)
+- `src/lib/getReadyReminders.ts` — reminders, stored locally for every user
+  and pushed to `atlas_get_ready_reminders` for signed-in users with a push
+  subscription so the scheduled worker can deliver them
+
+## Free / paid boundary
+
+The first walkthrough and essential observation loop are free for every user:
+location entry, visible-tonight feed, first target tap, equipment prompt, first
+plan summary, check-ins, private observation logging, every local event type up
+to two weeks ahead, and local light-pollution estimates for today and tomorrow.
+
+Sky Pass starts when a user turns browsing into a saved plan: adding watched
+targets, arming future-event reminders, planning for other locations, unlimited
+light-pollution comparison, lower-light-pollution trip routing, gear-fit
+planning, downloadable camera preset bundles, device-specific setup steps, and
+deeper camera recommendations. The compact first-plan `CameraPresetCard`
+remains free because it is part of the essential walkthrough answer.
 
 ```mermaid
 stateDiagram-v2
@@ -37,7 +52,7 @@ stateDiagram-v2
     FirstPlan --> RemindMePermission: taps "Remind me"
     FirstPlan --> SaveAction: favourites, saves, or logs an observation
 
-    RemindMePermission: Reminder armed (no account required)\nlocalStorage only, never merged
+    RemindMePermission: Reminder armed (no account required)\nlocal fallback, worker-backed when signed in + subscribed
     RemindMePermission --> FirstPlan
 
     SaveAction: Save/favourite/log action\n(Dexie row written under userId='local')
@@ -54,13 +69,13 @@ stateDiagram-v2
     MergeConfirmation: Merge confirmation shown\n("brought over N saved items")
     MergeConfirmation --> WelcomeBeat
 
-    WelcomeBeat: Welcome beat\n(not yet built -- see analytics contract gap)
+    WelcomeBeat: Welcome beat\n(SignupWelcomeBeat)
     WelcomeBeat --> SignedInContinuation
 
     SignedInContinuation: Signed-in continuation
     SignedInContinuation --> ExistingPlanRestored: returns later, same device or after merge
     ExistingPlanRestored --> NotificationNudge: viewing window opens
-    NotificationNudge --> PostWindowFeedback: window closes (not yet built)
+    NotificationNudge --> PostWindowFeedback: window closes\n(mobile Plan check-in)
     PostWindowFeedback --> SignedInContinuation
     ExistingPlanRestored --> SignedInContinuation
 ```
@@ -75,14 +90,11 @@ stateDiagram-v2
 | Watchlist | Dexie, `userId: 'local'` | Reassigned + deduped + pushed | Pulled normally |
 | Observation notes | Dexie, `userId: 'local'` | Reassigned + pushed | Pulled normally |
 | Camera presets | Dexie, `userId: 'local'` | Reassigned + deduped | Pulled normally |
-| Get-ready reminders | `localStorage` (`getReadyReminders.ts`), never partitioned by user | Same as target taps — nothing to migrate | Not restored on a new device |
+| Get-ready reminders | `localStorage`; when signed in with push support, also `atlas_get_ready_reminders` | Existing local reminders stay local; newly created signed-in reminders are worker-backed | Worker-backed notification can still fire through push subscription; in-app check-in remains device-local unless the reminder exists in this browser |
 
 STS-322's "no local first-journey data is orphaned after signup" holds for two
 different reasons: the Dexie-backed rows (favourites/watchlist/observations/
 presets) are actively reassigned by `mergeLocalDataIntoAccount`, while target
-taps/equipment/reminders were never partitioned by user id in the first place
-— there's no `'local'` vs `<userId>` split for them to fall out of, so signing
-up can't orphan them. They stay device-scoped rather than becoming account
-state, which matches the acceptance criteria's actual concern (nothing
-silently disappearing on signup) without inventing new backend collections
-this session didn't call for.
+taps/equipment were never partitioned by user id in the first place. Reminders
+remain visible locally and, once created while signed in with push support, are
+also mirrored to PocketBase for worker delivery.

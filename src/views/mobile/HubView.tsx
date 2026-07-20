@@ -12,6 +12,7 @@ import type { MobileTab } from '../../components/MobileShell'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
 import { trackEvent } from '../../lib/analytics'
+import { estimateLightPollution } from '../../lib/darkSky'
 import {
   describeWhatYouWouldSee,
   dismissEquipmentPrompt,
@@ -196,6 +197,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   const cloudCover = advisory ? `${Math.round(advisory.cloudCoverPct)}%` : '—'
   const visibility = advisory ? formatWatchValue(advisory.quality) : '—'
   const moon = `${Math.round(plan.moonIlluminationPct)}%`
+  const lightPollution = estimateLightPollution(city.lat, city.lon)
   const clarity = advisory ? Math.max(0, 100 - advisory.cloudCoverPct) : 70
   const targetDirection = topTarget?.direction
   const turnHint =
@@ -302,6 +304,11 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
             <span className="dt-widget-eyebrow"><HubIcon name="sun" />Sunset</span>
             <span className="dt-widget-value">{sunsetAt ? formatTime(sunsetAt) : '—'}</span>
             <span className="dt-widget-caption">{city.name}</span>
+          </div>
+          <div className="dt-widget-cell">
+            <span className="dt-widget-eyebrow"><HubIcon name="spark" />Light</span>
+            <span className="dt-widget-value">Bortle {lightPollution.bortleClass}</span>
+            <span className="dt-widget-caption">{lightPollution.label}</span>
           </div>
         </div>
       </section>

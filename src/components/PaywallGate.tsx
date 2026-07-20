@@ -9,6 +9,7 @@ interface PaywallGateProps {
   description: string
   onSignInClick: () => void
   children: ReactNode
+  freeNote?: string
 }
 
 // Wraps a view/tab that requires the one-time Atlas Sky Pass purchase.
@@ -21,7 +22,7 @@ interface PaywallGateProps {
 // VITE_SKY_PASS_ENABLED=false to unlock every gated surface for everyone.
 const SKY_PASS_ENABLED = import.meta.env.VITE_SKY_PASS_ENABLED !== 'false'
 
-export function PaywallGate({ user, feature, description, onSignInClick, children }: PaywallGateProps) {
+export function PaywallGate({ user, feature, description, onSignInClick, children, freeNote }: PaywallGateProps) {
   const [isStartingCheckout, setIsStartingCheckout] = useState(false)
 
   if (!SKY_PASS_ENABLED || user?.entitled) return <>{children}</>
@@ -49,6 +50,7 @@ export function PaywallGate({ user, feature, description, onSignInClick, childre
       <span className="paywall-card-badge">Sky Pass</span>
       <h2>{feature} is part of the Sky Pass</h2>
       <p>{description}</p>
+      {freeNote && <p className="paywall-card-note">{freeNote}</p>}
       {!user && <p className="paywall-card-note">Create a free account first, then upgrade.</p>}
       <div className="paywall-card-actions">
         {!user ? (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { SkyMapCanvas } from './SkyMapCanvas'
 import { turnInstruction, type DevicePointing } from '../lib/deviceCompass'
 import { getSkyMapObjects, type SkyMapObject } from '../lib/skyMapLayers'
@@ -117,6 +117,19 @@ export function SkyMapOverlay({
         : compassStatus === 'unsupported'
           ? 'Compass unavailable'
           : 'Enable compass to aim the map'
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [onClose])
 
   function toggleSelectedObject(object: SkyMapObject) {
     setSelectedObjectId((current) => (current === object.id ? null : object.id))

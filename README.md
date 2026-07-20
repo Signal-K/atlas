@@ -39,8 +39,10 @@ Star Sailors ecosystem, not just Atlas.
 
 Local dev talks to the same production PocketBase by default
 (`.env.example` → `VITE_PB_URL=https://signal-k-starsailors.fly.dev`) unless
-you override it with a local/Docker instance — see `docker-compose.yml` and
-`make demo` for running against a local PocketBase instead.
+you override it with a local/Docker instance. For battery-friendly local work,
+prefer `make up`: it runs only PocketBase in Docker and runs Vite on the host.
+Use `make docker-up` only when you explicitly need the frontend container.
+Use `make demo` for a no-Docker demo-mode frontend.
 
 ## Setup
 
@@ -63,7 +65,7 @@ directly (not through the app runtime, and not gated on CI passing):
 - `.github/workflows/ingest.yml` — runs every event-source plugin daily and
   upserts into `sky_events` (`npm run ingest` / `scripts/ingest.mjs`).
 - `.github/workflows/notify.yml` — checks each user's watchlist against
-  upcoming events + weather and sends web-push notifications
+  upcoming events + weather, delivers explicit get-ready reminders, and sends web-push notifications
   (`npm run notify` / `scripts/notify.mjs`).
 - `.github/workflows/moderate.yml` — surfaces pending Photo Challenge
   submissions for admin approval a few times a day (`npm run moderate` /

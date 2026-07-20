@@ -1,0 +1,141 @@
+import { test, expect, type Page } from '@playwright/test'
+
+const E2E_TOKEN = makeAuthToken()
+
+function makeAuthToken() {
+  const payload = {
+    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+    type: 'auth',
+    collectionId: 'users',
+  }
+  return ['e2e', Buffer.from(JSON.stringify(payload)).toString('base64url'), 'sig'].join('.')
+}
+
+function seedSignedInUser(page: Page, entitled: boolean) {
+  return page.addInitScript(
+    ({ entitledValue, tokenValue }) => {
+      window.localStorage.setItem(
+        'pocketbase_auth',
+        JSON.stringify({
+          token: tokenValue,
+          record: {
+            id: 'e2e-mobile-user',
+            email: 'atlas-mobile-e2e@example.com',
+            entitled: entitledValue,
+          },
+        }),
+      )
+    },
+    { entitledValue: entitled, tokenValue: E2E_TOKEN },
+  )
+}
+
+async function mockTonightData(page: Page) {
+  await page.route('https://api.open-meteo.com/**', async (route) => {
+    const days = 7
+    const today = new Date()
+    const time = Array.from({ length: days }, (_, i) => {
+      const d = new Date(today)
+      d.setDate(d.getDate() + i)
+      return d.toISOString().slice(0, 10)
+    })
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        daily: {
+          time,
+          cloud_cover_mean: Array(days).fill(12),
+          precipitation_probability_mean: Array(days).fill(4),
+        },
+      }),
+    })
+  })
+
+  await page.route('**/api/collections/sky_events/records**', async (route) => {
+    const now = new Date()
+    const startsAt = new Date(now.getTime() + 2 * 3_600_000)
+    const endsAt = new Date(now.getTime() + 3 * 3_600_000)
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            id: 'e2e-mobile-activation-moon',
+            kind: 'moon_phase',
+            target: 'moon',
+            title: 'Full Moon',
+            description: 'The Moon reaches its fullest point tonight.',
+            content: 'The Moon reaches its fullest point tonight.',
+            starts_at: startsAt.toISOString(),
+            ends_at: endsAt.toISOString(),
+            latitude: 0,
+            longitude: 0,
+            updated: now.toISOString(),
+          },
+        ],
+        page: 1,
+        perPage: 500,
+        totalItems: 1,
+        totalPages: 1,
+      }),
+    })
+  })
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockTonightData(page)
+})
+
+test('mobile signed-out user can browse but cannot add a target to a plan', async ({ page }) => {
+  await page.goto('/today')
+
+  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/Bortle \d/)).toBeVisible()
+  await page.getByRole('button', { name: 'Plan', exact: true }).click()
+
+  await expect(page.getByLabel('Plan sections')).toBeVisible()
+  await expect(page.getByText('NEXT 14 DAYS')).toBeVisible()
+  await expect(page.getByText('Sky Pass unlocks unlimited light-pollution comparison and lower-pollution trip routes.')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await page.getByPlaceholder(/Search events/).fill('moon')
+  await page.getByRole('button', { name: 'Watch' }).first().click()
+
+  await expect(page.getByText('Sky Pass is required to add targets to a plan. Browsing and check-ins stay free.')).toBeVisible()
+  await expect(page.locator('.account-form')).toHaveCount(0)
+})
+
+test('mobile premium gates planning tools but keeps first plan free', async ({ page }) => {
+  await page.goto('/today')
+
+  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Plan', exact: true }).click()
+
+  await expect(page.getByLabel('Plan sections')).toBeVisible()
+  await expect(page.getByText('NEXT 14 DAYS')).toBeVisible()
+  await expect(page.getByText('Sky Pass unlocks unlimited light-pollution comparison and lower-pollution trip routes.')).toBeVisible()
+
+  await page.getByRole('button', { name: /Dark sites/i }).click()
+  await expect(page.getByRole('heading', { name: 'Planning tools is part of the Sky Pass' })).toBeVisible()
+  await expect(page.getByText('Your first walkthrough, two-week local event browsing, check-ins, and private observation log stay free.')).toBeVisible()
+})
+
+test('mobile entitled user can compare lower light pollution sites and routes', async ({ page }) => {
+  await seedSignedInUser(page, true)
+  await page.goto('/today')
+
+  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Plan', exact: true }).click()
+  await page.getByRole('button', { name: /Dark sites/i }).click()
+
+  await expect(page.getByText(/Current light pollution/)).toBeVisible()
+  await expect(page.getByText(/CLASS BETTER|BEST KNOWN MATCH/).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Apple' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Google' }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Open Transit Route' }).first()).toHaveAttribute('href', /mode=transit|travelmode=transit/)
+})

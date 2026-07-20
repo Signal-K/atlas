@@ -116,3 +116,15 @@ test('camera preset copy action writes the setup summary', async ({ page }) => {
   await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toContain('Focus:')
   await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toContain('Stabilization:')
 })
+
+test('deep camera setup is premium while first-plan camera summary is free', async ({ page }) => {
+  await page.locator('.tonight-target-main').first().click()
+  const target = page.locator('.row-list > .tonight-target').first()
+
+  await expect(target.locator('.camera-preset-card')).toBeVisible()
+  await expect(target.getByText('Deep camera setup is part of the Sky Pass')).toHaveCount(0)
+
+  await target.getByRole('button', { name: 'Camera recipe' }).click()
+  await expect(target.getByRole('heading', { name: 'Deep camera setup is part of the Sky Pass' })).toBeVisible()
+  await expect(target.getByText('Your first walkthrough still includes the essential camera settings for free.')).toBeVisible()
+})

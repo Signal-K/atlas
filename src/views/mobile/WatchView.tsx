@@ -15,9 +15,12 @@ import type { CurrentLocation } from '../../lib/currentLocation'
 
 interface WatchViewProps {
   city: CurrentLocation
+  onSavedForLater?: () => void
+  canAddToPlan?: boolean
+  onBlockedPlanAdd?: () => void
 }
 
-export function WatchView({ city }: WatchViewProps) {
+export function WatchView({ city, onSavedForLater, canAddToPlan = true, onBlockedPlanAdd }: WatchViewProps) {
   const [watchlist, setWatchlist] = useState<Array<WatchlistItem & { status: WatchStatus }> | null>(null)
   const [targets, setTargets] = useState<string[]>([])
 
@@ -44,8 +47,16 @@ export function WatchView({ city }: WatchViewProps) {
   }, [city.lat, city.lon])
 
   async function toggle(kind: WatchlistItem['kind'], value: string, watching: boolean) {
-    if (watching) await removeFromWatchlist(kind, value)
-    else await addToWatchlist(kind, value)
+    if (!watching && !canAddToPlan) {
+      onBlockedPlanAdd?.()
+      return
+    }
+    if (watching) {
+      await removeFromWatchlist(kind, value)
+    } else {
+      await addToWatchlist(kind, value)
+      onSavedForLater?.()
+    }
     await refresh()
   }
 

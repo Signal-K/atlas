@@ -9,6 +9,7 @@ import { fetchViewingAdvisory, type DailyViewingAdvisory } from '../../lib/weath
 import { moonIlluminationPctAt } from '../../lib/moonPhase'
 import { formatEventDate } from '../../lib/eventFormat'
 import { trackEvent } from '../../lib/analytics'
+import { useAuth } from '../../lib/auth'
 import { EventDetailPanel } from '../../components/mobile/EventDetailPanel'
 import { useEventPointing } from '../../components/mobile/EventPointing'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
@@ -16,17 +17,32 @@ import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
 import type { ObservationDraft } from '../../lib/observationDraft'
 
-export function EventsView({ city, onLogAttempt }: { city: CurrentLocation; onLogAttempt: (draft: ObservationDraft) => void }) {
+const FREE_EVENT_LOOKAHEAD_DAYS = 14
+const PREMIUM_EVENT_LOOKAHEAD_DAYS = 90
+
+export function EventsView({
+  city,
+  onLogAttempt,
+  onSavedForLater,
+}: {
+  city: CurrentLocation
+  onLogAttempt: (draft: ObservationDraft) => void
+  onSavedForLater?: () => void
+}) {
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
   const [selected, setSelected] = useState<SkyEvent | null>(null)
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
+  const [status, setStatus] = useState('')
   const { pointActionFor, overlay: pointingOverlay } = useEventPointing(city)
+  const { user } = useAuth()
+  const hasPremium = Boolean(user?.entitled)
 
   async function refresh() {
     await pullSkyEvents()
-    const [upcoming, watched] = await Promise.all([getUpcomingEvents(240), getWatchlist()])
+    const lookaheadDays = hasPremium ? PREMIUM_EVENT_LOOKAHEAD_DAYS : FREE_EVENT_LOOKAHEAD_DAYS
+    const [upcoming, watched] = await Promise.all([getUpcomingEvents(lookaheadDays), getWatchlist()])
     setEvents(upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon)))
     setWatchlist(watched)
     setReminders(listGetReadyReminders())
@@ -43,19 +59,33 @@ export function EventsView({ city, onLogAttempt }: { city: CurrentLocation; onLo
     window.addEventListener('atlas:get-ready-reminders-changed', refreshReminders)
     return () => window.removeEventListener('atlas:get-ready-reminders-changed', refreshReminders)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- city identity is the reload boundary
-  }, [city])
+  }, [city, hasPremium])
 
   function advisoryFor(event: SkyEvent): DailyViewingAdvisory | null {
     return advisory.find((day) => day.date === event.startsAt.slice(0, 10)) ?? null
   }
 
   async function toggleWatch(event: SkyEvent) {
-    if (isWatching(watchlist, 'target', event.target)) await removeFromWatchlist('target', event.target)
-    else await addToWatchlist('target', event.target)
+    if (!hasPremium) {
+      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+      trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_events' })
+      return
+    }
+    if (isWatching(watchlist, 'target', event.target)) {
+      await removeFromWatchlist('target', event.target)
+    } else {
+      await addToWatchlist('target', event.target)
+      onSavedForLater?.()
+    }
     setWatchlist(await getWatchlist())
   }
 
   async function addReminder(event: SkyEvent) {
+    if (!hasPremium) {
+      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+      trackEvent('Blocked free plan add', { action: 'reminder', source: 'mobile_events' })
+      return
+    }
     const hasPermission = await ensureNotificationPermission()
     await addGetReadyReminder({
       eventId: event.id,
@@ -85,9 +115,11 @@ export function EventsView({ city, onLogAttempt }: { city: CurrentLocation; onLo
         <span className="dt-kicker">Sky dispatch</span>
         <h2 className="dt-h2">Tonight&rsquo;s sky, reported.</h2>
         <div className="dt-masthead-readout">
-          {events ? events.length : 0} UPCOMING &middot; MOON {moonPct}%
+          {events ? events.length : 0} UPCOMING &middot; NEXT {hasPremium ? PREMIUM_EVENT_LOOKAHEAD_DAYS : FREE_EVENT_LOOKAHEAD_DAYS} DAYS &middot; MOON{' '}
+          {moonPct}%
         </div>
       </div>
+      {status && <p className="planner-reminder-status">{status}</p>}
       <div className="dt-seam" />
       <SkyEventBrowser events={events} onSelect={setSelected} />
 

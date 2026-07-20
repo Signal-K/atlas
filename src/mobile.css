@@ -967,6 +967,8 @@
   color: var(--text-h);
   padding: 0;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 .mobile-map-overlay-head,
@@ -1059,6 +1061,7 @@
   width: 100%;
   height: 100dvh;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .mobile-map-aim-readout {
@@ -1139,6 +1142,7 @@
   width: 100%;
   min-width: 0;
   accent-color: var(--accent);
+  touch-action: pan-x;
 }
 
 .mobile-map-object-sheet {
@@ -1272,8 +1276,10 @@
   gap: 8px;
   margin-top: 0;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 2px;
   scrollbar-width: none;
+  touch-action: pan-x;
 }
 
 .mobile-map-visible-rail::-webkit-scrollbar {
@@ -2562,6 +2568,67 @@
 .mobile-tool-row-foot a {
   color: var(--accent);
   text-decoration: none;
+}
+
+.native-route-picker {
+  display: grid;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.native-route-segment {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--mobile-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--mobile-ink) 28%, transparent);
+}
+
+.native-route-segment button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--mobile-muted);
+  cursor: pointer;
+  font: 850 9px/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.native-route-segment button.is-active {
+  background: rgba(124, 196, 255, 0.16);
+  color: var(--text-h);
+}
+
+.native-route-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.native-route-actions a,
+.native-route-actions button {
+  min-height: 32px;
+  border: 1px solid rgba(124, 196, 255, 0.24);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mobile-ink) 34%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  font: 850 9px/1 var(--mono);
+  letter-spacing: 0.08em;
+  padding: 0 10px;
+  text-decoration: none;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+}
+
+.native-route-actions button {
+  color: var(--mobile-muted);
 }
 
 .mobile-plan-day-stamp-label {
@@ -4923,6 +4990,11 @@
   right: 14px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 106px);
   z-index: 35;
+}
+
+.mobile-shell:has(.mobile-map-overlay) ~ .feedback-dock,
+.mobile-shell:has(.mobile-map-overlay) + .feedback-dock {
+  display: none;
 }
 
 .mobile-shell ~ .feedback-dock .feedback-dock-trigger,

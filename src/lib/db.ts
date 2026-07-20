@@ -130,6 +130,9 @@ class AtlasDB extends Dexie {
     this.version(3).stores({
       cameraPresets: 'id, userId, device, targetKey, source',
     })
+    this.version(4).stores({
+      cameraPresets: 'id, userId, [userId+targetKey], device, targetKey, source',
+    })
     // New observation fields (targetName, deviceUsed, etc.) don't need a
     // schema/index change -- Dexie stores whatever properties are on the
     // object -- so no version(3) bump is needed for those. Kept here as a

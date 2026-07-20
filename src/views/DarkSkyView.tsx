@@ -1,6 +1,7 @@
-import { rankDarkSkySites, directionsUrl, type RankedDarkSkySite } from '../lib/darkSky'
+import { estimateLightPollution, rankLowerLightPollutionSites, type RankedDarkSkySite } from '../lib/darkSky'
 import { trackEvent } from '../lib/analytics'
 import { tourAffiliateUrl } from '../lib/affiliate'
+import { NativeRoutePicker } from '../components/NativeRoutePicker'
 
 // STS-172: dark-sky site finder + trip planning. Separate from
 // LocalOpsView.tsx/localOps.ts (an unrelated local PocketBase diagnostics
@@ -14,20 +15,18 @@ import { tourAffiliateUrl } from '../lib/affiliate'
 const FAR_TRAVEL_MINUTES_THRESHOLD = 240
 
 export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
-  const sites: RankedDarkSkySite[] = rankDarkSkySites(lat, lon)
+  const lightPollution = estimateLightPollution(lat, lon)
+  const sites: RankedDarkSkySite[] = rankLowerLightPollutionSites(lat, lon)
   const nearestMinutes = sites[0]?.estimatedTravelMinutes ?? 0
-
-  function openDirections(site: RankedDarkSkySite) {
-    trackEvent('Opened dark-sky directions', { site: site.id })
-    window.open(directionsUrl(site), '_blank', 'noopener,noreferrer')
-  }
+  const origin = { lat, lon }
 
   return (
     <section className="widget-section">
       <h2>Dark-sky trips</h2>
       <p className="darksky-hint">
-        Nearby dark-sky sites ranked by distance from your current location, with an approximate Bortle scale rating
-        (1 = darkest, 9 = inner-city).
+        Current light pollution: Bortle {lightPollution.bortleClass} · {lightPollution.label} (
+        {lightPollution.confidence === 'curated-site' ? 'curated site' : 'estimated'}). Nearby options are ranked by travel
+        distance, with lower light-pollution value shown for each site.
       </p>
       {nearestMinutes > FAR_TRAVEL_MINUTES_THRESHOLD && (
         <p className="darksky-hint">
@@ -43,14 +42,14 @@ export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
               <span className={`darksky-bortle darksky-bortle--${site.bortleClass}`}>Bortle {site.bortleClass}</span>
             </div>
             <p className="darksky-site-meta">
-              {site.distanceKm.toFixed(0)} km · ~{Math.round(site.estimatedTravelMinutes / 60)}h{' '}
+              {site.distanceKm.toFixed(0)} km ·{' '}
+              {(site.lightPollutionDelta ?? 0) > 0 ? `${site.lightPollutionDelta} Bortle classes better` : 'best known match'} · ~
+              {Math.round(site.estimatedTravelMinutes / 60)}h{' '}
               {site.estimatedTravelMinutes % 60}m drive (estimated)
             </p>
             <p className="darksky-site-notes">{site.notes}</p>
+            <NativeRoutePicker site={site} origin={origin} />
             <div className="darksky-site-actions">
-              <button type="button" className="darksky-directions" onClick={() => openDirections(site)}>
-                Get directions
-              </button>
               {tourAffiliateUrl(site.name) && (
                 <a
                   href={tourAffiliateUrl(site.name)!}

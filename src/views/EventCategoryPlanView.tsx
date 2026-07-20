@@ -17,6 +17,7 @@ const EVENT_CATEGORIES: EventCategory[] = [
   { id: 'deep-sky', label: 'Deep sky', kinds: ['deep_sky'] },
   { id: 'guides', label: 'Sky guides', kinds: ['night_sky_guide', 'local_night_sky'] },
 ]
+const FREE_EVENT_LOOKAHEAD_DAYS = 14
 
 function formatEventDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -45,7 +46,7 @@ export function EventCategoryPlanView({ lat, lon, cityName }: { lat: number; lon
     let cancelled = false
     async function load() {
       await pullSkyEvents()
-      const upcoming = await getUpcomingEvents(240)
+      const upcoming = await getUpcomingEvents(FREE_EVENT_LOOKAHEAD_DAYS)
       if (!cancelled) setEvents(upcoming.filter((event) => isLocalEvent(event, lat, lon)))
     }
     load()
@@ -94,7 +95,7 @@ export function EventCategoryPlanView({ lat, lon, cityName }: { lat: number; lon
       <div className="event-plan-header">
         <div>
           <h2>Events by category</h2>
-          <p className="planner-hint">Every upcoming local event type cached for {cityName}.</p>
+          <p className="planner-hint">Every local event type cached for {cityName} over the next two weeks.</p>
         </div>
         <span className="event-plan-count">{events?.length ?? '...'}</span>
       </div>

@@ -695,6 +695,80 @@
   border-color: var(--text-h);
 }
 
+.city-stamps {
+  display: grid;
+  gap: 10px;
+}
+
+.city-stamp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.city-stamp {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.city-stamp span {
+  width: fit-content;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.city-stamp strong {
+  color: var(--text-h);
+}
+
+.city-stamp small {
+  color: var(--text);
+  opacity: 0.78;
+}
+
+.city-stamp-share-card {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.city-stamp-share-kicker {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.city-stamp-share-card dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.city-stamp-share-card div {
+  display: grid;
+  gap: 3px;
+}
+
+.city-stamp-share-card dt {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.city-stamp-share-card dd {
+  margin: 0;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
 .observation-card {
   display: flex;
   flex-direction: column;
@@ -2573,6 +2647,67 @@
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 4px;
+}
+
+.native-route-picker {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.native-route-segment {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(68px, auto);
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+
+.native-route-segment button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 9px;
+}
+
+.native-route-segment button.is-active {
+  background: var(--text-h);
+  color: var(--bg);
+}
+
+.native-route-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.native-route-actions a,
+.native-route-actions button {
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 10px;
+  text-decoration: none;
+}
+
+.native-route-actions a {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
 }
 
 .darksky-directions {

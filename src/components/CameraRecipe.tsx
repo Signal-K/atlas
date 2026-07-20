@@ -17,6 +17,7 @@ import type { CameraPreset } from '../lib/db'
 import { useAuth } from '../lib/auth'
 import { gearAffiliateUrl } from '../lib/affiliate'
 import { createPresetBundle, downloadPresetBundle } from '../lib/presetBundles'
+import { PaywallGate } from './PaywallGate'
 
 const TRIPOD_LABEL: Record<string, string> = {
   required: 'Tripod required',
@@ -110,114 +111,124 @@ export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
   const tripodShopUrl = gearAffiliateUrl('phone tripod astrophotography')
 
   return (
-    <div className="camera-recipe">
-      <div className="camera-device-flow">
-        <span className="camera-flow-label">1. Phone maker</span>
-        <div className="filter-tabs camera-maker-tabs">
-          {MAKER_ORDER.map((id) => (
-            <button key={id} type="button" className={maker === id ? 'is-active' : ''} onClick={() => selectMaker(id)}>
-              {MAKER_LABELS[id]}
-            </button>
+    <PaywallGate
+      user={user}
+      feature="Deep camera setup"
+      description="Downloadable preset bundles, device-specific setup steps, and deeper camera recommendations are part of the Sky Pass."
+      freeNote="Your first walkthrough still includes the essential camera settings for free."
+      onSignInClick={() => {
+        window.location.href = '/settings'
+      }}
+    >
+      <div className="camera-recipe">
+        <div className="camera-device-flow">
+          <span className="camera-flow-label">1. Phone maker</span>
+          <div className="filter-tabs camera-maker-tabs">
+            {MAKER_ORDER.map((id) => (
+              <button key={id} type="button" className={maker === id ? 'is-active' : ''} onClick={() => selectMaker(id)}>
+                {MAKER_LABELS[id]}
+              </button>
+            ))}
+          </div>
+
+          <label className="camera-model-select">
+            <span className="camera-flow-label">2. Model</span>
+            <select value={device} onChange={(event) => selectDevice(event.target.value as DeviceId)}>
+              {modelsForMaker(maker).map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="camera-preset-download">
+          <div>
+            <span className="camera-flow-label">3. Preset bundle</span>
+            <p>{bundle.install.notes}</p>
+          </div>
+          <button type="button" onClick={() => downloadPresetBundle(recipeKey, device)}>
+            Download Atlas preset
+          </button>
+        </div>
+
+        <div className="camera-mode-summary">
+          {profile.supportedModes.slice(0, 3).map((mode) => (
+            <span key={mode}>{mode}</span>
           ))}
         </div>
 
-        <label className="camera-model-select">
-          <span className="camera-flow-label">2. Model</span>
-          <select value={device} onChange={(event) => selectDevice(event.target.value as DeviceId)}>
-            {modelsForMaker(maker).map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
+        <dl className="camera-recipe-facts">
+          <div>
+            <dt>Mode</dt>
+            <dd>{deviceRecipe.mode}</dd>
+          </div>
+          <div>
+            <dt>Lens</dt>
+            <dd>{deviceRecipe.lens}</dd>
+          </div>
+          <div>
+            <dt>{TRIPOD_LABEL[deviceRecipe.tripod]}</dt>
+            {deviceRecipe.tripod !== 'optional' && tripodShopUrl && (
+              <dd>
+                <a href={tripodShopUrl} target="_blank" rel="noopener noreferrer sponsored" className="camera-recipe-shop-link">
+                  Shop tripods
+                </a>
+              </dd>
+            )}
+          </div>
+          <div>
+            <dt>Exposure</dt>
+            <dd>{deviceRecipe.exposure}</dd>
+          </div>
+          <div>
+            <dt>Focus</dt>
+            <dd>{deviceRecipe.focus}</dd>
+          </div>
+        </dl>
+
+        <div className="camera-recipe-setup">
+          <h4>Set up {profile.name}</h4>
+          <ol>
+            {SETUP_STEPS[maker].map((step) => (
+              <li key={step}>{step}</li>
             ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="camera-preset-download">
-        <div>
-          <span className="camera-flow-label">3. Preset bundle</span>
-          <p>{bundle.install.notes}</p>
+          </ol>
         </div>
-        <button type="button" onClick={() => downloadPresetBundle(recipeKey, device)}>
-          Download Atlas preset
-        </button>
-      </div>
 
-      <div className="camera-mode-summary">
-        {profile.supportedModes.slice(0, 3).map((mode) => (
-          <span key={mode}>{mode}</span>
-        ))}
-      </div>
+        <p className="camera-recipe-tip">{recipe.compositionTip}</p>
+        <p className="camera-recipe-expected">Expect: {recipe.expectedResult}</p>
 
-      <dl className="camera-recipe-facts">
-        <div>
-          <dt>Mode</dt>
-          <dd>{deviceRecipe.mode}</dd>
-        </div>
-        <div>
-          <dt>Lens</dt>
-          <dd>{deviceRecipe.lens}</dd>
-        </div>
-        <div>
-          <dt>{TRIPOD_LABEL[deviceRecipe.tripod]}</dt>
-          {deviceRecipe.tripod !== 'optional' && tripodShopUrl && (
-            <dd>
-              <a href={tripodShopUrl} target="_blank" rel="noopener noreferrer sponsored" className="camera-recipe-shop-link">
-                Shop tripods
-              </a>
-            </dd>
+        <div className="camera-recipe-presets">
+          <h4>Recommended presets for this model</h4>
+          <ul className="camera-recipe-preset-list">
+            {presets.slice(0, 4).map((preset) => (
+              <li key={preset.id} className={preset.source === 'builtin' ? 'is-builtin' : 'is-custom'}>
+                <span className="camera-recipe-preset-name">{preset.name}</span>
+                <span className="camera-recipe-preset-source">{preset.source}</span>
+                {preset.settings.mode && <span className="camera-recipe-preset-detail">Mode: {preset.settings.mode}</span>}
+                {preset.settings.iso && <span className="camera-recipe-preset-detail">ISO {preset.settings.iso}</span>}
+                {preset.settings.exposureSec && <span className="camera-recipe-preset-detail">{preset.settings.exposureSec}s</span>}
+              </li>
+            ))}
+          </ul>
+
+          {maker !== 'nothing' ? (
+            <>
+              <label className="camera-recipe-import">
+                Import an Atlas preset file
+                <input type="file" accept="application/json,.json,.atlas-preset" onChange={(e) => handleImportFile(e.target.files)} />
+              </label>
+              {importError && <p className="camera-recipe-import-error">{importError}</p>}
+            </>
+          ) : (
+            <p className="camera-recipe-import-error">
+              Nothing preset bundles download from Atlas now. Native Nothing Camera install requires a confirmed import format or a PocketBase mapper.
+            </p>
           )}
         </div>
-        <div>
-          <dt>Exposure</dt>
-          <dd>{deviceRecipe.exposure}</dd>
-        </div>
-        <div>
-          <dt>Focus</dt>
-          <dd>{deviceRecipe.focus}</dd>
-        </div>
-      </dl>
-
-      <div className="camera-recipe-setup">
-        <h4>Set up {profile.name}</h4>
-        <ol>
-          {SETUP_STEPS[maker].map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
       </div>
-
-      <p className="camera-recipe-tip">{recipe.compositionTip}</p>
-      <p className="camera-recipe-expected">Expect: {recipe.expectedResult}</p>
-
-      <div className="camera-recipe-presets">
-        <h4>Recommended presets for this model</h4>
-        <ul className="camera-recipe-preset-list">
-          {presets.slice(0, 4).map((preset) => (
-            <li key={preset.id} className={preset.source === 'builtin' ? 'is-builtin' : 'is-custom'}>
-              <span className="camera-recipe-preset-name">{preset.name}</span>
-              <span className="camera-recipe-preset-source">{preset.source}</span>
-              {preset.settings.mode && <span className="camera-recipe-preset-detail">Mode: {preset.settings.mode}</span>}
-              {preset.settings.iso && <span className="camera-recipe-preset-detail">ISO {preset.settings.iso}</span>}
-              {preset.settings.exposureSec && <span className="camera-recipe-preset-detail">{preset.settings.exposureSec}s</span>}
-            </li>
-          ))}
-        </ul>
-
-        {maker !== 'nothing' ? (
-          <>
-            <label className="camera-recipe-import">
-              Import an Atlas preset file
-              <input type="file" accept="application/json,.json,.atlas-preset" onChange={(e) => handleImportFile(e.target.files)} />
-            </label>
-            {importError && <p className="camera-recipe-import-error">{importError}</p>}
-          </>
-        ) : (
-          <p className="camera-recipe-import-error">
-            Nothing preset bundles download from Atlas now. Native Nothing Camera install requires a confirmed import format or a PocketBase mapper.
-          </p>
-        )}
-      </div>
-    </div>
+    </PaywallGate>
   )
 }

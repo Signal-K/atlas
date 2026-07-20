@@ -1,4 +1,7 @@
 import { fetchViewingAdvisory } from './weather'
+import { trackEvent } from './analytics'
+import { pb } from './pocketbase'
+import { getPushSubscription, isPushSupported, subscribeToPush } from './push'
 
 export type ReminderFeedbackOutcome = 'saw_it' | 'partial' | 'clouded_out'
 
@@ -112,7 +115,8 @@ export async function addGetReadyReminder(input: {
   }
 
   writeRaw([...existing, reminder])
-  scheduleReminder(reminder)
+  const pushedToWorker = await pushReminder(reminder)
+  if (!pushedToWorker) scheduleReminder(reminder)
   return reminder
 }
 
@@ -131,6 +135,11 @@ function scheduleReminder(reminder: GetReadyReminder) {
       updateReminder(reminder.id, {
         skippedReason: condition.reason,
       })
+      trackEvent('Get-ready notification skipped', {
+        eventId: reminder.eventId,
+        title: reminder.title,
+        reason: condition.reason,
+      })
       return
     }
     new Notification('Atlas: get ready', {
@@ -138,14 +147,25 @@ function scheduleReminder(reminder: GetReadyReminder) {
       tag: `atlas-${reminder.eventId}`,
     })
     updateReminder(reminder.id, { firedAt: new Date().toISOString(), skippedReason: undefined })
+    trackEvent('Get-ready notification shown', { eventId: reminder.eventId, title: reminder.title })
   }, delay)
 }
 
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) return false
-  if (Notification.permission === 'granted') return true
   if (Notification.permission === 'denied') return false
-  return (await Notification.requestPermission()) === 'granted'
+  const granted = Notification.permission === 'granted' || (await Notification.requestPermission()) === 'granted'
+  if (!granted) return false
+
+  if (pb.authStore.isValid && isPushSupported()) {
+    try {
+      await subscribeToPush()
+    } catch {
+      // Browser notifications are still available as a local fallback.
+    }
+  }
+
+  return true
 }
 
 export function recordReminderFeedback(reminderId: string, feedback: Omit<ReminderFeedback, 'recordedAt'>) {
@@ -172,6 +192,47 @@ export function getSightingProfile(): SightingProfile {
 
 function updateReminder(reminderId: string, patch: Partial<GetReadyReminder>) {
   writeRaw(readRaw().map((reminder) => (reminder.id === reminderId ? { ...reminder, ...patch } : reminder)))
+}
+
+async function pushReminder(reminder: GetReadyReminder): Promise<boolean> {
+  if (!pb.authStore.isValid || !navigator.onLine) return false
+  const subscription = await getPushSubscription().catch(() => null)
+  if (!subscription) return false
+  const user = pb.authStore.record?.id
+  if (!user) return false
+
+  const payload = {
+    user,
+    local_id: reminder.id,
+    event_id: reminder.eventId,
+    title: reminder.title,
+    kind: reminder.kind,
+    target: reminder.target,
+    starts_at: reminder.startsAt,
+    ends_at: reminder.endsAt,
+    remind_at: reminder.remindAt,
+    device_name: reminder.deviceName,
+    latitude: reminder.lat,
+    longitude: reminder.lon,
+    direction_label: reminder.directionLabel,
+    cloud_cover_pct: reminder.cloudCoverPct,
+    precipitation_chance_pct: reminder.precipitationChancePct,
+  }
+
+  try {
+    const existing = await pb.collection('atlas_get_ready_reminders').getFirstListItem(`event_id = "${reminder.eventId}"`)
+    await pb.collection('atlas_get_ready_reminders').update(existing.id, payload)
+    return true
+  } catch {
+    try {
+      await pb.collection('atlas_get_ready_reminders').create(payload)
+      return true
+    } catch {
+      // Local reminder remains armed even if the server-side worker record
+      // cannot be written yet.
+      return false
+    }
+  }
 }
 
 function updateSightingProfile(reminder: GetReadyReminder, feedback: ReminderFeedback) {

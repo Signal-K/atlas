@@ -170,7 +170,9 @@ test('mobile sky map opens as a rendered full-screen canvas with floating contro
   const overlayZ = await page.locator('.mobile-map-overlay').evaluate((element) => Number(window.getComputedStyle(element).zIndex))
   const feedbackZ = await page.locator('.feedback-dock').evaluate((element) => Number(window.getComputedStyle(element).zIndex))
   expect(overlayZ).toBeGreaterThan(feedbackZ)
+  await expect(page.locator('.feedback-dock')).toBeHidden()
 
   await map.getByRole('button', { name: 'Close sky map' }).click()
   await expect(map).toHaveCount(0)
+  await expect(page.locator('.feedback-dock')).toBeVisible()
 })

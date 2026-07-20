@@ -6,12 +6,15 @@ import { EventsView } from '../views/mobile/EventsView'
 import { PlanView } from '../views/mobile/PlanView'
 import { JournalView } from '../views/mobile/JournalView'
 import { SettingsView } from '../views/SettingsView'
-import { PaywallGate } from './PaywallGate'
 import { signOut, useAuth } from '../lib/auth'
 import { applyTheme, getStoredTheme, getSystemTheme, storeTheme } from '../lib/theme'
 import { getUpcomingEvents } from '../lib/sync'
 import { formatEventDate } from '../lib/eventFormat'
 import { addToWatchlist, formatWatchValue, getWatchableTargets, getWatchlist, isWatching, removeFromWatchlist, type WatchlistItem } from '../lib/watchlist'
+import { trackEvent } from '../lib/analytics'
+import { SignupWallModal } from './SignupWallModal'
+import { SignupWelcomeBeat } from './SignupWelcomeBeat'
+import { useSignupWall } from '../lib/useSignupWall'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
 import type { City } from '../lib/cities'
@@ -126,12 +129,15 @@ export function MobileShell({
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchStatus, setSearchStatus] = useState('')
   const [searchEvents, setSearchEvents] = useState<SkyEvent[]>([])
   const [searchTargets, setSearchTargets] = useState<string[]>([])
   const [searchWatchlist, setSearchWatchlist] = useState<WatchlistItem[]>([])
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
   const [isDark, setIsDark] = useState(() => (getStoredTheme() ?? getSystemTheme()) === 'dark')
+  const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const { user } = useAuth()
+  const signupWall = useSignupWall()
 
   useEffect(() => {
     applyTheme(isDark ? 'dark' : 'light')
@@ -160,8 +166,17 @@ export function MobileShell({
   }, [searchOpen])
 
   async function toggleSearchWatch(target: string) {
-    if (isWatching(searchWatchlist, 'target', target)) await removeFromWatchlist('target', target)
-    else await addToWatchlist('target', target)
+    if (!user?.entitled) {
+      setSearchStatus('Sky Pass is required to add targets to a plan. Browsing and check-ins stay free.')
+      trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_search' })
+      return
+    }
+    if (isWatching(searchWatchlist, 'target', target)) {
+      await removeFromWatchlist('target', target)
+    } else {
+      await addToWatchlist('target', target)
+      signupWall.promptAfterSave('favourite')
+    }
     setSearchWatchlist(await getWatchlist())
   }
 
@@ -308,6 +323,7 @@ export function MobileShell({
             className={`dt-tab${searchOpen ? ' is-active' : ''}`}
             onClick={() => {
               setProfileOpen(false)
+              setSearchStatus('')
               setSearchOpen((current) => !current)
             }}
             aria-current={searchOpen ? 'page' : undefined}
@@ -319,6 +335,19 @@ export function MobileShell({
       </header>
 
       <div className="mobile-content">
+        {signupWall.reason && (
+          <SignupWallModal
+            reason={signupWall.reason}
+            onDismiss={signupWall.dismiss}
+            onSignedUp={(mergedCount) => {
+              signupWall.complete()
+              setWelcomeMergedCount(mergedCount)
+            }}
+          />
+        )}
+        {welcomeMergedCount != null && (
+          <SignupWelcomeBeat mergedCount={welcomeMergedCount} onDone={() => setWelcomeMergedCount(null)} />
+        )}
         {searchOpen ? (
           <div className="dt-search-panel">
             <div className="dt-section-eyebrow">Search</div>
@@ -327,11 +356,15 @@ export function MobileShell({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => {
+                  setSearchStatus('')
+                  setSearchQuery(event.target.value)
+                }}
                 placeholder="Search events, targets, catalog IDs…"
                 autoFocus
               />
             </div>
+            {searchStatus && <p className="planner-reminder-status">{searchStatus}</p>}
             {!hasSearchQuery && (
               <p className="dt-empty-hint">Start typing to search tonight&rsquo;s events, the watchlist, and the catalog.</p>
             )}
@@ -372,16 +405,14 @@ export function MobileShell({
         ) : (
           <>
             {tab === 'hub' && <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} />}
-            {tab === 'events' && <EventsView city={currentLocation} onLogAttempt={logAttempt} />}
+            {tab === 'events' && <EventsView city={currentLocation} onLogAttempt={logAttempt} onSavedForLater={() => signupWall.promptAfterSave('favourite')} />}
             {tab === 'calendar' && (
-              <PaywallGate
-                user={user}
-                feature="Planning"
-                description="Rank dark-sky trips and deep-sky targets for your gear and upcoming events."
-                onSignInClick={openSettings}
-              >
-                <PlanView city={currentLocation} onOpenEvents={() => goToTab('events')} onLogAttempt={logAttempt} />
-              </PaywallGate>
+              <PlanView
+                city={currentLocation}
+                onOpenEvents={() => goToTab('events')}
+                onLogAttempt={logAttempt}
+                onSavedForLater={() => signupWall.promptAfterSave('favourite')}
+              />
             )}
             {tab === 'journal' && <JournalView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />}
           </>
