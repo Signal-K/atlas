@@ -154,6 +154,10 @@ function estimatePointingAltitude(pitchDeg: number | null): number {
   return clamp(90 - Math.abs(pitchDeg), 0, 90)
 }
 
+function angularDeltaDeg(a: number, b: number): number {
+  return Math.abs((((a - b + 180) % 360) + 360) % 360 - 180)
+}
+
 // Real observer-based sky map. Stars will move to a generated catalog next;
 // solar-system and curated deep-sky objects already use real alt/az positions.
 export function SkyMapCanvas({
@@ -408,12 +412,21 @@ export function SkyMapCanvas({
       const devicePointing = pointingRef.current
       if (presentation === 'full' && devicePointing?.headingDeg != null) {
         const estimatedAltitude = estimatePointingAltitude(devicePointing.pitchDeg)
+        const nearestPointedObject = objects
+          .filter((object) => object.visible && object.kind !== 'sun')
+          .map((object) => ({
+            object,
+            distance:
+              angularDeltaDeg(object.azimuthDeg, devicePointing.headingDeg ?? 0) +
+              Math.abs(object.altitudeDeg - estimatedAltitude) * 0.85,
+          }))
+          .sort((a, b) => a.distance - b.distance)[0]?.object
         const point = transformPointForSelection(projectSky(estimatedAltitude, devicePointing.headingDeg, cx, cy, radius), selectedPoint, cx, cy)
         const coneLeft = transformPointForSelection(projectSky(Math.max(0, estimatedAltitude - 4), devicePointing.headingDeg - 7, cx, cy, radius), selectedPoint, cx, cy)
         const coneRight = transformPointForSelection(projectSky(Math.max(0, estimatedAltitude - 4), devicePointing.headingDeg + 7, cx, cy, radius), selectedPoint, cx, cy)
         const roll = ((devicePointing.rollDeg ?? 0) * Math.PI) / 180
 
-        context.fillStyle = 'rgba(242,179,125,0.10)'
+        context.fillStyle = 'rgba(45,212,191,0.12)'
         context.beginPath()
         context.moveTo(cx, cy)
         context.lineTo(coneLeft.x, coneLeft.y)
@@ -421,7 +434,7 @@ export function SkyMapCanvas({
         context.closePath()
         context.fill()
 
-        context.strokeStyle = 'rgba(242,179,125,0.72)'
+        context.strokeStyle = 'rgba(45,212,191,0.72)'
         context.lineWidth = 1.2 * dpr
         context.beginPath()
         context.moveTo(cx, cy)
@@ -431,18 +444,35 @@ export function SkyMapCanvas({
         context.save()
         context.translate(point.x, point.y)
         context.rotate(roll)
-        context.strokeStyle = 'rgba(242,179,125,0.96)'
-        context.lineWidth = 1.5 * dpr
+        context.strokeStyle = 'rgba(45,212,191,0.98)'
+        context.fillStyle = 'rgba(45,212,191,0.18)'
+        context.lineWidth = 1.7 * dpr
         context.beginPath()
-        context.moveTo(-10 * dpr, 0)
-        context.lineTo(10 * dpr, 0)
-        context.moveTo(0, -10 * dpr)
-        context.lineTo(0, 10 * dpr)
+        context.arc(0, 0, 11 * dpr, 0, Math.PI * 2)
+        context.fill()
+        context.beginPath()
+        context.moveTo(0, -13 * dpr)
+        context.lineTo(13 * dpr, 0)
+        context.lineTo(0, 13 * dpr)
+        context.lineTo(-13 * dpr, 0)
+        context.closePath()
         context.stroke()
         context.beginPath()
-        context.arc(0, 0, 7 * dpr, 0, Math.PI * 2)
-        context.stroke()
+        context.arc(0, 0, 2.6 * dpr, 0, Math.PI * 2)
+        context.fillStyle = 'rgba(238,242,230,0.98)'
+        context.fill()
         context.restore()
+
+        const label = nearestPointedObject ? `PHONE AIM: ${nearestPointedObject.name}` : 'PHONE AIM'
+        context.font = `${10 * dpr}px ui-monospace, monospace`
+        const labelWidth = context.measureText(label).width
+        const labelX = clamp(point.x + 14 * dpr, 8 * dpr, width - labelWidth - 16 * dpr)
+        const labelY = clamp(point.y - 18 * dpr, 18 * dpr, height - 8 * dpr)
+        context.fillStyle = 'rgba(1,5,14,0.74)'
+        context.fillRect(labelX - 6 * dpr, labelY - 12 * dpr, labelWidth + 12 * dpr, 18 * dpr)
+        context.fillStyle = 'rgba(188,245,238,0.94)'
+        context.textAlign = 'left'
+        context.fillText(label, labelX, labelY)
       }
 
       const cloudAlpha = 1 - clarityFrac

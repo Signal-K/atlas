@@ -54,6 +54,21 @@ function formatOptionalNumber(value: number | undefined, suffix = ''): string | 
   return `${Number(value.toFixed(1))}${suffix}`
 }
 
+function estimatePointingAltitude(pitchDeg: number | null): number {
+  if (pitchDeg == null) return 0
+  return Math.max(0, Math.min(90, 90 - Math.abs(pitchDeg)))
+}
+
+function angularDeltaDeg(a: number, b: number): number {
+  return Math.abs((((a - b + 180) % 360) + 360) % 360 - 180)
+}
+
+function objectPointingScore(object: SkyMapObject, pointing: DevicePointing): number {
+  if (pointing.headingDeg == null) return Number.POSITIVE_INFINITY
+  const altitudeDeg = estimatePointingAltitude(pointing.pitchDeg)
+  return angularDeltaDeg(object.azimuthDeg, pointing.headingDeg) + Math.abs(object.altitudeDeg - altitudeDeg) * 0.85
+}
+
 export function SkyMapOverlay({
   cityName,
   clarity,
@@ -84,7 +99,24 @@ export function SkyMapOverlay({
   )
   const allVisibleObjects = useMemo(() => getSkyMapObjects(mapDate, lat, lon).filter((object) => object.visible), [lat, lon, mapDate])
   const selectedObject = selectedObjectId ? allVisibleObjects.find((object) => object.id === selectedObjectId) ?? null : null
+  const pointedObject = useMemo(() => {
+    if (activePointing?.headingDeg == null) return null
+    const nearest = allVisibleObjects
+      .filter((object) => object.kind !== 'sun')
+      .map((object) => ({ object, score: objectPointingScore(object, activePointing) }))
+      .sort((a, b) => a.score - b.score)[0]
+    return nearest && nearest.score <= 18 ? nearest.object : null
+  }, [activePointing, allVisibleObjects])
   const activeTitle = selectedObject?.name ?? targetLabel ?? 'Visible sky'
+  const pointingTitle = pointedObject?.name ?? 'Open sky'
+  const pointingDetail =
+    compassStatus === 'active' && activePointing?.headingDeg != null
+      ? `${Math.round(activePointing.headingDeg)}° heading · ${Math.round(estimatePointingAltitude(activePointing.pitchDeg))}° up`
+      : compassStatus === 'denied'
+        ? 'Compass permission denied'
+        : compassStatus === 'unsupported'
+          ? 'Compass unavailable'
+          : 'Enable compass to aim the map'
 
   function toggleSelectedObject(object: SkyMapObject) {
     setSelectedObjectId((current) => (current === object.id ? null : object.id))
@@ -103,6 +135,11 @@ export function SkyMapOverlay({
       </div>
 
       <div className="mobile-map-overlay-body">
+        <div className="mobile-map-aim-readout">
+          <span>Phone is pointing at</span>
+          <strong>{pointingTitle}</strong>
+          <small>{pointedObject ? `${pointedObject.compassLabel} · ${Math.round(pointedObject.altitudeDeg)}° alt` : pointingDetail}</small>
+        </div>
         <SkyMapCanvas
           clarity={clarity}
           date={mapDate}
@@ -186,7 +223,7 @@ export function SkyMapOverlay({
         ) : (
           <>
             <p>{targetSummary(targetPosition)}</p>
-            <p>{guidance(activePointing, targetPosition)}</p>
+            <p>{pointedObject ? `Phone aim: ${pointedObject.name}` : guidance(activePointing, targetPosition)}</p>
           </>
         )}
         {compassStatus !== 'active' && (
