@@ -91,16 +91,17 @@ test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
 })
 
-test('mobile signed-out user can browse but cannot add a target to a plan', async ({ page }) => {
+test('mobile signed-out user must sign in before using Plan', async ({ page }) => {
   await page.goto('/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText(/Bortle \d/)).toBeVisible()
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
 
-  await expect(page.getByLabel('Plan sections')).toBeVisible()
-  await expect(page.getByText('NEXT 14 DAYS')).toBeVisible()
-  await expect(page.getByText('Sky Pass unlocks unlimited light-pollution comparison and lower-pollution trip routes.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Planning is part of the Sky Pass' })).toBeVisible()
+  await expect(page.getByText('Discounted users still need to complete Polar checkout first.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sign in / create account' })).toBeVisible()
+  await expect(page.getByLabel('Plan sections')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Search', exact: true }).click()
   await page.getByPlaceholder(/Search events/).fill('moon')
@@ -112,19 +113,16 @@ test('mobile signed-out user can browse but cannot add a target to a plan', asyn
   await expect(page.locator('.account-form')).toHaveCount(0)
 })
 
-test('mobile premium gates planning tools but keeps first plan free', async ({ page }) => {
+test('mobile signed-in free user must checkout before using Plan', async ({ page }) => {
+  await seedSignedInUser(page, false)
   await page.goto('/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
 
-  await expect(page.getByLabel('Plan sections')).toBeVisible()
-  await expect(page.getByText('NEXT 14 DAYS')).toBeVisible()
-  await expect(page.getByText('Sky Pass unlocks unlimited light-pollution comparison and lower-pollution trip routes.')).toBeVisible()
-
-  await page.getByRole('button', { name: /Dark sites/i }).click()
-  await expect(page.getByRole('heading', { name: 'Planning tools is part of the Sky Pass' })).toBeVisible()
-  await expect(page.getByText('Your first walkthrough, two-week local event browsing, check-ins, and private observation log stay free.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Planning is part of the Sky Pass' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Get the Sky Pass' })).toBeVisible()
+  await expect(page.getByLabel('Plan sections')).toHaveCount(0)
 })
 
 test('mobile entitled user can compare lower light pollution sites and routes', async ({ page }) => {

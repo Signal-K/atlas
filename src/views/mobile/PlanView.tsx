@@ -239,6 +239,24 @@ export function PlanView({
     return premiumPlanningGate
   }
 
+  if (!hasPremium) {
+    return (
+      <div className="mobile-plan">
+        <PaywallGate
+          user={user}
+          feature="Planning"
+          description="Build observing plans, compare dark-sky trips, save events, and prepare gear with the Sky Pass."
+          freeNote="Today, Events, check-ins, and your Journal stay free. Discounted users still need to complete Polar checkout first."
+          onSignInClick={() => {
+            window.location.href = '/settings'
+          }}
+        >
+          {null}
+        </PaywallGate>
+      </div>
+    )
+  }
+
   return (
     <div className="mobile-plan">
       <section className="mobile-card mobile-plan-index">

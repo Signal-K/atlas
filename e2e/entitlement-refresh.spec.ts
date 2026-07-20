@@ -87,6 +87,7 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
 
   await expect(page.getByText('Sky Pass active')).toBeVisible({ timeout: 10_000 })
   await page.getByRole('button', { name: 'Plan a trip' }).click()
+  await expect(page.getByRole('tab', { name: 'Event plan' })).toBeVisible()
   await expect(page.getByText('Planning is part of the Sky Pass')).toHaveCount(0)
 })
 
@@ -113,8 +114,7 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
   await mockPlanEvent(page)
 
   await page.goto('/plan')
-  await page.getByRole('button', { name: 'Add to plan' }).first().click()
-  await expect(page.getByText('Add to plan is part of the Sky Pass')).toBeVisible()
+  await expect(page.getByText('Planning is part of the Sky Pass')).toBeVisible()
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
   await expect(page).toHaveURL('http://localhost:5173/fallback-checkout')

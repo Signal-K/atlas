@@ -212,53 +212,41 @@ function App() {
             />
           )}
           {view === 'plan' && (
-            <TabbedSection
-              tabs={[
-                {
-                  id: 'events',
-                  label: 'Event plan',
-                  content: (
-                    <EventCategoryPlanView
-                      key={locationKey}
-                      lat={currentLocation.lat}
-                      lon={currentLocation.lon}
-                      cityName={currentLocation.name}
-                      onSignInClick={goToSignUp}
-                    />
-                  ),
-                },
-                {
-                  id: 'darksky',
-                  label: 'Dark-sky trips',
-                  content: (
-                    <PaywallGate
-                      user={user}
-                      feature="Dark-sky trip planning"
-                      description="Compare lower light-pollution locations, routes, and public-transport options with the Sky Pass."
-                      freeNote="Today and tomorrow's local light-pollution estimate stays free."
-                      onSignInClick={goToSignUp}
-                    >
-                      <DarkSkyView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />
-                    </PaywallGate>
-                  ),
-                },
-                {
-                  id: 'planner',
-                  label: 'Deep-sky planner',
-                  content: (
-                    <PaywallGate
-                      user={user}
-                      feature="Deep-sky planning"
-                      description="Plan targets for your gear, save them to a plan, and prepare upcoming sessions with the Sky Pass."
-                      freeNote="You can still explore every local event type for the next two weeks."
-                      onSignInClick={goToSignUp}
-                    >
-                      <DeepSkyPlannerView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />
-                    </PaywallGate>
-                  ),
-                },
-              ]}
-            />
+            <PaywallGate
+              user={user}
+              feature="Planning"
+              description="Build observing plans, compare dark-sky trips, save events, and prepare gear with the Sky Pass."
+              freeNote="Today, Events, check-ins, and your Journal stay free. Discounted users still need to complete Polar checkout first."
+              onSignInClick={goToSignUp}
+            >
+              <TabbedSection
+                tabs={[
+                  {
+                    id: 'events',
+                    label: 'Event plan',
+                    content: (
+                      <EventCategoryPlanView
+                        key={locationKey}
+                        lat={currentLocation.lat}
+                        lon={currentLocation.lon}
+                        cityName={currentLocation.name}
+                        onSignInClick={goToSignUp}
+                      />
+                    ),
+                  },
+                  {
+                    id: 'darksky',
+                    label: 'Dark-sky trips',
+                    content: <DarkSkyView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />,
+                  },
+                  {
+                    id: 'planner',
+                    label: 'Deep-sky planner',
+                    content: <DeepSkyPlannerView key={locationKey} lat={currentLocation.lat} lon={currentLocation.lon} />,
+                  },
+                ]}
+              />
+            </PaywallGate>
           )}
           {view === 'community' && (
             <PaywallGate
