@@ -38,6 +38,13 @@ migrate((app) => {
   })
 
   app.save(compAccess)
+
+  const grant = new Record(compAccess)
+  grant.set('email_normalized', 'liam@skinetics.tech')
+  grant.set('discount_id', '2b3c24e3-f354-4843-aa7b-865df2ba73d5')
+  grant.set('active', true)
+  grant.set('reason', 'founder_test_comp')
+  app.save(grant)
 }, (app) => {
   try {
     app.delete(app.findCollectionByNameOrId('atlas_polar_comp_access'))
