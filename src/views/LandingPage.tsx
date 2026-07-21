@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { trackEvent } from '../lib/analytics'
-import { CITIES, type City } from '../lib/cities'
+import { CITIES, cityLabel, type City } from '../lib/cities'
+import { LocationSearchInput } from '../components/LocationSearchInput'
 import '../mobile.css'
 
 interface LandingPageProps {
@@ -27,6 +28,7 @@ function findCity(query: string): City | null {
 
 export function LandingPage({ isMobile, requestLocation, setManualLocation, onEnter }: LandingPageProps) {
   const [locationQuery, setLocationQuery] = useState('')
+  const [selectedCity, setSelectedCity] = useState<City | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
 
   function enterWithCity(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const city = findCity(locationQuery)
+    const city = selectedCity ?? findCity(locationQuery)
     if (!city) {
       setError('Choose a nearby city from the list, or use your current location.')
       return
@@ -59,27 +61,25 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
     <form className={isMobile ? 'dt-landing-form' : 'landing-form'} onSubmit={enterWithCity}>
       <label htmlFor="landing-location">Where are you watching from?</label>
       <div className={isMobile ? 'dt-landing-input-row' : 'landing-input-row'}>
-        <input
+        <LocationSearchInput
           id="landing-location"
-          type="text"
           value={locationQuery}
-          onChange={(event) => {
-            setLocationQuery(event.target.value)
+          onChange={(value) => {
+            setLocationQuery(value)
+            setSelectedCity(null)
             setError('')
           }}
-          placeholder="Town or city"
-          list="landing-city-options"
-          autoComplete="address-level2"
+          onSelect={(city) => {
+            setSelectedCity(city)
+            setLocationQuery(cityLabel(city))
+            setError('')
+            trackEvent('Location suggestion selected', { source: 'landing', city: city.name, country: city.country, timeZone: city.timeZone })
+          }}
         />
         <button type="submit" className={isMobile ? 'dt-landing-cta-primary' : 'landing-cta-primary'}>
           See tonight&apos;s sky
         </button>
       </div>
-      <datalist id="landing-city-options">
-        {CITIES.map((city) => (
-          <option key={city.name} value={city.name} />
-        ))}
-      </datalist>
       <button type="button" className={isMobile ? 'dt-landing-location-button' : 'landing-location-button'} onClick={enterWithBrowserLocation}>
         Use my current location
       </button>

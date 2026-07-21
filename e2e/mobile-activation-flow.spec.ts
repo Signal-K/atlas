@@ -91,6 +91,61 @@ test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
 })
 
+test('mobile signed-out user lands on visible-tonight feed before signup', async ({ page }) => {
+  await page.goto('/today')
+
+  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.account-form')).toHaveCount(0)
+  await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
+
+  const target = page.locator('.dt-feed-row').first()
+  await expect(target).toBeVisible()
+  await expect(target).toContainText('Full Moon')
+  await expect(target).toContainText(/naked-eye|needs binoculars or a scope/)
+  await target.click()
+
+  const preview = page.locator('.dt-feed-preview').first()
+  await expect(preview).toBeVisible()
+  await expect(preview.getByText('You would see the Moon clearly, with shape, shadow, or surface detail visible by eye.')).toBeVisible()
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const taps = JSON.parse(window.localStorage.getItem('atlas-first-plan-target-taps') ?? '[]')
+        return taps[0]
+      }),
+    )
+    .toMatchObject({
+      targetId: 'e2e-mobile-activation-moon',
+      title: 'Full Moon',
+      kind: 'moon_phase',
+      source: 'mobile_hub',
+      locationLabel: 'Melbourne',
+    })
+})
+
+test('mobile equipment prompt waits for first target tap and saves gear choice', async ({ page }) => {
+  await page.goto('/today')
+
+  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
+
+  await page.locator('.dt-feed-row').first().click()
+  const prompt = page.locator('.dt-equipment-prompt')
+  await expect(prompt).toBeVisible()
+  await prompt.getByRole('button', { name: 'My phone' }).click()
+
+  await expect(prompt).toHaveCount(0)
+  await expect(page.evaluate(() => window.localStorage.getItem('atlas-first-plan-equipment'))).resolves.toBe('phone')
+  await expect(page.evaluate(() => window.localStorage.getItem('atlas-first-plan-equipment-dismissed'))).resolves.toBe('1')
+  await expect(page.getByText('Good match for a phone camera.')).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
+  await page.locator('.dt-feed-row').first().click()
+  await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
+  await expect(page.getByText('Good match for a phone camera.')).toBeVisible()
+})
+
 test('mobile signed-out user must sign in before using Plan', async ({ page }) => {
   await page.goto('/today')
 

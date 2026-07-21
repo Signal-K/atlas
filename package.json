@@ -15,7 +15,10 @@
     "ingest": "node scripts/ingest.mjs",
     "notify": "node scripts/notify.mjs",
     "moderate": "node scripts/moderate-photo-challenges.mjs",
-    "vapid": "node scripts/generate-vapid-keys.mjs"
+    "vapid": "node scripts/generate-vapid-keys.mjs",
+    "capture:video": "node scripts/capture-mobile-video.mjs",
+    "render:voice": "node scripts/render-demo-narration.mjs",
+    "render:video": "node scripts/mux-demo-video.mjs"
   },
   "dependencies": {
     "astronomy-engine": "^2.1.19",

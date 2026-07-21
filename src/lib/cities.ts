@@ -9,6 +9,13 @@ export interface City {
   name: string
   lat: number
   lon: number
+  admin1?: string
+  country?: string
+  timeZone?: string
+}
+
+export function cityLabel(city: City): string {
+  return [city.name, city.admin1, city.country].filter((part, index, values) => part && values.indexOf(part) === index).join(', ')
 }
 
 export const CITIES: City[] = [

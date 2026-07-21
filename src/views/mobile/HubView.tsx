@@ -114,8 +114,8 @@ function HubIcon({ name }: { name: HubIconName }) {
   )
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+function formatTime(iso: string, timeZone?: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
 }
 
 const KIND_KICKER: Record<string, { label: string; color: string }> = {
@@ -152,7 +152,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
     async function load() {
       await pullSkyEvents()
       const [tonightPlan, advisoryDays, watched] = await Promise.all([
-        getTonightPlan(city.lat, city.lon),
+        getTonightPlan(city.lat, city.lon, new Date(), city.timeZone),
         fetchViewingAdvisory(city.lat, city.lon, 1).catch(() => []),
         getWatchlist(),
       ])
@@ -283,7 +283,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           <div className="dt-widget-cell dt-widget-cell--wide">
             <span className="dt-widget-eyebrow"><HubIcon name="target" />Next up</span>
             <span className="dt-widget-value">{topTarget ? topTarget.title : 'No local target'}</span>
-            <span className="dt-widget-caption">{topTarget ? formatTime(topTarget.bestTime) : 'Check again later'}</span>
+            <span className="dt-widget-caption">{topTarget ? formatTime(topTarget.bestTime, plan.timeZone) : 'Check again later'}</span>
           </div>
           <div className="dt-widget-cell">
             <span className="dt-widget-eyebrow"><HubIcon name="cloud" />Cloud</span>
@@ -297,12 +297,12 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           </div>
           <div className="dt-widget-cell">
             <span className="dt-widget-eyebrow"><HubIcon name="clock" />Dark</span>
-            <span className="dt-widget-value">{darkAt ? formatTime(darkAt) : '—'}</span>
+            <span className="dt-widget-value">{darkAt ? formatTime(darkAt, plan.timeZone) : '—'}</span>
             <span className="dt-widget-caption">astro dusk</span>
           </div>
           <div className="dt-widget-cell">
             <span className="dt-widget-eyebrow"><HubIcon name="sun" />Sunset</span>
-            <span className="dt-widget-value">{sunsetAt ? formatTime(sunsetAt) : '—'}</span>
+            <span className="dt-widget-value">{sunsetAt ? formatTime(sunsetAt, plan.timeZone) : '—'}</span>
             <span className="dt-widget-caption">{city.name}</span>
           </div>
           <div className="dt-widget-cell">
@@ -405,7 +405,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
                         <span className="dt-dot" />
                         {kicker.label}
                       </span>
-                      <span className="dt-feed-time">{formatTime(target.bestTime)}</span>
+                      <span className="dt-feed-time">{formatTime(target.bestTime, plan.timeZone)}</span>
                     </div>
                     <div className="dt-feed-headline-row">
                       <span className="dt-feed-headline">{target.title}</span>

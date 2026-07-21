@@ -5,9 +5,14 @@ export interface DailyViewingAdvisory {
   quality: 'clear' | 'partly-cloudy' | 'cloudy'
 }
 
+export interface ViewingForecast {
+  days: DailyViewingAdvisory[]
+  timeZone?: string
+}
+
 // Open-Meteo: free, no API key, CORS-enabled for browser use.
 // https://open-meteo.com/en/docs
-export async function fetchViewingAdvisory(lat: number, lon: number, days = 7): Promise<DailyViewingAdvisory[]> {
+export async function fetchViewingForecast(lat: number, lon: number, days = 7): Promise<ViewingForecast> {
   const url = new URL('https://api.open-meteo.com/v1/forecast')
   url.searchParams.set('latitude', String(lat))
   url.searchParams.set('longitude', String(lon))
@@ -23,7 +28,7 @@ export async function fetchViewingAdvisory(lat: number, lon: number, days = 7): 
   const cloudCover: number[] = data.daily?.cloud_cover_mean ?? []
   const precipitation: number[] = data.daily?.precipitation_probability_mean ?? []
 
-  return dates.map((date, i) => {
+  const forecastDays: DailyViewingAdvisory[] = dates.map((date, i) => {
     const cloudCoverPct = cloudCover[i] ?? 100
     return {
       date,
@@ -32,6 +37,11 @@ export async function fetchViewingAdvisory(lat: number, lon: number, days = 7): 
       quality: cloudCoverPct < 30 ? 'clear' : cloudCoverPct < 70 ? 'partly-cloudy' : 'cloudy',
     }
   })
+  return { days: forecastDays, timeZone: typeof data.timezone === 'string' ? data.timezone : undefined }
+}
+
+export async function fetchViewingAdvisory(lat: number, lon: number, days = 7): Promise<DailyViewingAdvisory[]> {
+  return (await fetchViewingForecast(lat, lon, days)).days
 }
 
 // STS-319: when tonight is cloudy, the plan screen's weather section offers

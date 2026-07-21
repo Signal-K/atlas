@@ -81,11 +81,6 @@ export function EventsView({
   }
 
   async function addReminder(event: SkyEvent) {
-    if (!hasPremium) {
-      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
-      trackEvent('Blocked free plan add', { action: 'reminder', source: 'mobile_events' })
-      return
-    }
     const hasPermission = await ensureNotificationPermission()
     await addGetReadyReminder({
       eventId: event.id,
@@ -101,6 +96,7 @@ export function EventsView({
       precipitationChancePct: advisoryFor(event)?.precipitationChancePct,
     })
     setReminders(listGetReadyReminders())
+    setStatus(hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.')
     trackEvent('Added get ready reminder', { target: event.title, hasPermission, source: 'mobile_events' })
   }
 

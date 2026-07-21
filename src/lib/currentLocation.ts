@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { CITIES, type City } from './cities'
+import { CITIES, cityLabel, type City } from './cities'
 import type { useLocationSeed } from './geo'
 
 export type LocationSource = 'geolocation' | 'manual' | 'default'
@@ -9,6 +9,7 @@ export interface CurrentLocation {
   lat: number
   lon: number
   source: LocationSource
+  timeZone?: string
 }
 
 export const MANUAL_LOCATION_KEY = 'atlas-manual-location'
@@ -19,9 +20,15 @@ export const MANUAL_LOCATION_KEY = 'atlas-manual-location'
 const DEFAULT_CITY: City = CITIES.find((city) => city.name === 'Melbourne') ?? CITIES[0]
 
 function getManualCity(): City | null {
-  const name = localStorage.getItem(MANUAL_LOCATION_KEY)
-  if (!name) return null
-  return CITIES.find((city) => city.name === name) ?? null
+  const stored = localStorage.getItem(MANUAL_LOCATION_KEY)
+  if (!stored) return null
+  try {
+    const parsed = JSON.parse(stored) as City
+    if (parsed.name && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon)) return parsed
+  } catch {
+    // Legacy installs stored only the curated city name.
+  }
+  return CITIES.find((city) => city.name === stored) ?? null
 }
 
 export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
@@ -29,7 +36,7 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
 
   const setManualLocation = useCallback((city: City | null) => {
     setManualCityState(city)
-    if (city) localStorage.setItem(MANUAL_LOCATION_KEY, city.name)
+    if (city) localStorage.setItem(MANUAL_LOCATION_KEY, JSON.stringify(city))
     else localStorage.removeItem(MANUAL_LOCATION_KEY)
   }, [])
 
@@ -37,7 +44,7 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
   // otherwise an explicit correction gets silently reverted on next load
   // (same rationale as locationBrowseContext.tsx's manual-city priority).
   const current = useMemo<CurrentLocation>(() => {
-    if (manualCity) return { name: manualCity.name, lat: manualCity.lat, lon: manualCity.lon, source: 'manual' }
+    if (manualCity) return { name: cityLabel(manualCity), lat: manualCity.lat, lon: manualCity.lon, source: 'manual', timeZone: manualCity.timeZone }
     if (geo.coordinates) return { name: 'Your location', lat: geo.coordinates.lat, lon: geo.coordinates.lon, source: 'geolocation' }
     return { name: DEFAULT_CITY.name, lat: DEFAULT_CITY.lat, lon: DEFAULT_CITY.lon, source: 'default' }
   }, [manualCity, geo.coordinates])

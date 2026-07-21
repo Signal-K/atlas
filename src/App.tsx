@@ -24,6 +24,7 @@ import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { useAuth } from './lib/auth'
 import { identifyAnalyticsUser } from './lib/analytics'
+import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
 import { PaywallGate } from './components/PaywallGate'
 import { FeedbackDock } from './components/FeedbackDock'
 import { InstallPrompt } from './components/InstallPrompt'
@@ -86,6 +87,10 @@ function App() {
   // from first paint instead of only after the user visits Settings once.
   useEffect(() => {
     applyTheme(getStoredTheme() ?? getSystemTheme())
+  }, [])
+
+  useEffect(() => {
+    captureDemoAccessCodeFromUrl()
   }, [])
 
   useEffect(() => {

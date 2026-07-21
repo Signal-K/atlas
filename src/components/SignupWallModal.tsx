@@ -3,6 +3,7 @@ import { authErrorMessage, signIn, signUp } from '../lib/auth'
 import { mergeLocalDataIntoAccount, type MergeResult } from '../lib/accountMerge'
 import { pb } from '../lib/pocketbase'
 import { trackEvent } from '../lib/analytics'
+import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
 
 export type SignupWallReason = 'favourite' | 'log_observation'
 
@@ -49,13 +50,23 @@ export function SignupWallModal({ reason, onDismiss, onSignedUp }: SignupWallMod
     try {
       if (mode === 'sign-up') await signUp(email, password)
       else await signIn(email, password)
+      const demoAccess = await redeemStoredDemoAccessCode()
 
       const userId = pb.authStore.record?.id as string | undefined
-      const emptyResult: MergeResult = { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, total: 0 }
+      const emptyResult: MergeResult = {
+        favourites: 0,
+        watchlist: 0,
+        observations: 0,
+        cameraPresets: 0,
+        targetTaps: 0,
+        equipmentChoice: 0,
+        total: 0,
+      }
       const result = userId ? await mergeLocalDataIntoAccount(userId) : emptyResult
       trackEvent(mode === 'sign-up' ? 'Sign up completed' : 'Sign in completed', {
         source: `signup_wall_${reason}`,
         mergedCount: result.total,
+        demoAccess,
       })
       trackEvent('Merge result', {
         source: `signup_wall_${reason}`,
@@ -63,7 +74,10 @@ export function SignupWallModal({ reason, onDismiss, onSignedUp }: SignupWallMod
         watchlist: result.watchlist,
         observations: result.observations,
         cameraPresets: result.cameraPresets,
+        targetTaps: result.targetTaps,
+        equipmentChoice: result.equipmentChoice,
         total: result.total,
+        demoAccess,
       })
       onSignedUp(result.total)
     } catch (submitError) {
