@@ -5,11 +5,12 @@
 import * as Astronomy from 'astronomy-engine'
 import { getEventsInRange } from './sync'
 import type { SkyEvent } from './db'
-import { fetchViewingAdvisory, findNextClearWindow, type DailyViewingAdvisory } from './weather'
+import { fetchViewingForecast, findNextClearWindow, type DailyViewingAdvisory } from './weather'
 import { scoreTonight, type TonightRating } from './tonightScore'
 import { bodyForTarget, type HorizontalPosition } from './skyPosition'
 import { getPrimarySkyMapObjectForEvent } from './skyMapLayers'
 import { haversineKm } from './cities'
+import { tonightWindowForTimeZone } from './timeZone'
 
 export type TargetDifficulty = 'easy' | 'moderate' | 'hard'
 
@@ -49,6 +50,7 @@ export interface GeneralPhotoWindow {
 }
 
 export interface TonightPlan {
+  timeZone?: string
   rating: TonightRating
   reasons: string[]
   targets: TonightTarget[]
@@ -182,13 +184,6 @@ function metaFor(kind: string): KindMeta {
 
 // "Tonight" runs from now until 6am the next morning -- generous enough to
 // cover both an early-evening check-in and a post-midnight one.
-function tonightWindow(now: Date): { start: Date; end: Date } {
-  const end = new Date(now)
-  end.setDate(end.getDate() + 1)
-  end.setHours(6, 0, 0, 0)
-  return { start: now, end }
-}
-
 // Civil (-6°) and astronomical (-18°) dusk/dawn tonight, used both as a
 // TonightScore-adjacent signal and to tell camera-recipe features when it's
 // twilight vs. genuinely dark. Returns nulls near the poles in summer, where
@@ -364,13 +359,11 @@ function rankTargets(
     })
 }
 
-export async function getTonightPlan(lat: number, lon: number, now = new Date()): Promise<TonightPlan> {
-  const { start, end } = tonightWindow(now)
-
-  const [allEvents, advisory] = await Promise.all([
-    getEventsInRange(start, end),
-    fetchViewingAdvisory(lat, lon, 7).catch(() => []),
-  ])
+export async function getTonightPlan(lat: number, lon: number, now = new Date(), locationTimeZone?: string): Promise<TonightPlan> {
+  const forecast = await fetchViewingForecast(lat, lon, 7).catch(() => ({ days: [], timeZone: undefined }))
+  const advisory = forecast.days
+  const { start, end } = tonightWindowForTimeZone(now, locationTimeZone ?? forecast.timeZone)
+  const allEvents = await getEventsInRange(start, end)
   const events = allEvents.filter((event) => isLocationRelevant(event, lat, lon))
 
   const today = advisory[0]
@@ -398,6 +391,7 @@ export async function getTonightPlan(lat: number, lon: number, now = new Date())
   const cloudCoverPct = weatherAvailable ? today.cloudCoverPct : null
 
   return {
+    timeZone: locationTimeZone ?? forecast.timeZone,
     rating,
     reasons,
     targets: rankTargets(events, rating, lat, lon, start, end, cloudCoverPct),

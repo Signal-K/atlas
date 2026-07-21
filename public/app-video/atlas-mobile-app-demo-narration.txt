@@ -1,0 +1,13 @@
+Atlas is a stargazing companion for nights when I do not have a telescope, a backpack full of gear, or much time to plan. It starts with the question most people actually have: what can I see tonight, from here, with just my eyes or my phone?
+
+The Today hub combines location, local time, weather, moonlight, and real sky events into one readable recommendation. Location search now distinguishes the city, region, and country, and Atlas keeps all sunset, darkness, and target times in that place's timezone. The location control stays visible, so I can change the sky I am browsing without starting over.
+
+Opening a target turns it into a practical observing plan: what I should expect to see, when to go outside, where to point, and whether it is realistic for the naked eye or a phone camera. Atlas detects the phone family and provides model-specific guidance and downloadable presets where the platform allows it.
+
+The full sky map uses real astronomy positions for stars, planets, the Moon, and deep-sky objects. With permission, the phone compass and motion sensors turn it into live pointing guidance. Events stays intentionally progressive instead of becoming one huge list, while Plan handles reminders, dark-sky sites, weather windows, and watchlist targets. Journal records sightings, misses, photos, conditions, and notes.
+
+I built and extended Atlas with OpenAI Codex, using GPT five point six Sol as my primary engineering and product collaborator. OpenAI Codex worked directly in the repository: it inspected the existing architecture, researched astronomy and mobile-camera constraints, translated my feedback into stories and code, edited React, TypeScript, CSS, and PocketBase, and ran the build and Playwright tests headlessly.
+
+GPT five point six Sol was most valuable for the hard decisions, not boilerplate: separating the quiet strategic hub preview from the full planetarium, reducing clutter across the mobile flow, tracing timezone errors across data and interface layers, and analyzing PostHog feedback before deciding what to fix. Atlas does not call an LLM at runtime; OpenAI Codex and GPT five point six were part of how the product was designed, implemented, tested, and refined.
+
+The result is an astronomy app built around confidence rather than complexity: see what is possible, prepare the phone you already have, step outside, and look up.

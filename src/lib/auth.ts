@@ -33,8 +33,23 @@ export async function signIn(email: string, password: string): Promise<void> {
   await pb.collection('users').authWithPassword(email, password)
 }
 
+function isExistingAccountError(error: unknown): boolean {
+  if (!(error instanceof ClientResponseError)) return false
+  const fieldErrors = Object.entries(error.response?.data ?? {}) as Array<[string, { code?: string; message?: string }]>
+  return fieldErrors.some(([field, details]) => {
+    if (field !== 'email') return false
+    const code = details?.code?.toLowerCase() ?? ''
+    const message = details?.message?.toLowerCase() ?? ''
+    return code.includes('unique') || message.includes('already') || message.includes('in use')
+  })
+}
+
 export async function signUp(email: string, password: string): Promise<void> {
-  await pb.collection('users').create({ email, password, passwordConfirm: password })
+  try {
+    await pb.collection('users').create({ email, password, passwordConfirm: password })
+  } catch (error) {
+    if (!isExistingAccountError(error)) throw error
+  }
   await pb.collection('users').authWithPassword(email, password)
 }
 

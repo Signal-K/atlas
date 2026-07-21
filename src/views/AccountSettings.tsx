@@ -5,6 +5,7 @@ import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
 import { pb } from '../lib/pocketbase'
 import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
+import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
 
 export function AccountSettings({
   defaultMode = 'sign-in',
@@ -104,21 +105,26 @@ export function AccountSettings({
     try {
       if (mode === 'sign-in') {
         await signIn(email, password)
-        trackEvent('Sign in completed', { source })
+        const demoAccess = await redeemStoredDemoAccessCode()
+        trackEvent('Sign in completed', { source, demoAccess })
       } else {
         await signUp(email, password)
+        const demoAccess = await redeemStoredDemoAccessCode()
         const userId = pb.authStore.record?.id as string | undefined
         const result = userId
           ? await mergeLocalDataIntoAccount(userId)
-          : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, total: 0 }
-        trackEvent('Sign up completed', { source, mergedCount: result.total })
+          : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, targetTaps: 0, equipmentChoice: 0, total: 0 }
+        trackEvent('Sign up completed', { source, mergedCount: result.total, demoAccess })
         trackEvent('Merge result', {
           source,
           favourites: result.favourites,
           watchlist: result.watchlist,
           observations: result.observations,
           cameraPresets: result.cameraPresets,
+          targetTaps: result.targetTaps,
+          equipmentChoice: result.equipmentChoice,
           total: result.total,
+          demoAccess,
         })
         setWelcomeMergedCount(result.total)
       }

@@ -308,6 +308,22 @@ export function MobileShell({
             )}
           </div>
         </div>
+        <button
+          type="button"
+          className="dt-location-switch"
+          onClick={() => {
+            trackEvent('Location switch opened', { source: 'mobile_header', location: currentLocation.name })
+            openSettings()
+          }}
+          aria-label={`Change location. Currently ${currentLocation.name}`}
+        >
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="M10 18s6-5.1 6-10A6 6 0 0 0 4 8c0 4.9 6 10 6 10Z" />
+            <circle cx="10" cy="8" r="2" />
+          </svg>
+          <span>{currentLocation.name}</span>
+          <small>Change</small>
+        </button>
         <nav className="dt-tabbar" aria-label="Primary">
           {ROUTES.map((route) => (
             <button

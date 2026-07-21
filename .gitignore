@@ -21,6 +21,7 @@ test-results
 playwright-report
 blob-report
 playwright/.cache
+public/app-video/*_chunks/
 
 # Editor directories and files
 .vscode/*

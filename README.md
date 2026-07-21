@@ -3,6 +3,12 @@
 Offline-first astronomical events, calendar, watchlist, and citizen-science
 companion webapp, backed by the shared Star Sailors PocketBase instance.
 
+**Live app:** https://youratlas.cc/
+
+**OpenAI Build Week track:** Apps for Your Life
+
+**Primary Codex `/feedback` Session ID:** `019f62b3-b014-7da2-bb07-c36fa9fada77`
+
 See `~/Navigation/workspace/projects/atlas/docs/brief.md` for the product
 brief and `~/Navigation/pm-vault` (project `atlas`, ticket prefix `AT`) for
 the ticket breakdown.
@@ -20,6 +26,45 @@ the ticket breakdown.
 - Event-source plugins (moon phase, meteor showers, ISS passes, ...) run
   out-of-band via scheduled GitHub Actions workflows, not in the app
   runtime (AT-004, AT-010, AT-011).
+
+## How Codex and GPT-5.6 were used
+
+Atlas existed before OpenAI Build Week and was meaningfully extended during
+the submission period. GPT-5.6 Sol was used through Codex as the primary
+engineering and product collaborator; Atlas does not call an LLM at runtime.
+
+Codex worked directly in the repository to inspect the existing architecture,
+turn product feedback into implementation slices, edit React/TypeScript/CSS,
+run headless Playwright checks, and maintain the build. It was especially
+useful where the work crossed several layers at once:
+
+- Rebuilt the mobile experience around a Today hub, compact local Events flow,
+  Plan, Journal, persistent starfield header, profile menu, and settings.
+- Replaced the decorative sky graphic with astronomy-engine positions for
+  stars, planets, the Moon, and curated deep-sky objects, plus compass and
+  accelerometer pointing in the full-screen map.
+- Designed phone-specific camera guidance and downloadable preset bundles for
+  recent Apple, Google, Nothing, and Samsung flagships, with an extensible
+  fallback for other Android devices.
+- Added event reminders, watchlist-to-plan flows, offline persistence, demo
+  access, account merging, and focused end-to-end coverage.
+- Queried PostHog usage and feedback, found location ambiguity and timezone
+  friction, and then implemented region/country suggestions, IANA-timezone
+  observing windows, and visible location switching in both shells. The
+  evidence and follow-up measurement plan are in
+  [`docs/posthog-product-analysis-2026-07-21.md`](docs/posthog-product-analysis-2026-07-21.md).
+
+GPT-5.6 Sol contributed the higher-level reasoning: translating loose visual
+references into a coherent mobile information hierarchy, separating the
+strategic Today preview from the real planetarium view, researching realistic
+camera-preset constraints, tracing timezone bugs through data and presentation
+layers, and deciding which PostHog signals justified product changes. Codex
+then carried those decisions through implementation and verification.
+
+The repository is currently public at https://github.com/Signal-K/atlas, which
+meets the Build Week judge-access requirement without private-repository
+invitations. The commit history and the session ID above provide timestamped
+evidence of the Build Week work.
 
 ## Cloud infra (production)
 
@@ -44,6 +89,19 @@ prefer `make up`: it runs only PocketBase in Docker and runs Vite on the host.
 Use `make docker-up` only when you explicitly need the frontend container.
 Use `make demo` for a no-Docker demo-mode frontend.
 
+### Demo access links
+
+Atlas supports server-authorized demo/free-access links for people who should
+be able to sign up without paying. Create an admin-only PocketBase record in
+`atlas_demo_access_links` with an active `code`, optional `expires_at`, optional
+`max_redemptions`, and a short `reason`. Then share either
+`https://youratlas.cc/demo/<code>` or `https://youratlas.cc/?demo=<code>`.
+
+The frontend stores the code locally and redeems it only after the visitor has
+authenticated. PocketBase validates the code, records the redemption in
+`atlas_demo_access_redemptions`, flips the user's `entitled` field, and the app
+refreshes the auth record so Sky Pass access appears without checkout.
+
 ## Setup
 
 ```bash
@@ -53,6 +111,25 @@ npm run dev
 ```
 
 Set `VITE_PB_URL` in `.env.local` to the PocketBase instance to use.
+
+For the quickest judge/demo path, no backend is required:
+
+```bash
+make demo
+```
+
+Then open the local URL printed by Vite. Stop it with `make demo stop`.
+
+## Verification
+
+```bash
+npm run lint
+npm run build
+npx playwright test
+```
+
+Playwright is fully headless by default. Network-dependent astronomy, weather,
+geocoding, compass, and account scenarios use deterministic test fixtures.
 
 ## GitHub Actions
 

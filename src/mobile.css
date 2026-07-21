@@ -3493,6 +3493,52 @@
   color: var(--dt-ink);
 }
 
+.dt-location-switch {
+  display: flex;
+  width: calc(100% - 32px);
+  height: 34px;
+  margin: 0 16px 8px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-top: 1px solid rgba(123, 180, 214, 0.2);
+  border-bottom: 1px solid rgba(123, 180, 214, 0.2);
+  background: transparent;
+  color: #c7d7e4;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.dt-location-switch svg {
+  width: 16px;
+  height: 16px;
+  color: #69bde5;
+  stroke-width: 1.6;
+}
+
+.dt-location-switch span {
+  overflow: hidden;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-location-switch small {
+  color: #e5b36f;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.mobile-content .settings-location-choice {
+  width: 100%;
+}
+
+.mobile-content .settings-location-choice .location-search {
+  width: 100%;
+}
+
 .dt-landing-cta-primary {
   font: 700 0.85rem/1 var(--dt-font-data);
   letter-spacing: 0;

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { applyTheme, getStoredTheme, getSystemTheme, storeTheme, type Theme } from '../lib/theme'
 import type { LocationStatus } from '../lib/geo'
-import { CITIES, type City } from '../lib/cities'
+import { cityLabel, type City } from '../lib/cities'
 import type { CurrentLocation } from '../lib/currentLocation'
+import { LocationSearchInput } from '../components/LocationSearchInput'
+import { trackEvent } from '../lib/analytics'
 import { getOptInName, optIn, optOut } from '../lib/leaderboard'
 import { useAuth } from '../lib/auth'
 import { recordWeeklyActivity } from '../lib/streaks'
@@ -114,6 +116,7 @@ export function SettingsView({
   requestMotionPermission,
   accountDefaultMode,
 }: SettingsViewProps) {
+  const [locationQuery, setLocationQuery] = useState(() => manualCity ? cityLabel(manualCity) : '')
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? getSystemTheme())
 
   useEffect(() => {
@@ -164,22 +167,31 @@ export function SettingsView({
             the weather/astronomy services used to build tonight's plan.
           </p>
         </div>
-        <div className="settings-choice">
-          <select
-            className="map-location-select"
-            value={manualCity?.name ?? ''}
-            onChange={(event) => {
-              const next = CITIES.find((c) => c.name === event.target.value)
-              setManualLocation(next ?? null)
+        <div className="settings-choice settings-location-choice">
+          <LocationSearchInput
+            id="settings-location"
+            value={locationQuery}
+            onChange={setLocationQuery}
+            onSelect={(city) => {
+              setManualLocation(city)
+              setLocationQuery(cityLabel(city))
+              trackEvent('Location changed', { source: 'settings', city: city.name, country: city.country, timeZone: city.timeZone })
             }}
-          >
-            <option value="">Use my browser location</option>
-            {CITIES.map((c) => (
-              <option key={c.name} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            placeholder="Search city, region, or country"
+          />
+          {manualCity && (
+            <button
+              type="button"
+              onClick={() => {
+                setManualLocation(null)
+                setLocationQuery('')
+                requestLocation()
+                trackEvent('Location changed', { source: 'settings', method: 'browser_geolocation' })
+              }}
+            >
+              Use current location
+            </button>
+          )}
         </div>
       </div>
 

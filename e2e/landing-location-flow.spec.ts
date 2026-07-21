@@ -88,3 +88,62 @@ test('browser geolocation entry reaches tonight feed without signup', async ({ p
   await expect(page.getByRole('heading', { name: 'Tonight near Your location' })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.account-form')).toHaveCount(0)
 })
+
+test('location search disambiguates cities by region and country', async ({ page }) => {
+  await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        results: [
+          {
+            id: 6058560,
+            name: 'London',
+            latitude: 42.9834,
+            longitude: -81.233,
+            admin1: 'Ontario',
+            country: 'Canada',
+            timezone: 'America/Toronto',
+          },
+          {
+            id: 2643743,
+            name: 'London',
+            latitude: 51.5074,
+            longitude: -0.1278,
+            admin1: 'England',
+            country: 'United Kingdom',
+            timezone: 'Europe/London',
+          },
+        ],
+      }),
+    })
+  })
+
+  await page.goto('/')
+  await page.getByLabel('Where are you watching from?').fill('London')
+  await expect(page.getByRole('option', { name: /London Ontario, Canada/ })).toBeVisible()
+  await page.getByRole('option', { name: /London Ontario, Canada/ }).click()
+  await page.getByRole('button', { name: "See tonight's sky" }).click()
+
+  await expect(page).toHaveURL('/tonight')
+  await expect(page.getByRole('heading', { name: 'Tonight near London, Ontario, Canada' })).toBeVisible({ timeout: 15_000 })
+})
+
+test('mobile header keeps location switching available after onboarding', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript(() => {
+    localStorage.setItem('atlas-entered', '1')
+    localStorage.setItem(
+      'atlas-manual-location',
+      JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278, admin1: 'England', country: 'United Kingdom', timeZone: 'Europe/London' }),
+    )
+  })
+
+  await page.goto('/today')
+  await page.getByRole('button', { name: /Change location\. Currently London, England, United Kingdom/ }).click()
+
+  await expect(page).toHaveURL('/settings')
+  await expect(page.getByPlaceholder('Search city, region, or country')).toHaveValue('London, England, United Kingdom')
+  await page.getByRole('button', { name: 'Back to Atlas' }).click()
+  await expect(page).toHaveURL('/today')
+})

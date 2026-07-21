@@ -24,6 +24,7 @@ import {
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
+import { Link } from 'react-router-dom'
 
 const RATING_LABEL: Record<TonightPlan['rating'], string> = {
   great: 'Go outside — great conditions',
@@ -39,8 +40,8 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   hard: 'Hard',
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+function formatTime(iso: string, timeZone?: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
 }
 
 function formatDayLabel(dateStr: string): string {
@@ -51,9 +52,9 @@ function formatWeatherSummary(advisory: NonNullable<TonightPlan['todayAdvisory']
   return `${Math.round(advisory.cloudCoverPct)}% cloud · ${Math.round(advisory.precipitationChancePct)}% rain chance for the viewing window.`
 }
 
-function formatDarknessWindow(window: TonightPlan['darknessWindow']): string | null {
+function formatDarknessWindow(window: TonightPlan['darknessWindow'], timeZone?: string): string | null {
   if (!window.astronomicalDuskAt || !window.astronomicalDawnAt) return null
-  return `Astronomically dark ${formatTime(window.astronomicalDuskAt)}–${formatTime(window.astronomicalDawnAt)}`
+  return `Astronomically dark ${formatTime(window.astronomicalDuskAt, timeZone)}–${formatTime(window.astronomicalDawnAt, timeZone)}`
 }
 
 // True during evening or morning twilight -- after the Sun sets (civil dusk)
@@ -98,7 +99,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
     async function load() {
       try {
         await pullSkyEvents()
-        const result = await getTonightPlan(city.lat, city.lon)
+        const result = await getTonightPlan(city.lat, city.lon, new Date(), city.timeZone)
         if (!cancelled) {
           setPlan(result)
           trackEvent('Generated tonight plan', { rating: result.rating, targetCount: result.targets.length, city: city.name })
@@ -145,7 +146,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
     )
   }
 
-  const darknessLabel = formatDarknessWindow(plan.darknessWindow)
+  const darknessLabel = formatDarknessWindow(plan.darknessWindow, plan.timeZone)
   const rankedTargets = sortTargetsByEquipment(plan.targets, equipment)
   const hasDirectionalTargets = plan.targets.some((target) => target.direction !== null)
   const twilightNow = isTwilightNow(plan.darknessWindow, new Date())
@@ -172,7 +173,10 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
 
   return (
     <section className="widget-section">
-      <h2>Tonight near {city.name}</h2>
+      <div className="tonight-location-heading">
+        <h2>Tonight near {city.name}</h2>
+        <Link to="/settings" onClick={() => trackEvent('Location switch opened', { source: 'tonight' })}>Change location</Link>
+      </div>
       {!isOnline && <p className="scrapbook-hint">You're offline — showing cached data.</p>}
       {(locationStatus === 'denied' || locationStatus === 'unsupported') && (
         <p className="scrapbook-hint">
@@ -231,7 +235,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
             <span className="row-text">Best time tonight for a general sky photo</span>
           </div>
           <p className="row-meta">
-            {formatTime(plan.generalPhotoWindow.startsAt)}–{formatTime(plan.generalPhotoWindow.endsAt)}
+            {formatTime(plan.generalPhotoWindow.startsAt, plan.timeZone)}–{formatTime(plan.generalPhotoWindow.endsAt, plan.timeZone)}
           </p>
           <p className="tonight-target-reason">{plan.generalPhotoWindow.reason}</p>
         </div>
@@ -292,7 +296,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                       <span className="row-kind">{DIFFICULTY_LABEL[target.difficulty]}</span>
                     </span>
                     <span className="row-meta">
-                      {formatTime(target.bestTime)} · {target.phoneFriendly ? 'Phone-friendly' : 'Tough for a phone'} ·{' '}
+                      {formatTime(target.bestTime, plan.timeZone)} · {target.phoneFriendly ? 'Phone-friendly' : 'Tough for a phone'} ·{' '}
                       {target.nakedEyeVisible ? 'Naked-eye' : 'Needs binoculars or a scope'}
                       {target.direction && (
                         <>
@@ -315,8 +319,8 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                       <p className="tonight-target-preview">{describeWhatYouWouldSee(target)}</p>
                       <div className="tonight-target-plan-section">
                         <h4>Best time</h4>
-                        <p>{formatTime(target.bestTime)} is the best time to look tonight.</p>
-                        <BestTimeTimeline darknessWindow={plan.darknessWindow} targetTime={target.bestTime} />
+                        <p>{formatTime(target.bestTime, plan.timeZone)} is the best time to look tonight.</p>
+                        <BestTimeTimeline darknessWindow={plan.darknessWindow} targetTime={target.bestTime} timeZone={plan.timeZone} />
                       </div>
                       {target.direction && (
                         <div className="tonight-target-plan-section">

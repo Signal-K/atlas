@@ -1,20 +1,21 @@
 import type { DarknessWindow } from '../lib/tonightTargets'
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+function formatTime(iso: string, timeZone?: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
 }
 
 interface BestTimeTimelineProps {
   darknessWindow: DarknessWindow
   targetTime: string // ISO
   now?: Date
+  timeZone?: string
 }
 
 // STS-316: a simple vertical bar from dusk to dawn, marking the darkest
 // stretch of the night and the target's own best time within it -- a plain
 // sentence alone doesn't convey "how soon" or "how much night is left"
 // the way a glance at the bar does.
-export function BestTimeTimeline({ darknessWindow, targetTime, now = new Date() }: BestTimeTimelineProps) {
+export function BestTimeTimeline({ darknessWindow, targetTime, now = new Date(), timeZone }: BestTimeTimelineProps) {
   const startIso = darknessWindow.civilDuskAt ?? targetTime
   const endIso = darknessWindow.civilDawnAt ?? targetTime
   const start = new Date(startIso).getTime()
@@ -41,8 +42,8 @@ export function BestTimeTimeline({ darknessWindow, targetTime, now = new Date() 
         <div className="best-time-timeline-target" style={{ top: `${targetPct}%` }} />
       </div>
       <div className="best-time-timeline-labels">
-        <span>{formatTime(startIso)}</span>
-        <span>{formatTime(endIso)}</span>
+        <span>{formatTime(startIso, timeZone)}</span>
+        <span>{formatTime(endIso, timeZone)}</span>
       </div>
     </div>
   )

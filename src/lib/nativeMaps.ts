@@ -22,6 +22,7 @@ export function getPreferredMapProvider(): MapProvider {
 }
 
 export function setPreferredMapProvider(provider: MapProvider): void {
+  if (typeof localStorage === 'undefined') return
   localStorage.setItem(PROVIDER_KEY, provider)
 }
 
@@ -32,7 +33,14 @@ export function getPreferredRouteMode(): RouteMode {
 }
 
 export function setPreferredRouteMode(mode: RouteMode): void {
+  if (typeof localStorage === 'undefined') return
   localStorage.setItem(MODE_KEY, mode)
+}
+
+function appleMapsMode(mode: RouteMode): string {
+  if (mode === 'driving') return 'd'
+  if (mode === 'walking') return 'w'
+  return 'r'
 }
 
 export function routeUrl({
@@ -48,11 +56,11 @@ export function routeUrl({
 }): string {
   if (provider === 'apple') {
     const params = new URLSearchParams({
-      destination: `${site.lat},${site.lon}`,
-      mode,
+      daddr: `${site.lat},${site.lon}`,
+      dirflg: appleMapsMode(mode),
     })
-    if (origin) params.set('source', `${origin.lat},${origin.lon}`)
-    return `https://maps.apple.com/directions?${params.toString()}`
+    if (origin) params.set('saddr', `${origin.lat},${origin.lon}`)
+    return `https://maps.apple.com/?${params.toString()}`
   }
 
   const params = new URLSearchParams({

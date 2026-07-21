@@ -14,6 +14,7 @@ import { SignupWallModal } from '../components/SignupWallModal'
 import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
 import { useSignupWall } from '../lib/useSignupWall'
 import { cityStampsFromObservations, pushCityStampFromObservation, shareCityStamp } from '../lib/cityStamps'
+import { pb } from '../lib/pocketbase'
 
 // Entries made while signed out are scoped to this fixed local id so the
 // Scrapbook still works fully offline-first with no account. Once signed
@@ -49,8 +50,8 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const signupWall = useSignupWall()
 
-  async function refresh() {
-    const all = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
+  async function refresh(nextScopeId = scopeId) {
+    const all = await db.observations.where('userId').equals(nextScopeId).reverse().sortBy('observedAt')
     setEntries(all)
   }
 
@@ -163,7 +164,8 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
           onSignedUp={(mergedCount) => {
             signupWall.complete()
             setWelcomeMergedCount(mergedCount)
-            refresh()
+            const signedInUserId = pb.authStore.record?.id as string | undefined
+            refresh(signedInUserId)
           }}
         />
       )}
