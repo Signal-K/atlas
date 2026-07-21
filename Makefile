@@ -1,4 +1,4 @@
-.PHONY: help up dev down build logs seed demo stop
+.PHONY: help up docker-up dev pb down build logs seed demo stop
 
 COMPOSE := docker compose
 DEMO_PID_FILE := .demo.pid
@@ -7,8 +7,10 @@ DEMO_LOG_FILE := .demo.log
 help:
 	@echo "Atlas — available targets"
 	@echo ""
-	@echo "  make up          Start Atlas (Vite dev server, hot-reloads on source edits) + PocketBase (:4179 / :8094)"
-	@echo "  make dev         Same, but Vite runs on the host instead of in Docker (:5179 / :8094)"
+	@echo "  make up          Lightweight dev: PocketBase in Docker + Vite on the host (:5179 / :8094)"
+	@echo "  make dev         Alias for 'make up'"
+	@echo "  make pb          Start only local PocketBase in Docker (:8094)"
+	@echo "  make docker-up   Full Docker dev stack: Atlas + PocketBase (:4179 / :8094)"
 	@echo "  make preview     Build + run the real production bundle for a final check, alongside 'up' (:4180)"
 	@echo "  make down        Stop the stack (add 'preview' to also stop the preview container)"
 	@echo "  make build       Rebuild the dev-stage image — run after package.json changes"
@@ -17,21 +19,23 @@ help:
 	@echo "  make demo        Run the frontend only (no Docker), pre-set to demo mode"
 	@echo "  make demo stop   Stop the demo dev server started by 'make demo'"
 
-# atlas here is the Vite *dev server* (Dockerfile's `dev` stage) with the repo
-# bind-mounted in -- source edits on the host hot-reload immediately, no
-# rebuild step. --build is unconditional because compose won't notice a
-# changed `target:`/volumes on its own and would otherwise happily run a
-# stale image built for a different stage. Ordinary source edits after this
-# don't need `make up` run again at all -- Vite picks them up live.
-up:
+up: dev
+
+# Full Docker dev stack. Use this when you explicitly need to test the
+# containerized Vite path; day-to-day dev should prefer `make up`/`make dev`
+# because host Vite uses less Docker Desktop CPU/battery than bind-mounted
+# file watching inside a container.
+docker-up:
 	$(COMPOSE) up -d --build --remove-orphans backend atlas
 	@echo "Atlas:      http://localhost:4179 (hot reload)"
 	@echo "PocketBase: http://localhost:8094/_/"
 
-dev:
+pb:
 	$(COMPOSE) up -d --remove-orphans backend
-	@echo "Atlas dev:  http://localhost:5179"
 	@echo "PocketBase: http://localhost:8094/_/"
+
+dev: pb
+	@echo "Atlas dev:  http://localhost:5179"
 	VITE_PB_URL=http://localhost:8094 npm run dev -- --host 0.0.0.0 --port 5179
 
 # The actual `npm run build` + `vite preview` production bundle, for
@@ -48,7 +52,7 @@ build:
 	$(COMPOSE) build backend atlas
 
 logs:
-	$(COMPOSE) logs -f backend atlas
+	$(COMPOSE) logs -f --tail=100 backend atlas
 
 seed:
 	cd ../backend && go run ./cmd/seed --dir ./pb_data

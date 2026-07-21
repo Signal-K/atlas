@@ -1,4 +1,5 @@
-import { rankDarkSkySites, directionsUrl } from '../../lib/darkSky'
+import { estimateLightPollution, rankLowerLightPollutionSites } from '../../lib/darkSky'
+import { NativeRoutePicker } from '../NativeRoutePicker'
 import { BackIcon, MobileIcon } from './MobileIcon'
 
 // Sites this far out are more "theoretical" than "trip-worthy" -- the
@@ -9,8 +10,10 @@ import { BackIcon, MobileIcon } from './MobileIcon'
 const FAR_TRAVEL_MINUTES_THRESHOLD = 240
 
 export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lon: number; cityName: string; onBack: () => void }) {
-  const darkSites = rankDarkSkySites(lat, lon)
+  const lightPollution = estimateLightPollution(lat, lon)
+  const darkSites = rankLowerLightPollutionSites(lat, lon)
   const nearestMinutes = darkSites[0]?.estimatedTravelMinutes ?? 0
+  const origin = { lat, lon }
 
   return (
     <div className="mobile-plan">
@@ -21,7 +24,11 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
         <div className="mobile-card-eyebrow mobile-card-eyebrow--icon">
           <MobileIcon name="mountain" /> Dark sites
         </div>
-        <p className="mobile-empty-hint">Nearest dark-sky trip options ranked by drive time from {cityName}.</p>
+        <p className="mobile-empty-hint">
+          Current light pollution near {cityName}: Bortle {lightPollution.bortleClass} · {lightPollution.label} (
+          {lightPollution.confidence === 'curated-site' ? 'curated site' : 'estimated'}).
+        </p>
+        <p className="mobile-empty-hint">Lower light-pollution options ranked by trip time, with estimated sky improvement.</p>
         {nearestMinutes > FAR_TRAVEL_MINUTES_THRESHOLD && (
           <p className="mobile-empty-hint">
             Our dark-sky site database is still Europe/US/Australia-focused, so nearby options can be sparse elsewhere — these are the
@@ -42,12 +49,12 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
                 </div>
                 <div className="mobile-tool-row-foot">
                   <span>
-                    BORTLE {site.bortleClass} &middot; {Math.round(site.distanceKm)} KM
+                    BORTLE {site.bortleClass} &middot;{' '}
+                    {(site.lightPollutionDelta ?? 0) > 0 ? `${site.lightPollutionDelta} CLASS BETTER` : 'BEST KNOWN MATCH'} &middot;{' '}
+                    {Math.round(site.distanceKm)} KM
                   </span>
-                  <a href={directionsUrl(site)} target="_blank" rel="noreferrer">
-                    Directions
-                  </a>
                 </div>
+                <NativeRoutePicker site={site} origin={origin} compact />
               </div>
             )
           })}
@@ -58,6 +65,6 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
 }
 
 export function darkSitesSummary(lat: number, lon: number) {
-  const darkSites = rankDarkSkySites(lat, lon)
+  const darkSites = rankLowerLightPollutionSites(lat, lon)
   return { count: darkSites.length, nearestMinutes: darkSites[0]?.estimatedTravelMinutes ?? null }
 }

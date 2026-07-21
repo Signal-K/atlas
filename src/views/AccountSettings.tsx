@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { authErrorMessage, refreshEntitlement, signIn, signOut, signUp, useAuth } from '../lib/auth'
 import { trackEvent } from '../lib/analytics'
-import { POLAR_CHECKOUT_URL } from '../lib/entitlement'
+import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
 import { pb } from '../lib/pocketbase'
 import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
@@ -23,6 +23,8 @@ export function AccountSettings({
   // with the form -- not on every keystroke.
   const startedRef = useRef(false)
   const [checkingEntitlement, setCheckingEntitlement] = useState(false)
+  const [startingCheckout, setStartingCheckout] = useState(false)
+  const [checkoutError, setCheckoutError] = useState('')
   const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
 
   function trackFormStarted() {
@@ -44,6 +46,23 @@ export function AccountSettings({
     setCheckingEntitlement(false)
   }
 
+  async function handleCheckoutClick() {
+    setStartingCheckout(true)
+    setCheckoutError('')
+    trackEvent('Paywall checkout clicked', { feature: 'settings' })
+    try {
+      const url = await startPolarCheckout()
+      window.location.href = url
+    } catch {
+      if (POLAR_CHECKOUT_URL) {
+        window.location.href = POLAR_CHECKOUT_URL
+      } else {
+        setCheckoutError('Checkout is unavailable right now. Try again shortly.')
+        setStartingCheckout(false)
+      }
+    }
+  }
+
   if (user) {
     return (
       <div className="settings-row">
@@ -63,20 +82,13 @@ export function AccountSettings({
           </span>
           {user.entitled ? null : (
             <>
-              {POLAR_CHECKOUT_URL && (
-                <a
-                  className="paywall-card-cta"
-                  href={POLAR_CHECKOUT_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => trackEvent('Paywall checkout clicked', { feature: 'settings' })}
-                >
-                  Get the Sky Pass
-                </a>
-              )}
+              <button type="button" className="paywall-card-cta" onClick={handleCheckoutClick} disabled={startingCheckout}>
+                {startingCheckout ? 'Starting checkout…' : 'Get the Sky Pass'}
+              </button>
               <button type="button" onClick={handleRefreshEntitlement} disabled={checkingEntitlement}>
                 {checkingEntitlement ? 'Checking…' : 'Refresh status'}
               </button>
+              {checkoutError && <span className="settings-status">{checkoutError}</span>}
             </>
           )}
         </div>

@@ -25,6 +25,9 @@ import { EventDetailPanel } from '../../components/mobile/EventDetailPanel'
 import { useEventPointing } from '../../components/mobile/EventPointing'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
 import { MobileIcon } from '../../components/mobile/MobileIcon'
+import { PaywallGate } from '../../components/PaywallGate'
+import { useAuth } from '../../lib/auth'
+import { estimateLightPollution } from '../../lib/darkSky'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
 import type { ObservationDraft } from '../../lib/observationDraft'
@@ -32,6 +35,8 @@ import { WatchView } from './WatchView'
 
 type PlanMode = 'ready' | 'watchlist' | 'calendar' | 'browse'
 type ToolPanel = 'dark-sites' | 'gear-fit' | null
+const FREE_EVENT_LOOKAHEAD_DAYS = 14
+const PREMIUM_EVENT_LOOKAHEAD_DAYS = 90
 
 function ratingToStatus(rating: TonightRating): 'go' | 'marginal' | 'poor' {
   if (rating === 'great' || rating === 'good') return 'go'
@@ -43,10 +48,12 @@ export function PlanView({
   city,
   onOpenEvents,
   onLogAttempt,
+  onSavedForLater,
 }: {
   city: CurrentLocation
   onOpenEvents: () => void
   onLogAttempt: (draft: ObservationDraft) => void
+  onSavedForLater?: () => void
 }) {
   const [mode, setMode] = useState<PlanMode>('browse')
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
@@ -57,13 +64,17 @@ export function PlanView({
   const [status, setStatus] = useState('')
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
   const [toolPanel, setToolPanel] = useState<ToolPanel>(null)
+  const [blockedPlanAdd, setBlockedPlanAdd] = useState(false)
   const [feedbackNotes, setFeedbackNotes] = useState<Record<string, string>>({})
   const { pointActionFor, overlay: pointingOverlay } = useEventPointing(city)
+  const { user } = useAuth()
+  const hasPremium = Boolean(user?.entitled)
 
   async function load() {
     await pullSkyEvents()
     const now = new Date()
-    const planEnd = new Date(now.getTime() + 90 * 86_400_000)
+    const lookaheadDays = hasPremium ? PREMIUM_EVENT_LOOKAHEAD_DAYS : FREE_EVENT_LOOKAHEAD_DAYS
+    const planEnd = new Date(now.getTime() + lookaheadDays * 86_400_000)
     const [upcoming, watched] = await Promise.all([getEventsInRange(now, planEnd), getWatchlist()])
     setEvents(upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon)))
     setWatchlist(watched)
@@ -93,7 +104,7 @@ export function PlanView({
       window.removeEventListener('atlas:reminder-feedback-changed', refreshReminders)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- city identity is the intended reload boundary
-  }, [city])
+  }, [city, hasPremium])
 
   const plannedEvents = useMemo(() => {
     const reminderIds = new Set(reminders.map((reminder) => reminder.eventId))
@@ -136,6 +147,12 @@ export function PlanView({
   }
 
   async function addReminder(event: SkyEvent) {
+    if (!hasPremium) {
+      setBlockedPlanAdd(true)
+      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+      trackEvent('Blocked free plan add', { action: 'reminder', source: 'mobile_plan' })
+      return
+    }
     const hasPermission = await ensureNotificationPermission()
     await addGetReadyReminder({
       eventId: event.id,
@@ -156,8 +173,18 @@ export function PlanView({
   }
 
   async function toggleWatch(event: SkyEvent) {
-    if (isWatching(watchlist, 'target', event.target)) await removeFromWatchlist('target', event.target)
-    else await addToWatchlist('target', event.target)
+    if (!hasPremium) {
+      setBlockedPlanAdd(true)
+      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+      trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_plan' })
+      return
+    }
+    if (isWatching(watchlist, 'target', event.target)) {
+      await removeFromWatchlist('target', event.target)
+    } else {
+      await addToWatchlist('target', event.target)
+      onSavedForLater?.()
+    }
     setWatchlist(await getWatchlist())
   }
 
@@ -171,19 +198,63 @@ export function PlanView({
     trackEvent('Submitted reminder feedback', { outcome, target: reminder.title, kind: reminder.kind })
   }
 
+  function blockFreePlanAdd(source: string) {
+    setBlockedPlanAdd(true)
+    setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+    trackEvent('Blocked free plan add', { action: 'watch', source })
+  }
+
   const selectedReminder = selected ? reminders.find((reminder) => reminder.eventId === selected.id) : null
   const selectedRecipeKey = selected ? recipeKeyForEventKind(selected.kind) : null
   const selectedAdvisory = selected ? advisoryFor(selected) : null
 
   const darkSites = useMemo(() => darkSitesSummary(city.lat, city.lon), [city.lat, city.lon])
   const gearFit = useMemo(() => defaultGearFitSummary(), [])
+  const lightPollution = useMemo(() => estimateLightPollution(city.lat, city.lon), [city.lat, city.lon])
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const premiumPlanningGate = (
+    <PaywallGate
+      user={user}
+      feature="Planning tools"
+      description="Dark-sky trips, gear-fit planning, downloadable camera presets, and deeper camera setup are part of the Sky Pass."
+      freeNote="Your first walkthrough, two-week local event browsing, check-ins, and private observation log stay free."
+      onSignInClick={() => {
+        window.location.href = '/settings'
+      }}
+    >
+      {toolPanel === 'dark-sites' ? (
+        <DarkSitesPanel lat={city.lat} lon={city.lon} cityName={city.name} onBack={() => setToolPanel(null)} />
+      ) : (
+        <GearFitPanel onBack={() => setToolPanel(null)} />
+      )}
+    </PaywallGate>
+  )
 
   if (toolPanel === 'dark-sites') {
-    return <DarkSitesPanel lat={city.lat} lon={city.lon} cityName={city.name} onBack={() => setToolPanel(null)} />
+    return premiumPlanningGate
   }
 
   if (toolPanel === 'gear-fit') {
-    return <GearFitPanel onBack={() => setToolPanel(null)} />
+    return premiumPlanningGate
+  }
+
+  if (!hasPremium) {
+    return (
+      <div className="mobile-plan">
+        <PaywallGate
+          user={user}
+          feature="Planning"
+          description="Build observing plans, compare dark-sky trips, save events, and prepare gear with the Sky Pass."
+          freeNote="Today, Events, check-ins, and your Journal stay free. Discounted users still need to complete Polar checkout first."
+          onSignInClick={() => {
+            window.location.href = '/settings'
+          }}
+        >
+          {null}
+        </PaywallGate>
+      </div>
+    )
   }
 
   return (
@@ -194,7 +265,7 @@ export function PlanView({
             <span className="mobile-plan-readout-dot" />
             {(events ?? []).length} EVENTS
           </span>
-          <span className="mobile-plan-readout-window">NEXT 90 DAYS</span>
+          <span className="mobile-plan-readout-window">NEXT {hasPremium ? PREMIUM_EVENT_LOOKAHEAD_DAYS : FREE_EVENT_LOOKAHEAD_DAYS} DAYS</span>
         </div>
         <div className="mobile-community-tabs" aria-label="Plan sections">
           <button type="button" className={mode === 'browse' ? 'is-active' : ''} onClick={() => setMode('browse')}>
@@ -212,6 +283,19 @@ export function PlanView({
         </div>
         {status && <p className="planner-reminder-status">{status}</p>}
       </section>
+      {blockedPlanAdd && !hasPremium && (
+        <PaywallGate
+          user={user}
+          feature="Add to plan"
+          description="Saving targets, reminders, and holiday planning are part of the Sky Pass."
+          freeNote="You can keep browsing local events and checking in for free."
+          onSignInClick={() => {
+            window.location.href = '/settings'
+          }}
+        >
+          {null}
+        </PaywallGate>
+      )}
 
       {mode === 'ready' && (
         <section className="mobile-card">
@@ -281,7 +365,14 @@ export function PlanView({
         </section>
       )}
 
-      {mode === 'watchlist' && <WatchView city={city} />}
+      {mode === 'watchlist' && (
+        <WatchView
+          city={city}
+          onSavedForLater={onSavedForLater}
+          canAddToPlan={hasPremium}
+          onBlockedPlanAdd={() => blockFreePlanAdd('mobile_plan_watchlist')}
+        />
+      )}
 
       {mode === 'calendar' && (
         <section className="mobile-card">
@@ -319,6 +410,24 @@ export function PlanView({
 
       {mode === 'browse' && (
         <>
+          <section className="mobile-card">
+            <div className="mobile-card-eyebrow">Light pollution</div>
+            <div className="mobile-mini-list">
+              {['Today', 'Tomorrow'].map((label, index) => (
+                <div className="mobile-mini-row mobile-plan-row mobile-plan-row--status" key={label}>
+                  <span className="mobile-event-kind">{label}</span>
+                  <span className="mobile-mini-row-name">Bortle {lightPollution.bortleClass}</span>
+                  <span className="mobile-mini-row-meta">{index === 0 ? 'Now' : tomorrow.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                  <span className="mobile-plan-row-status">
+                    {lightPollution.label} · {lightPollution.confidence === 'curated-site' ? 'curated' : 'estimated'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {!hasPremium && (
+              <p className="mobile-empty-hint">Sky Pass unlocks unlimited light-pollution comparison and lower-pollution trip routes.</p>
+            )}
+          </section>
           <SkyEventBrowser events={events} onSelect={setSelected} statusForEvent={statusForEvent} />
 
           <section className="mobile-card">

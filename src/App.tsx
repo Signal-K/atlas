@@ -215,7 +215,8 @@ function App() {
             <PaywallGate
               user={user}
               feature="Planning"
-              description="Rank dark-sky trips and deep-sky targets for your gear and upcoming events."
+              description="Build observing plans, compare dark-sky trips, save events, and prepare gear with the Sky Pass."
+              freeNote="Today, Events, check-ins, and your Journal stay free. Discounted users still need to complete Polar checkout first."
               onSignInClick={goToSignUp}
             >
               <TabbedSection
@@ -229,6 +230,7 @@ function App() {
                         lat={currentLocation.lat}
                         lon={currentLocation.lon}
                         cityName={currentLocation.name}
+                        onSignInClick={goToSignUp}
                       />
                     ),
                   },

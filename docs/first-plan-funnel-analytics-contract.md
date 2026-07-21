@@ -21,20 +21,23 @@ completed the funnel this contract measures.
 | Equipment skip | `Skipped equipment prompt` | `source` | `TonightView.tsx`, `mobile/HubView.tsx` | ✅ live |
 | Plan generation | `Generated tonight plan` | `rating`, `targetCount`, `city` | `TonightView.tsx` | ✅ live (added this session) |
 | Reminder request | `Added get ready reminder` | `target`, `hasPermission`, `source: 'desktop_planner' \| 'mobile_plan' \| 'mobile_events'` | `DeepSkyPlannerView.tsx`, `mobile/PlanView.tsx`, `mobile/EventsView.tsx` | ✅ live (mobile wired this session) |
+| Free plan-add block | `Blocked free plan add` | `action: 'watch' \| 'reminder'`, `source` | `MobileShell.tsx`, `mobile/PlanView.tsx`, `mobile/EventsView.tsx` | ✅ live |
 | Signup trigger (shown) | `Signup wall shown` | `reason: 'favourite' \| 'log_observation'` | `SignupWallModal.tsx` | ✅ live |
 | Signup trigger (submitted) | `Signup wall submitted` | `reason`, `mode` | `SignupWallModal.tsx` | ✅ live |
 | Signup trigger (dismissed) | `Signup wall dismissed` | `reason` | `SignupWallModal.tsx` | ✅ live |
 | Merge result | `Merge result` | `source`, `favourites`, `watchlist`, `observations`, `cameraPresets`, `total` | `SignupWallModal.tsx` | ✅ live (added this session) |
 | Welcome completion | `Completed welcome beat` | `mergedCount?` | `SignupWelcomeBeat.tsx` | ✅ live |
-| Notification sent | `Get-ready notification shown` | `eventId`, `title` | `getReadyReminders.ts`'s `scheduleReminder` | ❌ not built — fires from a bare `setTimeout` with no analytics call, and can't reliably fire if the tab is closed |
-| Feedback response | `Answered viewing check-in` | `eventId`, `sawIt: boolean` | *no post-window check-in exists yet* | ❌ not built — STS-305's "feedback check-in" half isn't implemented, only the pre-window reminder is |
+| Notification sent | `Get-ready notification shown` | `eventId`, `title` | `getReadyReminders.ts` local fallback | ✅ live for local fallback; worker sends push for signed-in subscribers |
+| Notification skipped | `Get-ready notification skipped` | `eventId`, `title`, `reason` | `getReadyReminders.ts` local weather gate | ✅ live for local fallback; worker records server-side skipped state |
+| Feedback response | `Submitted reminder feedback` | `outcome`, `target`, `kind` | `mobile/PlanView.tsx` | ✅ live |
 
 ## Gaps this contract surfaces (not yet closed)
 
-1. **Notification-sent and feedback-response** depend on the post-reminder
-   check-in loop described in STS-305, which is only half-built (the
-   reminder itself, not the "did you see it?" follow-up). Event names above
-   are reserved so whoever builds that surface doesn't have to invent naming.
+1. **Worker delivery is live for signed-in push subscribers**:
+   `addGetReadyReminder` mirrors reminders to `atlas_get_ready_reminders`
+   when a push subscription exists, and `scripts/notify.mjs` delivers due
+   reminders through service-worker push. Anonymous/offline users still use
+   the local in-tab fallback.
 
 ## Required properties, by event
 

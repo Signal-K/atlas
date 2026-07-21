@@ -8,7 +8,7 @@
 // for a live light-pollution service in this project yet (e.g. a
 // lightpollutionmap.info API key) -- swap `DARK_SKY_SITES` for a live fetch
 // once one is chosen, without changing the ranking/routing logic below.
-import { haversineKm } from './cities'
+import { CITIES, haversineKm } from './cities'
 
 export interface DarkSkySite {
   id: string
@@ -35,12 +35,84 @@ export const DARK_SKY_SITES: DarkSkySite[] = [
 export interface RankedDarkSkySite extends DarkSkySite {
   distanceKm: number
   estimatedTravelMinutes: number
+  lightPollutionDelta?: number
+}
+
+export interface LightPollutionEstimate {
+  bortleClass: number
+  label: string
+  skyQuality: 'urban' | 'suburban' | 'rural' | 'dark'
+  confidence: 'estimated' | 'curated-site'
+  nearestCityName: string
+  nearestCityDistanceKm: number
 }
 
 // Rough average speed assumption for a driving trip (no live routing
 // service integrated yet) -- good enough for an estimated travel time, not
 // turn-by-turn directions.
 const ASSUMED_AVG_SPEED_KMH = 70
+
+export function lightPollutionLabel(bortleClass: number): string {
+  if (bortleClass <= 2) return 'dark-sky site'
+  if (bortleClass <= 4) return 'rural sky'
+  if (bortleClass <= 6) return 'suburban sky'
+  if (bortleClass <= 8) return 'urban sky'
+  return 'inner-city sky'
+}
+
+function skyQualityForBortle(bortleClass: number): LightPollutionEstimate['skyQuality'] {
+  if (bortleClass <= 2) return 'dark'
+  if (bortleClass <= 4) return 'rural'
+  if (bortleClass <= 6) return 'suburban'
+  return 'urban'
+}
+
+function nearestCuratedDarkSite(lat: number, lon: number) {
+  return DARK_SKY_SITES.map((site) => ({ ...site, distanceKm: haversineKm({ lat, lon }, site) })).sort(
+    (a, b) => a.distanceKm - b.distanceKm,
+  )[0]
+}
+
+function estimateBortleFromCityDistance(distanceKm: number): number {
+  if (distanceKm < 10) return 8
+  if (distanceKm < 25) return 7
+  if (distanceKm < 50) return 6
+  if (distanceKm < 100) return 5
+  if (distanceKm < 175) return 4
+  return 3
+}
+
+export function estimateLightPollution(lat: number, lon: number): LightPollutionEstimate {
+  const nearestCity = CITIES.map((city) => ({ ...city, distanceKm: haversineKm(city, { lat, lon }) })).sort(
+    (a, b) => a.distanceKm - b.distanceKm,
+  )[0]
+  const nearestDarkSite = nearestCuratedDarkSite(lat, lon)
+
+  if (nearestDarkSite && nearestDarkSite.distanceKm <= 15) {
+    return {
+      bortleClass: nearestDarkSite.bortleClass,
+      label: lightPollutionLabel(nearestDarkSite.bortleClass),
+      skyQuality: skyQualityForBortle(nearestDarkSite.bortleClass),
+      confidence: 'curated-site',
+      nearestCityName: nearestCity?.name ?? 'Unknown city',
+      nearestCityDistanceKm: nearestCity?.distanceKm ?? 0,
+    }
+  }
+
+  const cityDistance = nearestCity?.distanceKm ?? 250
+  const cityBasedBortle = estimateBortleFromCityDistance(cityDistance)
+  const bortleClass =
+    nearestDarkSite && nearestDarkSite.distanceKm < 60 ? Math.min(cityBasedBortle, nearestDarkSite.bortleClass + 1) : cityBasedBortle
+
+  return {
+    bortleClass,
+    label: lightPollutionLabel(bortleClass),
+    skyQuality: skyQualityForBortle(bortleClass),
+    confidence: 'estimated',
+    nearestCityName: nearestCity?.name ?? 'Unknown city',
+    nearestCityDistanceKm: cityDistance,
+  }
+}
 
 export function rankDarkSkySites(lat: number, lon: number, limit = 5): RankedDarkSkySite[] {
   return DARK_SKY_SITES.map((site) => {
@@ -55,8 +127,32 @@ export function rankDarkSkySites(lat: number, lon: number, limit = 5): RankedDar
     .slice(0, limit)
 }
 
+export function rankLowerLightPollutionSites(lat: number, lon: number, limit = 5): RankedDarkSkySite[] {
+  const current = estimateLightPollution(lat, lon)
+  const rankedSites = rankDarkSkySites(lat, lon, DARK_SKY_SITES.length)
+    .map((site) => ({
+      ...site,
+      lightPollutionDelta: current.bortleClass - site.bortleClass,
+    }))
+
+  const lowerPollutionSites = rankedSites.filter((site) => (site.lightPollutionDelta ?? 0) > 0)
+  return (lowerPollutionSites.length > 0 ? lowerPollutionSites : rankedSites)
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(0, limit)
+}
+
 // Deep-links to the device's native maps app for turn-by-turn directions
 // (v1 scope per the AC) rather than an in-app routing engine.
-export function directionsUrl(site: DarkSkySite): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${site.lat},${site.lon}`
+export function directionsUrl(
+  site: DarkSkySite,
+  origin?: { lat: number; lon: number },
+  mode: 'driving' | 'transit' = 'driving',
+): string {
+  const params = new URLSearchParams({
+    api: '1',
+    destination: `${site.lat},${site.lon}`,
+    travelmode: mode,
+  })
+  if (origin) params.set('origin', `${origin.lat},${origin.lon}`)
+  return `https://www.google.com/maps/dir/?${params.toString()}`
 }

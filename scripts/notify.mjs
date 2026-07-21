@@ -18,6 +18,7 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:liam@skinetics.tech'
 // long enough that a daily cron catches everything before it happens.
 const NOTIFY_WINDOW_HOURS = 48
 const CLOUD_COVER_GOOD_THRESHOLD = 70
+const GET_READY_LOOKAHEAD_MINUTES = 10
 
 async function fetchCloudCoverPct(lat, lon, date) {
   const url = new URL('https://api.open-meteo.com/v1/forecast')
@@ -34,10 +35,131 @@ async function fetchCloudCoverPct(lat, lon, date) {
   return data.daily?.cloud_cover_mean?.[0] ?? null
 }
 
+function reminderWindowDuration(reminder) {
+  const start = new Date(reminder.starts_at).getTime()
+  const end = new Date(reminder.ends_at || reminder.starts_at).getTime()
+  const minutes = Math.max(5, Math.round((end - start) / 60_000))
+  if (minutes >= 90) return `about ${Math.round(minutes / 60)} hours`
+  return `about ${minutes} minutes`
+}
+
+function conditionCopy(cloudCoverPct, precipitationChancePct) {
+  if (cloudCoverPct == null) return 'sky check unavailable'
+  const sky = cloudCoverPct < 30 ? 'clear sky' : cloudCoverPct < 70 ? 'partly cloudy sky' : 'cloudy sky'
+  if (precipitationChancePct != null && precipitationChancePct >= 20) return `${sky}, ${Math.round(precipitationChancePct)}% rain chance`
+  return `${sky}, ${Math.round(cloudCoverPct)}% cloud`
+}
+
+function reminderNotificationBody(reminder, condition) {
+  const direction = reminder.direction_label ? ` Look ${reminder.direction_label}.` : ''
+  return `${reminder.title} is visible now for ${reminderWindowDuration(reminder)}. ${conditionCopy(
+    condition.cloudCoverPct ?? reminder.cloud_cover_pct,
+    condition.precipitationChancePct ?? reminder.precipitation_chance_pct,
+  )}.${direction} Set up ${reminder.device_name}.`
+}
+
 function matches(event, favourite) {
   if (favourite.kind === 'event_type') return favourite.value === event.kind
   if (favourite.kind === 'target') return favourite.value.toLowerCase() === event.target.toLowerCase()
   return false
+}
+
+async function currentConditionForReminder(reminder) {
+  let cloudCoverPct = reminder.cloud_cover_pct
+  let precipitationChancePct = reminder.precipitation_chance_pct
+
+  if (reminder.latitude != null && reminder.longitude != null) {
+    const date = reminder.starts_at.slice(0, 10)
+    const cloudCover = await fetchCloudCoverPct(reminder.latitude, reminder.longitude, date)
+    if (cloudCover != null) cloudCoverPct = cloudCover
+  }
+
+  if (cloudCoverPct != null && cloudCoverPct >= 75) return { acceptable: false, reason: 'clouded_out', cloudCoverPct, precipitationChancePct }
+  if (precipitationChancePct != null && precipitationChancePct >= 50) {
+    return { acceptable: false, reason: 'rain_risk', cloudCoverPct, precipitationChancePct }
+  }
+  return { acceptable: true, cloudCoverPct, precipitationChancePct }
+}
+
+async function subscriptionsForUser(pb, user) {
+  return pb.collection('atlas_push_subscriptions').getFullList({ filter: `user = "${user}"` })
+}
+
+async function sendPayloadToSubscriptions(pb, subscriptions, payload) {
+  let sent = 0
+  for (const subscription of subscriptions) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
+        payload,
+      )
+      sent += 1
+    } catch (error) {
+      if (error.statusCode === 404 || error.statusCode === 410) {
+        await pb.collection('atlas_push_subscriptions').delete(subscription.id)
+      } else {
+        throw error
+      }
+    }
+  }
+  return sent
+}
+
+async function sendGetReadyReminders(pb, now) {
+  const dueEnd = new Date(now.getTime() + GET_READY_LOOKAHEAD_MINUTES * 60_000)
+  const reminders = await pb.collection('atlas_get_ready_reminders').getFullList({
+    filter: `remind_at <= "${dueEnd.toISOString()}" && fired_at = "" && skipped_reason = ""`,
+  })
+
+  let sent = 0
+  let skippedWeather = 0
+  let skippedNoSubscription = 0
+  let failed = 0
+
+  for (const reminder of reminders) {
+    const condition = await currentConditionForReminder(reminder)
+    if (!condition.acceptable) {
+      await pb.collection('atlas_get_ready_reminders').update(reminder.id, {
+        skipped_reason: condition.reason,
+        last_error: '',
+      })
+      skippedWeather += 1
+      continue
+    }
+
+    const subscriptions = await subscriptionsForUser(pb, reminder.user)
+    if (subscriptions.length === 0) {
+      await pb.collection('atlas_get_ready_reminders').update(reminder.id, { last_error: 'no_push_subscription' })
+      skippedNoSubscription += 1
+      continue
+    }
+
+    const payload = JSON.stringify({
+      title: 'Atlas: get ready',
+      body: reminderNotificationBody(reminder, condition),
+      url: '/plan',
+    })
+
+    try {
+      const sentForReminder = await sendPayloadToSubscriptions(pb, subscriptions, payload)
+      if (sentForReminder > 0) {
+        await pb.collection('atlas_get_ready_reminders').update(reminder.id, {
+          fired_at: new Date().toISOString(),
+          skipped_reason: '',
+          last_error: '',
+        })
+        sent += sentForReminder
+      } else {
+        await pb.collection('atlas_get_ready_reminders').update(reminder.id, { last_error: 'no_active_push_subscription' })
+        skippedNoSubscription += 1
+      }
+    } catch (error) {
+      await pb.collection('atlas_get_ready_reminders').update(reminder.id, { last_error: error.message ?? 'push_failed' })
+      failed += 1
+    }
+  }
+
+  return { sent, skippedWeather, skippedNoSubscription, failed }
 }
 
 async function main() {
@@ -90,9 +212,7 @@ async function main() {
         }
       }
 
-      const subscriptions = await pb.collection('atlas_push_subscriptions').getFullList({
-        filter: `user = "${entry.user}"`,
-      })
+      const subscriptions = await subscriptionsForUser(pb, entry.user)
       if (subscriptions.length === 0) {
         skippedNoSubscription += 1
         continue
@@ -122,8 +242,10 @@ async function main() {
     }
   }
 
+  const getReady = await sendGetReadyReminders(pb, now)
+
   console.log(
-    `Notify complete: ${notified} pushes sent, ${skippedWeather} skipped for weather, ${skippedNoSubscription} skipped with no subscription.`,
+    `Notify complete: ${notified} watchlist pushes sent, ${skippedWeather} watchlist skipped for weather, ${skippedNoSubscription} watchlist skipped with no subscription. Get-ready: ${getReady.sent} pushes sent, ${getReady.skippedWeather} skipped for weather, ${getReady.skippedNoSubscription} skipped with no subscription, ${getReady.failed} failed.`,
   )
 }
 

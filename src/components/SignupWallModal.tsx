@@ -7,8 +7,13 @@ import { trackEvent } from '../lib/analytics'
 export type SignupWallReason = 'favourite' | 'log_observation'
 
 const REASON_COPY: Record<SignupWallReason, string> = {
-  favourite: 'Create a free account to keep this favourite across devices.',
+  favourite: 'Create a free account to keep this watch target across devices.',
   log_observation: 'Create a free account to keep this observation across devices.',
+}
+
+const REASON_TITLE: Record<SignupWallReason, string> = {
+  favourite: 'Keep this watch target',
+  log_observation: 'Keep this observation',
 }
 
 interface SignupWallModalProps {
@@ -73,7 +78,7 @@ export function SignupWallModal({ reason, onDismiss, onSignedUp }: SignupWallMod
   return (
     <div className="onboarding-overlay">
       <div className="onboarding-modal signup-wall-modal">
-        <h2>Save this to your account</h2>
+        <h2>{REASON_TITLE[reason]}</h2>
         <p>{REASON_COPY[reason]}</p>
         <form className="account-form" onSubmit={handleSubmit}>
           <input type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} required />

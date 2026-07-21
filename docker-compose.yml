@@ -9,13 +9,18 @@ services:
       - "8094:8090"
     volumes:
       - ../backend/pb_data:/pb/pb_data
-    restart: unless-stopped
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      interval: 60s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
   # Default `make up` target: the actual Vite dev server (Dockerfile's `dev`
   # stage) with the repo bind-mounted in, so source edits on the host are
@@ -36,13 +41,18 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    restart: unless-stopped
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5173"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      interval: 60s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
   # Opt-in production-parity check: the real `npm run build` + `vite preview`
   # image, same as `atlas` built before this change. Not started by `make
@@ -60,12 +70,17 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4173"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      interval: 60s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
 volumes:
   atlas_node_modules:

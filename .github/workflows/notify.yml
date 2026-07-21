@@ -5,7 +5,7 @@ name: Watchlist notifications
 # scripts/notify.mjs.
 on:
   schedule:
-    - cron: '0 13 * * *' # once a day, ahead of typical evening viewing
+    - cron: '*/10 * * * *' # frequent enough for explicit get-ready reminders
   workflow_dispatch: {}
 
 jobs:

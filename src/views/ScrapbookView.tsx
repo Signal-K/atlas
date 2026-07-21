@@ -13,6 +13,7 @@ import { downloadObservationsCsv } from '../lib/observationExport'
 import { SignupWallModal } from '../components/SignupWallModal'
 import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
 import { useSignupWall } from '../lib/useSignupWall'
+import { cityStampsFromObservations, pushCityStampFromObservation, shareCityStamp } from '../lib/cityStamps'
 
 // Entries made while signed out are scoped to this fixed local id so the
 // Scrapbook still works fully offline-first with no account. Once signed
@@ -43,6 +44,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [rating, setRating] = useState<AttemptRating | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
   const [shareStatus, setShareStatus] = useState<{ entryId: string; message: string } | null>(null)
+  const [stampShareStatus, setStampShareStatus] = useState<{ cityName: string; message: string } | null>(null)
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
   const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const signupWall = useSignupWall()
@@ -94,6 +96,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     clearDraft()
     await refresh()
     await pushObservation(entry)
+    await pushCityStampFromObservation(entry)
     await recordWeeklyActivity()
     signupWall.promptAfterSave('log_observation')
   }
@@ -127,6 +130,19 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     downloadObservationsCsv(entries)
     trackEvent('Exported observations', { count: entries.length })
   }
+
+  async function handleShareStamp(stamp: ReturnType<typeof cityStampsFromObservations>[number]) {
+    try {
+      const url = await shareCityStamp(stamp)
+      await navigator.clipboard.writeText(url)
+      setStampShareStatus({ cityName: stamp.cityName, message: 'Stamp link copied!' })
+      trackEvent('Shared city stamp', { city: stamp.cityName })
+    } catch {
+      setStampShareStatus({ cityName: stamp.cityName, message: 'Sign in to share this stamp.' })
+    }
+  }
+
+  const cityStamps = cityStampsFromObservations(entries)
 
   return (
     <section className="widget-section">
@@ -198,6 +214,30 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
           Save observation
         </button>
       </form>
+      {cityStamps.length > 0 && (
+        <section className="city-stamps" aria-label="City check-in stamps">
+          <div className="scrapbook-header">
+            <h3>City stamps</h3>
+            <span className="scrapbook-hint">{cityStamps.length} collected</span>
+          </div>
+          <div className="city-stamp-grid">
+            {cityStamps.map((stamp) => (
+              <div className="city-stamp" key={stamp.cityName}>
+                <span>{stamp.cityName.slice(0, 3).toUpperCase()}</span>
+                <strong>{stamp.cityName}</strong>
+                <small>
+                  {stamp.count} check-in{stamp.count === 1 ? '' : 's'} ·{' '}
+                  {new Date(stamp.lastCheckedInAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </small>
+                <button type="button" className="scrapbook-share-card" onClick={() => handleShareStamp(stamp)}>
+                  Share stamp
+                </button>
+                {stampShareStatus?.cityName === stamp.cityName && <small>{stampShareStatus.message}</small>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       {entries.length === 0 ? (
         <p>Nothing logged yet — your sky-watching notes will show up here.</p>
       ) : (
