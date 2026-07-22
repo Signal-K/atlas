@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import '../mobile.css'
 import { HubView } from '../views/mobile/HubView'
@@ -140,6 +140,33 @@ export function MobileShell({
   const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const { user } = useAuth()
   const signupWall = useSignupWall()
+  const [headerCollapsed, setHeaderCollapsed] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Collapses the brand row + location switch (not the tab bar, which stays
+  // reachable) once the user scrolls down a bit, giving back vertical space
+  // on small screens -- requested via the in-app feedback form (STS-500).
+  // `.mobile-content` is the actual scroll container (see mobile.css); the
+  // header sits above it as a fixed-height flex sibling rather than
+  // scrolling with it, so this has to be driven from JS instead of a pure
+  // CSS sticky trick.
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    let lastScrollTop = el.scrollTop
+    const THRESHOLD = 8
+    const NEAR_TOP = 24
+    function onScroll() {
+      const top = el!.scrollTop
+      const delta = top - lastScrollTop
+      if (top <= NEAR_TOP) setHeaderCollapsed(false)
+      else if (delta > THRESHOLD) setHeaderCollapsed(true)
+      else if (delta < -THRESHOLD) setHeaderCollapsed(false)
+      lastScrollTop = top
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [tab, searchOpen])
 
   useEffect(() => {
     applyTheme(isDark ? 'dark' : 'light')
@@ -215,6 +242,7 @@ export function MobileShell({
   function goToTab(nextTab: MobileTab) {
     setProfileOpen(false)
     setSearchOpen(false)
+    setHeaderCollapsed(false)
     navigate(TAB_PATH[nextTab])
   }
 
@@ -268,7 +296,7 @@ export function MobileShell({
 
   return (
     <div className="mobile-shell">
-      <header>
+      <header className={headerCollapsed ? 'dt-header-collapsed' : ''}>
         <div className="dt-brand-row">
           <button type="button" className="dt-brand-btn" onClick={() => goToTab('hub')} aria-label="Open Atlas sky hub">
             <span className="dt-brand-lockup">
@@ -354,7 +382,7 @@ export function MobileShell({
         </nav>
       </header>
 
-      <div className="mobile-content">
+      <div className="mobile-content" ref={contentRef}>
         {signupWall.reason && (
           <SignupWallModal
             reason={signupWall.reason}

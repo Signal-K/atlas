@@ -22,7 +22,7 @@ import { EventCategoryPlanView } from './views/EventCategoryPlanView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
-import { useAuth } from './lib/auth'
+import { refreshEntitlement, useAuth } from './lib/auth'
 import { identifyAnalyticsUser } from './lib/analytics'
 import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
 import { PaywallGate } from './components/PaywallGate'
@@ -92,6 +92,24 @@ function App() {
   useEffect(() => {
     captureDemoAccessCodeFromUrl()
   }, [])
+
+  // Polar redirects back to `/?checkout={CHECKOUT_ID}` after a purchase, but
+  // the `entitled` flag on the cached authStore record is only as fresh as
+  // the last sign-in/refresh -- without this, users who complete checkout
+  // and land anywhere but Settings (which independently refreshes on mount)
+  // see the paywall as if nothing was purchased until they happen to open
+  // Settings themselves. Strip the param after refreshing so it doesn't
+  // re-trigger on every subsequent render/navigation.
+  useEffect(() => {
+    const params = new URLSearchParams(routerLocation.search)
+    if (!params.has('checkout')) return
+    refreshEntitlement().finally(() => {
+      params.delete('checkout')
+      const search = params.toString()
+      navigate({ pathname: routerLocation.pathname, search: search ? `?${search}` : '' }, { replace: true })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the checkout param appearing
+  }, [routerLocation.search])
 
   useEffect(() => {
     identifyAnalyticsUser(user)

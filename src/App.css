@@ -3251,6 +3251,29 @@
 
 .location-search > input {
   width: 100%;
+  padding-right: 30px;
+}
+
+.location-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.location-search-clear:hover,
+.location-search-clear:focus-visible {
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--text);
 }
 
 .location-search-popover {

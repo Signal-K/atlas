@@ -3497,6 +3497,7 @@
   display: flex;
   width: calc(100% - 32px);
   height: 34px;
+  max-height: 34px;
   margin: 0 16px 8px;
   align-items: center;
   gap: 8px;
@@ -3509,6 +3510,13 @@
   font-size: 0.72rem;
   letter-spacing: 0;
   text-align: left;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-height 0.22s ease,
+    opacity 0.16s ease,
+    margin 0.22s ease,
+    border-color 0.22s ease;
 }
 
 .dt-location-switch svg {
@@ -3677,6 +3685,29 @@
   padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
   background: var(--dt-bg-page);
   border-bottom: 3px double var(--dt-ink);
+  max-height: 80px;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-height 0.22s ease,
+    opacity 0.16s ease,
+    padding 0.22s ease,
+    border-color 0.22s ease;
+}
+
+/* Collapsed on scroll-down (STS-500) -- the tab bar (.dt-tabbar) stays put
+   so navigation/search remain reachable; only the brand row and location
+   switch fold away to reclaim vertical space. */
+.dt-header-collapsed .dt-brand-row,
+.dt-header-collapsed .dt-location-switch {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  border-color: transparent;
+  pointer-events: none;
 }
 
 .dt-brand-btn {
@@ -4892,6 +4923,62 @@
 .dt-journal-panel .archive-entry-desc,
 .dt-journal-panel .archive-entry-time {
   color: var(--dt-ink-muted);
+}
+
+/* The Journal tab's "Public" panel renders the shared CommunityView, which
+   still carries the older tactical-console `.mobile-card` chrome (rounded
+   corners, blurred dark card background, blue accents) -- flatten it to
+   match the Daily Transit styling used by the Private/Archive panels either
+   side of it, instead of it reading as a mismatched card floating in the
+   middle of the journal. */
+.dt-journal-panel .mobile-community-switcher {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dt-journal-panel .mobile-community-switcher::before,
+.dt-journal-panel .mobile-community-switcher::after {
+  content: none;
+}
+
+.dt-journal-panel .mobile-card-eyebrow,
+.dt-journal-panel .mobile-card-meta {
+  color: var(--dt-ink-muted);
+}
+
+.dt-journal-panel .mobile-community-switcher h2 {
+  font-family: var(--dt-font-display);
+  font-size: 1.4rem;
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: var(--dt-ink);
+}
+
+.dt-journal-panel .mobile-community-tabs {
+  border: 1px solid var(--dt-rule);
+  border-radius: 0;
+  background: var(--dt-bg-page);
+  padding: 0;
+}
+
+.dt-journal-panel .mobile-community-tabs button {
+  border-radius: 0;
+  color: var(--dt-ink-muted);
+  font: 700 0.64rem/1.1 var(--dt-font-data);
+}
+
+.dt-journal-panel .mobile-community-tabs button.is-active {
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+}
+
+.dt-journal-panel .mobile-community-panel .widget-section h2 {
+  color: var(--dt-ink);
 }
 
 .dt-day-strip {

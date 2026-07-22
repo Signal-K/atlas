@@ -58,7 +58,15 @@ export function LocationSearchInput({ id, value, onChange, onSelect, placeholder
           onChange(event.target.value)
           setOpen(true)
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={(event) => {
+          // Once a city is chosen, `value` holds its full formatted label
+          // ("London, England, United Kingdom"), which re-triggers search
+          // as a near-useless query and gave no way back to a fresh pick
+          // list -- select it so focusing/re-opening the field is an
+          // implicit "search again" instead of a dead end.
+          event.target.select()
+          setOpen(true)
+        }}
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         placeholder={placeholder}
         autoComplete="off"
@@ -67,6 +75,20 @@ export function LocationSearchInput({ id, value, onChange, onSelect, placeholder
         aria-controls={listId}
         aria-autocomplete="list"
       />
+      {value && (
+        <button
+          type="button"
+          className="location-search-clear"
+          aria-label="Clear and search again"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            onChange('')
+            setOpen(true)
+          }}
+        >
+          ×
+        </button>
+      )}
       {open && value.trim().length >= 2 && (
         <div className="location-search-popover" id={listId} role="listbox">
           {results.map((city) => (
