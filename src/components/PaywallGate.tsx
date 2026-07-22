@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import type { AuthUser } from '../lib/auth'
+import { refreshEntitlement, type AuthUser } from '../lib/auth'
 import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { trackEvent } from '../lib/analytics'
 
@@ -26,6 +26,8 @@ export function PaywallGate({ user, feature, description, onSignInClick, childre
     setCheckoutError('')
     setIsStartingCheckout(true)
     try {
+      const refreshedUser = await refreshEntitlement()
+      if (refreshedUser?.entitled) return
       const url = await startPolarCheckout()
       window.location.href = url
     } catch {
@@ -35,7 +37,7 @@ export function PaywallGate({ user, feature, description, onSignInClick, childre
       if (POLAR_CHECKOUT_URL) {
         window.location.href = POLAR_CHECKOUT_URL
       } else {
-        setCheckoutError('Checkout is unavailable right now. Try again shortly.')
+        setCheckoutError('Could not start checkout. If you already paid, refresh the page; otherwise try again shortly.')
         setIsStartingCheckout(false)
       }
     }

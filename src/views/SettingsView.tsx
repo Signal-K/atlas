@@ -78,7 +78,7 @@ function LeaderboardSettings() {
   return (
     <div className="settings-row settings-row--leaderboard">
       <div>
-        <span className="settings-label">Streak leaderboard</span>
+        <span className="settings-label">Public profile</span>
         <p className="settings-help">Publish your weekly streak under a display name. Your account email stays private.</p>
       </div>
       <form className="leaderboard-settings-form" onSubmit={handleOptIn}>
@@ -137,8 +137,6 @@ export function SettingsView({
 
   return (
     <section className="widget-section settings-panel">
-      <h2>Settings</h2>
-
       <div className="settings-group" data-group="account">
         <h3 className="calendar-selected-heading">Account</h3>
         <AccountSettings defaultMode={accountDefaultMode} source="settings" />

@@ -5056,7 +5056,10 @@
 
 .dt-settings-panel .settings-group {
   padding: 14px 0;
+  border: 0;
   border-bottom: 1px solid var(--dt-rule);
+  border-radius: 0;
+  background: transparent;
 }
 
 .dt-settings-panel .settings-group:last-child {
@@ -5103,6 +5106,7 @@
 }
 
 .dt-settings-panel .settings-choice button,
+.dt-settings-panel .settings-account-actions button,
 .dt-settings-panel .account-form-actions button[type='submit'],
 .dt-settings-panel .leaderboard-settings-actions button,
 .dt-settings-panel .widget-settings-row button {

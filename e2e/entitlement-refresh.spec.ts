@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const APP_URL = `http://localhost:${process.env.PLAYWRIGHT_PORT || '5173'}`
 const E2E_TOKEN = makeAuthToken()
 
 function makeAuthToken() {
@@ -91,6 +92,33 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
   await expect(page.getByText('Planning is part of the Sky Pass')).toHaveCount(0)
 })
 
+test('desktop settings uses grouped account layout without duplicate headings', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await seedSignedInUser(page, true)
+
+  await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token: E2E_TOKEN,
+        record: {
+          id: 'e2e-user',
+          email: 'atlas-entitlement-e2e@example.com',
+          entitled: true,
+        },
+      }),
+    })
+  })
+
+  await page.goto('/settings')
+
+  await expect(page.locator('.settings-group[data-group="account"]')).toBeVisible()
+  await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com')
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toHaveCount(0)
+  await expect(page.getByText('Sky Pass active')).toHaveClass(/settings-status--pill/)
+})
+
 test('falls back when dynamic Polar checkout creation fails', async ({ page }) => {
   await seedSignedInUser(page, false)
 
@@ -117,7 +145,7 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
   await expect(page.getByText('Planning is part of the Sky Pass')).toBeVisible()
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
-  await expect(page).toHaveURL('http://localhost:5173/fallback-checkout')
+  await expect(page).toHaveURL(`${APP_URL}/fallback-checkout`)
 })
 
 test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailable', async ({ page }) => {
@@ -144,5 +172,5 @@ test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailabl
   await page.goto('/settings')
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
-  await expect(page).toHaveURL('http://localhost:5173/fallback-checkout')
+  await expect(page).toHaveURL(`${APP_URL}/fallback-checkout`)
 })

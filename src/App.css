@@ -361,6 +361,81 @@
   border-bottom: 1px solid var(--border);
 }
 
+.settings-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-group {
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--code-bg) 58%, transparent);
+}
+
+.settings-group:first-of-type {
+  padding-top: 18px;
+}
+
+.settings-group > .calendar-selected-heading {
+  margin: 0 0 6px;
+  color: var(--text-h);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-group .settings-row:last-child {
+  padding-bottom: 0;
+}
+
+.settings-account {
+  display: grid;
+  gap: 14px;
+  padding-top: 10px;
+}
+
+.settings-account-summary,
+.settings-account-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-account-summary {
+  justify-content: space-between;
+}
+
+.settings-account-email {
+  color: var(--text-h);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.settings-account-actions button {
+  font-size: 13px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.settings-account-actions .paywall-card-cta {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.settings-status--pill {
+  padding: 4px 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
 .settings-row:last-child {
   border-bottom: none;
 }
@@ -396,14 +471,6 @@
   opacity: 1;
 }
 
-.settings-group {
-  padding: 8px 0;
-}
-
-.settings-group:first-of-type {
-  padding-top: 0;
-}
-
 .settings-help {
   margin: 4px 0 0;
   font-size: 12px;
@@ -429,6 +496,7 @@
 
 .settings-row--account {
   align-items: flex-start;
+  justify-content: flex-start;
 }
 
 .settings-row--leaderboard {
@@ -461,7 +529,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 220px;
+  width: min(360px, 100%);
 }
 
 .account-form input {
