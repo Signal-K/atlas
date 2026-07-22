@@ -78,7 +78,7 @@ export function AccountSettings({
           </button>
         </div>
         <div className="settings-choice">
-          <span className="settings-status">
+          <span className={`settings-status ${user.entitled ? 'settings-status--positive' : 'settings-status--warning'}`}>
             {user.entitled ? 'Sky Pass active' : 'Sky Pass not active'}
           </span>
           {user.entitled ? null : (
@@ -89,7 +89,7 @@ export function AccountSettings({
               <button type="button" onClick={handleRefreshEntitlement} disabled={checkingEntitlement}>
                 {checkingEntitlement ? 'Checking…' : 'Refresh status'}
               </button>
-              {checkoutError && <span className="settings-status">{checkoutError}</span>}
+              {checkoutError && <span className="settings-status settings-status--negative">{checkoutError}</span>}
             </>
           )}
         </div>

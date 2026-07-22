@@ -381,6 +381,29 @@
   opacity: 0.75;
 }
 
+.settings-status--positive {
+  color: #3b8a5c;
+  opacity: 1;
+}
+
+.settings-status--warning {
+  color: #b89a5b;
+  opacity: 1;
+}
+
+.settings-status--negative {
+  color: #a64444;
+  opacity: 1;
+}
+
+.settings-group {
+  padding: 8px 0;
+}
+
+.settings-group:first-of-type {
+  padding-top: 0;
+}
+
 .settings-help {
   margin: 4px 0 0;
   font-size: 12px;

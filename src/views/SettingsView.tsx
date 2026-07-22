@@ -128,91 +128,117 @@ export function SettingsView({
     storeTheme(next)
   }
 
+  const locationStatusClass =
+    locationStatus === 'granted'
+      ? 'settings-status--positive'
+      : locationStatus === 'denied'
+        ? 'settings-status--warning'
+        : ''
+
   return (
-    <section className="widget-section">
+    <section className="widget-section settings-panel">
       <h2>Settings</h2>
 
-      <AccountSettings defaultMode={accountDefaultMode} source="settings" />
-
-      <div className="settings-row">
-        <span className="settings-label">Appearance</span>
-        <div className="settings-choice">
-          <button type="button" className={theme === 'light' ? 'is-active' : ''} onClick={() => choose('light')}>
-            Light
-          </button>
-          <button type="button" className={theme === 'dark' ? 'is-active' : ''} onClick={() => choose('dark')}>
-            Dark
-          </button>
-        </div>
+      <div className="settings-group" data-group="account">
+        <h3 className="calendar-selected-heading">Account</h3>
+        <AccountSettings defaultMode={accountDefaultMode} source="settings" />
       </div>
 
-      <div className="settings-row">
-        <span className="settings-label">Location-based sky</span>
-        <div className="settings-choice">
-          <span className="settings-status">{LOCATION_LABEL[locationStatus]}</span>
-          {(locationStatus === 'idle' || locationStatus === 'denied' || locationStatus === 'pending') && (
-            <button type="button" onClick={requestLocation}>
-              {locationStatus === 'denied' ? 'Retry' : 'Enable'}
+      <div className="settings-group" data-group="appearance">
+        <h3 className="calendar-selected-heading">Appearance</h3>
+        <div className="settings-row">
+          <span className="settings-label">Theme</span>
+          <div className="settings-choice">
+            <button type="button" className={theme === 'light' ? 'is-active' : ''} onClick={() => choose('light')}>
+              Light
             </button>
-          )}
+            <button type="button" className={theme === 'dark' ? 'is-active' : ''} onClick={() => choose('dark')}>
+              Dark
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="settings-row">
-        <div>
-          <span className="settings-label">Your location</span>
-          <p className="settings-help">
-            Currently <strong>{currentLocation.name}</strong> ({SOURCE_LABEL[currentLocation.source]}). Your location is
-            only stored on this device — we don't see it, and it's only ever sent from your own browser directly to
-            the weather/astronomy services used to build tonight's plan.
-          </p>
+      <div className="settings-group" data-group="location">
+        <h3 className="calendar-selected-heading">Location</h3>
+        <div className="settings-row">
+          <span className="settings-label">Location-based sky</span>
+          <div className="settings-choice">
+            <span className={`settings-status ${locationStatusClass}`}>{LOCATION_LABEL[locationStatus]}</span>
+            {(locationStatus === 'idle' || locationStatus === 'denied' || locationStatus === 'pending') && (
+              <button type="button" onClick={requestLocation}>
+                {locationStatus === 'denied' ? 'Retry' : 'Enable'}
+              </button>
+            )}
+          </div>
         </div>
-        <div className="settings-choice settings-location-choice">
-          <LocationSearchInput
-            id="settings-location"
-            value={locationQuery}
-            onChange={setLocationQuery}
-            onSelect={(city) => {
-              setManualLocation(city)
-              setLocationQuery(cityLabel(city))
-              trackEvent('Location changed', { source: 'settings', city: city.name, country: city.country, timeZone: city.timeZone })
-            }}
-            placeholder="Search city, region, or country"
-          />
-          {manualCity && (
-            <button
-              type="button"
-              onClick={() => {
-                setManualLocation(null)
-                setLocationQuery('')
-                requestLocation()
-                trackEvent('Location changed', { source: 'settings', method: 'browser_geolocation' })
+
+        <div className="settings-row">
+          <div>
+            <span className="settings-label">Your location</span>
+            <p className="settings-help">
+              Currently <strong>{currentLocation.name}</strong> ({SOURCE_LABEL[currentLocation.source]}). Your location is
+              only stored on this device — we don't see it, and it's only ever sent from your own browser directly to
+              the weather/astronomy services used to build tonight's plan.
+            </p>
+          </div>
+          <div className="settings-choice settings-location-choice">
+            <LocationSearchInput
+              id="settings-location"
+              value={locationQuery}
+              onChange={setLocationQuery}
+              onSelect={(city) => {
+                setManualLocation(city)
+                setLocationQuery(cityLabel(city))
+                trackEvent('Location changed', { source: 'settings', city: city.name, country: city.country, timeZone: city.timeZone })
               }}
-            >
-              Use current location
-            </button>
-          )}
+              placeholder="Search city, region, or country"
+            />
+            {manualCity && (
+              <button
+                type="button"
+                onClick={() => {
+                  setManualLocation(null)
+                  setLocationQuery('')
+                  requestLocation()
+                  trackEvent('Location changed', { source: 'settings', method: 'browser_geolocation' })
+                }}
+              >
+                Use current location
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="settings-row">
-        <span className="settings-label">Motion parallax</span>
-        <div className="settings-choice">
-          <span className="settings-status">{needsMotionPermission ? 'Not yet enabled' : 'Enabled / not required on this device'}</span>
-          {needsMotionPermission && (
-            <button type="button" onClick={requestMotionPermission}>
-              Enable
-            </button>
-          )}
+      <div className="settings-group" data-group="notifications">
+        <h3 className="calendar-selected-heading">Notifications</h3>
+        <PushSettings />
+
+        <div className="settings-row">
+          <span className="settings-label">Motion parallax</span>
+          <div className="settings-choice">
+            <span className={`settings-status ${needsMotionPermission ? 'settings-status--warning' : 'settings-status--positive'}`}>
+              {needsMotionPermission ? 'Not yet enabled' : 'Enabled / not required on this device'}
+            </span>
+            {needsMotionPermission && (
+              <button type="button" onClick={requestMotionPermission}>
+                Enable
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <PushSettings />
+      <div className="settings-group" data-group="leaderboard">
+        <h3 className="calendar-selected-heading">Streak leaderboard</h3>
+        <LeaderboardSettings />
+      </div>
 
-      <LeaderboardSettings />
-
-      <h3 className="calendar-selected-heading">Dashboard widgets</h3>
-      <WidgetSettings />
+      <div className="settings-group" data-group="widgets">
+        <h3 className="calendar-selected-heading">Dashboard widgets</h3>
+        <WidgetSettings />
+      </div>
     </section>
   )
 }

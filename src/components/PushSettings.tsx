@@ -39,7 +39,11 @@ export function PushSettings() {
     <div className="settings-row">
       <span className="settings-label">Watchlist push notifications</span>
       <div className="settings-choice">
-        <span className="settings-status">
+        <span
+          className={`settings-status ${
+            error ? 'settings-status--negative' : subscribed ? 'settings-status--positive' : ''
+          }`}
+        >
           {!user ? 'Sign in required' : error ? error : subscribed ? 'Enabled' : 'Not enabled'}
         </span>
         {user && (
