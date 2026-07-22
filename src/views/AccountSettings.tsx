@@ -52,13 +52,15 @@ export function AccountSettings({
     setCheckoutError('')
     trackEvent('Paywall checkout clicked', { feature: 'settings' })
     try {
+      const refreshedUser = await refreshEntitlement()
+      if (refreshedUser?.entitled) return
       const url = await startPolarCheckout()
       window.location.href = url
     } catch {
       if (POLAR_CHECKOUT_URL) {
         window.location.href = POLAR_CHECKOUT_URL
       } else {
-        setCheckoutError('Checkout is unavailable right now. Try again shortly.')
+        setCheckoutError('Could not start checkout. If you already paid, refresh your Sky Pass status; otherwise try again shortly.')
         setStartingCheckout(false)
       }
     }
@@ -66,21 +68,20 @@ export function AccountSettings({
 
   if (user) {
     return (
-      <div className="settings-row">
+      <div className="settings-account">
         {welcomeMergedCount != null && (
           <SignupWelcomeBeat mergedCount={welcomeMergedCount} onDone={() => setWelcomeMergedCount(null)} />
         )}
-        <span className="settings-label">Account</span>
-        <div className="settings-choice">
-          <span className="settings-status">{user.email}</span>
+        <div className="settings-account-summary">
+          <span className="settings-account-email">{user.email}</span>
+          <span className={`settings-status settings-status--pill ${user.entitled ? 'settings-status--positive' : 'settings-status--warning'}`}>
+            {user.entitled ? 'Sky Pass active' : 'Sky Pass not active'}
+          </span>
+        </div>
+        <div className="settings-account-actions">
           <button type="button" onClick={signOut}>
             Sign out
           </button>
-        </div>
-        <div className="settings-choice">
-          <span className="settings-status">
-            {user.entitled ? 'Sky Pass active' : 'Sky Pass not active'}
-          </span>
           {user.entitled ? null : (
             <>
               <button type="button" className="paywall-card-cta" onClick={handleCheckoutClick} disabled={startingCheckout}>
@@ -89,10 +90,10 @@ export function AccountSettings({
               <button type="button" onClick={handleRefreshEntitlement} disabled={checkingEntitlement}>
                 {checkingEntitlement ? 'Checking…' : 'Refresh status'}
               </button>
-              {checkoutError && <span className="settings-status">{checkoutError}</span>}
             </>
           )}
         </div>
+        {checkoutError && <p className="settings-help settings-status--negative">{checkoutError}</p>}
       </div>
     )
   }
@@ -139,7 +140,6 @@ export function AccountSettings({
 
   return (
     <div className="settings-row settings-row--account">
-      <span className="settings-label">Account</span>
       <form className="account-form" onSubmit={handleSubmit} onFocus={trackFormStarted}>
         <input type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} required />
         <input

@@ -258,25 +258,19 @@ export function MobileShell({
 
   if (settingsOpen) {
     return (
-      <div className="mobile-shell">
-        <header className="mobile-header top-console">
-          <div className="sync-strip">
-            <button type="button" className="mobile-back" onClick={() => navigate(-1)} aria-label="Back to Atlas">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7">
-                <path d="M12.5 4.5 7 10l5.5 5.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <span>
-              <strong>CONFIG</strong>
-            </span>
-            <span>{locationLabel}</span>
+      <div className="mobile-shell dt-settings-panel">
+        <header className="mobile-header dt-settings-header">
+          <button type="button" className="dt-settings-back" onClick={() => navigate(-1)} aria-label="Back to Atlas">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7">
+              <path d="M12.5 4.5 7 10l5.5 5.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <div className="dt-settings-heading">
+            <span className="dt-settings-title">Settings</span>
+            <span className="dt-settings-subtitle">{locationLabel}</span>
           </div>
-          <div className="mobile-profile-card">
-            <div className="mobile-profile-avatar">{accountInitial}</div>
-            <div>
-              <span className="mobile-profile-kicker">Profile</span>
-              <strong>{accountLabel}</strong>
-            </div>
+          <div className="mobile-profile-avatar" aria-hidden="true">
+            {accountInitial}
           </div>
         </header>
         <div className="mobile-content">

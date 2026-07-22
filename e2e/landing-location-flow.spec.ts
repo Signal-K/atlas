@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 
+const APP_URL = `http://localhost:${process.env.PLAYWRIGHT_PORT || '5173'}`
+
 // STS-307: explicit coverage for the landing page's two entry paths.
 // Weather and event calls are mocked so this only tests location -> app
 // routing, not live data availability.
@@ -77,7 +79,7 @@ test('manual city entry reaches tonight feed with selected city before signup', 
 })
 
 test('browser geolocation entry reaches tonight feed without signup', async ({ page, context }) => {
-  await context.grantPermissions(['geolocation'], { origin: 'http://localhost:5173' })
+  await context.grantPermissions(['geolocation'], { origin: APP_URL })
   await context.setGeolocation({ latitude: 47.3769, longitude: 8.5417 })
   await page.goto('/')
 

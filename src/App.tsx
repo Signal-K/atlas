@@ -22,7 +22,7 @@ import { EventCategoryPlanView } from './views/EventCategoryPlanView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
-import { refreshEntitlement, useAuth } from './lib/auth'
+import { refreshEntitlement, refreshEntitlementAfterCheckout, useAuth } from './lib/auth'
 import { identifyAnalyticsUser } from './lib/analytics'
 import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
 import { PaywallGate } from './components/PaywallGate'
@@ -103,13 +103,27 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(routerLocation.search)
     if (!params.has('checkout')) return
-    refreshEntitlement().finally(() => {
-      params.delete('checkout')
-      const search = params.toString()
-      navigate({ pathname: routerLocation.pathname, search: search ? `?${search}` : '' }, { replace: true })
-    })
+    params.delete('checkout')
+    const search = params.toString()
+    navigate({ pathname: routerLocation.pathname, search: search ? `?${search}` : '' }, { replace: true })
+    void refreshEntitlementAfterCheckout()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the checkout param appearing
   }, [routerLocation.search])
+
+  // Pick up server-side entitlement changes when a user returns to this tab
+  // after completing checkout or an administrator reconciles a missed order.
+  useEffect(() => {
+    if (!user) return
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshEntitlement()
+    }
+    window.addEventListener('focus', refreshWhenVisible)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
+  }, [user])
 
   useEffect(() => {
     identifyAnalyticsUser(user)

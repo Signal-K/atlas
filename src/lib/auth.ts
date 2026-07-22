@@ -60,13 +60,26 @@ export function signOut(): void {
 // Re-fetches the signed-in user's record (e.g. `entitled`, flipped
 // server-side by the Polar webhook after a purchase) since the cached
 // authStore snapshot only otherwise updates on the next sign-in.
-export async function refreshEntitlement(): Promise<void> {
-  if (!pb.authStore.isValid) return
+export async function refreshEntitlement(): Promise<AuthUser | null> {
+  if (!pb.authStore.isValid) return null
   try {
     await pb.collection('users').authRefresh()
   } catch {
     // Best-effort -- e.g. offline or PocketBase unreachable; the cached
     // snapshot stays as-is until the next successful refresh.
+  }
+  return currentUser()
+}
+
+// Polar can redirect back a fraction before its order.paid webhook has
+// finished. Refresh a few times in the background so a successful purchase
+// unlocks without requiring a manual reload or a trip through Settings.
+export async function refreshEntitlementAfterCheckout(): Promise<void> {
+  const delays = [0, 750, 2_000, 4_000]
+  for (const delay of delays) {
+    if (delay) await new Promise((resolve) => window.setTimeout(resolve, delay))
+    const user = await refreshEntitlement()
+    if (!user || user.entitled) return
   }
 }
 
