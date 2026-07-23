@@ -63,6 +63,13 @@ export function signOut(): void {
 export async function refreshEntitlement(): Promise<AuthUser | null> {
   if (!pb.authStore.isValid) return null
   try {
+    // Webhooks are the fast path, but reconciliation makes paid access
+    // self-healing if Polar's asynchronous delivery was missed or delayed.
+    await pb.send('/entitlement/polar/refresh', { method: 'POST' })
+  } catch {
+    // Best-effort. authRefresh below still picks up a webhook-applied change.
+  }
+  try {
     await pb.collection('users').authRefresh()
   } catch {
     // Best-effort -- e.g. offline or PocketBase unreachable; the cached
