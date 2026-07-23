@@ -73,9 +73,16 @@ export function AccountSettings({
           <SignupWelcomeBeat mergedCount={welcomeMergedCount} onDone={() => setWelcomeMergedCount(null)} />
         )}
         <div className="settings-account-summary">
-          <span className="settings-account-email">{user.email}</span>
+          <div>
+            <span className="settings-account-email">{user.email}</span>
+            <p className="settings-pass-explainer">
+              {user.entitled
+                ? 'Lifetime Sky Pass access is active on desktop and mobile for this account.'
+                : 'Free account. Sky Pass is a one-time purchase tied to the email used at checkout.'}
+            </p>
+          </div>
           <span className={`settings-status settings-status--pill ${user.entitled ? 'settings-status--positive' : 'settings-status--warning'}`}>
-            {user.entitled ? 'Sky Pass active' : 'Sky Pass not active'}
+            {user.entitled ? 'Sky Pass active' : 'Free account'}
           </span>
         </div>
         <div className="settings-account-actions">
@@ -88,7 +95,7 @@ export function AccountSettings({
                 {startingCheckout ? 'Starting checkout…' : 'Get the Sky Pass'}
               </button>
               <button type="button" onClick={handleRefreshEntitlement} disabled={checkingEntitlement}>
-                {checkingEntitlement ? 'Checking…' : 'Refresh status'}
+                {checkingEntitlement ? 'Checking purchase…' : 'Already paid? Check purchase'}
               </button>
             </>
           )}

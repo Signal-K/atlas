@@ -18,7 +18,8 @@ import { SettingsView } from './views/SettingsView'
 import { LocalOpsView } from './views/LocalOpsView'
 import { DarkSkyView } from './views/DarkSkyView'
 import { DeepSkyPlannerView } from './views/DeepSkyPlannerView'
-import { EventCategoryPlanView } from './views/EventCategoryPlanView'
+import { EventsView } from './views/mobile/EventsView'
+import { PlanView } from './views/mobile/PlanView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
@@ -213,6 +214,15 @@ function App() {
                 <img src="/atlas-icon.png" alt="" className="brand-mark brand-mark--desktop" />
                 <span>Atlas</span>
               </h1>
+              <button
+                type="button"
+                className={`desktop-pass-status${user?.entitled ? ' is-active' : ''}`}
+                onClick={() => setView('settings')}
+                aria-label={user?.entitled ? 'Sky Pass active — open account settings' : 'Free account — view Sky Pass details'}
+              >
+                <span className="desktop-pass-status-dot" />
+                {user?.entitled ? 'Sky Pass active' : 'Free'}
+              </button>
             </div>
             <p className="dashboard-subtitle">{VIEW_SUBTITLE[view]}</p>
           </header>
@@ -230,6 +240,15 @@ function App() {
                   // real location (geolocation fix or manual pick) settles
                   // -- it starts as the Melbourne default before that.
                   content: <DashboardView key={locationKey} onSignUpClick={goToSignUp} defaultCity={currentLocation} />,
+                },
+                {
+                  id: 'events',
+                  label: 'Events',
+                  content: (
+                    <div className="mobile-shell desktop-feature-surface">
+                      <EventsView city={currentLocation} onLogAttempt={logAttempt} />
+                    </div>
+                  ),
                 },
                 {
                   id: 'calendar',
@@ -259,16 +278,17 @@ function App() {
               <TabbedSection
                 tabs={[
                   {
-                    id: 'events',
-                    label: 'Event plan',
+                    id: 'workspace',
+                    label: 'Plan workspace',
                     content: (
-                      <EventCategoryPlanView
-                        key={locationKey}
-                        lat={currentLocation.lat}
-                        lon={currentLocation.lon}
-                        cityName={currentLocation.name}
-                        onSignInClick={goToSignUp}
-                      />
+                      <div className="mobile-shell desktop-feature-surface">
+                        <PlanView
+                          key={locationKey}
+                          city={currentLocation}
+                          onOpenEvents={() => setView('explore')}
+                          onLogAttempt={logAttempt}
+                        />
+                      </div>
                     ),
                   },
                   {

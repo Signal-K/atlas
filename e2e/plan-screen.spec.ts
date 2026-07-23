@@ -122,9 +122,9 @@ test('deep camera setup is premium while first-plan camera summary is free', asy
   const target = page.locator('.row-list > .tonight-target').first()
 
   await expect(target.locator('.camera-preset-card')).toBeVisible()
-  await expect(target.getByText('Deep camera setup is part of the Sky Pass')).toHaveCount(0)
+  await expect(target.getByText('Unlock Deep camera setup with Sky Pass')).toHaveCount(0)
 
   await target.getByRole('button', { name: 'Camera recipe' }).click()
-  await expect(target.getByRole('heading', { name: 'Deep camera setup is part of the Sky Pass' })).toBeVisible()
+  await expect(target.getByRole('heading', { name: 'Unlock Deep camera setup with Sky Pass' })).toBeVisible()
   await expect(target.getByText('Your first walkthrough still includes the essential camera settings for free.')).toBeVisible()
 })

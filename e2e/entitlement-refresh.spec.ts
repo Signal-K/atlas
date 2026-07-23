@@ -86,10 +86,15 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
 
   await page.goto('/settings')
 
-  await expect(page.getByText('Sky Pass active')).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible({ timeout: 10_000 })
   await page.getByRole('button', { name: 'Plan a trip' }).click()
-  await expect(page.getByRole('tab', { name: 'Event plan' })).toBeVisible()
-  await expect(page.getByText('Planning is part of the Sky Pass')).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Plan workspace' })).toBeVisible()
+  const planSections = page.getByLabel('Plan sections')
+  await expect(planSections.getByRole('button', { name: /Explore/ })).toBeVisible()
+  await expect(planSections.getByRole('button', { name: /Ready/ })).toBeVisible()
+  await expect(planSections.getByRole('button', { name: /Watch/ })).toBeVisible()
+  await expect(planSections.getByRole('button', { name: /Calendar/ })).toBeVisible()
+  await expect(page.getByText('Unlock Planning with Sky Pass')).toHaveCount(0)
 })
 
 test('desktop settings uses grouped account layout without duplicate headings', async ({ page }) => {
@@ -116,7 +121,7 @@ test('desktop settings uses grouped account layout without duplicate headings', 
   await expect(page.locator('.settings-group[data-group="account"]')).toBeVisible()
   await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com')
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toHaveCount(0)
-  await expect(page.getByText('Sky Pass active')).toHaveClass(/settings-status--pill/)
+  await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toHaveClass(/settings-status--pill/)
 })
 
 test('falls back when dynamic Polar checkout creation fails', async ({ page }) => {
@@ -142,7 +147,9 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
   await mockPlanEvent(page)
 
   await page.goto('/plan')
-  await expect(page.getByText('Planning is part of the Sky Pass')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
+  await expect(page.getByText('One purchase works on desktop and mobile when you sign in with the same email.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Already paid? Check purchase' })).toBeVisible()
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
   await expect(page).toHaveURL(`${APP_URL}/fallback-checkout`)

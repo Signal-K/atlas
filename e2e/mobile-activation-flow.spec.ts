@@ -153,7 +153,7 @@ test('mobile signed-out user must sign in before using Plan', async ({ page }) =
   await expect(page.getByText(/Bortle \d/)).toBeVisible()
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
 
-  await expect(page.getByRole('heading', { name: 'Planning is part of the Sky Pass' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
   await expect(page.getByText('Discounted users still need to complete Polar checkout first.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Sign in / create account' })).toBeVisible()
   await expect(page.getByLabel('Plan sections')).toHaveCount(0)
@@ -163,7 +163,7 @@ test('mobile signed-out user must sign in before using Plan', async ({ page }) =
   await page.getByRole('button', { name: 'Watch' }).first().click()
 
   await expect(page.getByText('Sky Pass is required to add targets to a plan. Browsing and check-ins stay free.')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Add to plan is part of the Sky Pass' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Unlock Add to plan with Sky Pass' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Sign in / create account' })).toBeVisible()
   await expect(page.locator('.account-form')).toHaveCount(0)
 })
@@ -175,7 +175,7 @@ test('mobile signed-in free user must checkout before using Plan', async ({ page
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
 
-  await expect(page.getByRole('heading', { name: 'Planning is part of the Sky Pass' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Get the Sky Pass' })).toBeVisible()
   await expect(page.getByLabel('Plan sections')).toHaveCount(0)
 })

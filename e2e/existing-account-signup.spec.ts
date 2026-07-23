@@ -55,6 +55,6 @@ test('signup with an existing ecosystem account logs in when the password matche
   await expect.poll(() => createAttempted).toBe(true)
   await expect.poll(() => loginAttempted).toBe(true)
   await expect(page.getByText(record.email)).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByText('Sky Pass active')).toBeVisible()
+  await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible()
   await expect(page.locator('.account-form-error')).toHaveCount(0)
 })
