@@ -218,6 +218,82 @@
   gap: 48px;
 }
 
+.dt-preference-prompt {
+  margin-bottom: 32px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--code-bg) 72%, transparent);
+}
+
+.dt-preference-prompt h2 {
+  margin: 8px 0 6px;
+  font-size: 22px;
+}
+
+.dt-preference-prompt p,
+.dt-feed-intro {
+  margin: 0 0 16px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.dt-preference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dt-preference-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-h);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-preference-option small {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.dt-preference-option.is-active {
+  border-color: var(--dt-primary, var(--text-h));
+  background: color-mix(in srgb, var(--dt-primary, var(--text-h)) 12%, transparent);
+}
+
+.dt-preference-prompt .dt-primary-btn {
+  width: 100%;
+}
+
+.dt-for-you {
+  margin-bottom: 40px;
+}
+
+.dt-feed-row--personalised {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-feed-row--personalised:first-of-type {
+  border-top: 1px solid var(--border);
+}
+
+.dt-feed-row--personalised.is-preferred .dt-feed-headline {
+  font-weight: 700;
+}
+
 .widget-section h2 {
   font-size: 20px;
   font-weight: 700;

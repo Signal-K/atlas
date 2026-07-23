@@ -68,6 +68,11 @@ function WeatherWidget() {
               </span>
               <span className="weather-day-quality">{QUALITY_LABEL[day.quality]}</span>
               <span className="weather-day-cover">{Math.round(day.cloudCoverPct)}% cloud</span>
+              {day.lowCloudCoverPct != null && day.highCloudCoverPct != null && (
+                <span className="weather-day-advisory">
+                  Low {Math.round(day.lowCloudCoverPct)}% · high {Math.round(day.highCloudCoverPct)}%
+                </span>
+              )}
               {watched.length > 0 && day.quality !== 'cloudy' && (
                 <span className="weather-day-advisory">Good night for {watched[0]}</span>
               )}

@@ -3,7 +3,7 @@ import { SkyMapCanvas } from '../../components/SkyMapCanvas'
 import { SkyMapOverlay } from '../../components/SkyMapOverlay'
 import { getTonightPlan, type TonightPlan } from '../../lib/tonightTargets'
 import { fetchViewingAdvisory, type DailyViewingAdvisory } from '../../lib/weather'
-import { pullSkyEvents } from '../../lib/sync'
+import { getUpcomingEvents, pullSkyEvents } from '../../lib/sync'
 import { formatWatchValue, getWatchlist, type WatchlistItem } from '../../lib/watchlist'
 import { listGetReadyReminders, scheduleStoredReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
 import { turnInstruction, useDeviceCompass } from '../../lib/deviceCompass'
@@ -13,6 +13,10 @@ import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
 import { trackEvent } from '../../lib/analytics'
 import { estimateLightPollution } from '../../lib/darkSky'
+import { getPreferredEventTypes, hasCompletedEventPreferences } from '../../lib/eventPreferences'
+import { isLocalEvent } from '../../lib/eventFilters'
+import { EventPreferencePrompt } from '../../components/mobile/EventPreferencePrompt'
+import type { SkyEvent } from '../../lib/db'
 import {
   describeWhatYouWouldSee,
   dismissEquipmentPrompt,
@@ -139,6 +143,9 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   const [plan, setPlan] = useState<TonightPlan | null>(null)
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+  const [preferredKinds, setPreferredKinds] = useState<string[]>([])
+  const [preferredEvents, setPreferredEvents] = useState<SkyEvent[]>([])
+  const [preferencesReady, setPreferencesReady] = useState(() => hasCompletedEventPreferences())
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
   const [mapOpen, setMapOpen] = useState(false)
   const [expandedTargetId, setExpandedTargetId] = useState<string | null>(null)
@@ -160,6 +167,19 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
       setPlan(tonightPlan)
       setAdvisory(advisoryDays[0] ?? null)
       setWatchlist(watched)
+      const preferred = await getPreferredEventTypes()
+      setPreferredKinds(preferred)
+      const upcoming = await getUpcomingEvents(80)
+      setPreferredEvents(
+        upcoming
+          .filter((event) => isLocalEvent(event, city.lat, city.lon))
+          .sort((a, b) => {
+            const aPreferred = preferred.includes(a.kind) ? 0 : 1
+            const bPreferred = preferred.includes(b.kind) ? 0 : 1
+            return aPreferred - bPreferred || a.startsAt.localeCompare(b.startsAt)
+          })
+          .slice(0, 4),
+      )
     }
     load()
     return () => {
@@ -195,6 +215,8 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   const sunsetAt = plan.darknessWindow.civilDuskAt
   const darkAt = plan.darknessWindow.astronomicalDuskAt
   const cloudCover = advisory ? `${Math.round(advisory.cloudCoverPct)}%` : '—'
+  const lowCloud = advisory?.lowCloudCoverPct == null ? '—' : `${Math.round(advisory.lowCloudCoverPct)}%`
+  const highCloud = advisory?.highCloudCoverPct == null ? '—' : `${Math.round(advisory.highCloudCoverPct)}%`
   const visibility = advisory ? formatWatchValue(advisory.quality) : '—'
   const moon = `${Math.round(plan.moonIlluminationPct)}%`
   const lightPollution = estimateLightPollution(city.lat, city.lon)
@@ -202,6 +224,18 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   const targetDirection = topTarget?.direction
   const turnHint =
     compass.headingDeg != null && targetDirection ? turnInstruction(compass.headingDeg, targetDirection.azimuthDeg) : 'Enable compass'
+
+  function applyPreferredKinds(kinds: string[]) {
+    setPreferredKinds(kinds)
+    setPreferredEvents((current) =>
+      [...current].sort((a, b) => {
+        const aPreferred = kinds.includes(a.kind) ? 0 : 1
+        const bPreferred = kinds.includes(b.kind) ? 0 : 1
+        return aPreferred - bPreferred || a.startsAt.localeCompare(b.startsAt)
+      }),
+    )
+    setPreferencesReady(true)
+  }
 
   function expandTarget(target: TonightPlan['targets'][number]) {
     recordLocalTargetTap(target, 'mobile_hub', city.name)
@@ -225,6 +259,34 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
 
   return (
     <div className="dt-hub dt-starfield-bg">
+      {!preferencesReady && <EventPreferencePrompt onSaved={applyPreferredKinds} />}
+
+      {preferencesReady && preferredEvents.length > 0 && (
+        <section className="dt-for-you">
+          <div className="dt-section-head">
+            <span className="dt-section-eyebrow"><HubIcon name="spark" />For you</span>
+            <button type="button" className="dt-chevron-btn" onClick={() => onOpenTab('events')} aria-label="View all personalised events">
+              <HubIcon name="chevron" />
+            </button>
+          </div>
+          <p className="dt-feed-intro">Your priorities, next in the sky.</p>
+          {preferredEvents.map((event) => {
+            const preferred = preferredKinds.includes(event.kind)
+            const kicker = kickerFor(event.kind)
+            return (
+              <button type="button" className={`dt-feed-row dt-feed-row--personalised${preferred ? ' is-preferred' : ''}`} key={event.id} onClick={() => onOpenTab('events')}>
+                <div className="dt-feed-row-top">
+                  <span className="dt-feed-kicker" style={{ color: kicker.color }}><span className="dt-dot" />{preferred ? 'FOR YOU' : kicker.label}</span>
+                  <span className="dt-feed-time">{formatTime(event.startsAt, city.timeZone)}</span>
+                </div>
+                <div className="dt-feed-headline-row"><span className="dt-feed-headline">{event.title}</span><span className="dt-feed-chevron">+</span></div>
+                <span className="dt-feed-meta">{kicker.label} · {new Date(event.startsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+              </button>
+            )
+          })}
+        </section>
+      )}
+
       {/* BRIEFING */}
       <section>
         <div className="dt-briefing-head">
@@ -288,7 +350,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           <div className="dt-widget-cell">
             <span className="dt-widget-eyebrow"><HubIcon name="cloud" />Cloud</span>
             <span className="dt-widget-value">{cloudCover}</span>
-            <span className="dt-widget-caption">{visibility}</span>
+            <span className="dt-widget-caption">{visibility} · low {lowCloud} · high {highCloud}</span>
           </div>
           <div className="dt-widget-cell">
             <span className="dt-widget-eyebrow"><HubIcon name="moon" />Moon</span>

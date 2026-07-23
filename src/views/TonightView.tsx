@@ -49,7 +49,10 @@ function formatDayLabel(dateStr: string): string {
 }
 
 function formatWeatherSummary(advisory: NonNullable<TonightPlan['todayAdvisory']>): string {
-  return `${Math.round(advisory.cloudCoverPct)}% cloud · ${Math.round(advisory.precipitationChancePct)}% rain chance for the viewing window.`
+  const layers = advisory.lowCloudCoverPct != null && advisory.highCloudCoverPct != null
+    ? ` Low cloud ${Math.round(advisory.lowCloudCoverPct)}% · high cloud ${Math.round(advisory.highCloudCoverPct)}%.`
+    : ''
+  return `${Math.round(advisory.cloudCoverPct)}% cloud · ${Math.round(advisory.precipitationChancePct)}% rain chance for the viewing window.${layers}`
 }
 
 function formatDarknessWindow(window: TonightPlan['darknessWindow'], timeZone?: string): string | null {
@@ -200,6 +203,9 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
         <div className={`tonight-weather tonight-weather--${plan.todayAdvisory.quality}`}>
           <span className="tonight-weather-badge">
             {Math.round(plan.todayAdvisory.cloudCoverPct)}% cloud · {Math.round(plan.todayAdvisory.precipitationChancePct)}% rain chance
+            {plan.todayAdvisory.lowCloudCoverPct != null && plan.todayAdvisory.highCloudCoverPct != null && (
+              <> · low {Math.round(plan.todayAdvisory.lowCloudCoverPct)}% · high {Math.round(plan.todayAdvisory.highCloudCoverPct)}%</>
+            )}
           </span>
           {plan.nextClearWindow && (
             <p className="tonight-weather-next">
