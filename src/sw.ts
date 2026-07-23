@@ -10,7 +10,17 @@ cleanupOutdatedCaches()
 // the old version to close (see vite.config.ts for why this matters).
 self.skipWaiting()
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    (async () => {
+      await self.clients.claim()
+      // An already-open Atlas tab keeps executing the old JavaScript even
+      // after this worker takes over. Navigate controlled windows once so
+      // entitlement fixes and new feature access become active immediately
+      // instead of requiring the user to discover that a reload is needed.
+      const windows = await self.clients.matchAll({ type: 'window' })
+      await Promise.all(windows.map((client) => ('navigate' in client ? client.navigate(client.url) : Promise.resolve())))
+    })(),
+  )
 })
 
 // AT-011: the scheduled notify workflow (scripts/notify.mjs) sends a JSON
