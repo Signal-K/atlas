@@ -97,6 +97,40 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
   await expect(page.getByText('Unlock Planning with Sky Pass')).toHaveCount(0)
 })
 
+test('trusts a paid reconciliation result when auth-refresh returns a stale entitlement field', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await seedSignedInUser(page, false)
+
+  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ entitled: true }),
+    })
+  })
+  await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token: E2E_TOKEN,
+        record: {
+          id: 'e2e-user',
+          email: 'atlas-entitlement-e2e@example.com',
+          entitled: false,
+        },
+      }),
+    })
+  })
+  await mockPlanEvent(page)
+
+  await page.goto('/plan')
+
+  await expect(page.getByRole('tab', { name: 'Plan workspace' })).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Sky Pass active — open account settings' })).toBeVisible()
+})
+
 test('desktop settings uses grouped account layout without duplicate headings', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await seedSignedInUser(page, true)

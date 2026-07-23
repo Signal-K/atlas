@@ -62,10 +62,12 @@ export function signOut(): void {
 // authStore snapshot only otherwise updates on the next sign-in.
 export async function refreshEntitlement(): Promise<AuthUser | null> {
   if (!pb.authStore.isValid) return null
+  let reconciledAsEntitled = false
   try {
     // Webhooks are the fast path, but reconciliation makes paid access
     // self-healing if Polar's asynchronous delivery was missed or delayed.
-    await pb.send('/entitlement/polar/refresh', { method: 'POST' })
+    const result = await pb.send<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
+    reconciledAsEntitled = result.entitled === true
   } catch {
     // Best-effort. authRefresh below still picks up a webhook-applied change.
   }
@@ -74,6 +76,14 @@ export async function refreshEntitlement(): Promise<AuthUser | null> {
   } catch {
     // Best-effort -- e.g. offline or PocketBase unreachable; the cached
     // snapshot stays as-is until the next successful refresh.
+  }
+  // The reconciliation endpoint is authoritative. Some older PocketBase
+  // auth responses omit a newly-added custom field and would otherwise
+  // overwrite a confirmed paid result with the cached `false` value. Apply
+  // the server result to the auth store after authRefresh so React updates
+  // immediately and the paid account cannot be re-paywalled.
+  if (reconciledAsEntitled && pb.authStore.record) {
+    pb.authStore.save(pb.authStore.token, { ...pb.authStore.record, entitled: true })
   }
   return currentUser()
 }

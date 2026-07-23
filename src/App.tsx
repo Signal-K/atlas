@@ -115,6 +115,11 @@ function App() {
   // after completing checkout or an administrator reconciles a missed order.
   useEffect(() => {
     if (!user) return
+    // Reconcile immediately on app load, not only after a later focus event.
+    // A user who paid while an older Atlas build was active can otherwise
+    // arrive directly on a gated route with a stale cached `entitled:false`
+    // record and remain paywalled until they manually press "Check purchase".
+    void refreshEntitlement()
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') void refreshEntitlement()
     }
