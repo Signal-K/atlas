@@ -63,7 +63,27 @@ function localNightSkyFallbackEvents(now = new Date()): SkyEvent[] {
 // Read path (AT-003): pull sky_events into the local cache when online.
 // Every read in the app goes through Dexie, not this function directly, so
 // the dashboard still renders from cache when offline or when this fails.
-export async function pullSkyEvents(windowDays = 270): Promise<void> {
+//
+// Today/Events/Plan each call this on their own mount, so more than one can
+// be in flight at once (e.g. all three tabs mounted at once, or a fast tab
+// switch before the previous call resolved). Two overlapping calls each run
+// their own bulkDelete-stale-then-bulkPut transaction against the same
+// Dexie table; if they interleave, the later delete can be computed against
+// a snapshot that predates the earlier call's insert, wiping out events it
+// just wrote and leaving only stragglers (e.g. the always-re-added local
+// fallback events) behind. Sharing one in-flight promise across callers
+// avoids that race entirely.
+let inFlightPull: Promise<void> | null = null
+
+export function pullSkyEvents(windowDays = 270): Promise<void> {
+  if (inFlightPull) return inFlightPull
+  inFlightPull = pullSkyEventsNow(windowDays).finally(() => {
+    inFlightPull = null
+  })
+  return inFlightPull
+}
+
+async function pullSkyEventsNow(windowDays: number): Promise<void> {
   if (!navigator.onLine) return
 
   const now = new Date()

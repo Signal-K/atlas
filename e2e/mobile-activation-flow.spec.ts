@@ -150,7 +150,7 @@ test('mobile signed-out user must sign in before using Plan', async ({ page }) =
   await page.goto('/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText(/Bortle \d/)).toBeVisible()
+  await expect(page.getByText(/Bortle \d/).first()).toBeVisible()
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()

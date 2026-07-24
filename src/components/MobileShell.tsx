@@ -142,6 +142,19 @@ export function MobileShell({
   const signupWall = useSignupWall()
   const [headerCollapsed, setHeaderCollapsed] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
+  // Every tab that's ever been visited stays mounted (hidden via CSS)
+  // afterward instead of unmounting -- returning to a tab used to re-run its
+  // whole data load (pullSkyEvents, tonight's astronomy-engine calc, weather
+  // fetch) from scratch, producing a loading-state flash and layout jump.
+  // Mounted lazily (only once visited), not all four upfront: eagerly
+  // mounting every view on cold start fires all their effects (weather
+  // fetches, analytics, pullSkyEvents) for tabs the user hasn't even opened
+  // yet, and previously caused concurrent pullSkyEvents calls to race each
+  // other (see the in-flight guard in sync.ts).
+  const [visitedTabs, setVisitedTabs] = useState<Set<MobileTab>>(() => new Set([tabFromPathname(location.pathname)]))
+  useEffect(() => {
+    setVisitedTabs((current) => (current.has(tab) ? current : new Set(current).add(tab)))
+  }, [tab])
 
   // Collapses the brand row + location switch (not the tab bar, which stays
   // reachable) once the user scrolls down a bit, giving back vertical space
@@ -458,28 +471,31 @@ export function MobileShell({
           </div>
         ) : (
           <>
-            {/* Every tab stays mounted and is only hidden via CSS -- conditionally
-                mounting/unmounting on tab switch was re-running each view's data
-                load (pullSkyEvents, tonight's astronomy-engine calc, weather
-                fetch) from scratch every time, producing a loading-state flash
-                and layout jump each time you returned to a tab. */}
-            <div hidden={tab !== 'hub'}>
-              <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} />
-            </div>
-            <div hidden={tab !== 'events'}>
-              <EventsView city={currentLocation} onLogAttempt={logAttempt} onSavedForLater={() => signupWall.promptAfterSave('favourite')} />
-            </div>
-            <div hidden={tab !== 'calendar'}>
-              <PlanView
-                city={currentLocation}
-                onOpenEvents={() => goToTab('events')}
-                onLogAttempt={logAttempt}
-                onSavedForLater={() => signupWall.promptAfterSave('favourite')}
-              />
-            </div>
-            <div hidden={tab !== 'journal'}>
-              <JournalView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />
-            </div>
+            {visitedTabs.has('hub') && (
+              <div hidden={tab !== 'hub'}>
+                <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} />
+              </div>
+            )}
+            {visitedTabs.has('events') && (
+              <div hidden={tab !== 'events'}>
+                <EventsView city={currentLocation} onLogAttempt={logAttempt} onSavedForLater={() => signupWall.promptAfterSave('favourite')} />
+              </div>
+            )}
+            {visitedTabs.has('calendar') && (
+              <div hidden={tab !== 'calendar'}>
+                <PlanView
+                  city={currentLocation}
+                  onOpenEvents={() => goToTab('events')}
+                  onLogAttempt={logAttempt}
+                  onSavedForLater={() => signupWall.promptAfterSave('favourite')}
+                />
+              </div>
+            )}
+            {visitedTabs.has('journal') && (
+              <div hidden={tab !== 'journal'}>
+                <JournalView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />
+              </div>
+            )}
           </>
         )}
       </div>

@@ -100,7 +100,7 @@ test('mobile signed-out user can arm an event reminder without an account wall',
   await page.goto('/events')
 
   await expect(page.getByRole('heading', { name: /Tonight.s sky, reported/ })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: /Solar system/ }).click()
+  await page.getByRole('button', { name: /Moon & eclipses/ }).click()
   await page.getByRole('button', { name: /Full Moon/ }).click()
   await page.getByRole('button', { name: 'Remind' }).click()
 
