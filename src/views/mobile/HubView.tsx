@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { SkyMapCanvas } from '../../components/SkyMapCanvas'
 import { SkyMapOverlay } from '../../components/SkyMapOverlay'
 import { getTonightPlan, type TonightPlan } from '../../lib/tonightTargets'
-import { fetchViewingAdvisory, type DailyViewingAdvisory } from '../../lib/weather'
+import { fetchViewingAdvisory, fetchViewingForecast, type DailyViewingAdvisory } from '../../lib/weather'
 import { getUpcomingEvents, pullSkyEvents } from '../../lib/sync'
 import { formatWatchValue, getWatchlist, type WatchlistItem } from '../../lib/watchlist'
 import { listGetReadyReminders, scheduleStoredReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
@@ -12,9 +12,12 @@ import type { MobileTab } from '../../components/MobileShell'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
 import { trackEvent } from '../../lib/analytics'
-import { estimateLightPollution } from '../../lib/darkSky'
+import { bortleExplainer, estimateLightPollution } from '../../lib/darkSky'
+import { forecastLookaheadDays } from '../../lib/entitlementLimits'
+import { useAuth } from '../../lib/auth'
 import { getPreferredEventTypes, hasCompletedEventPreferences } from '../../lib/eventPreferences'
 import { isLocalEvent } from '../../lib/eventFilters'
+import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
 import { EventPreferencePrompt } from '../../components/mobile/EventPreferencePrompt'
 import type { SkyEvent } from '../../lib/db'
 import {
@@ -151,8 +154,12 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   const [expandedTargetId, setExpandedTargetId] = useState<string | null>(null)
   const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
   const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
+  const [outlook, setOutlook] = useState<DailyViewingAdvisory[]>([])
   const trackedFeedLoadRef = useRef<string | null>(null)
   const compass = useDeviceCompass()
+  const { user } = useAuth()
+  const hasPremium = Boolean(user?.entitled)
+  const outlookDays = forecastLookaheadDays(hasPremium)
 
   useEffect(() => {
     let cancelled = false
@@ -171,8 +178,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
       setPreferredKinds(preferred)
       const upcoming = await getUpcomingEvents(80)
       setPreferredEvents(
-        upcoming
-          .filter((event) => isLocalEvent(event, city.lat, city.lon))
+        [buildVisiblePlanetsEvent(new Date(), city.lat, city.lon), ...upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon))]
           .sort((a, b) => {
             const aPreferred = preferred.includes(a.kind) ? 0 : 1
             const bPreferred = preferred.includes(b.kind) ? 0 : 1
@@ -192,6 +198,20 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
     trackedFeedLoadRef.current = city.name
     trackEvent('Viewed Tonight page', { city: city.name, surface: 'mobile_hub' })
   }, [city.name, plan])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchViewingForecast(city.lat, city.lon, outlookDays)
+      .then((forecast) => {
+        if (!cancelled) setOutlook(forecast.days)
+      })
+      .catch(() => {
+        if (!cancelled) setOutlook([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [city.lat, city.lon, outlookDays])
 
   useEffect(() => {
     scheduleStoredReminders()
@@ -367,12 +387,36 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
             <span className="dt-widget-value">{sunsetAt ? formatTime(sunsetAt, plan.timeZone) : '—'}</span>
             <span className="dt-widget-caption">{city.name}</span>
           </div>
-          <div className="dt-widget-cell">
+          <div className="dt-widget-cell" title={bortleExplainer(lightPollution.bortleClass)}>
             <span className="dt-widget-eyebrow"><HubIcon name="spark" />Light</span>
             <span className="dt-widget-value">Bortle {lightPollution.bortleClass}</span>
             <span className="dt-widget-caption">{lightPollution.label}</span>
           </div>
         </div>
+      </section>
+
+      <div className="dt-stitch" />
+
+      {/* Free accounts see this capped to a 3-day outlook (see
+          entitlementLimits.ts); Sky Pass unlocks the full 16-day window.
+          Lives here on Today (not Plan) because Plan is fully paywalled for
+          free accounts and this is meant to be part of their free taste. */}
+      <section>
+        <div className="dt-section-eyebrow"><HubIcon name="spark" />Sky conditions</div>
+        <p className="dt-empty-hint">{bortleExplainer(lightPollution.bortleClass)}</p>
+        <div className="mobile-mini-list">
+          {outlook.slice(0, outlookDays).map((day, index) => (
+            <div className="mobile-mini-row mobile-plan-row mobile-plan-row--status" key={day.date}>
+              <span className="mobile-event-kind">
+                {index === 0 ? 'Today' : new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}
+              </span>
+              <span className="mobile-mini-row-name">Bortle {lightPollution.bortleClass}</span>
+              <span className="mobile-mini-row-meta">{Math.round(day.cloudCoverPct)}% cloud</span>
+              <span className="mobile-plan-row-status">{Math.round(day.precipitationChancePct)}% rain chance</span>
+            </div>
+          ))}
+        </div>
+        {!hasPremium && <p className="mobile-empty-hint">Sky Pass unlocks the full 16-day outlook — you're seeing the next {outlookDays} days.</p>}
       </section>
 
       {mapOpen && (

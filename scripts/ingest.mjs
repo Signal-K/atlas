@@ -12,7 +12,6 @@ import { fetchEvents as fetchPlanetEvents } from './sources/planets.mjs'
 import { fetchEvents as fetchDeepSkyEvents } from './sources/deep-sky-objects.mjs'
 import { fetchEvents as fetchConjunctionEvents } from './sources/conjunctions.mjs'
 import { fetchEvents as fetchMelbourneNightSkyEvents } from './sources/melbourne-night-sky.mjs'
-import { fetchEvents as fetchEarthSkyMonthlyGuideEvents } from './sources/earthsky-monthly-guide.mjs'
 import { fetchEvents as fetchSatelliteFlareEvents } from './sources/satellite-flares.mjs'
 import { fetchEvents as fetchAuroraEvents } from './sources/aurora.mjs'
 import { fetchEvents as fetchCometEvents } from './sources/comets.mjs'
@@ -31,7 +30,6 @@ const PLUGINS = [
   { fetch: fetchDeepSkyEvents, windowDays: 365 },
   { fetch: fetchConjunctionEvents, windowDays: 365 },
   { fetch: fetchMelbourneNightSkyEvents },
-  { fetch: fetchEarthSkyMonthlyGuideEvents },
   { fetch: fetchIssPassEvents },
   { fetch: fetchSatelliteFlareEvents },
   { fetch: fetchAuroraEvents },

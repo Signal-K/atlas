@@ -52,6 +52,12 @@ export interface LightPollutionEstimate {
 // turn-by-turn directions.
 const ASSUMED_AVG_SPEED_KMH = 70
 
+// Plain-language caption for the Bortle scale itself -- "Bortle 4" means
+// nothing to most users without this.
+export function bortleExplainer(bortleClass: number): string {
+  return `Bortle scale ${bortleClass} of 9 (1 = darkest sky, 9 = brightest) — how much light pollution washes out faint stars.`
+}
+
 export function lightPollutionLabel(bortleClass: number): string {
   if (bortleClass <= 2) return 'dark-sky site'
   if (bortleClass <= 4) return 'rural sky'

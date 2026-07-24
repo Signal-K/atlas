@@ -10,12 +10,26 @@ interface PaywallGateProps {
   onSignInClick: () => void
   children: ReactNode
   freeNote?: string
+  // Lets a specific gate (e.g. the Plan tab) state what it actually offers
+  // instead of the generic app-wide summary -- defaults preserve the
+  // existing copy for every other call site (search, watchlist, dark-sites).
+  freeBullets?: string
+  paidBullets?: string
 }
 
 // Wraps a view/tab that requires the one-time Atlas Sky Pass purchase.
 // Renders its children unchanged for entitled users; everyone else sees an
 // upgrade card instead of the gated content underneath.
-export function PaywallGate({ user, feature, description, onSignInClick, children, freeNote }: PaywallGateProps) {
+export function PaywallGate({
+  user,
+  feature,
+  description,
+  onSignInClick,
+  children,
+  freeNote,
+  freeBullets = 'Tonight, 14-day event browsing, check-ins, and your private journal.',
+  paidBullets = '90-day plans, saved targets, reminders, dark sites, gear fit, community, and archive.',
+}: PaywallGateProps) {
   const [isStartingCheckout, setIsStartingCheckout] = useState(false)
   const [isCheckingPurchase, setIsCheckingPurchase] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
@@ -65,11 +79,11 @@ export function PaywallGate({ user, feature, description, onSignInClick, childre
       <div className="paywall-card-breakdown">
         <div>
           <strong>Always free</strong>
-          <span>Tonight, 14-day event browsing, check-ins, and your private journal.</span>
+          <span>{freeBullets}</span>
         </div>
         <div>
           <strong>Sky Pass unlocks</strong>
-          <span>90-day plans, saved targets, reminders, dark sites, gear fit, community, and archive.</span>
+          <span>{paidBullets}</span>
         </div>
       </div>
       <p className="paywall-card-note">One purchase works on desktop and mobile when you sign in with the same email.</p>

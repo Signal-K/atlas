@@ -86,11 +86,10 @@ export function Sidebar({ active, onSelect }: { active: View; onSelect: (view: V
             type="button"
             className={`sidebar-item${active === item.id ? ' is-active' : ''}`}
             onClick={() => onSelect(item.id)}
-            aria-label={item.label}
             aria-current={active === item.id}
-            title={item.label}
           >
             {item.icon}
+            <span>{item.label}</span>
           </button>
         </Fragment>
       ))}

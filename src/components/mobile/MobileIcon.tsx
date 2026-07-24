@@ -1,7 +1,7 @@
 // Shared tactical/outline icon set for mobile chrome. One place so Plan,
 // Events, and any future mobile view draw the same glyphs instead of each
 // hand-rolling their own <svg> per icon.
-export type MobileIconName = 'zap' | 'orbit' | 'satellite' | 'telescope' | 'book' | 'mountain' | 'camera' | 'chevron' | 'pin'
+export type MobileIconName = 'zap' | 'orbit' | 'satellite' | 'telescope' | 'book' | 'mountain' | 'camera' | 'chevron' | 'pin' | 'moon' | 'aurora'
 
 export function MobileIcon({ name }: { name: MobileIconName | string }) {
   const common = {
@@ -73,6 +73,19 @@ export function MobileIcon({ name }: { name: MobileIconName | string }) {
         <svg {...common}>
           <path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12Z" />
           <circle cx="12" cy="9" r="2.4" />
+        </svg>
+      )
+    case 'moon':
+      return (
+        <svg {...common}>
+          <path d="M18.5 15.5A7 7 0 0 1 8.5 5.5 8 8 0 1 0 18.5 15.5Z" />
+        </svg>
+      )
+    case 'aurora':
+      return (
+        <svg {...common}>
+          <path d="M3 17c2-3 4-5 6-2s4 1 6-2 4-3 6 0" />
+          <path d="M3 12c2-3 4-5 6-2s4 1 6-2 4-3 6 0" />
         </svg>
       )
     default:

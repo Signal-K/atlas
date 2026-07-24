@@ -236,9 +236,22 @@ export function SkyMapCanvas({
 
     let frame = 0
     let rafId = 0
+    let lastDrawAt = 0
+    // Only the twinkle pulse actually needs to animate frame-to-frame --
+    // redrawing every star/planet/cloud at a full uncapped 60fps burns main
+    // thread work that competes with scroll compositing (the cause of
+    // Today-page scroll stutter). ~15fps keeps the twinkle looking smooth
+    // while cutting that work by roughly 4x.
+    const DRAW_INTERVAL_MS = 66
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     function draw() {
+      const now = Date.now()
+      if (now - lastDrawAt < DRAW_INTERVAL_MS) {
+        if (!reduceMotion) rafId = requestAnimationFrame(draw)
+        return
+      }
+      lastDrawAt = now
       const el = canvasRef.current
       const context = el?.getContext('2d')
       if (!context) return

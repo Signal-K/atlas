@@ -213,8 +213,11 @@ export function FeedbackDock() {
 
   return (
     <div className="feedback-dock" aria-live="polite">
-      <button type="button" className="feedback-dock-trigger" onClick={() => setMode('feature')}>
-        Request feature
+      <button type="button" className="feedback-dock-trigger" onClick={() => setMode('feature')} aria-label="Request feature">
+        <span className="feedback-dock-trigger-icon" aria-hidden="true">
+          +
+        </span>
+        <span className="feedback-dock-trigger-label">Request feature</span>
       </button>
 
       {mode && (

@@ -4589,6 +4589,38 @@
   margin-top: 6px;
 }
 
+.dt-browse-location {
+  margin: 12px 0;
+}
+
+.dt-browse-location-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 0.7rem/1.1 var(--dt-font-data);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dt-ink-muted);
+}
+
+.dt-browse-location-picker select {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--dt-rule);
+  background: var(--dt-bg-page);
+  color: var(--dt-ink);
+  padding: 7px 10px;
+  font: 700 0.78rem/1.2 var(--dt-font-data);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.dt-browse-location-locked {
+  font: 500 0.78rem/1.4 var(--dt-font-body, var(--dt-font-data));
+  color: var(--dt-ink-muted);
+  margin: 0;
+}
+
 .dt-back-row {
   display: flex;
   align-items: center;
@@ -4697,6 +4729,10 @@
 
 .dt-chip-row::-webkit-scrollbar {
   display: none;
+}
+
+.dt-chip-row--secondary {
+  margin-bottom: 14px;
 }
 
 .dt-chip {
@@ -5267,6 +5303,33 @@
   font-size: 0.92rem;
 }
 
+/* Marks recurring "check an external source" pointer cards (comet tracker,
+   generic night-sky guides) as informational, not a real scheduled event. */
+.dt-feed-guide-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--dt-ink-muted);
+  font: 700 0.6rem/1.4 var(--dt-font-data);
+  letter-spacing: 0.06em;
+  color: var(--dt-ink-muted);
+  vertical-align: middle;
+}
+
+.dt-show-more {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--dt-hairline, var(--dt-ink-muted));
+  border-radius: 8px;
+  background: transparent;
+  font: 700 0.82rem/1.2 var(--dt-font-data);
+  letter-spacing: 0.02em;
+  color: var(--dt-ink);
+  cursor: pointer;
+}
+
 .dt-status-dot {
   width: 7px;
   height: 7px;
@@ -5290,11 +5353,33 @@
 .mobile-shell ~ .feedback-dock .feedback-dock-trigger,
 .mobile-shell + .feedback-dock .feedback-dock-trigger {
   border-color: var(--mobile-line);
-  border-radius: 8px;
+  border-radius: 50%;
   background: var(--mobile-surface-strong);
   color: var(--mobile-primary-text);
   font-family: var(--font-data);
   letter-spacing: 0.02em;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-shell ~ .feedback-dock .feedback-dock-trigger-icon,
+.mobile-shell + .feedback-dock .feedback-dock-trigger-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.mobile-shell ~ .feedback-dock .feedback-dock-trigger-label,
+.mobile-shell + .feedback-dock .feedback-dock-trigger-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .mobile-shell ~ .feedback-dock,
@@ -5311,9 +5396,6 @@
 
 .mobile-shell ~ .feedback-dock .feedback-dock-trigger,
 .mobile-shell + .feedback-dock .feedback-dock-trigger {
-  max-width: calc(100vw - 28px);
-  min-height: 34px;
-  padding: 8px 10px;
   box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.9);
 }
 

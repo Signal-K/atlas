@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { KIND_LABELS } from '../../widgets/EventRow'
 import { CameraRecipe } from '../CameraRecipe'
-import { categoryForKind } from '../../lib/eventCategories'
+import { categoryForKind, GUIDE_KIND_IDS } from '../../lib/eventCategories'
 import type { RecipeKey } from '../../lib/cameraRecipes'
 import type { SkyEvent } from '../../lib/db'
 import { MobileIcon } from './MobileIcon'
@@ -108,6 +108,7 @@ export function EventDetailPanel({
           <div>
             <span className="mobile-event-kind" style={category ? { color: category.accent } : undefined}>
               {KIND_LABELS[event.kind] ?? event.kind}
+              {GUIDE_KIND_IDS.has(event.kind) && <span className="dt-feed-guide-tag">GUIDE</span>}
             </span>
             <h2>{event.title}</h2>
           </div>
@@ -131,7 +132,7 @@ export function EventDetailPanel({
 
         <p className="mobile-event-notes">{event.content ?? event.description}</p>
 
-        {conditions ? (
+        {conditions && (
           <div className="mobile-condition-bars">
             <div className="mobile-condition-bar">
               <span>Moon</span>
@@ -159,8 +160,9 @@ export function EventDetailPanel({
               </div>
             )}
           </div>
-        ) : (
-          forecastUnavailableHint && <p className="mobile-empty-hint">{forecastUnavailableHint}</p>
+        )}
+        {conditions?.cloudPct == null && conditions?.rainPct == null && forecastUnavailableHint && (
+          <p className="mobile-empty-hint">{forecastUnavailableHint}</p>
         )}
 
         <div className="mobile-sheet-actions">

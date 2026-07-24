@@ -1,23 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { KIND_LABELS } from '../../widgets/EventRow'
-import { categoryForKind, EVENT_CATEGORIES } from '../../lib/eventCategories'
+import { categoryForKind, EVENT_CATEGORIES, GUIDE_KIND_IDS } from '../../lib/eventCategories'
 import { dateGroupLabel } from '../../lib/eventFormat'
 import type { SkyEvent } from '../../lib/db'
-import { BackIcon, MobileIcon } from './MobileIcon'
+import { MobileIcon } from './MobileIcon'
 
 type EventStatus = 'go' | 'marginal' | 'poor'
 type ViewMode = 'list' | 'calendar'
-type Step = 'categories' | 'browse'
 
-// The category-grid / type-chip / list-or-calendar event browser. Used
-// as-is by both PlanView's Explore mode and EventsView so the two surfaces
-// can never visually drift apart -- change the browsing UI here once.
-//
-// A user flow, not a control panel: step 1 is just "pick a category" (one
-// screen, one decision). Step 2 is that category's events, with its own
-// back button -- type chips, the list/calendar toggle, and the day strip
-// never show until a category is chosen, and the category grid is gone
-// once it has.
+const ALL_CATEGORY_ID = 'all'
+
+// A single chronological feed of every upcoming event, newest-first by
+// date. Category is an optional filter chip (defaults to "All"), not a
+// mandatory first step -- a first-time visitor should see what's coming up
+// without deciding what kind of astronomy they're into first. Both
+// PlanView's Explore mode and EventsView render through this component so
+// the two surfaces can never visually drift apart -- change the browsing
+// UI here once.
 export function SkyEventBrowser({
   events,
   onSelect,
@@ -27,9 +26,7 @@ export function SkyEventBrowser({
   onSelect: (event: SkyEvent) => void
   statusForEvent?: (event: SkyEvent) => EventStatus | null
 }) {
-  const [step, setStep] = useState<Step>('categories')
-  const [categoryId, setCategoryId] = useState<string>(EVENT_CATEGORIES[0].id)
-  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [categoryId, setCategoryId] = useState<string>(ALL_CATEGORY_ID)
   // Wikimedia hotlinks occasionally fail to load -- fall back to the
   // category icon instead of leaving a blank swatch.
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set())
@@ -41,20 +38,13 @@ export function SkyEventBrowser({
     [events],
   )
 
-  const activeCategory = categories.find((category) => category.id === categoryId) ?? categories[0]
-  const categoryEvents = useMemo(() => (events ?? []).filter((event) => activeCategory.kinds.includes(event.kind)), [events, activeCategory])
-
-  const types = useMemo(() => {
-    const kinds = Array.from(new Set(categoryEvents.map((event) => event.kind)))
-    return [
-      { id: 'all', label: 'All', count: categoryEvents.length },
-      ...kinds.map((kind) => ({ id: kind, label: KIND_LABELS[kind] ?? kind, count: categoryEvents.filter((event) => event.kind === kind).length })),
-    ]
-  }, [categoryEvents])
-
+  const activeCategory = categories.find((category) => category.id === categoryId) ?? null
   const scopedEvents = useMemo(
-    () => categoryEvents.filter((event) => typeFilter === 'all' || event.kind === typeFilter).sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
-    [categoryEvents, typeFilter],
+    () =>
+      (events ?? [])
+        .filter((event) => !activeCategory || activeCategory.kinds.includes(event.kind))
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
+    [events, activeCategory],
   )
 
   const days = useMemo(() => {
@@ -73,21 +63,24 @@ export function SkyEventBrowser({
     return scopedEvents.filter((event) => event.startsAt.slice(0, 10) === selectedDay)
   }, [scopedEvents, viewMode, selectedDay])
 
-  // Keep the card to a scannable preview instead of dumping an entire
-  // category (some, like Solar system, run 20+ events deep) -- narrow with
-  // a type chip or a calendar day to see more of a specific slice.
-  const EVENT_PREVIEW_LIMIT = 6
-  const filteredEvents = dayFilteredEvents.slice(0, EVENT_PREVIEW_LIMIT)
-  const hiddenCount = dayFilteredEvents.length - filteredEvents.length
+  // Everything already lives in memory (a bounded upcoming-events window),
+  // so "show more" just extends the visible slice -- no refetch, and never
+  // a dead-end "go filter differently" message.
+  const SHOW_MORE_STEP = 20
+  const [visibleCount, setVisibleCount] = useState(SHOW_MORE_STEP)
+  useEffect(() => {
+    setVisibleCount(SHOW_MORE_STEP)
+  }, [categoryId, viewMode, selectedDay])
+
+  const filteredEvents = dayFilteredEvents.slice(0, visibleCount)
+  const remainingCount = dayFilteredEvents.length - filteredEvents.length
 
   function selectCategory(id: string) {
     setCategoryId(id)
-    setTypeFilter('all')
     setSelectedDay(null)
-    setStep('browse')
   }
 
-  // Group the (already date-sorted) preview slice under bold date rules --
+  // Group the (already date-sorted) visible slice under bold date rules --
   // Today / Tomorrow / a short weekday+date -- per the feed-row spec: no
   // cards, groups separated by a rule instead.
   const groupedEvents = useMemo(() => {
@@ -101,41 +94,23 @@ export function SkyEventBrowser({
     return groups
   }, [filteredEvents])
 
-  if (step === 'categories') {
-    return (
-      <div className="dt-category-list">
-        {categories.map((category) => (
-          <button type="button" key={category.id} className="dt-category-row" onClick={() => selectCategory(category.id)}>
-            <span className="dt-category-icon" style={{ color: category.accent }}>
-              <MobileIcon name={category.icon} />
-            </span>
-            <strong>{category.label}</strong>
-            <span className="dt-category-count" style={{ color: category.accent }}>
-              {category.count}
-            </span>
-            <MobileIcon name="chevron" />
-          </button>
-        ))}
-      </div>
-    )
-  }
-
   return (
     <div>
-      <button type="button" className="dt-back-row" onClick={() => setStep('categories')}>
-        <BackIcon />
-        <span className="dt-category-icon" style={{ color: activeCategory.accent, width: 26, height: 26 }}>
-          <MobileIcon name={activeCategory.icon} />
-        </span>
-        <strong>{activeCategory.label}</strong>
-      </button>
-
       <div className="dt-filter-row">
-        <div className="dt-chip-row" role="tablist" aria-label="Event types">
-          {types.map((type) => (
-            <button type="button" key={type.id} className={`dt-chip${typeFilter === type.id ? ' is-active' : ''}`} onClick={() => setTypeFilter(type.id)}>
-              {type.label}
-              <span>{type.count}</span>
+        <div className="dt-chip-row" role="tablist" aria-label="Event categories">
+          <button type="button" className={`dt-chip${categoryId === ALL_CATEGORY_ID ? ' is-active' : ''}`} onClick={() => selectCategory(ALL_CATEGORY_ID)}>
+            All
+            <span>{events?.length ?? 0}</span>
+          </button>
+          {categories.map((category) => (
+            <button
+              type="button"
+              key={category.id}
+              className={`dt-chip${categoryId === category.id ? ' is-active' : ''}`}
+              onClick={() => selectCategory(category.id)}
+            >
+              {category.label}
+              <span>{category.count}</span>
             </button>
           ))}
         </div>
@@ -188,6 +163,7 @@ export function SkyEventBrowser({
             {group.items.map((event) => {
               const eventStatus = statusForEvent?.(event) ?? null
               const eventCategory = categoryForKind(event.kind)
+              const isGuide = GUIDE_KIND_IDS.has(event.kind)
               return (
                 <button type="button" className="dt-feed-row dt-feed-row--listing" key={event.id} onClick={() => onSelect(event)}>
                   <span className="dt-feed-swatch" style={eventCategory ? { color: eventCategory.accent } : undefined}>
@@ -198,7 +174,10 @@ export function SkyEventBrowser({
                     )}
                   </span>
                   <span className="dt-feed-body">
-                    {typeFilter === 'all' && <span className="dt-feed-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>}
+                    <span className="dt-feed-kind">
+                      {KIND_LABELS[event.kind] ?? event.kind}
+                      {isGuide && <span className="dt-feed-guide-tag">GUIDE</span>}
+                    </span>
                     <span className="dt-feed-headline">{event.title}</span>
                   </span>
                   <span className="dt-feed-time">
@@ -214,7 +193,11 @@ export function SkyEventBrowser({
           </div>
         ))
       )}
-      {hiddenCount > 0 && <p className="dt-empty-hint">+{hiddenCount} more — narrow by type or pick a calendar day to see them.</p>}
+      {remainingCount > 0 && (
+        <button type="button" className="dt-show-more" onClick={() => setVisibleCount((current) => current + SHOW_MORE_STEP)}>
+          Show {Math.min(remainingCount, SHOW_MORE_STEP)} more
+        </button>
+      )}
     </div>
   )
 }

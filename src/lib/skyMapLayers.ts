@@ -223,3 +223,21 @@ export function getPrimarySkyMapObjectForEvent(event: Pick<SkyEvent, 'kind' | 't
   const objects = getSkyMapObjectsForEvent(event, date, lat, lon)
   return objects.find((object) => object.visible) ?? objects[0] ?? null
 }
+
+export interface VisiblePlanetsTonight {
+  visible: SkyMapObject[]
+  notVisible: SkyMapObject[]
+}
+
+// Real per-location planet visibility for "what's up tonight" copy, instead
+// of a static monthly blurb -- reuses the same alt/az computation the sky
+// map itself draws from, so the two can never disagree.
+export function getVisiblePlanetsTonight(date: Date, lat: number, lon: number): VisiblePlanetsTonight {
+  const planets = PLANET_BODIES.map(({ id, name, body }) => bodyObject(id, name, 'planet', body, date, lat, lon)).sort(
+    (a, b) => b.altitudeDeg - a.altitudeDeg,
+  )
+  return {
+    visible: planets.filter((planet) => planet.visible),
+    notVisible: planets.filter((planet) => !planet.visible),
+  }
+}

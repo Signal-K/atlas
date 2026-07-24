@@ -14,7 +14,7 @@ import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
 import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
 import { addToWatchlist, getWatchlist, isWatching, matchesWatchlist, removeFromWatchlist, type WatchlistItem } from '../../lib/watchlist'
-import { fetchViewingAdvisory, type DailyViewingAdvisory } from '../../lib/weather'
+import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '../../lib/weather'
 import { scoreTonight, type TonightRating } from '../../lib/tonightScore'
 import { trackEvent } from '../../lib/analytics'
 import { moonIlluminationPctAt } from '../../lib/moonPhase'
@@ -27,7 +27,8 @@ import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
 import { MobileIcon } from '../../components/mobile/MobileIcon'
 import { PaywallGate } from '../../components/PaywallGate'
 import { useAuth } from '../../lib/auth'
-import { estimateLightPollution } from '../../lib/darkSky'
+import { eventLookaheadDays, forecastLookaheadDays } from '../../lib/entitlementLimits'
+import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
 import type { ObservationDraft } from '../../lib/observationDraft'
@@ -35,8 +36,6 @@ import { WatchView } from './WatchView'
 
 type PlanMode = 'ready' | 'watchlist' | 'calendar' | 'browse'
 type ToolPanel = 'dark-sites' | 'gear-fit' | null
-const FREE_EVENT_LOOKAHEAD_DAYS = 14
-const PREMIUM_EVENT_LOOKAHEAD_DAYS = 90
 
 function ratingToStatus(rating: TonightRating): 'go' | 'marginal' | 'poor' {
   if (rating === 'great' || rating === 'good') return 'go'
@@ -63,6 +62,7 @@ export function PlanView({
   const [selected, setSelected] = useState<SkyEvent | null>(null)
   const [status, setStatus] = useState('')
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
+  const [advisoryTimeZone, setAdvisoryTimeZone] = useState<string | undefined>(city.timeZone)
   const [toolPanel, setToolPanel] = useState<ToolPanel>(null)
   const [blockedPlanAdd, setBlockedPlanAdd] = useState(false)
   const [feedbackNotes, setFeedbackNotes] = useState<Record<string, string>>({})
@@ -73,10 +73,12 @@ export function PlanView({
   async function load() {
     await pullSkyEvents()
     const now = new Date()
-    const lookaheadDays = hasPremium ? PREMIUM_EVENT_LOOKAHEAD_DAYS : FREE_EVENT_LOOKAHEAD_DAYS
-    const planEnd = new Date(now.getTime() + lookaheadDays * 86_400_000)
+    const planEnd = new Date(now.getTime() + eventLookaheadDays(hasPremium) * 86_400_000)
     const [upcoming, watched] = await Promise.all([getEventsInRange(now, planEnd), getWatchlist()])
-    setEvents(upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon)))
+    setEvents([
+      buildVisiblePlanetsEvent(now, city.lat, city.lon),
+      ...upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon)),
+    ])
     setWatchlist(watched)
     setReminders(listGetReadyReminders())
     setPendingFeedback(listPendingReminderFeedback())
@@ -85,9 +87,11 @@ export function PlanView({
   useEffect(() => {
     let cancelled = false
     load()
-    fetchViewingAdvisory(city.lat, city.lon, 7)
-      .then((days) => {
-        if (!cancelled) setAdvisory(days)
+    fetchViewingForecast(city.lat, city.lon, forecastLookaheadDays(hasPremium))
+      .then((forecast) => {
+        if (cancelled) return
+        setAdvisory(forecast.days)
+        setAdvisoryTimeZone(city.timeZone ?? forecast.timeZone)
       })
       .catch(() => {
         if (!cancelled) setAdvisory([])
@@ -131,7 +135,7 @@ export function PlanView({
   }, [events, reminders, watchlist])
 
   function advisoryFor(event: SkyEvent): DailyViewingAdvisory | null {
-    return advisory.find((day) => day.date === event.startsAt.slice(0, 10)) ?? null
+    return advisory.find((day) => day.date === localDateKey(event.startsAt, advisoryTimeZone)) ?? null
   }
 
   function statusForEvent(event: SkyEvent): 'go' | 'marginal' | 'poor' | null {
@@ -210,9 +214,6 @@ export function PlanView({
 
   const darkSites = useMemo(() => darkSitesSummary(city.lat, city.lon), [city.lat, city.lon])
   const gearFit = useMemo(() => defaultGearFitSummary(), [])
-  const lightPollution = useMemo(() => estimateLightPollution(city.lat, city.lon), [city.lat, city.lon])
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
   const premiumPlanningGate = (
     <PaywallGate
       user={user}
@@ -247,6 +248,8 @@ export function PlanView({
           feature="Planning"
           description="Build observing plans, compare dark-sky trips, save events, and prepare gear with the Sky Pass."
           freeNote="Today, Events, check-ins, and your Journal stay free. Discounted users still need to complete Polar checkout first."
+          freeBullets="Today's sky conditions, 10-day event browsing, check-ins, and your Journal."
+          paidBullets="90-day plans, saved targets & reminders, dark-sky trip routing, gear fit, and downloadable camera presets."
           onSignInClick={() => {
             window.location.href = '/settings'
           }}
@@ -265,7 +268,7 @@ export function PlanView({
             <span className="mobile-plan-readout-dot" />
             {(events ?? []).length} EVENTS
           </span>
-          <span className="mobile-plan-readout-window">NEXT {hasPremium ? PREMIUM_EVENT_LOOKAHEAD_DAYS : FREE_EVENT_LOOKAHEAD_DAYS} DAYS</span>
+          <span className="mobile-plan-readout-window">NEXT {eventLookaheadDays(hasPremium)} DAYS</span>
         </div>
         <div className="mobile-community-tabs" aria-label="Plan sections">
           <button type="button" className={mode === 'browse' ? 'is-active' : ''} onClick={() => setMode('browse')}>
@@ -410,24 +413,6 @@ export function PlanView({
 
       {mode === 'browse' && (
         <>
-          <section className="mobile-card">
-            <div className="mobile-card-eyebrow">Light pollution</div>
-            <div className="mobile-mini-list">
-              {['Today', 'Tomorrow'].map((label, index) => (
-                <div className="mobile-mini-row mobile-plan-row mobile-plan-row--status" key={label}>
-                  <span className="mobile-event-kind">{label}</span>
-                  <span className="mobile-mini-row-name">Bortle {lightPollution.bortleClass}</span>
-                  <span className="mobile-mini-row-meta">{index === 0 ? 'Now' : tomorrow.toLocaleDateString(undefined, { weekday: 'short' })}</span>
-                  <span className="mobile-plan-row-status">
-                    {lightPollution.label} · {lightPollution.confidence === 'curated-site' ? 'curated' : 'estimated'}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {!hasPremium && (
-              <p className="mobile-empty-hint">Sky Pass unlocks unlimited light-pollution comparison and lower-pollution trip routes.</p>
-            )}
-          </section>
           <SkyEventBrowser events={events} onSelect={setSelected} statusForEvent={statusForEvent} />
 
           <section className="mobile-card">

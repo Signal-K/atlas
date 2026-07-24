@@ -458,17 +458,28 @@ export function MobileShell({
           </div>
         ) : (
           <>
-            {tab === 'hub' && <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} />}
-            {tab === 'events' && <EventsView city={currentLocation} onLogAttempt={logAttempt} onSavedForLater={() => signupWall.promptAfterSave('favourite')} />}
-            {tab === 'calendar' && (
+            {/* Every tab stays mounted and is only hidden via CSS -- conditionally
+                mounting/unmounting on tab switch was re-running each view's data
+                load (pullSkyEvents, tonight's astronomy-engine calc, weather
+                fetch) from scratch every time, producing a loading-state flash
+                and layout jump each time you returned to a tab. */}
+            <div hidden={tab !== 'hub'}>
+              <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} />
+            </div>
+            <div hidden={tab !== 'events'}>
+              <EventsView city={currentLocation} onLogAttempt={logAttempt} onSavedForLater={() => signupWall.promptAfterSave('favourite')} />
+            </div>
+            <div hidden={tab !== 'calendar'}>
               <PlanView
                 city={currentLocation}
                 onOpenEvents={() => goToTab('events')}
                 onLogAttempt={logAttempt}
                 onSavedForLater={() => signupWall.promptAfterSave('favourite')}
               />
-            )}
-            {tab === 'journal' && <JournalView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />}
+            </div>
+            <div hidden={tab !== 'journal'}>
+              <JournalView draft={observationDraft} onDraftConsumed={() => setObservationDraft(null)} />
+            </div>
           </>
         )}
       </div>

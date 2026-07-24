@@ -1,4 +1,4 @@
-import { fetchViewingAdvisory } from './weather'
+import { fetchViewingForecast, localDateKey } from './weather'
 import { trackEvent } from './analytics'
 import { pb } from './pocketbase'
 import { getPushSubscription, isPushSupported, subscribeToPush } from './push'
@@ -295,8 +295,8 @@ async function currentConditionForReminder(reminder: GetReadyReminder): Promise<
 
   if (reminder.lat != null && reminder.lon != null) {
     try {
-      const days = await fetchViewingAdvisory(reminder.lat, reminder.lon, 7)
-      const day = days.find((item) => item.date === reminder.startsAt.slice(0, 10))
+      const forecast = await fetchViewingForecast(reminder.lat, reminder.lon, 7)
+      const day = forecast.days.find((item) => item.date === localDateKey(reminder.startsAt, forecast.timeZone))
       if (day) {
         cloudCoverPct = day.cloudCoverPct
         precipitationChancePct = day.precipitationChancePct

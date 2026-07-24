@@ -43,26 +43,19 @@ function localNightSkyFallbackEvents(now = new Date()): SkyEvent[] {
       description: 'Scorpius anchors the southern winter sky and is a strong naked-eye and wide-field target from Melbourne.',
       startsAt: evening,
     },
-    {
-      id: 'local-earthsky-visible-planets',
-      target: 'visible_planets',
-      title: 'Visible planets this month',
-      description: 'EarthSky maintains a monthly guide to Mercury, Venus, Mars, Jupiter, and Saturn visibility.',
-      startsAt: evening,
-    },
   ]
 
   return items.map((item) => ({
     id: `${item.id}-${item.startsAt.toISOString().slice(0, 10)}`,
-    kind: item.id.includes('earthsky') ? 'night_sky_guide' : 'local_night_sky',
+    kind: 'local_night_sky',
     target: item.target,
     title: item.title,
     description: item.description,
     content: item.description,
     startsAt: item.startsAt.toISOString(),
     endsAt: new Date(item.startsAt.getTime() + 2 * 3_600_000).toISOString(),
-    latitude: item.id.includes('earthsky') ? undefined : MELBOURNE.lat,
-    longitude: item.id.includes('earthsky') ? undefined : MELBOURNE.lon,
+    latitude: MELBOURNE.lat,
+    longitude: MELBOURNE.lon,
     updatedAt,
   }))
 }

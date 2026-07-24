@@ -59,6 +59,16 @@ export async function fetchViewingAdvisory(lat: number, lon: number, days = 7): 
   return (await fetchViewingForecast(lat, lon, days)).days
 }
 
+// Event `startsAt` values are stored as UTC ISO strings (see sync.ts), while
+// DailyViewingAdvisory#date is a local calendar date for the forecast's
+// location (Open-Meteo's `timezone=auto`). Slicing the UTC string directly
+// silently drifts the match a day off whenever local time and UTC land on
+// different calendar dates -- which is most evenings, in most timezones.
+export function localDateKey(isoString: string, timeZone?: string): string {
+  if (!timeZone) return isoString.slice(0, 10)
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(isoString))
+}
+
 // STS-319: when tonight is cloudy, the plan screen's weather section offers
 // the nearest better night instead of just saying "skip" — the first
 // upcoming day (today excluded) that isn't fully clouded, or, failing that,

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { registerWidget } from './registry'
-import { fetchViewingAdvisory, type DailyViewingAdvisory } from '../lib/weather'
+import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '../lib/weather'
 import { getUpcomingEvents } from '../lib/sync'
 import { getWatchlist, matchesWatchlist } from '../lib/watchlist'
 import { useLocationBrowse } from '../lib/locationBrowseContext'
+import { useAuth } from '../lib/auth'
+import { forecastLookaheadDays } from '../lib/entitlementLimits'
 
 const QUALITY_LABEL: Record<DailyViewingAdvisory['quality'], string> = {
   clear: 'Clear',
@@ -13,6 +15,8 @@ const QUALITY_LABEL: Record<DailyViewingAdvisory['quality'], string> = {
 
 function WeatherWidget() {
   const { city } = useLocationBrowse()
+  const { user } = useAuth()
+  const forecastDays = forecastLookaheadDays(Boolean(user?.entitled))
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[] | null>(null)
   const [error, setError] = useState(false)
   const [watchedEventsByDate, setWatchedEventsByDate] = useState<Map<string, string[]>>(new Map())
@@ -22,32 +26,34 @@ function WeatherWidget() {
     setAdvisory(null)
     setError(false)
 
-    fetchViewingAdvisory(city.lat, city.lon)
-      .then((result) => {
-        if (!cancelled) setAdvisory(result)
-      })
-      .catch(() => {
-        if (!cancelled) setError(true)
-      })
-
-    async function loadWatchedEvents() {
+    async function loadWatchedEvents(timeZone: string | undefined) {
       const [watchlist, upcoming] = await Promise.all([getWatchlist(), getUpcomingEvents(200)])
       const byDate = new Map<string, string[]>()
       for (const event of upcoming) {
         if (!matchesWatchlist(event, watchlist)) continue
-        const date = event.startsAt.slice(0, 10)
+        const date = localDateKey(event.startsAt, timeZone)
         const titles = byDate.get(date) ?? []
         titles.push(event.title)
         byDate.set(date, titles)
       }
       if (!cancelled) setWatchedEventsByDate(byDate)
     }
-    loadWatchedEvents()
+
+    fetchViewingForecast(city.lat, city.lon, forecastDays)
+      .then((forecast) => {
+        if (cancelled) return
+        const timeZone = city.timeZone ?? forecast.timeZone
+        setAdvisory(forecast.days)
+        loadWatchedEvents(timeZone)
+      })
+      .catch(() => {
+        if (!cancelled) setError(true)
+      })
 
     return () => {
       cancelled = true
     }
-  }, [city])
+  }, [city, forecastDays])
 
   if (error) return <p>Couldn&apos;t reach the weather forecast — try again once you&apos;re back online.</p>
   if (advisory === null) return <p>Loading&hellip;</p>
@@ -57,6 +63,7 @@ function WeatherWidget() {
       <p className="scrapbook-hint">
         Cloud-cover forecast for <strong>{city.name}</strong>, from Open-Meteo. Days lining up with something on your
         watchlist are called out below.
+        {!user?.entitled && <> Sky Pass unlocks the full forecast beyond the next {forecastDays} days.</>}
       </p>
       <ul className="weather-strip">
         {advisory.map((day) => {

@@ -3,7 +3,7 @@ import { EVENT_CATEGORIES } from '../../lib/eventCategories'
 import { getPreferredEventTypes, hasCompletedEventPreferences, savePreferredEventTypes } from '../../lib/eventPreferences'
 import { trackEvent } from '../../lib/analytics'
 
-const OPTIONS = EVENT_CATEGORIES.filter((category) => category.id !== 'sky-guides')
+const OPTIONS = EVENT_CATEGORIES.filter((category) => category.id !== 'guides')
 
 export function EventPreferencePrompt({ onSaved }: { onSaved: (kinds: string[]) => void }) {
   const [selected, setSelected] = useState<string[]>([])
