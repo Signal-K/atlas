@@ -177,7 +177,8 @@ export function SettingsView({
             <p className="settings-help">
               Currently <strong>{currentLocation.name}</strong> ({SOURCE_LABEL[currentLocation.source]}). Your location is
               only stored on this device — we don't see it, and it's only ever sent from your own browser directly to
-              the weather/astronomy services used to build tonight's plan.
+              the weather/astronomy services used to build tonight's plan, and (when using your device's location) a
+              reverse-geocoding lookup used only to show its place name.
             </p>
           </div>
           <div className="settings-choice settings-location-choice">
