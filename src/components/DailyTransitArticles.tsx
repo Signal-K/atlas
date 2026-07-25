@@ -1,56 +1,57 @@
 import { useEffect, useState } from 'react'
-import { getEventsInRange, pullSkyEvents } from '../lib/sync'
-import { GUIDE_KIND_IDS } from '../lib/eventCategories'
-import { KIND_LABELS } from '../widgets/EventRow'
-import type { SkyEvent } from '../lib/db'
+import { dailyTransitArticleUrl, DAILY_TRANSIT_SITE_URL, fetchDailyTransitArticles, type DailyTransitArticle } from '../lib/dailyTransit'
+import { trackEvent } from '../lib/analytics'
 
 // "Ability to see the Daily Transit articles from the Atlas app" (clarified
-// from the notebook notes). Guide-kind events (comet tracker, night-sky
-// guides, local night-sky roundups) are evergreen editorial content, not
-// dated events -- see eventCategories.ts's GUIDE_KIND_IDS comment. They read
-// badly inside a day-by-day calendar, so this renders them as a standalone
-// article list instead.
-const WINDOW_DAYS_PAST = 14
-const WINDOW_DAYS_FUTURE = 270
-
+// by Liam: TDT / thedailytransit.com, part of the signal-k/saily repo --
+// a real sibling product, not anything generated inside Atlas). Shows the
+// latest published articles with a link out to the full read on
+// thedailytransit.com, rather than duplicating its CMS/markdown rendering
+// here.
 export function DailyTransitArticles() {
-  const [articles, setArticles] = useState<SkyEvent[] | null>(null)
+  const [articles, setArticles] = useState<DailyTransitArticle[] | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
-      await pullSkyEvents()
-      const start = new Date(Date.now() - WINDOW_DAYS_PAST * 86_400_000)
-      const end = new Date(Date.now() + WINDOW_DAYS_FUTURE * 86_400_000)
-      const events = await getEventsInRange(start, end)
-      const guides = events
-        .filter((event) => GUIDE_KIND_IDS.has(event.kind))
-        .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
-      if (!cancelled) setArticles(guides)
-    }
-    load()
+    fetchDailyTransitArticles(5).then((result) => {
+      if (!cancelled) setArticles(result)
+    })
     return () => {
       cancelled = true
     }
   }, [])
 
   if (articles === null) return <p>Loading&hellip;</p>
-  if (articles.length === 0) return <p className="scrapbook-hint">No Daily Transit guides available right now.</p>
+  if (articles.length === 0) {
+    return (
+      <p className="scrapbook-hint">
+        No Daily Transit articles published yet. <a href={DAILY_TRANSIT_SITE_URL} target="_blank" rel="noreferrer">Visit thedailytransit.com</a>
+      </p>
+    )
+  }
 
   return (
     <ul className="dt-article-list">
       {articles.map((article) => (
         <li key={article.id} className="dt-article-card">
-          {article.imageUrl && (
+          {article.heroImage && (
             <figure className="dt-article-image">
-              <img src={article.imageUrl} alt={article.title} loading="lazy" />
-              {article.imageCredit && <figcaption>{article.imageCredit}</figcaption>}
+              <img src={article.heroImage} alt={article.title} loading="lazy" />
             </figure>
           )}
           <div className="dt-article-body">
-            <span className="dt-article-kicker">{KIND_LABELS[article.kind] ?? 'Guide'}</span>
+            <span className="dt-article-kicker">The Daily Transit</span>
             <h3 className="dt-article-title">{article.title}</h3>
-            <p className="dt-article-text">{article.content ?? article.description}</p>
+            <p className="dt-article-text">{article.summary}</p>
+            <a
+              className="dt-article-link"
+              href={dailyTransitArticleUrl(article.slug)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => trackEvent('Daily Transit article opened', { slug: article.slug })}
+            >
+              Read on thedailytransit.com →
+            </a>
           </div>
         </li>
       ))}
