@@ -37,10 +37,12 @@ items in Liam's project management workspace.**
 6. After syncing, it's fine to leave these files in place (they're the
    source record of what was scoped/shipped in this session) — don't delete
    them as part of the sync.
-7. `story-daily-transit-articles.md` and `story-dashboard-widget-limits.md`
-   both carry an explicit "if this isn't what was meant" caveat — flag
-   those two in Desk (e.g. a "needs confirmation" tag) since they resolve
-   notebook fragments that were only partially or never confirmed by Liam.
+7. `story-dashboard-widget-limits.md` carries an explicit "if this isn't
+   what was meant" caveat — flag it in Desk (e.g. a "needs confirmation"
+   tag) since it resolves a notebook fragment that was never confirmed by
+   Liam. `story-daily-transit-articles.md` was originally in this bucket
+   too but is now a confirmed, real integration — see its "Correction"
+   section for what changed.
 
 ## Source material
 

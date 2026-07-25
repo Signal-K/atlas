@@ -9,7 +9,6 @@ import { eventLookaheadDays } from '../lib/entitlementLimits'
 import type { SkyEvent } from '../lib/db'
 
 const ALL_CATEGORY_ID = 'all'
-const GUIDES_CATEGORY_ID = 'guides'
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1)
@@ -135,10 +134,12 @@ export function CalendarView() {
     [filteredEvents, selectedDay],
   )
 
-  const isGuidesView = categoryId === GUIDES_CATEGORY_ID
-
   return (
     <section className="widget-section">
+      <h2 className="dt-panel-heading">The Daily Transit</h2>
+      <p className="scrapbook-hint">The latest from thedailytransit.com — Signal-K's citizen-science news site.</p>
+      <DailyTransitArticles />
+
       <div className="calendar-category-filter">
         <button
           type="button"
@@ -160,113 +161,97 @@ export function CalendarView() {
         ))}
       </div>
 
-      {isGuidesView ? (
-        <>
-          <h2>Daily Transit guides</h2>
-          <p className="scrapbook-hint">Reference guides and trackers — not tied to a specific date, updated as conditions change.</p>
-          <DailyTransitArticles />
-        </>
+      <h2 className="calendar-coming-up-heading">Coming up</h2>
+      {upcomingEvents === null ? (
+        <p>Loading&hellip;</p>
+      ) : upcomingGroups.length === 0 ? (
+        <p className="scrapbook-hint">Nothing in the next {Math.min(lookaheadDays, 14)} days for this filter.</p>
+      ) : (
+        <div className="calendar-upcoming-groups">
+          {upcomingGroups.map((group) => (
+            <div className="calendar-upcoming-group" key={group.label}>
+              <h3 className="calendar-upcoming-group-heading">{group.label}</h3>
+              <ul className="row-list">
+                {group.events.map((event) => (
+                  <EventRow
+                    key={`upcoming-${event.id}`}
+                    event={event}
+                    expanded={expandedId === event.id}
+                    onToggle={() => setExpandedId((current) => (current === event.id ? null : event.id))}
+                    watching={matchesWatchlist(event, watchlist)}
+                    watchCount={getWatchCountForEvent(event, watchCounts)}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h2 className="calendar-browse-heading">Browse by month</h2>
+      {events === null ? (
+        <p>Loading&hellip;</p>
       ) : (
         <>
-          <h2 className="calendar-coming-up-heading">Coming up</h2>
-          {upcomingEvents === null ? (
-            <p>Loading&hellip;</p>
-          ) : upcomingGroups.length === 0 ? (
-            <p className="scrapbook-hint">Nothing in the next {Math.min(lookaheadDays, 14)} days for this filter.</p>
-          ) : (
-            <div className="calendar-upcoming-groups">
-              {upcomingGroups.map((group) => (
-                <div className="calendar-upcoming-group" key={group.label}>
-                  <h3 className="calendar-upcoming-group-heading">{group.label}</h3>
-                  <ul className="row-list">
-                    {group.events.map((event) => (
-                      <EventRow
-                        key={`upcoming-${event.id}`}
-                        event={event}
-                        expanded={expandedId === event.id}
-                        onToggle={() => setExpandedId((current) => (current === event.id ? null : event.id))}
-                        watching={matchesWatchlist(event, watchlist)}
-                        watchCount={getWatchCountForEvent(event, watchCounts)}
-                      />
-                    ))}
-                  </ul>
-                </div>
+          <div className="calendar-header">
+            <button type="button" onClick={() => setMonthStart((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>
+              &larr;
+            </button>
+            <h3>{monthStart.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h3>
+            <button type="button" onClick={() => setMonthStart((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>
+              &rarr;
+            </button>
+          </div>
+          <table className="calendar-grid">
+            <thead>
+              <tr>
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, i) => (
+                  <th key={i}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {weeks.map((row, i) => (
+                <tr key={i}>
+                  {row.map((day, j) => {
+                    const dayEvents = day ? (eventsByDay.get(day.getDate()) ?? []) : []
+                    const hasWatched = dayEvents.some((event) => matchesWatchlist(event, watchlist))
+                    return (
+                      <td key={j}>
+                        {day && (
+                          <button
+                            type="button"
+                            className={`calendar-day${isSameDay(day, selectedDay) ? ' is-selected' : ''}${isSameDay(day, new Date()) ? ' is-today' : ''}`}
+                            onClick={() => setSelectedDay(day)}
+                          >
+                            <span>{day.getDate()}</span>
+                            {dayEvents.length > 0 && <span className={`calendar-dot${hasWatched ? ' is-watched' : ''}`} />}
+                          </button>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
               ))}
-            </div>
-          )}
+            </tbody>
+          </table>
 
-          <h2 className="calendar-browse-heading">Browse by month</h2>
-          {events === null ? (
-            <p>Loading&hellip;</p>
+          <h3 className="calendar-selected-heading">{selectedDay.toLocaleDateString(undefined, { dateStyle: 'full' })}</h3>
+          {selectedDayEvents.length === 0 ? (
+            <p>Nothing scheduled this day.</p>
           ) : (
-            <>
-              <div className="calendar-header">
-                <button
-                  type="button"
-                  onClick={() => setMonthStart((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
-                >
-                  &larr;
-                </button>
-                <h3>{monthStart.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h3>
-                <button
-                  type="button"
-                  onClick={() => setMonthStart((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
-                >
-                  &rarr;
-                </button>
-              </div>
-              <table className="calendar-grid">
-                <thead>
-                  <tr>
-                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, i) => (
-                      <th key={i}>{label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {weeks.map((row, i) => (
-                    <tr key={i}>
-                      {row.map((day, j) => {
-                        const dayEvents = day ? (eventsByDay.get(day.getDate()) ?? []) : []
-                        const hasWatched = dayEvents.some((event) => matchesWatchlist(event, watchlist))
-                        return (
-                          <td key={j}>
-                            {day && (
-                              <button
-                                type="button"
-                                className={`calendar-day${isSameDay(day, selectedDay) ? ' is-selected' : ''}${isSameDay(day, new Date()) ? ' is-today' : ''}`}
-                                onClick={() => setSelectedDay(day)}
-                              >
-                                <span>{day.getDate()}</span>
-                                {dayEvents.length > 0 && <span className={`calendar-dot${hasWatched ? ' is-watched' : ''}`} />}
-                              </button>
-                            )}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <h3 className="calendar-selected-heading">{selectedDay.toLocaleDateString(undefined, { dateStyle: 'full' })}</h3>
-              {selectedDayEvents.length === 0 ? (
-                <p>Nothing scheduled this day.</p>
-              ) : (
-                <ul className="row-list">
-                  {selectedDayEvents.map((event) => (
-                    <EventRow
-                      key={event.id}
-                      event={event}
-                      expanded={expandedId === event.id}
-                      onToggle={() => setExpandedId((current) => (current === event.id ? null : event.id))}
-                      watching={matchesWatchlist(event, watchlist)}
-                      watchCount={getWatchCountForEvent(event, watchCounts)}
-                    />
-                  ))}
-                </ul>
-              )}
-            </>
+            <ul className="row-list">
+              {selectedDayEvents.map((event) => (
+                <EventRow
+                  key={event.id}
+                  event={event}
+                  expanded={expandedId === event.id}
+                  onToggle={() => setExpandedId((current) => (current === event.id ? null : event.id))}
+                  watching={matchesWatchlist(event, watchlist)}
+                  watchCount={getWatchCountForEvent(event, watchCounts)}
+                />
+              ))}
+            </ul>
           )}
         </>
       )}

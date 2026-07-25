@@ -21,6 +21,9 @@ about how a user finds and understands what they can see and when.
 
 ## Status
 
-Category filter chips, a "Coming up" grouped-by-timing list, and pulling
-evergreen guide content out into its own article view all shipped this
-session. See the child stories for implementation detail.
+Category filter chips, a "Coming up" grouped-by-timing list, and a real
+integration with thedailytransit.com's published articles all shipped
+this session. See the child stories for implementation detail —
+story-daily-transit-articles in particular was corrected after an
+earlier guess (conflating it with Atlas's own "Guides" event content)
+turned out to be wrong.
