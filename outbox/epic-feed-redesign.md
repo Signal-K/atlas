@@ -2,7 +2,7 @@
 id: epic-feed-redesign
 type: epic
 title: Tonight/Feed redesign
-status: in-progress
+status: done
 priority: high
 source: "Notebook page 2, 'Corrected Atlas User Flow'"
 ---
@@ -32,7 +32,8 @@ personal daily briefing rather than a raw data dump:
 
 ## Status
 
-Greeting header, today highlights, and the week conditions strip shipped
-in this session as `WeekConditionsStrip` (`src/components/WeekConditionsStrip.tsx`),
-wired into `TonightView`. Interests summary and sky map simplification are
-still backlog — see their individual story files.
+All five child stories are done. Greeting, highlights, interests summary,
+and the week conditions strip live in `WeekConditionsStrip`
+(`src/components/WeekConditionsStrip.tsx`), wired into `TonightView`. The
+simplified sky map's tap-to-reveal cloud coverage lives directly in
+`TonightView`'s target detail section.

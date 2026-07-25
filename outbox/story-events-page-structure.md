@@ -3,7 +3,7 @@ id: story-events-page-structure
 type: story
 epic: epic-events-overhaul
 title: "Events page: 100% clear structure pass"
-status: backlog
+status: done
 priority: medium
 ---
 
@@ -16,18 +16,22 @@ it, how it's organized, and how/when I can see each thing
 
 ## Acceptance criteria
 
-- [ ] Product/design pass on `CalendarView` (desktop) and
-      `SkyEventBrowser` (mobile) to simplify and clarify layout — this is
-      a design decision, not just a code change, and needs direction
-      before implementation.
-- [ ] Explicit language explaining how/when a user can see each event
-      (e.g. visibility windows, direction, timing) directly in the list,
-      not only after opening a detail subpage.
+- [x] `CalendarView` now leads with a "Coming up" list grouped into
+      Today / Tomorrow / This week / Later, so timing is explicit before
+      a user has to click into a specific day.
+- [x] The old "click a day to see events" calendar grid is kept, but moved
+      below into its own labeled "Browse by month" section — its role
+      (browsing further out or into the past) is now separated from
+      "what's coming up soon."
+- [x] Guide-kind content (comet tracker, night-sky guides — evergreen, not
+      dated) no longer renders inside the day-by-day calendar at all; it's
+      its own article list (see story-daily-transit-articles).
 
-## Status
+## Implementation
 
-This is the one open item from the notes that's explicitly a design
-decision ("basically, things need to be clearer/explained... how they can
-see it, and when") rather than a mechanical implementation task. Scoping
-it further needs a wireframe/direction from Liam before an implementation
-story can be written with concrete acceptance criteria.
+`src/views/CalendarView.tsx`: added a second data fetch
+(`upcomingEvents`, via `getEventsInRange`) independent of the
+month-browsing fetch, grouped by `groupUpcoming()`'s relative-day buckets,
+rendered above the existing calendar grid. Selecting the "Guides" category
+chip now swaps the whole view for `DailyTransitArticles` instead of
+filtering the day grid.

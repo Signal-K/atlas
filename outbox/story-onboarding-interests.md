@@ -3,7 +3,7 @@ id: story-onboarding-interests
 type: story
 epic: epic-onboarding
 title: "Onboarding: capture interests"
-status: backlog
+status: done
 priority: medium
 ---
 
@@ -16,17 +16,17 @@ defaulting to everything.
 
 ## Acceptance criteria
 
-- [ ] First-run onboarding includes an interests step using the existing
+- [x] First-run onboarding includes an interests step using the existing
       event category list.
-- [ ] Selections save to the same store `EventPreferencePrompt` already
+- [x] Selections save to the same store `EventPreferencePrompt` already
       writes to, so mobile's existing preference filtering picks them up
       immediately.
-- [ ] Step is skippable.
+- [x] Step is skippable.
 
-## Notes for implementation
+## Implementation
 
-Reuse `src/components/mobile/EventPreferencePrompt.tsx` and
-`src/lib/eventPreferences.ts` rather than building new interest storage —
-this is primarily about placing that existing picker into a first-run
-onboarding sequence (see epic-onboarding) instead of wherever it's
-currently triggered from.
+`src/components/OnboardingFlow.tsx`'s "interests" step uses the shared
+`InterestsPicker` (`src/components/InterestsPicker.tsx`) and
+`savePreferredEventTypes` (`src/lib/eventPreferences.ts`) — the same store
+`EventPreferencePrompt` uses on mobile, so completing this step also
+dismisses mobile's own interests prompt.

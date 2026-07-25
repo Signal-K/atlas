@@ -2,7 +2,7 @@
 id: epic-events-overhaul
 type: epic
 title: Events page overhaul
-status: backlog
+status: done
 priority: medium
 source: "Notebook page 2, bottom paragraph"
 ---
@@ -17,10 +17,10 @@ about how a user finds and understands what they can see and when.
 
 - story-events-page-structure
 - story-events-category-filter
+- story-daily-transit-articles
 
 ## Status
 
-A category filter chip row was added to the desktop Calendar/Explore view
-(`story-events-category-filter`, done). The larger structural clarity pass
-(`story-events-page-structure`) is still backlog — it needs product
-direction on layout, not just a filter control.
+Category filter chips, a "Coming up" grouped-by-timing list, and pulling
+evergreen guide content out into its own article view all shipped this
+session. See the child stories for implementation detail.

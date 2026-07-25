@@ -3,7 +3,7 @@ id: story-feed-interests-summary
 type: story
 epic: epic-feed-redesign
 title: Interests summary on feed
-status: backlog
+status: done
 priority: low
 ---
 
@@ -16,14 +16,15 @@ toward, without going into Settings.
 
 ## Acceptance criteria
 
-- [ ] Feed shows a compact "Your interests: X, Y, Z" row sourced from the
+- [x] Feed shows a compact "Your interests: X, Y, Z" row sourced from the
       user's saved event preferences.
-- [ ] Row links/opens the interests editor for quick changes.
-- [ ] Hidden (or shows a prompt to set interests) when none are saved yet.
+- [x] Row links/opens the interests editor for quick changes.
+- [x] Shows a "Set interests" prompt when none are saved yet.
 
-## Notes for implementation
+## Implementation
 
-`src/lib/eventPreferences.ts` and `src/components/mobile/EventPreferencePrompt.tsx`
-already store/collect interest-like category preferences on mobile — this
-story is mostly about surfacing that existing data on the feed header
-(`WeekConditionsStrip`) rather than building new storage.
+New shared `InterestsPicker` component (`src/components/InterestsPicker.tsx`)
+reads/writes the same store mobile's `EventPreferencePrompt` already used
+(`src/lib/eventPreferences.ts` / `favourites.ts`), so a choice made on
+either surface shows up on the other. `WeekConditionsStrip` renders an
+`InterestsSummary` (inline edit, no navigation needed) using it.

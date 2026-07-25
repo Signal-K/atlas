@@ -10,6 +10,8 @@ import { localDateKey } from '../lib/weather'
 import { diversifyEvents } from '../lib/eventFilters'
 import { trackEvent } from '../lib/analytics'
 import { LocationSearchInput } from './LocationSearchInput'
+import { InterestsPicker, categoryLabelsForKinds } from './InterestsPicker'
+import { getPreferredEventTypes, savePreferredEventTypes } from '../lib/eventPreferences'
 import type { City } from '../lib/cities'
 import type { SkyEvent } from '../lib/db'
 import type { TonightPlan } from '../lib/tonightTargets'
@@ -85,6 +87,63 @@ function NameEditor() {
       />
       <button type="submit">Save</button>
     </form>
+  )
+}
+
+function InterestsSummary() {
+  const [kinds, setKinds] = useState<string[] | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<string[]>([])
+
+  useEffect(() => {
+    getPreferredEventTypes().then((result) => {
+      setKinds(result)
+      setDraft(result)
+    })
+  }, [])
+
+  function toggle(categoryKinds: string[]) {
+    setDraft((current) => {
+      const active = categoryKinds.every((kind) => current.includes(kind))
+      return active ? current.filter((kind) => !categoryKinds.includes(kind)) : [...new Set([...current, ...categoryKinds])]
+    })
+  }
+
+  async function save() {
+    await savePreferredEventTypes(draft)
+    setKinds(draft)
+    setEditing(false)
+    trackEvent('Set event preferences', { kinds: draft, source: 'feed' })
+  }
+
+  if (kinds === null) return null
+
+  const labels = categoryLabelsForKinds(kinds)
+
+  if (!editing) {
+    return (
+      <p className="feed-interests">
+        {labels.length > 0 ? (
+          <>
+            Your interests: <strong>{labels.join(', ')}</strong>.
+          </>
+        ) : (
+          "You haven't set any interests yet."
+        )}{' '}
+        <button type="button" className="feed-interests-edit" onClick={() => setEditing(true)}>
+          {labels.length > 0 ? 'Edit' : 'Set interests'}
+        </button>
+      </p>
+    )
+  }
+
+  return (
+    <div className="feed-interests-editor">
+      <InterestsPicker selected={draft} onToggleCategory={toggle} />
+      <button type="button" className="feed-interests-save" onClick={save} disabled={draft.length === 0}>
+        Save
+      </button>
+    </div>
   )
 }
 
@@ -211,6 +270,8 @@ export function WeekConditionsStrip({
           You can see: <strong>{highlights.join(', ')}</strong> tonight.
         </p>
       )}
+
+      <InterestsSummary />
 
       {showNearbyAlert && nearbyDarkerSite && hereLightPollution && (
         <p className="feed-nearby-alert">

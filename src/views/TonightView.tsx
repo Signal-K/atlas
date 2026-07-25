@@ -90,6 +90,9 @@ export function TonightView({ city, locationStatus, onLogAttempt, setManualLocat
   const [error, setError] = useState(false)
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null)
   const [expandedPreview, setExpandedPreview] = useState<string | null>(null)
+  // Sky map stays simple (direction + altitude only) by default; cloud
+  // coverage is an opt-in layer revealed on tap, per the notes.
+  const [showCloudOverlay, setShowCloudOverlay] = useState(false)
   const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
   const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
   const [showTwilightRecipe, setShowTwilightRecipe] = useState(false)
@@ -165,6 +168,7 @@ export function TonightView({ city, locationStatus, onLogAttempt, setManualLocat
     recordLocalTargetTap(target, 'tonight', city.name)
     trackEvent('Tapped visible target', { targetId: target.eventId, title: target.title, kind: target.kind, source: 'tonight' })
     setExpandedPreview((current) => (current === target.eventId ? null : target.eventId))
+    setShowCloudOverlay(false)
     if (!equipment && shouldAskForEquipment()) setShowEquipmentPrompt(true)
   }
 
@@ -349,6 +353,19 @@ export function TonightView({ city, locationStatus, onLogAttempt, setManualLocat
                               )}
                             </p>
                           </div>
+                          {plan.todayAdvisory && (
+                            <button
+                              type="button"
+                              className="tonight-cloud-toggle"
+                              onClick={() => setShowCloudOverlay((shown) => !shown)}
+                              aria-expanded={showCloudOverlay}
+                            >
+                              {showCloudOverlay ? 'Hide cloud coverage' : 'Show cloud coverage'}
+                            </button>
+                          )}
+                          {showCloudOverlay && plan.todayAdvisory && (
+                            <p className="tonight-cloud-overlay">{formatWeatherSummary(plan.todayAdvisory)}</p>
+                          )}
                         </div>
                       )}
                       {recipeKey && (

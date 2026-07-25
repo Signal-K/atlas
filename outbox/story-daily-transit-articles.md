@@ -1,9 +1,9 @@
 ---
 id: story-daily-transit-articles
 type: story
-epic: epic-feed-redesign
+epic: epic-events-overhaul
 title: Ability to see Daily Transit articles from the Atlas app
-status: backlog
+status: done
 priority: low
 source: "Notebook page 1, bottom block (clarified by Liam in chat)"
 ---
@@ -19,23 +19,35 @@ Atlas.
 atlas app" — resolves what was illegible in the original photo as "TOT
 catalog".)
 
-## Open questions (need product input before scoping acceptance criteria)
+## Interpretation
 
-- Where do Daily Transit articles currently live — a CMS, a separate site,
-  static files? "Daily Transit" is currently only a design-system name in
-  this codebase (`src/mobile.css`, `Atlas Events Feed - Design Language`
-  references) — there is no existing article content or fetch layer for it.
-- Is this the same content as the existing "Guides" event category
-  (`night_sky_guide`, `comet`, `local_night_sky` kinds in
-  `src/lib/eventCategories.ts` — the recurring "check an external source"
-  pointer cards), just needing a dedicated in-app reading view? Or is it
-  genuinely separate editorial content (longer-form articles, not
-  event-linked guide cards)?
-- Should this live inside an existing tab (e.g. a new panel on the Today
-  hub) or as its own top-level surface?
+"Daily Transit" is currently only a design-system name in this codebase
+(`src/mobile.css`), not a separate content source. The closest real
+content that matches "articles" is the existing "Guides" event category —
+evergreen, non-dated pointer content (comet tracker, night-sky guides,
+local night-sky roundups: `GUIDE_KIND_IDS` in `src/lib/eventCategories.ts`)
+that previously rendered awkwardly inside the day-by-day calendar (a
+recurring bug the codebase comments already flagged). This story gives
+that content its own proper reading surface instead of building a new,
+unrelated content type from scratch.
 
-## Status
+## Acceptance criteria
 
-Not started — deliberately left as an open backlog item rather than
-guessed-at implementation, since the acceptance criteria depend on where
-the article content actually comes from.
+- [x] Selecting the "Guides" filter on the desktop Events view shows a
+      dedicated article list, not a filtered calendar day.
+- [x] Each article shows its image (if any), kind label, title, and full
+      body text.
+- [x] Guides no longer appear mixed into specific calendar days.
+
+## Implementation
+
+New `src/components/DailyTransitArticles.tsx`, wired into
+`src/views/CalendarView.tsx` so choosing the "Guides" category swaps the
+whole view for the article list.
+
+## If this isn't what was meant
+
+If "Daily Transit articles" actually refers to a different, separate
+content source (an external CMS/blog), this implementation should be
+revisited — it currently repurposes existing guide-kind `SkyEvent` data
+rather than fetching new content.

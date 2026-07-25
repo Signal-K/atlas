@@ -2,7 +2,7 @@
 id: epic-onboarding
 type: epic
 title: Onboarding overhaul
-status: in-progress
+status: done
 priority: medium
 source: "Notebook page 1, 'Onboarding overhaul' section"
 ---
@@ -25,10 +25,9 @@ New/returning users should be walked through:
 
 ## Status
 
-Location capture already existed via the location-permission/manual-city
-flow. Display name capture shipped this session as a lightweight
-localStorage preference surfaced in the new feed greeting
-(`src/lib/displayName.ts`). Interests and notification preferences are not
-yet part of a first-run onboarding sequence — `EventPreferencePrompt` and
-`PushSettings` exist as standalone components but aren't stitched into a
-single onboarding flow yet.
+All four steps now ship as a single first-run `OnboardingFlow`
+(`src/components/OnboardingFlow.tsx`): name → interests → location →
+notifications, each skippable, each starting pre-filled from whatever's
+already known (existing location, existing interests from mobile, etc).
+Triggered once per device on `App.tsx` right after a user enters the app,
+gated by `hasCompletedOnboardingFlow()`.

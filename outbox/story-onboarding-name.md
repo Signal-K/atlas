@@ -21,10 +21,11 @@ priority: medium
 
 ## Implementation / next step
 
-Shipped this session as a local-only preference
-(`src/lib/displayName.ts`, editable inline from the new feed greeting in
-`WeekConditionsStrip`). It is **not** yet part of a first-run onboarding
-sequence and is **not** synced to the PocketBase user record — it's
-per-device. A proper onboarding flow would want this as a PocketBase
-`users` field (migration needed) captured during sign-up rather than a
-localStorage value.
+Shipped as a local-only preference (`src/lib/displayName.ts`), editable
+inline from the feed greeting (`WeekConditionsStrip`) and now also the
+first step of the new first-run `OnboardingFlow`
+(`src/components/OnboardingFlow.tsx`). It is still **not** synced to the
+PocketBase user record — it's per-device. A future improvement would be a
+PocketBase `users` field (migration needed) captured during sign-up
+instead of a localStorage value, so the name follows the account across
+devices.

@@ -7,9 +7,10 @@ generated_at: 2026-07-25
 # Outbox — sync into Desk
 
 This folder holds epics and stories written up from Liam's handwritten
-"Atlas user flow" notes (2 photographed notebook pages) plus the resulting
-implementation work, done in a Claude Code on the web session against
-`signal-k/atlas` on branch `claude/user-story-implementation-whm03y`.
+"Atlas user flow" notes (2 photographed notebook pages, saved into this
+repo at `docs/notes/`) plus the resulting implementation work, done in a
+Claude Code on the web session against `signal-k/atlas` on branch
+`claude/user-story-implementation-whm03y`.
 
 **Local Claude: when you see this folder after pulling the branch, connect
 to the `desk` MCP server (already configured in `.mcp.json`, pointing at
@@ -25,6 +26,7 @@ items in Liam's project management workspace.**
    filename).
 3. Use the `status` frontmatter field to set the created item's status:
    - `done` — implemented and merged on `claude/user-story-implementation-whm03y`; file the corresponding PR/branch as a reference on creation if your Desk tool records source links.
+   - `done (pre-existing)` — was already implemented before this session; no new code, logged for traceability against the notes.
    - `in-progress` — partially implemented; the body says what's left.
    - `backlog` — not started; still needs design/implementation.
 4. Preserve the `priority` field if Desk supports one; otherwise drop it in
@@ -35,39 +37,51 @@ items in Liam's project management workspace.**
 6. After syncing, it's fine to leave these files in place (they're the
    source record of what was scoped/shipped in this session) — don't delete
    them as part of the sync.
+7. `story-daily-transit-articles.md` and `story-dashboard-widget-limits.md`
+   both carry an explicit "if this isn't what was meant" caveat — flag
+   those two in Desk (e.g. a "needs confirmation" tag) since they resolve
+   notebook fragments that were only partially or never confirmed by Liam.
 
 ## Source material
 
-The two source notebook photos described a "corrected Atlas user flow":
-a redesigned home/feed screen (greeting, today's highlights, a week-ahead
-conditions strip, a simplified sky map) plus a set of free-vs-paid product
-rules (event/forecast lookahead windows, nearby-better-conditions alerts,
-location override, event detail subpages) and an onboarding overhaul
-(name, interests, location, notification preferences).
+The two source notebook photos (`docs/notes/2026-07-atlas-user-flow-notes-1.jpeg`,
+`docs/notes/2026-07-atlas-user-flow-notes-2.jpeg`) described a "corrected
+Atlas user flow": a redesigned home/feed screen (greeting, today's
+highlights, interests, a week-ahead conditions strip, a simplified sky
+map) plus a set of free-vs-paid product rules (event/forecast lookahead
+windows, nearby-better-conditions alerts, per-day premium ratings,
+location override), event detail subpages, an onboarding overhaul (name,
+interests, location, notification preferences), and an events-page
+clarity pass. Two fragments were clarified directly by Liam in chat
+(premium per-day ratings, paid location change, Daily Transit articles);
+one fragment (dashboard widget limits/priority) was never confirmed and
+is resolved to the closest existing feature with a caveat — see
+story-dashboard-widget-limits.
 
 ## Index
 
 | id | type | title | status |
 | --- | --- | --- | --- |
-| epic-feed-redesign | epic | Tonight/Feed redesign | in-progress |
-| epic-premium-tiering | epic | Premium tiering & smart alerts | in-progress |
-| epic-onboarding | epic | Onboarding overhaul | in-progress |
-| epic-events-overhaul | epic | Events page overhaul | backlog |
+| epic-feed-redesign | epic | Tonight/Feed redesign | done |
+| epic-premium-tiering | epic | Premium tiering & smart alerts | done |
+| epic-onboarding | epic | Onboarding overhaul | done |
+| epic-events-overhaul | epic | Events page overhaul | done |
 | story-feed-greeting-header | story | Feed greeting header | done |
 | story-feed-today-highlights | story | "You can see" today highlights | done |
-| story-feed-interests-summary | story | Interests summary on feed | backlog |
+| story-feed-interests-summary | story | Interests summary on feed | done |
 | story-feed-week-conditions-strip | story | Week conditions strip w/ premium cutoff | done |
-| story-feed-simplified-sky-map | story | Simplify default sky map to direction + altitude | backlog |
+| story-feed-simplified-sky-map | story | Simplify default sky map to direction + altitude | done |
+| story-dashboard-widget-limits | story | Dashboard: limit and prioritize what appears | done (pre-existing) |
 | story-free-tier-lookahead-caps | story | Free tier: 10-day events / 3-day forecast caps | done (pre-existing) |
 | story-premium-forecast-window | story | Premium: per-day rating header + extended forecast window | done |
 | story-nearby-better-conditions-alert | story | Paid alert: substantially better conditions nearby | done |
 | story-paid-location-override | story | Paid: change location from the feed | done |
-| story-daily-transit-articles | story | Ability to see Daily Transit articles from the Atlas app | backlog |
 | story-event-detail-subpage | story | Tap an event to open detail/plan/share subpage | done (pre-existing) |
 | story-home-happening-now | story | Home shows what's happening now/upcoming soon | done (pre-existing) |
 | story-onboarding-name | story | Onboarding: capture display name | done |
-| story-onboarding-interests | story | Onboarding: capture interests | backlog |
+| story-onboarding-interests | story | Onboarding: capture interests | done |
 | story-onboarding-location | story | Onboarding: capture location | done (pre-existing) |
-| story-onboarding-notifications | story | Onboarding: capture notification preferences | backlog |
-| story-events-page-structure | story | Events page: 100% clear structure pass | backlog |
+| story-onboarding-notifications | story | Onboarding: capture notification preferences | done |
+| story-events-page-structure | story | Events page: 100% clear structure pass | done |
 | story-events-category-filter | story | Optional category filter at top of events views | done |
+| story-daily-transit-articles | story | Ability to see Daily Transit articles from the Atlas app | done |

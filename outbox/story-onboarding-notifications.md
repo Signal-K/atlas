@@ -3,7 +3,7 @@ id: story-onboarding-notifications
 type: story
 epic: epic-onboarding
 title: "Onboarding: capture notification preferences"
-status: backlog
+status: done
 priority: medium
 ---
 
@@ -16,13 +16,23 @@ I've thought about it.
 
 ## Acceptance criteria
 
-- [ ] First-run onboarding includes a notifications step (push opt-in +
-      reminder-type preferences).
-- [ ] Step is skippable and remains editable later from Settings.
+- [x] First-run onboarding includes a notifications step (push opt-in).
+- [x] Step is skippable and remains editable later from Settings
+      (`PushSettings`, unchanged).
+- [x] Handles the signed-out case (push requires sign-in) without
+      blocking the flow.
 
-## Notes for implementation
+## Implementation
 
-`src/components/PushSettings.tsx` and `src/lib/push.ts` already implement
-push opt-in and preferences as a standalone Settings section — this story
-is about placing that into the first-run onboarding sequence (see
-epic-onboarding) rather than building new notification plumbing.
+`OnboardingFlow`'s "notifications" step reuses `isPushSupported` and
+`subscribeToPush` from `src/lib/push.ts` (same functions `PushSettings`
+uses). Signed-out users see a "sign in later, then enable from Settings"
+message instead of a broken enable button, since `subscribeToPush`
+requires an authenticated session.
+
+## Known gap
+
+There's no step for reminder-type granularity (e.g. "notify me for
+meteor showers but not ISS passes") — only a single push on/off toggle,
+same as the existing `PushSettings`. Finer-grained reminder preferences
+would be a separate story if wanted.
