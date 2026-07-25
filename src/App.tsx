@@ -29,6 +29,7 @@ import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
 import { PaywallGate } from './components/PaywallGate'
 import { FeedbackDock } from './components/FeedbackDock'
 import { InstallPrompt } from './components/InstallPrompt'
+import { OnboardingFlow, hasCompletedOnboardingFlow } from './components/OnboardingFlow'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
@@ -171,6 +172,8 @@ function App() {
   // converting. Signed-in users and anyone who has already entered once
   // (flag persisted below) skip straight past this, same as before.
   const showLanding = routerLocation.pathname === '/' && !user && !alreadyEntered
+  const [onboardingFlowDismissed, setOnboardingFlowDismissed] = useState(() => hasCompletedOnboardingFlow())
+  const showOnboardingFlow = Boolean(alreadyEntered) && !showLanding && !onboardingFlowDismissed
 
   function enterApp() {
     localStorage.setItem(ENTERED_KEY, '1')
@@ -203,6 +206,14 @@ function App() {
         />
         <FeedbackDock />
         <InstallPrompt />
+        {showOnboardingFlow && (
+          <OnboardingFlow
+            city={currentLocation}
+            user={user}
+            setManualLocation={setManualLocation}
+            onDone={() => setOnboardingFlowDismissed(true)}
+          />
+        )}
       </>
     )
   }
@@ -210,6 +221,14 @@ function App() {
   return (
     <>
       <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
+      {showOnboardingFlow && (
+        <OnboardingFlow
+          city={currentLocation}
+          user={user}
+          setManualLocation={setManualLocation}
+          onDone={() => setOnboardingFlowDismissed(true)}
+        />
+      )}
       <div className="app-shell">
         <Sidebar active={view} onSelect={setView} />
         <main className="dashboard">
@@ -233,7 +252,13 @@ function App() {
           </header>
           <hr className="hairline" />
           {view === 'tonight' && (
-            <TonightView key={locationKey} city={currentLocation} locationStatus={location.status} onLogAttempt={logAttempt} />
+            <TonightView
+              key={locationKey}
+              city={currentLocation}
+              locationStatus={location.status}
+              onLogAttempt={logAttempt}
+              setManualLocation={setManualLocation}
+            />
           )}
           {view === 'explore' && (
             <TabbedSection

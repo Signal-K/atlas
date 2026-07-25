@@ -24,7 +24,10 @@ import {
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
+import type { City } from '../lib/cities'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
+import { WeekConditionsStrip } from '../components/WeekConditionsStrip'
 
 const RATING_LABEL: Record<TonightPlan['rating'], string> = {
   great: 'Go outside — great conditions',
@@ -77,18 +80,25 @@ interface TonightViewProps {
   city: CurrentLocation
   locationStatus: LocationStatus
   onLogAttempt: (draft: ObservationDraft) => void
+  // Lets Sky Pass holders change their location straight from the feed
+  // header (WeekConditionsStrip) instead of only via Settings.
+  setManualLocation?: (city: City | null) => void
 }
 
-export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewProps) {
+export function TonightView({ city, locationStatus, onLogAttempt, setManualLocation }: TonightViewProps) {
   const [plan, setPlan] = useState<TonightPlan | null>(null)
   const [error, setError] = useState(false)
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null)
   const [expandedPreview, setExpandedPreview] = useState<string | null>(null)
+  // Sky map stays simple (direction + altitude only) by default; cloud
+  // coverage is an opt-in layer revealed on tap, per the notes.
+  const [showCloudOverlay, setShowCloudOverlay] = useState(false)
   const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
   const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
   const [showTwilightRecipe, setShowTwilightRecipe] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const compass = useDeviceCompass()
+  const { user } = useAuth()
 
   useEffect(() => {
     trackEvent('Viewed Tonight page', { city: city.name })
@@ -158,6 +168,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
     recordLocalTargetTap(target, 'tonight', city.name)
     trackEvent('Tapped visible target', { targetId: target.eventId, title: target.title, kind: target.kind, source: 'tonight' })
     setExpandedPreview((current) => (current === target.eventId ? null : target.eventId))
+    setShowCloudOverlay(false)
     if (!equipment && shouldAskForEquipment()) setShowEquipmentPrompt(true)
   }
 
@@ -175,7 +186,9 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
   }
 
   return (
-    <section className="widget-section">
+    <>
+      <WeekConditionsStrip city={city} plan={plan} user={user} setManualLocation={setManualLocation} />
+      <section className="widget-section">
       <div className="tonight-location-heading">
         <h2>Tonight near {city.name}</h2>
         <Link to="/settings" onClick={() => trackEvent('Location switch opened', { source: 'tonight' })}>Change location</Link>
@@ -340,6 +353,19 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
                               )}
                             </p>
                           </div>
+                          {plan.todayAdvisory && (
+                            <button
+                              type="button"
+                              className="tonight-cloud-toggle"
+                              onClick={() => setShowCloudOverlay((shown) => !shown)}
+                              aria-expanded={showCloudOverlay}
+                            >
+                              {showCloudOverlay ? 'Hide cloud coverage' : 'Show cloud coverage'}
+                            </button>
+                          )}
+                          {showCloudOverlay && plan.todayAdvisory && (
+                            <p className="tonight-cloud-overlay">{formatWeatherSummary(plan.todayAdvisory)}</p>
+                          )}
                         </div>
                       )}
                       {recipeKey && (
@@ -405,6 +431,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
           </ul>
         </>
       )}
-    </section>
+      </section>
+    </>
   )
 }

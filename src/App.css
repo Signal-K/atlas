@@ -1759,6 +1759,81 @@
   width: auto;
 }
 
+.onboarding-flow-modal {
+  max-width: 400px;
+}
+
+.onboarding-flow-progress {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.onboarding-flow-dot {
+  width: 20px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.onboarding-flow-dot.is-active {
+  background: var(--accent);
+}
+
+.onboarding-flow-input {
+  width: 100%;
+  font-size: 15px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.onboarding-flow-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  gap: 12px;
+}
+
+.onboarding-flow-skip {
+  background: none;
+  border: none;
+  color: var(--text);
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.onboarding-flow-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.onboarding-flow-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.onboarding-flow-error {
+  color: #c0392b;
+  font-size: 13px;
+}
+
+.onboarding-flow-success {
+  color: var(--accent);
+  font-size: 13px;
+}
+
 .signup-welcome-beat {
   text-align: center;
   animation: signup-welcome-pop 0.32s ease-out both;
@@ -1969,6 +2044,27 @@
   cursor: pointer;
 }
 
+.calendar-category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.calendar-category-chip {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.calendar-category-chip.is-active {
+  font-weight: 700;
+}
+
 .calendar-grid {
   width: 100%;
   border-collapse: collapse;
@@ -2023,6 +2119,89 @@
   font-size: 15px;
   margin: 0 0 8px;
   color: var(--text-h);
+}
+
+.calendar-coming-up-heading {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.calendar-browse-heading {
+  font-size: 14px;
+  margin: 24px 0 12px;
+  color: var(--text-h);
+  opacity: 0.85;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.calendar-upcoming-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.calendar-upcoming-group-heading {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  opacity: 0.7;
+  margin: 0 0 4px;
+}
+
+.dt-article-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dt-article-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dt-article-image img {
+  width: 100%;
+  display: block;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.dt-article-image figcaption {
+  font-size: 10px;
+  opacity: 0.6;
+  padding: 4px 12px 0;
+}
+
+.dt-article-body {
+  padding: 12px 14px;
+}
+
+.dt-article-kicker {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.dt-article-title {
+  margin: 4px 0 6px;
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+.dt-article-text {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.9;
+  margin: 0;
 }
 
 .chip-row {
@@ -2203,6 +2382,24 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.tonight-cloud-toggle {
+  margin-top: 8px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.tonight-cloud-overlay {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.85;
+  margin-top: 6px;
 }
 
 .best-time-timeline {
@@ -3900,4 +4097,214 @@
     width: auto;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
   }
+}
+
+/* Feed header / week conditions strip (WeekConditionsStrip) */
+.feed-header {
+  margin-bottom: 16px;
+}
+
+.feed-greeting {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.feed-greeting-line {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.feed-greeting-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.feed-greeting-edit-name {
+  background: none;
+  border: none;
+  color: var(--text);
+  opacity: 0.6;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.feed-location-switch-toggle {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.feed-location-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.feed-location-switch-cancel {
+  background: none;
+  border: none;
+  color: var(--text);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.feed-greeting-name-form {
+  display: flex;
+  gap: 6px;
+}
+
+.feed-greeting-name-form input {
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.feed-highlights {
+  font-size: 14px;
+  color: var(--text);
+  margin: 8px 0 0;
+}
+
+.feed-nearby-alert {
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-alt, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 10px 0 0;
+}
+
+.feed-interests {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.9;
+  margin: 8px 0 0;
+}
+
+.feed-interests-edit,
+.feed-interests-save {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.feed-interests-save {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin-top: 8px;
+}
+
+.feed-interests-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.feed-interests-editor {
+  margin-top: 8px;
+}
+
+.interests-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.interests-picker-chip {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.interests-picker-chip.is-active {
+  font-weight: 700;
+}
+
+.feed-week-heading {
+  font-size: 14px;
+  color: var(--text-h);
+  margin: 16px 0 8px;
+}
+
+.week-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.week-day-card {
+  flex: 0 0 auto;
+  min-width: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.week-day-card.is-locked {
+  opacity: 0.55;
+  align-items: center;
+  justify-content: center;
+}
+
+.week-day-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.week-day-metric {
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.85;
+}
+
+.week-day-rating {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.week-day-rating--great,
+.week-day-rating--good {
+  color: var(--accent);
+}
+
+.week-day-highlights {
+  font-size: 10px;
+  color: var(--text);
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.week-day-locked {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
 }
