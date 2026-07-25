@@ -3943,6 +3943,13 @@
   margin: 0;
 }
 
+.feed-greeting-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .feed-greeting-edit-name {
   background: none;
   border: none;
@@ -3951,6 +3958,30 @@
   font-size: 12px;
   cursor: pointer;
   padding: 0;
+}
+
+.feed-location-switch-toggle {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.feed-location-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.feed-location-switch-cancel {
+  background: none;
+  border: none;
+  color: var(--text);
+  opacity: 0.6;
+  cursor: pointer;
 }
 
 .feed-greeting-name-form {
@@ -4023,6 +4054,24 @@
   font-size: 11px;
   color: var(--text);
   opacity: 0.85;
+}
+
+.week-day-rating {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.week-day-rating--great,
+.week-day-rating--good {
+  color: var(--accent);
+}
+
+.week-day-highlights {
+  font-size: 10px;
+  color: var(--text);
+  opacity: 0.75;
+  margin-top: 2px;
 }
 
 .week-day-locked {

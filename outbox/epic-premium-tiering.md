@@ -31,7 +31,6 @@ nudges that should make the paid tier feel worth it:
 
 Free-tier caps already existed (`src/lib/entitlementLimits.ts`,
 `FREE_EVENT_LOOKAHEAD_DAYS`/`FREE_FORECAST_DAYS`). The premium forecast
-window and nearby-better-conditions alert now surface in the new week
-strip (`WeekConditionsStrip`), reusing `rankLowerLightPollutionSites` from
-`src/lib/darkSky.ts`. Inline location override from the feed (rather than
-via the existing Settings link) is still backlog.
+window (with a per-day rating header + "what you can see" line),
+nearby-better-conditions alert, and inline location change all now ship
+in `WeekConditionsStrip`. All four child stories are done.

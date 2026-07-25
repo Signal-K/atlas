@@ -233,7 +233,13 @@ function App() {
           </header>
           <hr className="hairline" />
           {view === 'tonight' && (
-            <TonightView key={locationKey} city={currentLocation} locationStatus={location.status} onLogAttempt={logAttempt} />
+            <TonightView
+              key={locationKey}
+              city={currentLocation}
+              locationStatus={location.status}
+              onLogAttempt={logAttempt}
+              setManualLocation={setManualLocation}
+            />
           )}
           {view === 'explore' && (
             <TabbedSection

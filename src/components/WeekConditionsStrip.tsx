@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { AuthUser } from '../lib/auth'
 import { getDisplayName, saveDisplayName } from '../lib/displayName'
 import { forecastLookaheadDays, FREE_FORECAST_DAYS } from '../lib/entitlementLimits'
 import { estimateLightPollution, rankLowerLightPollutionSites } from '../lib/darkSky'
-import { getWeekConditions, type DayCondition } from '../lib/weekConditions'
+import { getWeekConditions, hasBrightTarget, rateDayCondition, type DayCondition } from '../lib/weekConditions'
+import { getEventsInRange, pullSkyEvents } from '../lib/sync'
+import { localDateKey } from '../lib/weather'
+import { diversifyEvents } from '../lib/eventFilters'
 import { trackEvent } from '../lib/analytics'
+import { LocationSearchInput } from './LocationSearchInput'
+import type { City } from '../lib/cities'
+import type { SkyEvent } from '../lib/db'
 import type { TonightPlan } from '../lib/tonightTargets'
 import type { CurrentLocation } from '../lib/currentLocation'
 
@@ -13,6 +19,14 @@ import type { CurrentLocation } from '../lib/currentLocation'
 // for the underlying forecast API, not a sane number of cards to render in a
 // single horizontal strip. A week is enough to show "Sky Pass unlocks more".
 const STRIP_DAYS = 7
+
+const RATING_WORD: Record<string, string> = {
+  great: 'Great',
+  good: 'Good',
+  maybe: 'Maybe',
+  poor: 'Poor',
+  skip: 'Skip',
+}
 
 function greetingWeather(plan: TonightPlan | null): string {
   if (!plan?.todayAdvisory) return "conditions are still loading"
@@ -74,16 +88,52 @@ function NameEditor() {
   )
 }
 
+function LocationSwitcher({ onSelect }: { onSelect: (city: City) => void }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  if (!open) {
+    return (
+      <button type="button" className="feed-location-switch-toggle" onClick={() => setOpen(true)}>
+        Change location
+      </button>
+    )
+  }
+
+  return (
+    <div className="feed-location-switch">
+      <LocationSearchInput
+        id="feed-location-switch"
+        value={query}
+        onChange={setQuery}
+        onSelect={(city) => {
+          onSelect(city)
+          setQuery('')
+          setOpen(false)
+          trackEvent('Feed location changed', { city: city.name })
+        }}
+        placeholder="Preview a different town or city"
+      />
+      <button type="button" className="feed-location-switch-cancel" onClick={() => setOpen(false)} aria-label="Cancel">
+        ✕
+      </button>
+    </div>
+  )
+}
+
 export function WeekConditionsStrip({
   city,
   plan,
   user,
+  setManualLocation,
 }: {
   city: CurrentLocation
   plan: TonightPlan | null
   user: AuthUser | null
+  setManualLocation?: (city: City | null) => void
 }) {
   const [days, setDays] = useState<DayCondition[] | null>(null)
+  const [weekEvents, setWeekEvents] = useState<SkyEvent[]>([])
   const entitled = Boolean(user?.entitled)
   const unlockedDays = forecastLookaheadDays(entitled)
   const name = getDisplayName()
@@ -103,6 +153,32 @@ export function WeekConditionsStrip({
     }
   }, [city.lat, city.lon])
 
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      await pullSkyEvents()
+      const start = new Date()
+      const end = new Date(start.getTime() + STRIP_DAYS * 86_400_000)
+      const events = await getEventsInRange(start, end)
+      if (!cancelled) setWeekEvents(events)
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [city.lat, city.lon])
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, SkyEvent[]>()
+    for (const event of weekEvents) {
+      const key = localDateKey(event.startsAt, plan?.timeZone)
+      const list = map.get(key) ?? []
+      list.push(event)
+      map.set(key, list)
+    }
+    return map
+  }, [weekEvents, plan?.timeZone])
+
   const highlights = (plan?.targets ?? []).slice(0, 3).map((target) => target.title)
 
   const nearbyDarkerSite = entitled ? rankLowerLightPollutionSites(city.lat, city.lon, 1)[0] : null
@@ -114,13 +190,20 @@ export function WeekConditionsStrip({
     (nearbyDarkerSite.lightPollutionDelta ?? 0) >= 2 &&
     nearbyDarkerSite.distanceKm <= 150
 
+  function changeLocation(nextCity: City) {
+    setManualLocation?.(nextCity)
+  }
+
   return (
     <section className="widget-section feed-header">
       <div className="feed-greeting">
         <p className="feed-greeting-line">
           Hi{name ? `, ${name}` : ''}. Today it&apos;s {greetingWeather(plan)} near {city.name}.
         </p>
-        <NameEditor />
+        <div className="feed-greeting-controls">
+          <NameEditor />
+          {entitled && setManualLocation && <LocationSwitcher onSelect={changeLocation} />}
+        </div>
       </div>
 
       {highlights.length > 0 && (
@@ -148,6 +231,9 @@ export function WeekConditionsStrip({
         <div className="week-strip">
           {days.map((day, index) => {
             const locked = index >= unlockedDays
+            const dayEvents = eventsByDate.get(day.date) ?? []
+            const rating = entitled && !locked ? rateDayCondition(day, hasBrightTarget(dayEvents.map((e) => e.kind))) : null
+            const dayHighlights = diversifyEvents(dayEvents, 2).map((e) => e.title)
             return (
               <div key={day.date} className={`week-day-card${locked ? ' is-locked' : ''}`}>
                 <span className="week-day-label">{formatDay(day.date)}</span>
@@ -155,9 +241,15 @@ export function WeekConditionsStrip({
                   <span className="week-day-locked">Sky Pass</span>
                 ) : (
                   <>
+                    {rating && (
+                      <span className={`week-day-rating week-day-rating--${rating.rating}`}>{RATING_WORD[rating.rating]}</span>
+                    )}
                     <span className="week-day-metric">☁️ {Math.round(day.cloudCoverPct)}%</span>
                     <span className="week-day-metric">{moonlightLabel(day.moonIlluminationPct)}</span>
                     <span className="week-day-metric">🕘 {formatOptimalTime(day.optimalTimeIso, plan?.timeZone)}</span>
+                    {rating && dayHighlights.length > 0 && (
+                      <span className="week-day-highlights">{dayHighlights.join(', ')}</span>
+                    )}
                   </>
                 )}
               </div>
@@ -168,7 +260,7 @@ export function WeekConditionsStrip({
       {!entitled && unlockedDays < STRIP_DAYS && (
         <p className="scrapbook-hint">
           Free accounts see {FREE_FORECAST_DAYS} days of conditions. <Link to="/settings">Get Sky Pass</Link> to unlock the rest of
-          the week and substantially-better-conditions alerts.
+          the week, per-day ratings, substantially-better-conditions alerts, and location preview.
         </p>
       )}
     </section>

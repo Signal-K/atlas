@@ -59,9 +59,10 @@ location override, event detail subpages) and an onboarding overhaul
 | story-feed-week-conditions-strip | story | Week conditions strip w/ premium cutoff | done |
 | story-feed-simplified-sky-map | story | Simplify default sky map to direction + altitude | backlog |
 | story-free-tier-lookahead-caps | story | Free tier: 10-day events / 3-day forecast caps | done (pre-existing) |
-| story-premium-forecast-window | story | Premium: extended forecast window + per-day tips | in-progress |
+| story-premium-forecast-window | story | Premium: per-day rating header + extended forecast window | done |
 | story-nearby-better-conditions-alert | story | Paid alert: substantially better conditions nearby | done |
-| story-paid-location-override | story | Paid: change/preview location from the feed | backlog |
+| story-paid-location-override | story | Paid: change location from the feed | done |
+| story-daily-transit-articles | story | Ability to see Daily Transit articles from the Atlas app | backlog |
 | story-event-detail-subpage | story | Tap an event to open detail/plan/share subpage | done (pre-existing) |
 | story-home-happening-now | story | Home shows what's happening now/upcoming soon | done (pre-existing) |
 | story-onboarding-name | story | Onboarding: capture display name | done |

@@ -24,6 +24,7 @@ import {
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
+import type { City } from '../lib/cities'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { WeekConditionsStrip } from '../components/WeekConditionsStrip'
@@ -79,9 +80,12 @@ interface TonightViewProps {
   city: CurrentLocation
   locationStatus: LocationStatus
   onLogAttempt: (draft: ObservationDraft) => void
+  // Lets Sky Pass holders change their location straight from the feed
+  // header (WeekConditionsStrip) instead of only via Settings.
+  setManualLocation?: (city: City | null) => void
 }
 
-export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewProps) {
+export function TonightView({ city, locationStatus, onLogAttempt, setManualLocation }: TonightViewProps) {
   const [plan, setPlan] = useState<TonightPlan | null>(null)
   const [error, setError] = useState(false)
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null)
@@ -179,7 +183,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
 
   return (
     <>
-      <WeekConditionsStrip city={city} plan={plan} user={user} />
+      <WeekConditionsStrip city={city} plan={plan} user={user} setManualLocation={setManualLocation} />
       <section className="widget-section">
       <div className="tonight-location-heading">
         <h2>Tonight near {city.name}</h2>
