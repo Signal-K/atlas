@@ -1969,6 +1969,27 @@
   cursor: pointer;
 }
 
+.calendar-category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.calendar-category-chip {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.calendar-category-chip.is-active {
+  font-weight: 700;
+}
+
 .calendar-grid {
   width: 100%;
   border-collapse: collapse;
@@ -3900,4 +3921,112 @@
     width: auto;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
   }
+}
+
+/* Feed header / week conditions strip (WeekConditionsStrip) */
+.feed-header {
+  margin-bottom: 16px;
+}
+
+.feed-greeting {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.feed-greeting-line {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.feed-greeting-edit-name {
+  background: none;
+  border: none;
+  color: var(--text);
+  opacity: 0.6;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.feed-greeting-name-form {
+  display: flex;
+  gap: 6px;
+}
+
+.feed-greeting-name-form input {
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.feed-highlights {
+  font-size: 14px;
+  color: var(--text);
+  margin: 8px 0 0;
+}
+
+.feed-nearby-alert {
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-alt, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 10px 0 0;
+}
+
+.feed-week-heading {
+  font-size: 14px;
+  color: var(--text-h);
+  margin: 16px 0 8px;
+}
+
+.week-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.week-day-card {
+  flex: 0 0 auto;
+  min-width: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.week-day-card.is-locked {
+  opacity: 0.55;
+  align-items: center;
+  justify-content: center;
+}
+
+.week-day-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.week-day-metric {
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.85;
+}
+
+.week-day-locked {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
 }

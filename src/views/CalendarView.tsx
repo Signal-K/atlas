@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { EventRow } from '../widgets/EventRow'
 import { getEventsInRange, pullSkyEvents } from '../lib/sync'
 import { getWatchCountForEvent, getWatchCounts, getWatchlist, matchesWatchlist, type WatchlistItem } from '../lib/watchlist'
+import { EVENT_CATEGORIES } from '../lib/eventCategories'
 import type { SkyEvent } from '../lib/db'
+
+const ALL_CATEGORY_ID = 'all'
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1)
@@ -19,6 +22,7 @@ export function CalendarView() {
   const [watchCounts, setWatchCounts] = useState<Map<string, number>>(new Map())
   const [selectedDay, setSelectedDay] = useState<Date>(() => new Date())
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [categoryId, setCategoryId] = useState<string>(ALL_CATEGORY_ID)
 
   useEffect(() => {
     let cancelled = false
@@ -50,20 +54,27 @@ export function CalendarView() {
     return rows
   }, [monthStart])
 
+  const filteredEvents = useMemo(() => {
+    if (categoryId === ALL_CATEGORY_ID) return events ?? []
+    const category = EVENT_CATEGORIES.find((c) => c.id === categoryId)
+    if (!category) return events ?? []
+    return (events ?? []).filter((event) => category.kinds.includes(event.kind))
+  }, [events, categoryId])
+
   const eventsByDay = useMemo(() => {
     const map = new Map<number, SkyEvent[]>()
-    for (const event of events ?? []) {
+    for (const event of filteredEvents) {
       const day = new Date(event.startsAt).getDate()
       const list = map.get(day) ?? []
       list.push(event)
       map.set(day, list)
     }
     return map
-  }, [events])
+  }, [filteredEvents])
 
   const selectedDayEvents = useMemo(
-    () => (events ?? []).filter((event) => isSameDay(new Date(event.startsAt), selectedDay)),
-    [events, selectedDay],
+    () => filteredEvents.filter((event) => isSameDay(new Date(event.startsAt), selectedDay)),
+    [filteredEvents, selectedDay],
   )
 
   return (
@@ -82,6 +93,26 @@ export function CalendarView() {
         <p>Loading&hellip;</p>
       ) : (
         <>
+          <div className="calendar-category-filter">
+            <button
+              type="button"
+              className={`calendar-category-chip${categoryId === ALL_CATEGORY_ID ? ' is-active' : ''}`}
+              onClick={() => setCategoryId(ALL_CATEGORY_ID)}
+            >
+              All
+            </button>
+            {EVENT_CATEGORIES.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                className={`calendar-category-chip${categoryId === category.id ? ' is-active' : ''}`}
+                onClick={() => setCategoryId(category.id)}
+                style={categoryId === category.id ? { borderColor: category.accent, color: category.accent } : undefined}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
           <table className="calendar-grid">
             <thead>
               <tr>

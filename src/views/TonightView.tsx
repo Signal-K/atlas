@@ -25,6 +25,8 @@ import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
+import { WeekConditionsStrip } from '../components/WeekConditionsStrip'
 
 const RATING_LABEL: Record<TonightPlan['rating'], string> = {
   great: 'Go outside — great conditions',
@@ -89,6 +91,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
   const [showTwilightRecipe, setShowTwilightRecipe] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const compass = useDeviceCompass()
+  const { user } = useAuth()
 
   useEffect(() => {
     trackEvent('Viewed Tonight page', { city: city.name })
@@ -175,7 +178,9 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
   }
 
   return (
-    <section className="widget-section">
+    <>
+      <WeekConditionsStrip city={city} plan={plan} user={user} />
+      <section className="widget-section">
       <div className="tonight-location-heading">
         <h2>Tonight near {city.name}</h2>
         <Link to="/settings" onClick={() => trackEvent('Location switch opened', { source: 'tonight' })}>Change location</Link>
@@ -405,6 +410,7 @@ export function TonightView({ city, locationStatus, onLogAttempt }: TonightViewP
           </ul>
         </>
       )}
-    </section>
+      </section>
+    </>
   )
 }

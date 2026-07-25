@@ -189,7 +189,7 @@ function metaFor(kind: string): KindMeta {
 // twilight vs. genuinely dark. Returns nulls near the poles in summer, where
 // the Sun may never reach these altitudes -- callers should treat that as
 // "no confirmed twilight/darkness boundary."
-function getDarknessWindow(lat: number, lon: number, start: Date, end: Date): DarknessWindow {
+export function getDarknessWindow(lat: number, lon: number, start: Date, end: Date): DarknessWindow {
   const observer = new Astronomy.Observer(lat, lon, 0)
   // `end` is "6am tomorrow" in the *browser's* local timezone (see
   // tonightWindow), which can be well under 24h away. That's too short a
