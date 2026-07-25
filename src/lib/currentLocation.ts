@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CITIES, cityLabel, type City } from './cities'
+import { reverseGeocodeCity } from './reverseGeocode'
 import type { useLocationSeed } from './geo'
 
 export type LocationSource = 'geolocation' | 'manual' | 'default'
@@ -33,6 +34,11 @@ function getManualCity(): City | null {
 
 export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
   const [manualCity, setManualCityState] = useState<City | null>(() => getManualCity())
+  // Reverse-geocoded place name for the current geolocation fix (e.g.
+  // "Riga") -- keyed by rounded coordinates so a stale name from a
+  // previous fix never gets shown against new coordinates while the
+  // lookup for those new coordinates is still in flight.
+  const [geoName, setGeoName] = useState<{ key: string; name: string } | null>(null)
 
   const setManualLocation = useCallback((city: City | null) => {
     setManualCityState(city)
@@ -40,14 +46,31 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
     else localStorage.removeItem(MANUAL_LOCATION_KEY)
   }, [])
 
+  useEffect(() => {
+    if (manualCity || !geo.coordinates) return
+    const { lat, lon } = geo.coordinates
+    const key = `${lat},${lon}`
+    let cancelled = false
+    reverseGeocodeCity(lat, lon).then((name) => {
+      if (!cancelled && name) setGeoName({ key, name })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [manualCity, geo.coordinates])
+
   // A manual pick always wins, even once geolocation later resolves --
   // otherwise an explicit correction gets silently reverted on next load
   // (same rationale as locationBrowseContext.tsx's manual-city priority).
   const current = useMemo<CurrentLocation>(() => {
     if (manualCity) return { name: cityLabel(manualCity), lat: manualCity.lat, lon: manualCity.lon, source: 'manual', timeZone: manualCity.timeZone }
-    if (geo.coordinates) return { name: 'Your location', lat: geo.coordinates.lat, lon: geo.coordinates.lon, source: 'geolocation' }
+    if (geo.coordinates) {
+      const key = `${geo.coordinates.lat},${geo.coordinates.lon}`
+      const name = geoName?.key === key ? geoName.name : 'Your location'
+      return { name, lat: geo.coordinates.lat, lon: geo.coordinates.lon, source: 'geolocation' }
+    }
     return { name: DEFAULT_CITY.name, lat: DEFAULT_CITY.lat, lon: DEFAULT_CITY.lon, source: 'default' }
-  }, [manualCity, geo.coordinates])
+  }, [manualCity, geo.coordinates, geoName])
 
   return { current, manualCity, setManualLocation }
 }
