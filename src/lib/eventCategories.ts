@@ -24,10 +24,11 @@ export interface EventCategory {
 export const EVENT_CATEGORIES: EventCategory[] = [
   { id: 'moon-eclipses', label: 'Moon & eclipses', icon: 'moon', kinds: ['moon_phase', 'eclipse'], accent: '#0a82b3' },
   { id: 'planets', label: 'Planets & conjunctions', icon: 'orbit', kinds: ['planet_event', 'conjunction'], accent: '#8a4ea1' },
-  { id: 'meteor-showers', label: 'Meteor showers', icon: 'zap', kinds: ['meteor_shower'], accent: '#d76131' },
+  { id: 'meteor-showers', label: 'Meteors & fireballs', icon: 'zap', kinds: ['meteor_shower', 'fireball'], accent: '#d76131' },
   { id: 'satellites', label: 'Satellites', icon: 'satellite', kinds: ['iss_pass', 'satellite_flare'], accent: '#5e944a' },
   { id: 'aurora', label: 'Aurora', icon: 'aurora', kinds: ['aurora'], accent: '#2f9e8f' },
   { id: 'deep-sky', label: 'Deep sky', icon: 'telescope', kinds: ['deep_sky'], accent: '#8a4ea1' },
+  { id: 'asteroids', label: 'Asteroids', icon: 'asteroid', kinds: ['asteroid_approach'], accent: '#a15c3a' },
   { id: 'guides', label: 'Guides', icon: 'book', kinds: ['comet', 'night_sky_guide', 'local_night_sky'], accent: '#b07700' },
 ]
 

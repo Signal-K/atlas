@@ -15,13 +15,17 @@ import { fetchEvents as fetchMelbourneNightSkyEvents } from './sources/melbourne
 import { fetchEvents as fetchSatelliteFlareEvents } from './sources/satellite-flares.mjs'
 import { fetchEvents as fetchAuroraEvents } from './sources/aurora.mjs'
 import { fetchEvents as fetchCometEvents } from './sources/comets.mjs'
+import { fetchEvents as fetchAsteroidApproachEvents } from './sources/asteroid-approaches.mjs'
+import { fetchEvents as fetchFireballEvents } from './sources/fireballs.mjs'
 
 // Each plugin gets its own sensible window: moon phases/meteor showers/
 // eclipses/planets/deep-sky/conjunctions are predictable a year out, but ISS
 // and other satellite pass predictions go stale fast (TLE drift), aurora
 // forecasts only exist a few days out, and the comet tracker link doesn't
 // need a window at all -- so those intentionally stay short (their own
-// defaults).
+// defaults). Asteroid close approaches are only usefully precise a couple
+// weeks out; fireballs are retrospective (see fireballs.mjs), so windowDays
+// there means "how far back" rather than "how far forward".
 const PLUGINS = [
   { fetch: fetchMoonPhaseEvents, windowDays: 365 },
   { fetch: fetchMeteorShowerEvents, windowDays: 365 },
@@ -34,6 +38,8 @@ const PLUGINS = [
   { fetch: fetchSatelliteFlareEvents },
   { fetch: fetchAuroraEvents },
   { fetch: fetchCometEvents },
+  { fetch: fetchAsteroidApproachEvents, windowDays: 14 },
+  { fetch: fetchFireballEvents, windowDays: 60 },
 ]
 
 const PB_URL = process.env.PB_URL ?? 'http://127.0.0.1:8090'

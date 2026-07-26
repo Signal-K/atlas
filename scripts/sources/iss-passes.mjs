@@ -12,7 +12,7 @@ import { fetchTle, passesForCity } from './satellitePasses.mjs'
 
 const TLE_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE'
 
-export async function fetchEvents({ now = new Date(), windowDays = 5 } = {}) {
+export async function fetchEvents({ now = new Date(), windowDays = 7 } = {}) {
   const { line1, line2 } = await fetchTle(TLE_URL)
   const satrec = satellite.twoline2satrec(line1, line2)
 

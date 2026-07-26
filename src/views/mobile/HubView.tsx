@@ -136,6 +136,8 @@ const KIND_KICKER: Record<string, { label: string; color: string }> = {
   comet: { label: 'COMET', color: 'var(--dt-rust-400)' },
   deep_sky: { label: 'DEEP SKY', color: 'var(--dt-plum-400)' },
   aurora: { label: 'AURORA', color: 'var(--dt-solar-400)' },
+  asteroid_approach: { label: 'ASTEROID', color: 'var(--dt-rust-400)' },
+  fireball: { label: 'FIREBALL', color: 'var(--dt-rust-400)' },
 }
 
 function kickerFor(kind: string): { label: string; color: string } {

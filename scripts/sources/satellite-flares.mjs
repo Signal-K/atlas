@@ -7,8 +7,28 @@ import * as satellite from 'satellite.js'
 import { CITIES } from './cities.mjs'
 import { fetchTle, parseTleGroup, passesForCity } from './satellitePasses.mjs'
 
-const TIANGONG_TLE_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=48274&FORMAT=TLE'
 const STARLINK_GROUP_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle'
+
+// Bare single-satellite sources, same treatment as Tiangong: real SGP4 pass
+// prediction against a live TLE, no "train" clustering needed since there's
+// only one object. Hubble sits alongside Tiangong as a second bright,
+// well-known naked-eye pass beyond the ISS.
+const BARE_SATELLITES = [
+  {
+    id: 'tiangong',
+    name: 'Tiangong',
+    tleUrl: 'https://celestrak.org/NORAD/elements/gp.php?CATNR=48274&FORMAT=TLE',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Tiangong_space_station_%28cropped%29.jpg',
+    imageCredit: 'CMSA, Wikimedia Commons',
+  },
+  {
+    id: 'hubble',
+    name: 'Hubble Space Telescope',
+    tleUrl: 'https://celestrak.org/NORAD/elements/gp.php?CATNR=20580&FORMAT=TLE',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/3f/HST-SM4.jpeg',
+    imageCredit: 'NASA, Wikimedia Commons',
+  },
+]
 
 // NORAD catalog numbers are assigned in launch order, so the highest
 // numbers currently in the active Starlink group are the newest launch
@@ -21,7 +41,7 @@ const STARLINK_GROUP_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=st
 // propagation cost -- this plugin alone runs O(cities x satellites x
 // window/step) propagations.
 const RECENT_BATCH_SIZE = 40
-const TRAIN_WINDOW_DAYS = 2
+const TRAIN_WINDOW_DAYS = 5
 const TRAIN_CLUSTER_MINUTES = 20
 // A single satellite passing overhead isn't a "train" -- only report
 // clusters of several satellites moving through close together in time.
@@ -31,28 +51,37 @@ function catalogNumber(line1) {
   return parseInt(line1.slice(2, 7), 10)
 }
 
-async function tiangongEvents(now, windowDays) {
-  const { line1, line2 } = await fetchTle(TIANGONG_TLE_URL)
-  const satrec = satellite.twoline2satrec(line1, line2)
+async function bareSatelliteEvents(now, windowDays) {
   const start = now.getTime()
   const end = start + windowDays * 86_400_000
   const events = []
 
-  for (const city of CITIES) {
-    for (const pass of passesForCity(satrec, city, start, end)) {
-      events.push({
-        kind: 'satellite_flare',
-        target: `tiangong_${city.name.toLowerCase().replace(/\s+/g, '_')}`,
-        title: `Tiangong Pass over ${city.name}`,
-        description: `A visible pass of China's Tiangong space station over ${city.name}, reaching ${Math.round(pass.maxElevation)}° above the horizon.`,
-        content: `Tiangong will be visible as a bright, fast-moving point of light (no telescope needed), reaching a peak elevation of about ${Math.round(pass.maxElevation)}° above the horizon -- similar in appearance to an ISS pass, just fainter.`,
-        starts_at: pass.start.toISOString(),
-        ends_at: pass.end.toISOString(),
-        latitude: city.lat,
-        longitude: city.lon,
-        image_url: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Tiangong_space_station_%28cropped%29.jpg',
-        image_credit: 'CMSA, Wikimedia Commons',
-      })
+  for (const sat of BARE_SATELLITES) {
+    let satrec
+    try {
+      const { line1, line2 } = await fetchTle(sat.tleUrl)
+      satrec = satellite.twoline2satrec(line1, line2)
+    } catch (error) {
+      console.error(`Skipping ${sat.name} passes -- TLE fetch failed:`, error.message)
+      continue
+    }
+
+    for (const city of CITIES) {
+      for (const pass of passesForCity(satrec, city, start, end)) {
+        events.push({
+          kind: 'satellite_flare',
+          target: `${sat.id}_${city.name.toLowerCase().replace(/\s+/g, '_')}`,
+          title: `${sat.name} Pass over ${city.name}`,
+          description: `A visible pass of ${sat.name} over ${city.name}, reaching ${Math.round(pass.maxElevation)}° above the horizon.`,
+          content: `${sat.name} will be visible as a bright, fast-moving point of light (no telescope needed), reaching a peak elevation of about ${Math.round(pass.maxElevation)}° above the horizon -- similar in appearance to an ISS pass, just fainter.`,
+          starts_at: pass.start.toISOString(),
+          ends_at: pass.end.toISOString(),
+          latitude: city.lat,
+          longitude: city.lon,
+          image_url: sat.imageUrl,
+          image_credit: sat.imageCredit,
+        })
+      }
     }
   }
 
@@ -113,9 +142,9 @@ async function starlinkTrainEvents(now, windowDays) {
 }
 
 export async function fetchEvents({ now = new Date(), windowDays = TRAIN_WINDOW_DAYS } = {}) {
-  const [tiangong, starlink] = await Promise.all([
-    tiangongEvents(now, windowDays).catch(() => []),
+  const [bare, starlink] = await Promise.all([
+    bareSatelliteEvents(now, windowDays).catch(() => []),
     starlinkTrainEvents(now, windowDays).catch(() => []),
   ])
-  return [...tiangong, ...starlink]
+  return [...bare, ...starlink]
 }
