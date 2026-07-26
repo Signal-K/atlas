@@ -3495,33 +3495,28 @@
 
 .dt-location-switch {
   display: flex;
-  width: calc(100% - 32px);
-  height: 34px;
-  max-height: 34px;
-  margin: 0 16px 8px;
+  min-width: 0;
+  flex: 1;
+  height: 30px;
+  margin: 0 8px;
   align-items: center;
-  gap: 8px;
-  border: 0;
-  border-top: 1px solid rgba(123, 180, 214, 0.2);
-  border-bottom: 1px solid rgba(123, 180, 214, 0.2);
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(123, 180, 214, 0.28);
+  border-radius: 999px;
   background: transparent;
   color: #c7d7e4;
   font-family: 'Oxanium', sans-serif;
   font-size: 0.72rem;
   letter-spacing: 0;
   text-align: left;
-  overflow: hidden;
-  opacity: 1;
-  transition:
-    max-height 0.22s ease,
-    opacity 0.16s ease,
-    margin 0.22s ease,
-    border-color 0.22s ease;
+  cursor: pointer;
 }
 
 .dt-location-switch svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
   color: #69bde5;
   stroke-width: 1.6;
 }
@@ -3529,11 +3524,13 @@
 .dt-location-switch span {
   overflow: hidden;
   flex: 1;
+  min-width: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .dt-location-switch small {
+  flex: 0 0 auto;
   color: #e5b36f;
   font-size: 0.68rem;
   text-transform: uppercase;
@@ -3675,17 +3672,26 @@
   margin: 0;
 }
 
-/* -- Header: brand row (scrolls away) + sticky tab bar -- */
+/* -- Header: sticky tab bar at the very top + a slim brand/location row -- */
+
+.dt-shell-header {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 3;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--dt-bg-page);
+}
 
 .dt-brand-row {
   position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+  gap: 8px;
+  padding: 8px 12px;
   background: var(--dt-bg-page);
   border-bottom: 3px double var(--dt-ink);
-  max-height: 80px;
+  max-height: 52px;
   overflow: hidden;
   opacity: 1;
   transition:
@@ -3696,10 +3702,9 @@
 }
 
 /* Collapsed on scroll-down (STS-500) -- the tab bar (.dt-tabbar) stays put
-   so navigation/search remain reachable; only the brand row and location
-   switch fold away to reclaim vertical space. */
-.dt-header-collapsed .dt-brand-row,
-.dt-header-collapsed .dt-location-switch {
+   so navigation/search remain reachable; only the brand row folds away to
+   reclaim vertical space. */
+.dt-header-collapsed .dt-brand-row {
   max-height: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -3712,12 +3717,12 @@
 
 .dt-brand-btn {
   min-width: 0;
+  flex: 0 0 auto;
   background: none;
   border: 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   cursor: pointer;
   color: inherit;
 }
@@ -3726,12 +3731,12 @@
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .dt-brand-mark {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   flex: 0 0 auto;
   border-radius: 50%;
   object-fit: cover;
@@ -3741,16 +3746,9 @@
 .dt-wordmark {
   font-family: var(--dt-font-display);
   font-weight: 800;
-  font-size: 1.4rem;
+  font-size: 1.05rem;
   letter-spacing: 0.02em;
   color: var(--dt-ink);
-}
-
-.dt-brand-subtitle {
-  font: 700 0.72rem/1.4 var(--dt-font-data);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--dt-primary);
 }
 
 .dt-avatar-wrap {
@@ -3759,13 +3757,13 @@
 }
 
 .dt-avatar {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--dt-ink);
   color: var(--dt-bg-page);
   border: 0;
-  font: 600 1rem/1 var(--dt-font-data);
+  font: 600 0.9rem/1 var(--dt-font-data);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3830,31 +3828,31 @@
   background: color-mix(in srgb, var(--dt-bg-page) 94%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 3px double var(--dt-ink);
+  border-bottom: 1px solid var(--dt-rule);
   z-index: 5;
 }
 
 .dt-tab {
   min-width: 0;
-  min-height: 55px;
+  min-height: 44px;
   background: none;
   border: 0;
-  font: 700 0.6rem/1.05 var(--dt-font-data);
+  font: 700 0.58rem/1.05 var(--dt-font-data);
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--dt-ink-faded);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 1px 9px;
+  gap: 3px;
+  padding: 6px 1px 7px;
   cursor: pointer;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
 }
 
 .dt-tab svg {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
   stroke-width: 1.6;
 }
 

@@ -130,7 +130,12 @@ function App() {
       window.removeEventListener('focus', refreshWhenVisible)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
-  }, [user])
+    // `user` is a new object on every authStore change, including the
+    // refreshEntitlement() call this effect itself triggers -- depending on
+    // it re-fires the effect on every refresh, looping refreshEntitlement()
+    // forever. Depend on the id so this only reruns on an actual sign-in/out.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   useEffect(() => {
     identifyAnalyticsUser(user)

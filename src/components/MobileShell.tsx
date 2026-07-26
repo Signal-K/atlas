@@ -303,14 +303,57 @@ export function MobileShell({
 
   return (
     <div className="mobile-shell">
-      <header className={headerCollapsed ? 'dt-header-collapsed' : ''}>
+      <header className={`dt-shell-header${headerCollapsed ? ' dt-header-collapsed' : ''}`}>
+        <nav className="dt-tabbar" aria-label="Primary">
+          {ROUTES.map((route) => (
+            <button
+              type="button"
+              key={route.id}
+              className={`dt-tab${!searchOpen && tab === route.id ? ' is-active' : ''}`}
+              onClick={() => goToTab(route.id)}
+              aria-current={!searchOpen && tab === route.id ? 'page' : undefined}
+            >
+              {route.icon}
+              <span>{route.label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`dt-tab${searchOpen ? ' is-active' : ''}`}
+            onClick={() => {
+              setProfileOpen(false)
+              setSearchStatus('')
+              setSearchBlockedPlanAdd(false)
+              setSearchOpen((current) => !current)
+            }}
+            aria-current={searchOpen ? 'page' : undefined}
+          >
+            {SEARCH_ICON}
+            <span>Search</span>
+          </button>
+        </nav>
         <div className="dt-brand-row">
           <button type="button" className="dt-brand-btn" onClick={() => goToTab('hub')} aria-label="Open Atlas sky hub">
             <span className="dt-brand-lockup">
               <img src="/atlas-icon.png" alt="" className="dt-brand-mark" />
               <span className="dt-wordmark">ATLAS</span>
             </span>
-            <span className="dt-brand-subtitle">Field console</span>
+          </button>
+          <button
+            type="button"
+            className="dt-location-switch"
+            onClick={() => {
+              trackEvent('Location switch opened', { source: 'mobile_header', location: currentLocation.name })
+              openSettings()
+            }}
+            aria-label={`Change location. Currently ${currentLocation.name}`}
+          >
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+              <path d="M10 18s6-5.1 6-10A6 6 0 0 0 4 8c0 4.9 6 10 6 10Z" />
+              <circle cx="10" cy="8" r="2" />
+            </svg>
+            <span>{currentLocation.name}</span>
+            <small>Change</small>
           </button>
           <div className="dt-avatar-wrap">
             <button
@@ -343,50 +386,6 @@ export function MobileShell({
             )}
           </div>
         </div>
-        <button
-          type="button"
-          className="dt-location-switch"
-          onClick={() => {
-            trackEvent('Location switch opened', { source: 'mobile_header', location: currentLocation.name })
-            openSettings()
-          }}
-          aria-label={`Change location. Currently ${currentLocation.name}`}
-        >
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
-            <path d="M10 18s6-5.1 6-10A6 6 0 0 0 4 8c0 4.9 6 10 6 10Z" />
-            <circle cx="10" cy="8" r="2" />
-          </svg>
-          <span>{currentLocation.name}</span>
-          <small>Change</small>
-        </button>
-        <nav className="dt-tabbar" aria-label="Primary">
-          {ROUTES.map((route) => (
-            <button
-              type="button"
-              key={route.id}
-              className={`dt-tab${!searchOpen && tab === route.id ? ' is-active' : ''}`}
-              onClick={() => goToTab(route.id)}
-              aria-current={!searchOpen && tab === route.id ? 'page' : undefined}
-            >
-              {route.icon}
-              <span>{route.label}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`dt-tab${searchOpen ? ' is-active' : ''}`}
-            onClick={() => {
-              setProfileOpen(false)
-              setSearchStatus('')
-              setSearchBlockedPlanAdd(false)
-              setSearchOpen((current) => !current)
-            }}
-            aria-current={searchOpen ? 'page' : undefined}
-          >
-            {SEARCH_ICON}
-            <span>Search</span>
-          </button>
-        </nav>
       </header>
 
       <div className="mobile-content" ref={contentRef}>

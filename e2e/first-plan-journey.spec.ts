@@ -59,6 +59,11 @@ async function mockSkyEvents(page: Page) {
 test.beforeEach(async ({ page }) => {
   await mockWeather(page)
   await mockSkyEvents(page)
+  // Entering the app from the landing page flips `alreadyEntered`, which
+  // would otherwise surface the first-run OnboardingFlow overlay and block
+  // every click this journey makes -- this suite isn't testing onboarding,
+  // so mark it done upfront.
+  await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
 })
 
 test('signed-out visitor reaches a first plan before any signup prompt', async ({ page }) => {

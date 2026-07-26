@@ -10,6 +10,10 @@ test.describe('PocketBase-backed write actions', () => {
     const password = `Atlas-e2e-${stamp}!`
     const note = `PocketBase write smoke ${stamp}`
 
+    // Signing up flips `alreadyEntered`, which would otherwise surface the
+    // first-run OnboardingFlow overlay and block the Scrapbook tab click
+    // below -- this test isn't testing onboarding, so mark it done upfront.
+    await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
     await page.goto('/settings')
 
     await page.getByRole('button', { name: 'Need an account?' }).click()
@@ -25,9 +29,19 @@ test.describe('PocketBase-backed write actions', () => {
     await expect(page.getByText(note)).toBeVisible({ timeout: 10_000 })
 
     const auth = await authenticate(request, pbUrl, email, password)
-    const records = await getObservationRecords(request, pbUrl, auth.token, auth.record.id, note)
 
-    expect(records.items, `Expected a remote atlas_observations row for note "${note}"`).toHaveLength(1)
+    // The push to PocketBase is a best-effort, fire-and-forget background
+    // sync (see pushObservation in src/lib/sync.ts) that isn't awaited by
+    // the Save button before the local "note visible" state above -- so the
+    // remote row can land a beat after the UI already shows it locally.
+    // Poll instead of a single-shot read.
+    let records: Awaited<ReturnType<typeof getObservationRecords>> = { items: [] }
+    await expect
+      .poll(async () => {
+        records = await getObservationRecords(request, pbUrl, auth.token, auth.record.id, note)
+        return records.items.length
+      }, `Expected a remote atlas_observations row for note "${note}"`)
+      .toBe(1)
     expect(records.items[0].note).toBe(note)
   })
 })
