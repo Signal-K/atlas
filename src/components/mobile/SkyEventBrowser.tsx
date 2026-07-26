@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { KIND_LABELS } from '../../widgets/EventRow'
 import { categoryForKind, EVENT_CATEGORIES, GUIDE_KIND_IDS } from '../../lib/eventCategories'
 import { dateGroupLabel } from '../../lib/eventFormat'
+import { SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import type { SkyEvent } from '../../lib/db'
 import { MobileIcon } from './MobileIcon'
 
@@ -48,7 +49,7 @@ export function SkyEventBrowser({
   )
 
   const days = useMemo(() => {
-    return Array.from({ length: 14 }).map((_, i) => {
+    return Array.from({ length: SKY_GUIDE_WINDOW_DAYS }).map((_, i) => {
       const d = new Date()
       d.setHours(0, 0, 0, 0)
       d.setDate(d.getDate() + i)

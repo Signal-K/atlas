@@ -87,6 +87,30 @@ async function mockNotifications(page: Page) {
       configurable: true,
       value: MockNotification,
     })
+
+    // scheduleReminder() (src/lib/getReadyReminders.ts) shows local
+    // reminders via the service worker's showNotification() when one is
+    // available -- new Notification() throws on nearly all mobile
+    // browsers, so that's the path production actually takes. No service
+    // worker ever activates for this test page, so without this stub
+    // `navigator.serviceWorker.ready` hangs forever and the reminder
+    // never appears to fire. Mocked to record into the same
+    // __atlasNotifications array the MockNotification class above uses.
+    Object.defineProperty(window.navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        ready: Promise.resolve({
+          showNotification: (title: string, options?: NotificationOptions) => {
+            window.__atlasNotifications?.push({
+              title,
+              body: options?.body,
+              tag: options?.tag,
+            })
+            return Promise.resolve()
+          },
+        }),
+      },
+    })
   })
 }
 

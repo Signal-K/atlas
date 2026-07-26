@@ -16,8 +16,8 @@ interface EventCategory {
 }
 
 const EVENT_CATEGORIES: EventCategory[] = [
-  { id: 'headline', label: 'Timed events', kinds: ['eclipse', 'meteor_shower', 'aurora', 'comet'] },
-  { id: 'solar-system', label: 'Solar system', kinds: ['moon_phase', 'planet_event', 'conjunction'] },
+  { id: 'headline', label: 'Timed events', kinds: ['eclipse', 'meteor_shower', 'fireball', 'aurora', 'solar_flare', 'comet'] },
+  { id: 'solar-system', label: 'Solar system', kinds: ['moon_phase', 'planet_event', 'conjunction', 'asteroid_approach'] },
   { id: 'orbit', label: 'Orbit passes', kinds: ['iss_pass', 'satellite_flare'] },
   { id: 'deep-sky', label: 'Deep sky', kinds: ['deep_sky'] },
   { id: 'guides', label: 'Sky guides', kinds: ['night_sky_guide', 'local_night_sky'] },

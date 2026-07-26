@@ -113,7 +113,7 @@ test('signup appears after observation save, merges local journey, and returns t
   await page.getByRole('button', { name: 'Good' }).click()
   await page.getByRole('button', { name: 'Save observation' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Keep this observation' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign up to sync?' })).toBeVisible()
   await page.getByPlaceholder('Email').fill('observer@example.com')
   await page.getByPlaceholder('Password').fill('correct-horse-battery')
   await page.getByRole('button', { name: 'Create account' }).click()

@@ -28,7 +28,7 @@ import { MobileIcon } from '../../components/mobile/MobileIcon'
 import { PaywallGate } from '../../components/PaywallGate'
 import { useAuth } from '../../lib/auth'
 import { eventLookaheadDays, forecastLookaheadDays } from '../../lib/entitlementLimits'
-import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
+import { buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
 import type { ObservationDraft } from '../../lib/observationDraft'
@@ -75,10 +75,15 @@ export function PlanView({
     const now = new Date()
     const planEnd = new Date(now.getTime() + eventLookaheadDays(hasPremium) * 86_400_000)
     const [upcoming, watched] = await Promise.all([getEventsInRange(now, planEnd), getWatchlist()])
-    setEvents([
-      buildVisiblePlanetsEvent(now, city.lat, city.lon),
-      ...upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon)),
-    ])
+    const localUpcoming = upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon))
+    const daysWithEvents = new Set(localUpcoming.map((event) => event.startsAt.slice(0, 10)))
+    const guides = buildDailySkyGuideEvents(
+      now,
+      Math.min(eventLookaheadDays(hasPremium), SKY_GUIDE_WINDOW_DAYS),
+      city.lat,
+      city.lon,
+    ).filter((guide) => !daysWithEvents.has(guide.startsAt.slice(0, 10)))
+    setEvents([...guides, ...localUpcoming])
     setWatchlist(watched)
     setReminders(listGetReadyReminders())
     setPendingFeedback(listPendingReminderFeedback())

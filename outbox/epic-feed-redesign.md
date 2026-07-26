@@ -29,11 +29,15 @@ personal daily briefing rather than a raw data dump:
 - story-feed-interests-summary
 - story-feed-week-conditions-strip
 - story-feed-simplified-sky-map
+- story-feed-day-grouping-improvements
 
 ## Status
 
-All five child stories are done. Greeting, highlights, interests summary,
-and the week conditions strip live in `WeekConditionsStrip`
+All five original child stories are done. Greeting, highlights, interests
+summary, and the week conditions strip live in `WeekConditionsStrip`
 (`src/components/WeekConditionsStrip.tsx`), wired into `TonightView`. The
 simplified sky map's tap-to-reveal cloud coverage lives directly in
-`TonightView`'s target detail section.
+`TonightView`'s target detail section. A sixth story
+(story-feed-day-grouping-improvements) was added later from a follow-up
+chat review of the shipped redesign — clearer day dividers and no silent
+empty days in the Events/Plan browse feed.

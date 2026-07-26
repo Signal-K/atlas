@@ -8,13 +8,13 @@ import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
 export type SignupWallReason = 'favourite' | 'log_observation'
 
 const REASON_COPY: Record<SignupWallReason, string> = {
-  favourite: 'Create a free account to keep this watch target across devices.',
-  log_observation: 'Create a free account to keep this observation across devices.',
+  favourite: 'Would you like to sync this watch target across your devices?',
+  log_observation: 'Would you like to sync this observation across your devices?',
 }
 
 const REASON_TITLE: Record<SignupWallReason, string> = {
-  favourite: 'Keep this watch target',
-  log_observation: 'Keep this observation',
+  favourite: 'Sign up to sync?',
+  log_observation: 'Sign up to sync?',
 }
 
 interface SignupWallModalProps {
@@ -114,6 +114,10 @@ export function SignupWallModal({ reason, onDismiss, onSignedUp }: SignupWallMod
           </div>
           {error && <p className="account-form-error">{error}</p>}
         </form>
+        <p className="onboarding-flow-hint">
+          No account needed to keep using Atlas — this already saved in your browser. Create one any time from
+          Settings.
+        </p>
         <button
           type="button"
           className="onboarding-skip"

@@ -152,6 +152,27 @@ const KIND_META: Record<string, KindMeta> = {
     nakedEyeVisible: false,
     reason: 'Most comets need binoculars or a small scope — only rare, exceptionally bright ones are naked-eye visible.',
   },
+  asteroid_approach: {
+    priority: 8,
+    difficulty: 'hard',
+    phoneFriendly: false,
+    nakedEyeVisible: false,
+    reason: 'Too faint for the naked eye or a phone — this one needs a tracked telescope exposure to actually image.',
+  },
+  fireball: {
+    priority: 9,
+    difficulty: 'hard',
+    phoneFriendly: false,
+    nakedEyeVisible: false,
+    reason: 'Already happened — a record of recent activity, not something to go outside for tonight.',
+  },
+  solar_flare: {
+    priority: 9,
+    difficulty: 'hard',
+    phoneFriendly: false,
+    nakedEyeVisible: false,
+    reason: 'Not directly observable — worth knowing about because it can trigger aurora a day or two later.',
+  },
 }
 
 const DEFAULT_META: KindMeta = {

@@ -1,7 +1,12 @@
 import { haversineKm } from './cities'
 import type { SkyEvent } from './db'
 
-const LOCAL_EVENT_RADIUS_KM = 120
+// Raised from 120: the curated CITIES list (cities.ts) is sparse enough
+// that a meaningful fraction of real user locations sit 120-200km from
+// their nearest entry, silently dropping every location-bound event
+// (ISS/satellite passes) for them even though a nearby city's pass is
+// still a perfectly good naked-eye match at that distance.
+const LOCAL_EVENT_RADIUS_KM = 200
 const MAX_ISS_PASSES = 1
 
 export function isLocalEvent(event: SkyEvent, lat: number, lon: number): boolean {
