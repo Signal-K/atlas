@@ -14,7 +14,7 @@ import { EventDetailPanel } from '../../components/mobile/EventDetailPanel'
 import { useEventPointing } from '../../components/mobile/EventPointing'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
 import { eventLookaheadDays, forecastLookaheadDays } from '../../lib/entitlementLimits'
-import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
+import { buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import { CITIES, cityLabel, type City } from '../../lib/cities'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
@@ -58,10 +58,15 @@ export function EventsView({
   async function refresh() {
     await pullSkyEvents()
     const [upcoming, watched] = await Promise.all([getUpcomingEvents(lookaheadDays), getWatchlist()])
-    setEvents([
-      buildVisiblePlanetsEvent(new Date(), viewLocation.lat, viewLocation.lon),
-      ...upcoming.filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon)),
-    ])
+    const localUpcoming = upcoming.filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon))
+    const daysWithEvents = new Set(localUpcoming.map((event) => event.startsAt.slice(0, 10)))
+    const guides = buildDailySkyGuideEvents(
+      new Date(),
+      Math.min(lookaheadDays, SKY_GUIDE_WINDOW_DAYS),
+      viewLocation.lat,
+      viewLocation.lon,
+    ).filter((guide) => !daysWithEvents.has(guide.startsAt.slice(0, 10)))
+    setEvents([...guides, ...localUpcoming])
     setWatchlist(watched)
     setReminders(listGetReadyReminders())
   }

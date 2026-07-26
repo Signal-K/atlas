@@ -4226,21 +4226,25 @@
 
 .dt-today-rule {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  margin-bottom: 2px;
+  margin: 28px 0 12px;
 }
 
 .dt-today-rule span:first-child {
-  font: 700 0.72rem/1.1 var(--dt-font-data);
+  font: 700 0.78rem/1.1 var(--dt-font-data);
   letter-spacing: 0.14em;
   color: var(--dt-ink);
+  background: var(--dt-rule);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .dt-today-rule span:last-child {
   flex: 1;
   height: 1px;
-  background: var(--dt-ink);
+  background: var(--dt-rule);
 }
 
 .dt-feed-row {
