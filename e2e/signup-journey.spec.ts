@@ -87,6 +87,11 @@ async function mockAuth(page: Page) {
 test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
   await mockAuth(page)
+  // Entering the app from the landing page flips `alreadyEntered`, which
+  // would otherwise surface the first-run OnboardingFlow overlay and block
+  // every click this journey makes -- this suite isn't testing onboarding,
+  // so mark it done upfront.
+  await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
 })
 
 test('signup appears after observation save, merges local journey, and returns to scrapbook context', async ({ page }) => {

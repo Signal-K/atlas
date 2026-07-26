@@ -135,6 +135,7 @@ test('mobile header keeps location switching available after onboarding', async 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.addInitScript(() => {
     localStorage.setItem('atlas-entered', '1')
+    localStorage.setItem('atlas-onboarding-flow-complete', '1')
     localStorage.setItem(
       'atlas-manual-location',
       JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278, admin1: 'England', country: 'United Kingdom', timeZone: 'Europe/London' }),

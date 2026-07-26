@@ -61,6 +61,11 @@ async function mockSkyEvents(page: Page) {
 test.beforeEach(async ({ page }) => {
   await mockCloudyTonight(page)
   await mockSkyEvents(page)
+  // Entering the app from the landing page flips `alreadyEntered`, which
+  // would otherwise surface the first-run OnboardingFlow overlay and block
+  // every click these tests make -- this suite isn't testing onboarding, so
+  // mark it done upfront.
+  await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
   await page.goto('/')
   await page.getByLabel('Where are you watching from?').fill('London')
   await page.getByRole('button', { name: "See tonight's sky" }).click()

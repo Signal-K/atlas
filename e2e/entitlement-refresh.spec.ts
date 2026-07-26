@@ -27,6 +27,10 @@ function seedSignedInUser(page: Page, entitled: boolean) {
           },
         }),
       )
+      // Signing in flips `alreadyEntered`, which would otherwise surface the
+      // first-run OnboardingFlow overlay and block every click these tests
+      // make -- this suite isn't testing onboarding, so mark it done upfront.
+      window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
     },
     { entitledValue: entitled, tokenValue: E2E_TOKEN },
   )
