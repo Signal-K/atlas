@@ -34,6 +34,7 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
   const [stepIndex, setStepIndex] = useState(0)
   const [name, setName] = useState(() => getDisplayName() ?? '')
   const [interests, setInterests] = useState<string[]>([])
+  const [hasSavedInterests, setHasSavedInterests] = useState(false)
   const [locationQuery, setLocationQuery] = useState('')
   const [chosenCity, setChosenCity] = useState<City | null>(null)
   const [pushBusy, setPushBusy] = useState(false)
@@ -41,7 +42,10 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
   const [pushError, setPushError] = useState<string | null>(null)
 
   useEffect(() => {
-    getPreferredEventTypes().then(setInterests)
+    getPreferredEventTypes().then((kinds) => {
+      setInterests(kinds)
+      setHasSavedInterests(kinds.length > 0)
+    })
   }, [])
 
   const step = STEPS[stepIndex]
@@ -132,7 +136,11 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
         {step === 'interests' && (
           <>
             <h2>What do you want to see?</h2>
-            <p>Atlas will prioritise these in your feed and week strip.</p>
+            <p>
+              {hasSavedInterests
+                ? 'Pre-filled from what you already follow — tap any you want to remove.'
+                : 'Atlas will prioritise these in your feed and week strip.'}
+            </p>
             <InterestsPicker selected={interests} onToggleCategory={toggleInterest} />
             <div className="onboarding-flow-actions">
               <button type="button" className="onboarding-flow-skip" onClick={advance}>
@@ -160,11 +168,12 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
               placeholder="Search for your town or city"
             />
             <div className="onboarding-flow-actions">
-              <button type="button" className="onboarding-flow-skip" onClick={advance}>
-                Looks good
-              </button>
-              <button type="button" className="onboarding-flow-primary" onClick={handleLocationContinue} disabled={!chosenCity}>
-                Use this location
+              <button
+                type="button"
+                className="onboarding-flow-primary"
+                onClick={chosenCity ? handleLocationContinue : advance}
+              >
+                {chosenCity ? 'Use this location' : 'Looks good'}
               </button>
             </div>
           </>
