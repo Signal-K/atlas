@@ -60,14 +60,14 @@ one fragment (dashboard widget limits/priority) was never confirmed and
 is resolved to the closest existing feature with a caveat — see
 story-dashboard-widget-limits.
 
-A later batch of stories (`story-feed-day-grouping-improvements` and
-everything under `epic-event-data-expansion`, plus the "Follow-up fix"
-sections appended to the three onboarding stories) isn't sourced from the
-notebook pages at all -- it's from direct bug reports and feature
-requests Liam made in a following chat session, after the notebook-driven
-work above had already shipped. Logged here the same way regardless of
-source, per the standing instruction to keep this folder as the record of
-what was scoped/shipped.
+A later batch of stories (`story-feed-day-grouping-improvements`,
+everything under `epic-event-data-expansion`, everything under
+`epic-guest-experience`, plus the "Follow-up fix" sections appended to
+the three onboarding stories) isn't sourced from the notebook pages at
+all -- it's from direct bug reports and feature requests Liam made in a
+following chat session, after the notebook-driven work above had already
+shipped. Logged here the same way regardless of source, per the standing
+instruction to keep this folder as the record of what was scoped/shipped.
 
 ## Index
 
@@ -102,3 +102,6 @@ what was scoped/shipped.
 | story-new-keyless-event-sources | story | Add asteroid close-approach and fireball event sources | done |
 | story-satellite-visual-group-pass | story | Widen satellite pass coverage (Hubble, Celestrak visual group, longer windows) | done |
 | story-space-weather-donki | story | Solar flare events via NASA DONKI (built, not enabled in production) | blocked |
+| epic-guest-experience | epic | Guest experience — lightweight, browser-storage first | in-progress |
+| story-guest-account-graduation | story | Reframe the signup prompt as an offer, with a permanent Settings graduation path | done |
+| story-reminder-notification-reliability | story | Fix local reminder notifications silently failing on mobile browsers | done |

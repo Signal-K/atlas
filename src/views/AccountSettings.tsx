@@ -147,6 +147,11 @@ export function AccountSettings({
 
   return (
     <div className="settings-row settings-row--account">
+      <p className="settings-help">
+        Everything you've saved in this browser (favourites, watchlist, observations) stays right here, account or
+        not. Create a free account any time to sync it across your devices — nothing already saved is lost either
+        way.
+      </p>
       <form className="account-form" onSubmit={handleSubmit} onFocus={trackFormStarted}>
         <input type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} required />
         <input

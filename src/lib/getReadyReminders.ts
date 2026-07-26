@@ -142,10 +142,23 @@ function scheduleReminder(reminder: GetReadyReminder) {
       })
       return
     }
-    new Notification('Atlas: get ready', {
-      body: notificationBody(reminder, condition),
-      tag: `atlas-${reminder.eventId}`,
-    })
+    // `new Notification()` throws a TypeError on nearly all mobile browsers
+    // (Safari iOS included) -- MDN documents this explicitly. Showing it
+    // through the service worker's registration works everywhere the
+    // constructor doesn't, without needing an actual remote push message
+    // (this is a locally-triggered notification, not a `push` event).
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready
+      await registration.showNotification('Atlas: get ready', {
+        body: notificationBody(reminder, condition),
+        tag: `atlas-${reminder.eventId}`,
+      })
+    } else {
+      new Notification('Atlas: get ready', {
+        body: notificationBody(reminder, condition),
+        tag: `atlas-${reminder.eventId}`,
+      })
+    }
     updateReminder(reminder.id, { firedAt: new Date().toISOString(), skippedReason: undefined })
     trackEvent('Get-ready notification shown', { eventId: reminder.eventId, title: reminder.title })
   }, delay)
