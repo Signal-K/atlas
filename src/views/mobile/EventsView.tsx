@@ -203,6 +203,8 @@ export function EventsView({
               deviceUsed: CAMERA_PROFILES[getDefaultDevice()].name,
               cameraRecipeUsed: recipeKey ?? undefined,
               locationLabel: viewLocation.name,
+              moonIlluminationPct: moonIlluminationPctAt(new Date(selected.startsAt)),
+              cloudCoverPct: selectedAdvisory?.cloudCoverPct,
             })
           }
           recipeKey={recipeKey}

@@ -452,6 +452,9 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
                   deviceUsed: CAMERA_PROFILES[getDefaultDevice()].name,
                   cameraRecipeUsed: recipeKeyForEventKind(topTarget.kind) ?? undefined,
                   locationLabel: city.name,
+                  moonIlluminationPct: plan.moonIlluminationPct,
+                  cloudCoverPct: advisory?.cloudCoverPct,
+                  directionLabel: topTarget.direction?.compassLabel,
                 })
               }
             >

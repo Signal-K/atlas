@@ -62,12 +62,14 @@ story-dashboard-widget-limits.
 
 A later batch of stories (`story-feed-day-grouping-improvements`,
 everything under `epic-event-data-expansion`, everything under
-`epic-guest-experience`, plus the "Follow-up fix" sections appended to
-the three onboarding stories) isn't sourced from the notebook pages at
-all -- it's from direct bug reports and feature requests Liam made in a
-following chat session, after the notebook-driven work above had already
-shipped. Logged here the same way regardless of source, per the standing
-instruction to keep this folder as the record of what was scoped/shipped.
+`epic-guest-experience`, everything under
+`epic-camera-and-photo-guidance`, plus the "Follow-up fix" sections
+appended to the three onboarding stories) isn't sourced from the
+notebook pages at all -- it's from direct bug reports and feature
+requests Liam made in a following chat session, after the notebook-driven
+work above had already shipped. Logged here the same way regardless of
+source, per the standing instruction to keep this folder as the record of
+what was scoped/shipped.
 
 ## Index
 
@@ -105,3 +107,7 @@ instruction to keep this folder as the record of what was scoped/shipped.
 | epic-guest-experience | epic | Guest experience — lightweight, browser-storage first | in-progress |
 | story-guest-account-graduation | story | Reframe the signup prompt as an offer, with a permanent Settings graduation path | done |
 | story-reminder-notification-reliability | story | Fix local reminder notifications silently failing on mobile browsers | done |
+| epic-camera-and-photo-guidance | epic | Camera preset optimisation and photo guidance | in-progress |
+| story-smart-caption-suggestion | story | Suggest a starting observation caption from data Atlas already has | done |
+| story-condition-aware-camera-recipes | story | Camera recipes react to tonight's actual conditions | done |
+| story-ai-photo-captions | story | AI photo captions for Sky Pass observations (built, not enabled in production) | blocked |

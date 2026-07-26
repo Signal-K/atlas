@@ -271,3 +271,39 @@ export function deviceRecipeFor(recipeKey: RecipeKey, device: DeviceId): DeviceR
   const family = CAMERA_PROFILES[device].recipeFamily
   return CAMERA_RECIPES[recipeKey].devices[family] ?? CAMERA_RECIPES[recipeKey].devices.other
 }
+
+export interface LiveRecipeConditions {
+  cloudCoverPct?: number
+  moonIlluminationPct?: number
+  altitudeDeg?: number
+}
+
+// Recipes above are evergreen field notes -- this fills the gap between
+// "how to shoot a Moon photo in general" and "should I bother tonight,
+// with tonight's actual sky." No new data source: cloud/moon/altitude are
+// already computed by the caller (TonightPlan, viewing advisory) before
+// the recipe panel ever renders.
+export function describeLiveConditions(recipeKey: RecipeKey, conditions: LiveRecipeConditions): string | null {
+  const { cloudCoverPct, moonIlluminationPct, altitudeDeg } = conditions
+  const notes: string[] = []
+
+  if (cloudCoverPct != null && cloudCoverPct >= 50) {
+    notes.push(`${Math.round(cloudCoverPct)}% cloud cover tonight will likely soften or hide this — worth waiting for a clearer night if you can.`)
+  }
+
+  const moonSensitiveRecipes: RecipeKey[] = ['milky_way', 'meteor_shower']
+  if (moonIlluminationPct != null && moonIlluminationPct >= 60 && moonSensitiveRecipes.includes(recipeKey)) {
+    notes.push(`Moon is ${Math.round(moonIlluminationPct)}% lit — its glow will wash out faint detail here more than usual.`)
+  }
+
+  if (altitudeDeg != null && altitudeDeg < 20) {
+    notes.push(`Only ${Math.round(altitudeDeg)}° above the horizon right now — expect more atmospheric blur than a higher pass would give.`)
+  }
+
+  if (notes.length === 0) {
+    if (cloudCoverPct != null && cloudCoverPct < 20) return 'Clear sky tonight — good conditions for this shot.'
+    return null
+  }
+
+  return notes.join(' ')
+}

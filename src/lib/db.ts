@@ -55,6 +55,10 @@ export interface ObservationLogEntry {
   // own id format. A public share link points at remoteId, not id.
   remoteId?: string
   isPublic?: boolean
+  // Sky Pass "AI photo caption" (see pocketbase/pb_hooks/photo-caption.pb.js)
+  // -- set once the server-side vision request succeeds; absent otherwise
+  // (feature not enabled, request failed, or still pending).
+  aiCaption?: string
 }
 
 export interface StreakState {
