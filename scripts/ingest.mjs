@@ -17,6 +17,8 @@ import { fetchEvents as fetchAuroraEvents } from './sources/aurora.mjs'
 import { fetchEvents as fetchCometEvents } from './sources/comets.mjs'
 import { fetchEvents as fetchAsteroidApproachEvents } from './sources/asteroid-approaches.mjs'
 import { fetchEvents as fetchFireballEvents } from './sources/fireballs.mjs'
+import { fetchEvents as fetchSatelliteVisualGroupEvents } from './sources/satellite-visual-group.mjs'
+import { fetchEvents as fetchSolarFlareEvents } from './sources/space-weather-donki.mjs'
 
 // Each plugin gets its own sensible window: moon phases/meteor showers/
 // eclipses/planets/deep-sky/conjunctions are predictable a year out, but ISS
@@ -40,7 +42,18 @@ const PLUGINS = [
   { fetch: fetchCometEvents },
   { fetch: fetchAsteroidApproachEvents, windowDays: 14 },
   { fetch: fetchFireballEvents, windowDays: 60 },
+  { fetch: fetchSatelliteVisualGroupEvents, windowDays: 3 },
 ]
+
+// Plugins that need a registered API key, gated out of PLUGINS entirely
+// (not just left to fail) unless the key is actually configured -- a
+// production run with no NASA_API_KEY secret set should behave exactly as
+// it did before this plugin existed, not log a failure every single run.
+if (process.env.NASA_API_KEY) {
+  PLUGINS.push({ fetch: fetchSolarFlareEvents, windowDays: 30 })
+} else {
+  console.log('NASA_API_KEY not set -- skipping DONKI solar flare ingest (dev/prod flag, not an error).')
+}
 
 const PB_URL = process.env.PB_URL ?? 'http://127.0.0.1:8090'
 const PB_ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL

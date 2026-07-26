@@ -15,6 +15,7 @@ export const KIND_LABELS: Record<string, string> = {
   local_night_sky: 'Local guide',
   asteroid_approach: 'Asteroid',
   fireball: 'Fireball',
+  solar_flare: 'Solar flare',
 }
 
 interface EventRowProps {

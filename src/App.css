@@ -1834,6 +1834,11 @@
   font-size: 13px;
 }
 
+.onboarding-flow-hint {
+  color: var(--text-muted, #767676);
+  font-size: 13px;
+}
+
 .signup-welcome-beat {
   text-align: center;
   animation: signup-welcome-pop 0.32s ease-out both;

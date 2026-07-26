@@ -60,6 +60,15 @@ one fragment (dashboard widget limits/priority) was never confirmed and
 is resolved to the closest existing feature with a caveat — see
 story-dashboard-widget-limits.
 
+A later batch of stories (`story-feed-day-grouping-improvements` and
+everything under `epic-event-data-expansion`, plus the "Follow-up fix"
+sections appended to the three onboarding stories) isn't sourced from the
+notebook pages at all -- it's from direct bug reports and feature
+requests Liam made in a following chat session, after the notebook-driven
+work above had already shipped. Logged here the same way regardless of
+source, per the standing instruction to keep this folder as the record of
+what was scoped/shipped.
+
 ## Index
 
 | id | type | title | status |
@@ -87,3 +96,9 @@ story-dashboard-widget-limits.
 | story-events-page-structure | story | Events page: 100% clear structure pass | done |
 | story-events-category-filter | story | Optional category filter at top of events views | done |
 | story-daily-transit-articles | story | Ability to see Daily Transit articles from the Atlas app | done |
+| story-feed-day-grouping-improvements | story | Clearer day segmentation and no empty days in the events feed | done |
+| epic-event-data-expansion | epic | Event data coverage & volume | in-progress |
+| story-location-event-coverage-fix | story | Fix zero location-bound events for users far from the curated city list | done |
+| story-new-keyless-event-sources | story | Add asteroid close-approach and fireball event sources | done |
+| story-satellite-visual-group-pass | story | Widen satellite pass coverage (Hubble, Celestrak visual group, longer windows) | done |
+| story-space-weather-donki | story | Solar flare events via NASA DONKI (built, not enabled in production) | blocked |

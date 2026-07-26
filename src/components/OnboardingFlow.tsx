@@ -3,7 +3,7 @@ import { getDisplayName, saveDisplayName } from '../lib/displayName'
 import { InterestsPicker } from './InterestsPicker'
 import { getPreferredEventTypes, savePreferredEventTypes } from '../lib/eventPreferences'
 import { LocationSearchInput } from './LocationSearchInput'
-import { isPushSupported, subscribeToPush } from '../lib/push'
+import { ensureNotificationPermission } from '../lib/getReadyReminders'
 import { trackEvent } from '../lib/analytics'
 import type { AuthUser } from '../lib/auth'
 import type { City } from '../lib/cities'
@@ -17,6 +17,13 @@ export function hasCompletedOnboardingFlow(): boolean {
 
 type Step = 'name' | 'interests' | 'location' | 'notifications'
 const STEPS: Step[] = ['name', 'interests', 'location', 'notifications']
+
+// Local "get ready" reminders (localStorage + the browser's own Notification
+// permission, see lib/getReadyReminders.ts) work for guests with no account
+// at all -- only the optional cross-device server push sync needs sign-in.
+// Checked separately from lib/push.ts's isPushSupported(), which also
+// requires a service worker + VAPID key just for that sync layer.
+const localNotificationsSupported = typeof window !== 'undefined' && 'Notification' in window
 
 interface OnboardingFlowProps {
   city: CurrentLocation
@@ -86,13 +93,19 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
     advance()
   }
 
-  async function enablePush() {
+  async function enableNotifications() {
     setPushBusy(true)
     setPushError(null)
     try {
-      await subscribeToPush()
+      // Works for guests too: this only ever requires the browser's own
+      // Notification permission (no account needed) for local "get ready"
+      // reminders, and separately best-effort upgrades to synced server
+      // push if already signed in -- never throws just for being a guest,
+      // unlike calling subscribeToPush() directly.
+      const granted = await ensureNotificationPermission()
+      if (!granted) throw new Error('Notifications permission was not granted.')
       setPushEnabled(true)
-      trackEvent('Enabled push notifications', { source: 'onboarding' })
+      trackEvent('Enabled notifications', { source: 'onboarding', signedIn: Boolean(user) })
     } catch (err) {
       setPushError(err instanceof Error ? err.message : 'Could not enable notifications.')
     } finally {
@@ -182,13 +195,12 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
         {step === 'notifications' && (
           <>
             <h2>Stay in the loop</h2>
-            {!isPushSupported() ? (
-              <p>Push notifications aren&apos;t available on this device/deployment — you can still check Atlas any time.</p>
-            ) : !user ? (
-              <p>Sign in later, then enable reminders from Settings.</p>
+            {!localNotificationsSupported ? (
+              <p>Notifications aren&apos;t available on this device/browser — you can still check Atlas any time.</p>
             ) : (
               <>
-                <p>Get a nudge when watchlisted events and great conditions come up.</p>
+                <p>Get a nudge when watchlisted events and great conditions come up — works right away, no account needed.</p>
+                {!user && <p className="onboarding-flow-hint">Sign in later to also get notified on other devices.</p>}
                 {pushError && <p className="onboarding-flow-error">{pushError}</p>}
                 {pushEnabled && <p className="onboarding-flow-success">Notifications enabled.</p>}
               </>
@@ -197,8 +209,8 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
               <button type="button" className="onboarding-flow-skip" onClick={finish}>
                 {pushEnabled ? 'Done' : 'Not now'}
               </button>
-              {isPushSupported() && user && !pushEnabled && (
-                <button type="button" className="onboarding-flow-primary" onClick={enablePush} disabled={pushBusy}>
+              {localNotificationsSupported && !pushEnabled && (
+                <button type="button" className="onboarding-flow-primary" onClick={enableNotifications} disabled={pushBusy}>
                   {pushBusy ? 'Enabling…' : 'Enable notifications'}
                 </button>
               )}
