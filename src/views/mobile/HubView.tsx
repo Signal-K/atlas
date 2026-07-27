@@ -127,6 +127,13 @@ function formatTime(iso: string, timeZone?: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
 }
 
+// lightPollutionLabel() stays lowercase (e.g. "suburban sky") so it also
+// reads correctly mid-sentence elsewhere -- capitalised here only where
+// it's the standalone headline value.
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
 const KIND_KICKER: Record<string, { label: string; color: string }> = {
   moon_phase: { label: 'MOON', color: 'var(--dt-glacier-400)' },
   eclipse: { label: 'ECLIPSE', color: 'var(--dt-glacier-400)' },
@@ -406,8 +413,8 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           </div>
           <div className="dt-widget-cell" title={bortleExplainer(lightPollution.bortleClass)}>
             <span className="dt-widget-eyebrow"><HubIcon name="spark" />Light</span>
-            <span className="dt-widget-value">Bortle {lightPollution.bortleClass}</span>
-            <span className="dt-widget-caption">{lightPollution.label}</span>
+            <span className="dt-widget-value">{capitalize(lightPollution.label)}</span>
+            <span className="dt-widget-caption">Bortle {lightPollution.bortleClass} of 9</span>
           </div>
         </div>
       </section>
@@ -427,7 +434,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
               <span className="mobile-event-kind">
                 {index === 0 ? 'Today' : new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}
               </span>
-              <span className="mobile-mini-row-name">Bortle {lightPollution.bortleClass}</span>
+              <span className="mobile-mini-row-name">{capitalize(lightPollution.label)}</span>
               <span className="mobile-mini-row-meta">{Math.round(day.cloudCoverPct)}% cloud</span>
               <span className="mobile-plan-row-status">{Math.round(day.precipitationChancePct)}% rain chance</span>
             </div>

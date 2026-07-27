@@ -1,4 +1,4 @@
-import { estimateLightPollution, rankLowerLightPollutionSites, type RankedDarkSkySite } from '../lib/darkSky'
+import { estimateLightPollution, lightPollutionLabel, rankLowerLightPollutionSites, type RankedDarkSkySite } from '../lib/darkSky'
 import { trackEvent } from '../lib/analytics'
 import { tourAffiliateUrl } from '../lib/affiliate'
 import { NativeRoutePicker } from '../components/NativeRoutePicker'
@@ -24,9 +24,9 @@ export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
     <section className="widget-section">
       <h2>Dark-sky trips</h2>
       <p className="darksky-hint">
-        Current light pollution: Bortle {lightPollution.bortleClass} · {lightPollution.label} (
-        {lightPollution.confidence === 'curated-site' ? 'curated site' : 'estimated'}). Nearby options are ranked by travel
-        distance, with lower light-pollution value shown for each site.
+        Sky here right now: {lightPollution.label} ({lightPollution.confidence === 'curated-site' ? 'curated site' : 'estimated'},
+        Bortle {lightPollution.bortleClass} of 9 — 1 is the darkest sky, 9 the brightest). Nearby options below are ranked by travel
+        distance, darkest first.
       </p>
       {nearestMinutes > FAR_TRAVEL_MINUTES_THRESHOLD && (
         <p className="darksky-hint">
@@ -39,11 +39,13 @@ export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
           <li key={site.id} className="darksky-site">
             <div className="darksky-site-header">
               <span className="darksky-site-name">{site.name}</span>
-              <span className={`darksky-bortle darksky-bortle--${site.bortleClass}`}>Bortle {site.bortleClass}</span>
+              <span className={`darksky-bortle darksky-bortle--${site.bortleClass}`} title={`Bortle ${site.bortleClass} of 9`}>
+                {lightPollutionLabel(site.bortleClass)}
+              </span>
             </div>
             <p className="darksky-site-meta">
               {site.distanceKm.toFixed(0)} km ·{' '}
-              {(site.lightPollutionDelta ?? 0) > 0 ? `${site.lightPollutionDelta} Bortle classes better` : 'best known match'} · ~
+              {(site.lightPollutionDelta ?? 0) > 0 ? `noticeably darker sky than home` : 'best known match'} · ~
               {Math.round(site.estimatedTravelMinutes / 60)}h{' '}
               {site.estimatedTravelMinutes % 60}m drive (estimated)
             </p>

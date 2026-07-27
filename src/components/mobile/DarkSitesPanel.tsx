@@ -1,4 +1,4 @@
-import { estimateLightPollution, rankLowerLightPollutionSites } from '../../lib/darkSky'
+import { estimateLightPollution, lightPollutionLabel, rankLowerLightPollutionSites } from '../../lib/darkSky'
 import { NativeRoutePicker } from '../NativeRoutePicker'
 import { BackIcon, MobileIcon } from './MobileIcon'
 
@@ -25,8 +25,8 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
           <MobileIcon name="mountain" /> Dark sites
         </div>
         <p className="mobile-empty-hint">
-          Current light pollution near {cityName}: Bortle {lightPollution.bortleClass} · {lightPollution.label} (
-          {lightPollution.confidence === 'curated-site' ? 'curated site' : 'estimated'}).
+          Sky near {cityName} right now: {lightPollution.label} ({lightPollution.confidence === 'curated-site' ? 'curated site' : 'estimated'}
+          , Bortle {lightPollution.bortleClass} of 9 — 1 is the darkest sky, 9 the brightest).
         </p>
         <p className="mobile-empty-hint">Lower light-pollution options ranked by trip time, with estimated sky improvement.</p>
         {nearestMinutes > FAR_TRAVEL_MINUTES_THRESHOLD && (
@@ -49,8 +49,8 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
                 </div>
                 <div className="mobile-tool-row-foot">
                   <span>
-                    BORTLE {site.bortleClass} &middot;{' '}
-                    {(site.lightPollutionDelta ?? 0) > 0 ? `${site.lightPollutionDelta} CLASS BETTER` : 'BEST KNOWN MATCH'} &middot;{' '}
+                    {lightPollutionLabel(site.bortleClass).toUpperCase()} &middot;{' '}
+                    {(site.lightPollutionDelta ?? 0) > 0 ? 'NOTICEABLY DARKER THAN HOME' : 'BEST KNOWN MATCH'} &middot;{' '}
                     {Math.round(site.distanceKm)} KM
                   </span>
                 </div>

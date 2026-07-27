@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import '../mobile.css'
 import { HubView } from '../views/mobile/HubView'
@@ -156,6 +156,29 @@ export function MobileShell({
     setVisitedTabs((current) => (current.has(tab) ? current : new Set(current).add(tab)))
   }, [tab])
 
+  // All four tabs render into the *same* `.mobile-content` scroll
+  // container (only their wrapper divs toggle `hidden`, see visitedTabs
+  // above) -- so scrollTop is shared state across tabs, not per-tab. Left
+  // alone, switching tabs kept whatever scrollTop the previous tab was at:
+  // if that offset was deeper than the new tab's actual content height,
+  // the browser immediately clamps it to the new tab's bottom, which reads
+  // as "switching tabs teleports me to the bottom" -- and the very next
+  // scroll then computes a huge, wrong delta against a lastScrollTop from
+  // a completely different tab's layout, producing the header-collapse
+  // stutter on top of that. Recorded continuously per tab here (not just
+  // read once at switch time) so the position is accurate even if the
+  // user scrolled and then got interrupted before switching tabs.
+  const scrollPositionsRef = useRef<Record<MobileTab, number>>({ hub: 0, events: 0, calendar: 0, journal: 0 })
+
+  // Runs before paint (unlike a plain effect) so the restored position is
+  // applied before the browser ever renders the wrong, carried-over one --
+  // that's what actually prevents the visible jump/flash on tab switch.
+  useLayoutEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    el.scrollTop = scrollPositionsRef.current[tab] ?? 0
+  }, [tab])
+
   // Collapses the brand row + location switch (not the tab bar, which stays
   // reachable) once the user scrolls down a bit, giving back vertical space
   // on small screens -- requested via the in-app feedback form (STS-500).
@@ -171,6 +194,7 @@ export function MobileShell({
     const NEAR_TOP = 24
     function onScroll() {
       const top = el!.scrollTop
+      scrollPositionsRef.current[tab] = top
       const delta = top - lastScrollTop
       if (top <= NEAR_TOP) setHeaderCollapsed(false)
       else if (delta > THRESHOLD) setHeaderCollapsed(true)

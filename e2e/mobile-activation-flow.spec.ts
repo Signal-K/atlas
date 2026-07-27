@@ -191,8 +191,8 @@ test('mobile entitled user can compare lower light pollution sites and routes', 
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
   await page.getByRole('button', { name: /Dark sites/i }).click()
 
-  await expect(page.getByText(/Current light pollution/)).toBeVisible()
-  await expect(page.getByText(/CLASS BETTER|BEST KNOWN MATCH/).first()).toBeVisible()
+  await expect(page.getByText(/Sky near .* right now/)).toBeVisible()
+  await expect(page.getByText(/NOTICEABLY DARKER THAN HOME|BEST KNOWN MATCH/).first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Apple' }).first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Google' }).first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Open Transit Route' }).first()).toHaveAttribute('href', /mode=transit|travelmode=transit/)
