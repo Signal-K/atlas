@@ -211,7 +211,11 @@ function App() {
     navigate(isMobile ? '/today' : VIEW_PATH.tonight, { replace: true })
   }
 
-  if (showLanding) {
+  // /landing always renders the landing page, full stop -- no sign-in or
+  // onboarding-state check of any kind. This exists purely so it can
+  // actually be looked at on demand, regardless of what this browser's
+  // local storage already says about a prior visit.
+  if (showLanding || routerLocation.pathname === '/landing') {
     return <LandingPage isMobile={isMobile} onEnter={enterApp} />
   }
 
