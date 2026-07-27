@@ -28,6 +28,7 @@ import type { City } from '../lib/cities'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { WeekConditionsStrip } from '../components/WeekConditionsStrip'
+import { MobileDashboardPreview } from '../components/MobileDashboardPreview'
 
 const RATING_LABEL: Record<TonightPlan['rating'], string> = {
   great: 'Go outside — great conditions',
@@ -444,6 +445,7 @@ export function TonightView({ city, locationStatus, onLogAttempt, setManualLocat
         </>
       )}
       </section>
+      <MobileDashboardPreview city={city} plan={plan} />
     </>
   )
 }
