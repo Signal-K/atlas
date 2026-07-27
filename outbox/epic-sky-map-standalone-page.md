@@ -2,7 +2,7 @@
 id: epic-sky-map-standalone-page
 type: epic
 title: Sky map as its own page, with search
-status: in-progress
+status: done
 priority: medium
 source: "Liam, in chat: 'The star map needs to be able to open in its own page, and have nlp input'"
 ---

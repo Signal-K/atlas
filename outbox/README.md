@@ -105,7 +105,7 @@ what was scoped/shipped.
 | story-new-keyless-event-sources | story | Add asteroid close-approach and fireball event sources | done |
 | story-satellite-visual-group-pass | story | Widen satellite pass coverage (Hubble, Celestrak visual group, longer windows) | done |
 | story-space-weather-donki | story | Solar flare events via NASA DONKI (built, not enabled in production) | blocked |
-| epic-guest-experience | epic | Guest experience — lightweight, browser-storage first | in-progress |
+| epic-guest-experience | epic | Guest experience — lightweight, browser-storage first | done |
 | story-guest-account-graduation | story | Reframe the signup prompt as an offer, with a permanent Settings graduation path | done |
 | story-reminder-notification-reliability | story | Fix local reminder notifications silently failing on mobile browsers | done |
 | epic-camera-and-photo-guidance | epic | Camera preset optimisation and photo guidance | in-progress |
@@ -113,6 +113,6 @@ what was scoped/shipped.
 | story-condition-aware-camera-recipes | story | Camera recipes react to tonight's actual conditions | done |
 | story-ai-photo-captions | story | AI photo captions for Sky Pass observations (built, not enabled in production) | blocked |
 | story-starry-sky-baseline-recipe | story | Camera guidance for an ordinary night with nothing special happening | done |
-| epic-sky-map-standalone-page | epic | Sky map as its own page, with search | in-progress |
+| epic-sky-map-standalone-page | epic | Sky map as its own page, with search | done |
 | story-sky-map-own-page | story | Sky map opens at a real, bookmarkable URL | done |
 | story-sky-map-search | story | Text search on the sky map (no API key, works offline) | done |

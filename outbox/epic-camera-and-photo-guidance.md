@@ -42,9 +42,11 @@ three-tier approach, cheapest/most-certain first:
 - story-smart-caption-suggestion
 - story-condition-aware-camera-recipes
 - story-ai-photo-captions
+- story-starry-sky-baseline-recipe
 
 ## Status
 
-All three built. The first two are live for every relevant user tier
-today (free/Sky Pass respectively); the third needs a deliberate key
-addition before it does anything in production.
+All four built. The first, second, and fourth are live for every
+relevant user tier today (free/Sky Pass/free respectively); the third
+(AI photo captions) needs a deliberate `ANTHROPIC_API_KEY` addition
+before it does anything in production.

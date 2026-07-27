@@ -61,3 +61,27 @@ Directly relevant to the guest-notification path added in
 `ensureNotificationPermission()` with no account) — this fix is what
 makes that permission grant actually result in a notification arriving,
 on mobile Safari and other mobile browsers alike.
+
+## Follow-up fix: onboarding stuck on "Enabling..."
+
+Reported straight after the fix above shipped: the onboarding "Enable
+notifications" button got stuck showing "Enabling…" forever for some
+users.
+
+Root cause was one function over: `ensureNotificationPermission()`
+(same file) awaits `subscribeToPush()` as a best-effort sync, but only
+when the user is already signed in — and `subscribeToPush()` itself
+awaits `navigator.serviceWorker.ready`, a promise that never resolves at
+all if the service worker fails to register or activate for any reason.
+That sync is a bonus on top of the local permission grant the caller
+actually needs, so a stuck service worker was blocking the entire
+onboarding flow indefinitely with no way out — a `try/catch` doesn't
+help here, since an unresolved promise never throws.
+
+**Fix**: wrapped the `subscribeToPush()` call in a 6-second timeout
+(`withTimeout()` helper, same file) so a broken/slow service worker can
+no longer hang the whole permission flow. Local notifications still get
+enabled either way, matching the existing "browser notifications are
+still available as a local fallback" comment that already assumed
+`subscribeToPush()` could fail outright — just not that it could hang
+instead of failing.
