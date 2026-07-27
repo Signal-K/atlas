@@ -20,7 +20,7 @@ declare global {
 }
 
 test('signed-out desktop user submits a feature request without leaving the app', async ({ page }) => {
-  await page.goto('/tonight')
+  await page.goto('/app/tonight')
   await captureAnalytics(page)
 
   await page.getByRole('button', { name: 'Request feature' }).click()
@@ -30,7 +30,7 @@ test('signed-out desktop user submits a feature request without leaving the app'
   await page.getByRole('button', { name: 'Send request' }).click()
 
   await expect(page.getByRole('dialog', { name: 'Request a feature' })).toHaveCount(0)
-  await expect(page).toHaveURL('/tonight')
+  await expect(page).toHaveURL('/app/tonight')
   await expect(page.locator('.account-form')).toHaveCount(0)
 
   const event = await latestFeatureRequest(page)
@@ -40,15 +40,15 @@ test('signed-out desktop user submits a feature request without leaving the app'
     email: 'observer@example.com',
     signedIn: false,
     source: 'feedback_dock',
-    path: '/tonight',
-    route: '/tonight',
+    path: '/app/tonight',
+    route: '/app/tonight',
   })
   expect(event?.properties?.$set).toMatchObject({ email: 'observer@example.com', signedIn: false })
 })
 
 test('signed-out mobile user submits a feature request without leaving the app', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/today')
+  await page.goto('/app/today')
   await captureAnalytics(page)
 
   await page.getByRole('button', { name: 'Request feature' }).click()
@@ -58,7 +58,7 @@ test('signed-out mobile user submits a feature request without leaving the app',
   await page.getByRole('button', { name: 'Send request' }).click()
 
   await expect(page.getByRole('dialog', { name: 'Request a feature' })).toHaveCount(0)
-  await expect(page).toHaveURL('/today')
+  await expect(page).toHaveURL('/app/today')
   await expect(page.locator('.account-form')).toHaveCount(0)
 
   const event = await latestFeatureRequest(page)
@@ -68,8 +68,8 @@ test('signed-out mobile user submits a feature request without leaving the app',
     email: 'mobile@example.com',
     signedIn: false,
     source: 'feedback_dock',
-    path: '/today',
-    route: '/today',
+    path: '/app/today',
+    route: '/app/today',
   })
   expect(event?.properties?.$set).toMatchObject({ email: 'mobile@example.com', signedIn: false })
 })

@@ -14,7 +14,7 @@ test.describe('PocketBase-backed write actions', () => {
     // first-run OnboardingFlow overlay and block the Scrapbook tab click
     // below -- this test isn't testing onboarding, so mark it done upfront.
     await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
-    await page.goto('/settings')
+    await page.goto('/app/settings')
 
     await page.getByRole('button', { name: 'Need an account?' }).click()
     await page.locator('input[type="email"]').fill(email)
@@ -22,7 +22,7 @@ test.describe('PocketBase-backed write actions', () => {
     await page.getByRole('button', { name: 'Create account' }).click()
     await expect(page.getByText(email)).toBeVisible({ timeout: 10_000 })
 
-    await page.goto('/history')
+    await page.goto('/app/history')
     await page.getByRole('tab', { name: 'Scrapbook' }).click()
     await page.locator('textarea').fill(note)
     await page.getByRole('button', { name: 'Save observation' }).click()

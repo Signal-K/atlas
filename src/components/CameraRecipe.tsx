@@ -118,7 +118,7 @@ export function CameraRecipe({ recipeKey, liveConditions }: { recipeKey: RecipeK
       description="Downloadable preset bundles, device-specific setup steps, and deeper camera recommendations are part of the Sky Pass."
       freeNote="Your first walkthrough still includes the essential camera settings for free."
       onSignInClick={() => {
-        window.location.href = '/settings'
+        window.location.href = '/app/settings'
       }}
     >
       <div className="camera-recipe">

@@ -122,7 +122,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('mobile signed-out user can arm an event reminder without an account wall', async ({ page }) => {
-  await page.goto('/events')
+  await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: /Tonight.s sky, reported/ })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: /Moon & eclipses/ }).click()

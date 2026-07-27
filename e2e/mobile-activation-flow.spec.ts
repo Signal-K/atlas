@@ -95,7 +95,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('mobile signed-out user lands on visible-tonight feed before signup', async ({ page }) => {
-  await page.goto('/today')
+  await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.account-form')).toHaveCount(0)
@@ -127,7 +127,7 @@ test('mobile signed-out user lands on visible-tonight feed before signup', async
 })
 
 test('mobile equipment prompt waits for first target tap and saves gear choice', async ({ page }) => {
-  await page.goto('/today')
+  await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
@@ -150,7 +150,7 @@ test('mobile equipment prompt waits for first target tap and saves gear choice',
 })
 
 test('mobile signed-out user must sign in before using Plan', async ({ page }) => {
-  await page.goto('/today')
+  await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText(/Bortle \d/).first()).toBeVisible()
@@ -173,7 +173,7 @@ test('mobile signed-out user must sign in before using Plan', async ({ page }) =
 
 test('mobile signed-in free user must checkout before using Plan', async ({ page }) => {
   await seedSignedInUser(page, false)
-  await page.goto('/today')
+  await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
@@ -185,7 +185,7 @@ test('mobile signed-in free user must checkout before using Plan', async ({ page
 
 test('mobile entitled user can compare lower light pollution sites and routes', async ({ page }) => {
   await seedSignedInUser(page, true)
-  await page.goto('/today')
+  await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: 'Plan', exact: true }).click()

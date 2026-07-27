@@ -121,7 +121,7 @@ async function canvasHasRenderedSky(page: Page, selector: string) {
 }
 
 test('mobile sky map opens as a rendered full-screen canvas with floating controls', async ({ page }) => {
-  await page.goto('/today')
+  await page.goto('/app/today')
 
   const preview = page.getByRole('button', { name: 'Open full sky map' })
   await expect(preview).toBeVisible({ timeout: 15_000 })

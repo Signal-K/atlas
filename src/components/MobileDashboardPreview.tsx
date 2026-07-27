@@ -47,7 +47,7 @@ export function MobileDashboardPreview({ city, plan }: { city: CurrentLocation; 
         <div className="sky-map-frame sky-map-frame--hub">
           <SkyMapCanvas clarity={clarity} date={new Date()} lat={city.lat} lon={city.lon} markerLabel={topTarget?.title} markerPosition={topTarget?.direction} presentation="full" />
         </div>
-        <Link to="/sky-map" className="dt-map-preview-label" style={{ position: 'relative', zIndex: 1 }}>
+        <Link to="/app/sky-map" className="dt-map-preview-label" style={{ position: 'relative', zIndex: 1 }}>
           Open full sky map
         </Link>
       </div>

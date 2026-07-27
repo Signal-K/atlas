@@ -87,17 +87,17 @@ const TAB_CONTEXT: Record<MobileTab, string> = {
 
 // Real, bookmarkable/back-button-able routes per tab (STS: mobile routing).
 const TAB_PATH: Record<MobileTab, string> = {
-  hub: '/today',
-  events: '/events',
-  calendar: '/plan',
-  journal: '/journal',
+  hub: '/app/today',
+  events: '/app/events',
+  calendar: '/app/plan',
+  journal: '/app/journal',
 }
 
 const PATH_TAB: Record<string, MobileTab> = {
-  '/today': 'hub',
-  '/events': 'events',
-  '/plan': 'calendar',
-  '/journal': 'journal',
+  '/app/today': 'hub',
+  '/app/events': 'events',
+  '/app/plan': 'calendar',
+  '/app/journal': 'journal',
 }
 
 function tabFromPathname(pathname: string): MobileTab {
@@ -125,7 +125,7 @@ export function MobileShell({
 }: MobileShellProps) {
   const location = useLocation()
   const navigate = useNavigate()
-  const settingsOpen = location.pathname === '/settings'
+  const settingsOpen = location.pathname === '/app/settings'
   const tab = tabFromPathname(location.pathname)
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -210,10 +210,6 @@ export function MobileShell({
     storeTheme(isDark ? 'dark' : 'light')
   }, [isDark])
 
-  useEffect(() => {
-    if (location.pathname === '/') navigate(TAB_PATH.hub, { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only redirect the bare landing path once
-  }, [])
 
   useEffect(() => {
     if (!searchOpen) return
@@ -273,7 +269,7 @@ export function MobileShell({
 
   function openSettings() {
     setProfileOpen(false)
-    navigate('/settings')
+    navigate('/app/settings')
   }
 
   function goToTab(nextTab: MobileTab) {

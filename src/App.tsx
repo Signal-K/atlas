@@ -35,21 +35,21 @@ import './App.css'
 
 // Real, bookmarkable/back-button-able routes per desktop view.
 const VIEW_PATH: Record<View, string> = {
-  tonight: '/tonight',
-  explore: '/explore',
-  plan: '/plan',
-  community: '/community',
-  history: '/history',
-  settings: '/settings',
+  tonight: '/app/tonight',
+  explore: '/app/explore',
+  plan: '/app/plan',
+  community: '/app/community',
+  history: '/app/history',
+  settings: '/app/settings',
 }
 
 const PATH_VIEW: Record<string, View> = {
-  '/tonight': 'tonight',
-  '/explore': 'explore',
-  '/plan': 'plan',
-  '/community': 'community',
-  '/history': 'history',
-  '/settings': 'settings',
+  '/app/tonight': 'tonight',
+  '/app/explore': 'explore',
+  '/app/plan': 'plan',
+  '/app/community': 'community',
+  '/app/history': 'history',
+  '/app/settings': 'settings',
 }
 
 const VIEW_SUBTITLE: Record<View, string> = {
@@ -168,14 +168,37 @@ function App() {
     identifyAnalyticsUser(user)
   }, [user])
 
-  // Bare "/" lands on the default tab/view for whichever shell is active,
-  // rewritten to a real route rather than staying un-bookmarkable -- but
-  // only for visitors who've already been through (or skipped) the landing
-  // page, otherwise this would redirect away before they ever see it.
+  // "/" always renders the landing page -- see showLanding below -- so a
+  // visitor who should skip it (signed in, or already partially onboarded)
+  // is sent on to /app instead of the same URL silently rendering
+  // different content depending on invisible local-storage state.
   useEffect(() => {
-    if (routerLocation.pathname === '/' && !isMobile && skipLanding) navigate(VIEW_PATH.tonight, { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only redirect the bare landing path once isMobile/user is known
-  }, [skipLanding, isMobile])
+    if (routerLocation.pathname === '/' && skipLanding) navigate('/app', { replace: true })
+  }, [routerLocation.pathname, skipLanding, navigate])
+
+  // Bare "/app" has no view of its own -- redirect to whichever view/tab
+  // this shell actually shows by default, same target enterApp() below
+  // uses right after onboarding.
+  useEffect(() => {
+    if (routerLocation.pathname === '/app') navigate(isMobile ? '/app/today' : VIEW_PATH.tonight, { replace: true })
+  }, [routerLocation.pathname, isMobile, navigate])
+
+  // Any path that isn't "/", "/landing", or under "/app" is not a real
+  // route -- it used to silently fall through to rendering the full app
+  // shell (PATH_VIEW's `?? 'tonight'` fallback covered *anything*, not
+  // just legitimate in-app paths). Sent to "/landing" specifically, not
+  // "/": "/" has its own skip-to-/app redirect for already-onboarded
+  // visitors right above, and routing an unknown path through "/" would
+  // ride that same redirect straight into the app -- the exact "every
+  // undefined route ends up being the app" behavior this is supposed to
+  // stop. "/landing" carries no forwarding logic at all, so a bogus path
+  // reliably dead-ends on the landing page no matter who's asking.
+  const isAppRoute = routerLocation.pathname.startsWith('/app')
+  useEffect(() => {
+    if (routerLocation.pathname !== '/' && routerLocation.pathname !== '/landing' && !isAppRoute) {
+      navigate('/landing', { replace: true })
+    }
+  }, [routerLocation.pathname, isAppRoute, navigate])
 
   // Remounts location-dependent views once per real location change (a
   // GPS fix arriving, or a manual pick) without thrashing on every minor
@@ -198,25 +221,30 @@ function App() {
     setView('history')
   }
 
-  // First-time/unauthenticated visitors at "/" see the landing page instead
-  // of being dropped straight into the full app shell -- see market
-  // validation notes on why the previous "/" -> app redirect wasn't
-  // converting. Signed-in users and anyone who has actually engaged with
-  // onboarding (not just clicked through once) skip straight past this.
-  const showLanding = routerLocation.pathname === '/' && !skipLanding
-  const showOnboardingFlow = hasClickedIntoApp && !showLanding && !onboardingFlowDismissed
+  // "/" is the landing page, full stop -- no sign-in or onboarding-state
+  // check decides what renders at that URL. Signed-in/already-onboarded
+  // visitors don't see it lingering, but that's the redirect effect above
+  // moving them on to /app, not this page rendering something else in its
+  // place. /landing is a permanent alias: always the landing page,
+  // regardless of local storage, so it can actually be looked at on
+  // demand.
+  const showLanding = routerLocation.pathname === '/' || routerLocation.pathname === '/landing'
+  const showOnboardingFlow = hasClickedIntoApp && isAppRoute && !onboardingFlowDismissed
 
   function enterApp() {
     localStorage.setItem(ENTERED_KEY, '1')
-    navigate(isMobile ? '/today' : VIEW_PATH.tonight, { replace: true })
+    navigate(isMobile ? '/app/today' : VIEW_PATH.tonight, { replace: true })
   }
 
-  // /landing always renders the landing page, full stop -- no sign-in or
-  // onboarding-state check of any kind. This exists purely so it can
-  // actually be looked at on demand, regardless of what this browser's
-  // local storage already says about a prior visit.
-  if (showLanding || routerLocation.pathname === '/landing') {
+  if (showLanding) {
     return <LandingPage isMobile={isMobile} onEnter={enterApp} />
+  }
+
+  // Not "/", not "/landing", not an /app/* route -- the redirect effect
+  // above is already sending this to "/"; render nothing in the meantime
+  // rather than falling through to the app shell below.
+  if (!isAppRoute) {
+    return null
   }
 
   if (isMobile) {

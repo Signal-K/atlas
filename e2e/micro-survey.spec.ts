@@ -26,7 +26,7 @@ async function latestEvent(page: Page, name: string) {
 }
 
 test('contextual micro-survey submits one-tap answer with optional note', async ({ page }) => {
-  await page.goto('/today')
+  await page.goto('/app/today')
   await captureAnalytics(page)
 
   await dispatchSurveyTrigger(page)
@@ -47,7 +47,7 @@ test('contextual micro-survey submits one-tap answer with optional note', async 
 })
 
 test('contextual micro-survey is locally throttled after dismissal', async ({ page }) => {
-  await page.goto('/today')
+  await page.goto('/app/today')
   await captureAnalytics(page)
 
   await dispatchSurveyTrigger(page)

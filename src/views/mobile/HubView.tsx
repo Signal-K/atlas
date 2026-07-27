@@ -89,7 +89,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   // both work as expected.
   const location = useLocation()
   const navigate = useNavigate()
-  const mapOpen = location.pathname === '/sky-map'
+  const mapOpen = location.pathname === '/app/sky-map'
   const [expandedTargetId, setExpandedTargetId] = useState<string | null>(null)
   const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
   const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
@@ -266,7 +266,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           </button>
         </div>
 
-        <button type="button" className="dt-bracket dt-map-preview" onClick={() => navigate('/sky-map')} aria-label="Open full sky map">
+        <button type="button" className="dt-bracket dt-map-preview" onClick={() => navigate('/app/sky-map')} aria-label="Open full sky map">
           <span className="dt-bc-tr" />
           <span className="dt-bc-bl" />
           <div className="sky-map-frame sky-map-frame--hub">
@@ -374,7 +374,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           compassStatus={compass.status}
           pointing={compass.pointing}
           onEnableCompass={compass.enable}
-          onClose={() => navigate('/today')}
+          onClose={() => navigate('/app/today')}
         />
       )}
 

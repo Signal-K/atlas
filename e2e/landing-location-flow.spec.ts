@@ -92,7 +92,7 @@ test('manual city entry reaches tonight feed with selected city before signup', 
   await page.getByRole('button', { name: 'Use this location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/tonight')
+  await expect(page).toHaveURL('/app/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near Zurich' })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.account-form')).toHaveCount(0)
 })
@@ -105,7 +105,7 @@ test('browser geolocation entry reaches tonight feed without signup', async ({ p
   await page.getByRole('button', { name: 'Use my current location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/tonight')
+  await expect(page).toHaveURL('/app/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near Your location' })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.account-form')).toHaveCount(0)
 })
@@ -147,7 +147,7 @@ test('location search disambiguates cities by region and country', async ({ page
   await page.getByRole('button', { name: 'Use this location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/tonight')
+  await expect(page).toHaveURL('/app/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near London, Ontario, Canada' })).toBeVisible({ timeout: 15_000 })
 })
 
@@ -162,11 +162,11 @@ test('mobile header keeps location switching available after onboarding', async 
     )
   })
 
-  await page.goto('/today')
+  await page.goto('/app/today')
   await page.getByRole('button', { name: /Change location\. Currently London, England, United Kingdom/ }).click()
 
-  await expect(page).toHaveURL('/settings')
+  await expect(page).toHaveURL('/app/settings')
   await expect(page.getByPlaceholder('Search city, region, or country')).toHaveValue('London, England, United Kingdom')
   await page.getByRole('button', { name: 'Back to Atlas' }).click()
-  await expect(page).toHaveURL('/today')
+  await expect(page).toHaveURL('/app/today')
 })

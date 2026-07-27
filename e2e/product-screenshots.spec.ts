@@ -42,7 +42,7 @@ test('captures product screenshots for the Atlas state-of-product doc', async ({
 
   await page.setViewportSize({ width: 390, height: 844 })
   await mockDeviceOrientation(page)
-  await page.goto('/today')
+  await page.goto('/app/today')
   await prepareScreenshotMode(page)
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await capture(page, '04-mobile-today-hub.png')

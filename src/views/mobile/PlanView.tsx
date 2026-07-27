@@ -226,7 +226,7 @@ export function PlanView({
       description="Dark-sky trips, gear-fit planning, downloadable camera presets, and deeper camera setup are part of the Sky Pass."
       freeNote="Your first walkthrough, two-week local event browsing, check-ins, and private observation log stay free."
       onSignInClick={() => {
-        window.location.href = '/settings'
+        window.location.href = '/app/settings'
       }}
     >
       {toolPanel === 'dark-sites' ? (
@@ -256,7 +256,7 @@ export function PlanView({
           freeBullets="Today's sky conditions, 10-day event browsing, check-ins, and your Journal."
           paidBullets="90-day plans, saved targets & reminders, dark-sky trip routing, gear fit, and downloadable camera presets."
           onSignInClick={() => {
-            window.location.href = '/settings'
+            window.location.href = '/app/settings'
           }}
         >
           {null}
@@ -298,7 +298,7 @@ export function PlanView({
           description="Saving targets, reminders, and holiday planning are part of the Sky Pass."
           freeNote="You can keep browsing local events and checking in for free."
           onSignInClick={() => {
-            window.location.href = '/settings'
+            window.location.href = '/app/settings'
           }}
         >
           {null}

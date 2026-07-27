@@ -277,7 +277,7 @@ export function WeekConditionsStrip({
         <p className="feed-nearby-alert">
           Darker sky nearby: <strong>{nearbyDarkerSite.name}</strong> is {Math.round(nearbyDarkerSite.distanceKm)} km away
           (Bortle {nearbyDarkerSite.bortleClass} vs {hereLightPollution.bortleClass} here).{' '}
-          <Link to="/plan" onClick={() => trackEvent('Nearby darker sky alert clicked', { site: nearbyDarkerSite.id })}>
+          <Link to="/app/plan" onClick={() => trackEvent('Nearby darker sky alert clicked', { site: nearbyDarkerSite.id })}>
             Plan a trip
           </Link>
         </p>
@@ -320,7 +320,7 @@ export function WeekConditionsStrip({
       )}
       {!entitled && unlockedDays < STRIP_DAYS && (
         <p className="scrapbook-hint">
-          Free accounts see {FREE_FORECAST_DAYS} days of conditions. <Link to="/settings">Get Sky Pass</Link> to unlock the rest of
+          Free accounts see {FREE_FORECAST_DAYS} days of conditions. <Link to="/app/settings">Get Sky Pass</Link> to unlock the rest of
           the week, per-day ratings, substantially-better-conditions alerts, and location preview.
         </p>
       )}

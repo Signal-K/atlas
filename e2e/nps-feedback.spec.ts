@@ -28,7 +28,7 @@ async function latestEvent(page: Page, name: string) {
 }
 
 test('NPS prompt appears only after meaningful activity threshold and submits structured analytics', async ({ page }) => {
-  await page.goto('/tonight')
+  await page.goto('/app/tonight')
   await captureAnalytics(page)
 
   await expect(page.getByRole('dialog', { name: 'Quick score' })).toHaveCount(0)
@@ -55,7 +55,7 @@ test('NPS prompt appears only after meaningful activity threshold and submits st
 })
 
 test('NPS dismissal is locally throttled', async ({ page }) => {
-  await page.goto('/tonight')
+  await page.goto('/app/tonight')
   await captureAnalytics(page)
 
   await dispatchMeaningfulActivity(page, 4)

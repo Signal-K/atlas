@@ -46,7 +46,7 @@ test('signup with an existing ecosystem account logs in when the password matche
     })
   })
 
-  await page.goto('/settings')
+  await page.goto('/app/settings')
   await page.getByRole('button', { name: 'Need an account?' }).click()
   await page.getByPlaceholder('Email').fill(record.email)
   await page.getByPlaceholder('Password').fill('same-ecosystem-password')

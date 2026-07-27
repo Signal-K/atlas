@@ -109,7 +109,7 @@ test('signup appears after observation save, merges local journey, and returns t
   await page.locator('.equipment-prompt').getByRole('button', { name: 'My phone' }).click()
   await page.getByRole('button', { name: 'Log attempt' }).first().click()
 
-  await expect(page).toHaveURL('/history')
+  await expect(page).toHaveURL('/app/history')
   await expect(page.getByText('Logging attempt for')).toBeVisible()
   await expect(page.locator('.account-form')).toHaveCount(0)
   await page.getByPlaceholder(/What did you see tonight|How did/).fill('Saw the Moon through thin cloud.')
@@ -123,7 +123,7 @@ test('signup appears after observation save, merges local journey, and returns t
 
   await expect(page.getByRole('status')).toContainText('Atlas is watching the sky with you.')
   await expect(page.getByText('3 saved items carried into your account.')).toBeVisible()
-  await expect(page).toHaveURL('/history')
+  await expect(page).toHaveURL('/app/history')
   await expect(page.getByText('Saw the Moon through thin cloud.')).toBeVisible()
   await expect
     .poll(() =>

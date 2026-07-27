@@ -192,7 +192,7 @@ export function TonightView({ city, locationStatus, onLogAttempt, setManualLocat
       <section className="widget-section">
       <div className="tonight-location-heading">
         <h2>Tonight near {city.name}</h2>
-        <Link to="/settings" onClick={() => trackEvent('Location switch opened', { source: 'tonight' })}>Change location</Link>
+        <Link to="/app/settings" onClick={() => trackEvent('Location switch opened', { source: 'tonight' })}>Change location</Link>
       </div>
       {!isOnline && <p className="scrapbook-hint">You're offline — showing cached data.</p>}
       {(locationStatus === 'denied' || locationStatus === 'unsupported') && (

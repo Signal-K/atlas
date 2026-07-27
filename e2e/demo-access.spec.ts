@@ -46,7 +46,7 @@ test('demo access link grants Sky Pass after signup without checkout', async ({ 
     })
   })
 
-  await page.goto('/settings?demo=demo-floor')
+  await page.goto('/app/settings?demo=demo-floor')
   await page.getByRole('button', { name: 'Need an account?' }).click()
   await page.getByPlaceholder('Email').fill(signedUpRecord.email)
   await page.getByPlaceholder('Password').fill('password123')
