@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { SkyMapCanvas } from './SkyMapCanvas'
 import { turnInstruction, type DevicePointing } from '../lib/deviceCompass'
 import { getSkyMapObjects, type SkyMapObject } from '../lib/skyMapLayers'
+import { findSkyMapObjectFromQuery } from '../lib/skyMapSearch'
 import type { HorizontalPosition } from '../lib/skyPosition'
 
 interface SkyMapOverlayProps {
@@ -84,6 +85,8 @@ export function SkyMapOverlay({
   const activePointing = compassStatus === 'active' ? pointing : null
   const [timeMinutes, setTimeMinutes] = useState(() => minutesSinceMidnight(new Date()))
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'found' | 'not-found'>('idle')
   const mapDate = useMemo(() => dateFromMinutes(timeMinutes), [timeMinutes])
   const visibleObjects = useMemo(
     () =>
@@ -135,6 +138,17 @@ export function SkyMapOverlay({
     setSelectedObjectId((current) => (current === object.id ? null : object.id))
   }
 
+  function handleSearchSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    const match = findSkyMapObjectFromQuery(searchQuery, allVisibleObjects)
+    if (match) {
+      setSelectedObjectId(match.id)
+      setSearchStatus('found')
+    } else {
+      setSearchStatus('not-found')
+    }
+  }
+
   return (
     <div className="mobile-map-overlay" role="dialog" aria-modal="true" aria-label="Live sky map">
       <div className="mobile-map-overlay-head">
@@ -146,6 +160,21 @@ export function SkyMapOverlay({
           Close
         </button>
       </div>
+
+      <form className="mobile-map-search" onSubmit={handleSearchSubmit}>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(event) => {
+            setSearchQuery(event.target.value)
+            setSearchStatus('idle')
+          }}
+          placeholder="Find in the sky — try “jupiter” or “what's in the north”"
+          aria-label="Search the sky map"
+        />
+        <button type="submit">Find</button>
+        {searchStatus === 'not-found' && <p className="mobile-map-search-status">Nothing matching that is visible right now.</p>}
+      </form>
 
       <div className="mobile-map-overlay-body">
         <div className="mobile-map-aim-readout">

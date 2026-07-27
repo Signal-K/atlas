@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { SkyMapCanvas } from '../../components/SkyMapCanvas'
 import { SkyMapOverlay } from '../../components/SkyMapOverlay'
 import { getTonightPlan, type TonightPlan } from '../../lib/tonightTargets'
@@ -153,7 +154,14 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   const [preferredEvents, setPreferredEvents] = useState<SkyEvent[]>([])
   const [preferencesReady, setPreferencesReady] = useState(() => hasCompletedEventPreferences())
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
-  const [mapOpen, setMapOpen] = useState(false)
+  // The sky map opens at a real, bookmarkable URL (/sky-map) rather than
+  // pure local state -- a direct/bookmarked load of that path still lands
+  // on the Hub tab underneath (see MobileShell's tabFromPathname fallback)
+  // with the map already open on top, so the back button and share links
+  // both work as expected.
+  const location = useLocation()
+  const navigate = useNavigate()
+  const mapOpen = location.pathname === '/sky-map'
   const [expandedTargetId, setExpandedTargetId] = useState<string | null>(null)
   const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
   const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
@@ -325,7 +333,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           </button>
         </div>
 
-        <button type="button" className="dt-bracket dt-map-preview" onClick={() => setMapOpen(true)} aria-label="Open full sky map">
+        <button type="button" className="dt-bracket dt-map-preview" onClick={() => navigate('/sky-map')} aria-label="Open full sky map">
           <span className="dt-bc-tr" />
           <span className="dt-bc-bl" />
           <div className="sky-map-frame sky-map-frame--hub">
@@ -433,7 +441,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           compassStatus={compass.status}
           pointing={compass.pointing}
           onEnableCompass={compass.enable}
-          onClose={() => setMapOpen(false)}
+          onClose={() => navigate('/today')}
         />
       )}
 

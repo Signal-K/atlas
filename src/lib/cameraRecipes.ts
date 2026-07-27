@@ -3,7 +3,16 @@
 // composition tip and one honest "expected result" per target type.
 import { CAMERA_PROFILES, type DeviceId, type RecipeFamily } from './cameraProfiles'
 
-export type RecipeKey = 'moon' | 'bright_planet' | 'iss_pass' | 'meteor_shower' | 'conjunction' | 'eclipse' | 'twilight' | 'milky_way'
+export type RecipeKey =
+  | 'moon'
+  | 'bright_planet'
+  | 'iss_pass'
+  | 'meteor_shower'
+  | 'conjunction'
+  | 'eclipse'
+  | 'twilight'
+  | 'milky_way'
+  | 'starry_sky'
 
 export type TripodRequirement = 'required' | 'recommended' | 'optional'
 
@@ -248,6 +257,42 @@ export const CAMERA_RECIPES: Record<RecipeKey, CameraRecipeEntry> = {
       },
     },
   },
+  // The baseline recipe: an ordinary night with nothing special happening
+  // still has a sky worth photographing (bright stars, planets, ambient
+  // glow), and every night has one of these attached via the
+  // buildDailySkyGuideEvents filler (night_sky_guide/local_night_sky).
+  // Deliberately not milky_way's recipe -- that one promises a dark-sky
+  // Milky Way core, which most nights and most locations won't deliver;
+  // this one is honest about "a handful of stars," works under typical
+  // suburban/light-polluted skies, and needs no genuinely dark site.
+  starry_sky: {
+    title: 'General starry sky',
+    compositionTip: 'Include a horizon, rooftop, or tree line for scale — an empty sky with nothing to anchor it against reads as a blank test pattern.',
+    expectedResult: 'The brightest stars and any visible planets as sharp points, plus ambient sky glow near a city — not a dense star field or Milky Way texture without a genuinely dark site.',
+    devices: {
+      apple: {
+        mode: 'Night mode, default duration is usually enough',
+        lens: 'Main (1x) for the widest usable field of view',
+        tripod: 'recommended',
+        exposure: "Let Night mode run its course; brace against a wall or railing if you have no tripod",
+        focus: 'Tap on the brightest star you can see and wait for focus lock',
+      },
+      nothing: {
+        mode: 'Night mode, default duration',
+        lens: 'Main camera',
+        tripod: 'recommended',
+        exposure: 'Let Night mode stack the scene; a steady brace works if no tripod is on hand',
+        focus: 'Tap to focus on the brightest point in the sky',
+      },
+      other: {
+        mode: 'Night mode if available, else standard with the longest exposure the app allows',
+        lens: 'Main',
+        tripod: 'recommended',
+        exposure: 'Brace the phone against something solid if you have no tripod',
+        focus: 'Tap to focus on the brightest star visible',
+      },
+    },
+  },
 }
 
 // Maps a SkyEvent/TonightTarget kind to the recipe that applies to it.
@@ -261,6 +306,8 @@ const RECIPE_KEY_FOR_EVENT_KIND: Record<string, RecipeKey> = {
   conjunction: 'conjunction',
   eclipse: 'eclipse',
   deep_sky: 'milky_way',
+  night_sky_guide: 'starry_sky',
+  local_night_sky: 'starry_sky',
 }
 
 export function recipeKeyForEventKind(kind: string): RecipeKey | null {

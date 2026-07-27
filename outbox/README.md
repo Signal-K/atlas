@@ -63,7 +63,8 @@ story-dashboard-widget-limits.
 A later batch of stories (`story-feed-day-grouping-improvements`,
 everything under `epic-event-data-expansion`, everything under
 `epic-guest-experience`, everything under
-`epic-camera-and-photo-guidance`, plus the "Follow-up fix" sections
+`epic-camera-and-photo-guidance`, everything under
+`epic-sky-map-standalone-page`, plus the "Follow-up fix" sections
 appended to the three onboarding stories) isn't sourced from the
 notebook pages at all -- it's from direct bug reports and feature
 requests Liam made in a following chat session, after the notebook-driven
@@ -111,3 +112,7 @@ what was scoped/shipped.
 | story-smart-caption-suggestion | story | Suggest a starting observation caption from data Atlas already has | done |
 | story-condition-aware-camera-recipes | story | Camera recipes react to tonight's actual conditions | done |
 | story-ai-photo-captions | story | AI photo captions for Sky Pass observations (built, not enabled in production) | blocked |
+| story-starry-sky-baseline-recipe | story | Camera guidance for an ordinary night with nothing special happening | done |
+| epic-sky-map-standalone-page | epic | Sky map as its own page, with search | in-progress |
+| story-sky-map-own-page | story | Sky map opens at a real, bookmarkable URL | done |
+| story-sky-map-search | story | Text search on the sky map (no API key, works offline) | done |
