@@ -108,6 +108,17 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
     setPushBusy(true)
     setPushError(null)
     try {
+      // Browsers refuse to show the permission dialog at all once a site is
+      // blocked -- no prompt, no error from the API, requestPermission()
+      // just resolves 'denied' immediately (ensureNotificationPermission
+      // short-circuits the same way). From the button's perspective that's
+      // indistinguishable from doing nothing, so it's worth checking and
+      // naming explicitly rather than falling through to the generic "not
+      // granted" message, which reads the same for someone who just hasn't
+      // decided yet.
+      if ('Notification' in window && Notification.permission === 'denied') {
+        throw new Error('Notifications are blocked for this site. Enable them in your browser’s site settings, then try again.')
+      }
       // Works for guests too: this only ever requires the browser's own
       // Notification permission (no account needed) for local "get ready"
       // reminders, and separately best-effort upgrades to synced server
