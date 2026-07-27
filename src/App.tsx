@@ -204,10 +204,6 @@ function App() {
   // converting. Signed-in users and anyone who has actually engaged with
   // onboarding (not just clicked through once) skip straight past this.
   const showLanding = routerLocation.pathname === '/' && !skipLanding
-  // Fixed preview route: always renders the landing page regardless of
-  // sign-in/onboarding state, so it can actually be looked at/tested
-  // without clearing localStorage or opening a private window every time.
-  const isLandingPreview = routerLocation.pathname === '/landing'
   const showOnboardingFlow = hasClickedIntoApp && !showLanding && !onboardingFlowDismissed
 
   function enterApp() {
@@ -215,7 +211,7 @@ function App() {
     navigate(isMobile ? '/today' : VIEW_PATH.tonight, { replace: true })
   }
 
-  if (showLanding || isLandingPreview) {
+  if (showLanding) {
     return <LandingPage isMobile={isMobile} onEnter={enterApp} />
   }
 
