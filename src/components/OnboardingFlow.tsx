@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getDisplayName, saveDisplayName } from '../lib/displayName'
 import { InterestsPicker } from './InterestsPicker'
 import { getPreferredEventTypes, savePreferredEventTypes } from '../lib/eventPreferences'
@@ -47,6 +47,15 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
   const [pushBusy, setPushBusy] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushError, setPushError] = useState<string | null>(null)
+  // Guards against a second Notification.requestPermission() firing before
+  // React re-renders the disabled button -- a fast double-tap (common on
+  // mobile, where touchstart/click can both land in one gesture) invokes
+  // this handler twice inside the same tick, since `disabled={pushBusy}`
+  // only takes effect on the next render. Two overlapping
+  // requestPermission() calls make the native prompt flash and then
+  // dismiss itself before the user can respond to either. A ref updates
+  // synchronously, so it blocks the second call before it starts.
+  const requestingPermissionRef = useRef(false)
 
   useEffect(() => {
     getPreferredEventTypes().then((kinds) => {
@@ -94,6 +103,8 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
   }
 
   async function enableNotifications() {
+    if (requestingPermissionRef.current) return
+    requestingPermissionRef.current = true
     setPushBusy(true)
     setPushError(null)
     try {
@@ -110,6 +121,7 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
       setPushError(err instanceof Error ? err.message : 'Could not enable notifications.')
     } finally {
       setPushBusy(false)
+      requestingPermissionRef.current = false
     }
   }
 

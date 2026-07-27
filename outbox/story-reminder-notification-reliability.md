@@ -85,3 +85,25 @@ enabled either way, matching the existing "browser notifications are
 still available as a local fallback" comment that already assumed
 `subscribeToPush()` could fail outright — just not that it could hang
 instead of failing.
+
+## Follow-up fix: notification prompt appears twice, then dismisses itself
+
+Reported next: the browser's native permission prompt would flash up
+twice in a row and disappear before there was time to tap "Allow."
+
+Root cause: `OnboardingFlow`'s "Enable notifications" button disables
+itself via `disabled={pushBusy}`, but that only takes effect on the next
+React render — inside the same click gesture (a fast double-tap is
+common on mobile, where `touchstart`/`click` can both land before a
+re-render commits), `enableNotifications()` could run twice before the
+disabled state ever painted. Two overlapping
+`Notification.requestPermission()` calls made the native prompt
+render, get pre-empted by the second call, and dismiss itself — never
+giving either one a chance to be answered.
+
+**Fix**: `OnboardingFlow.tsx` now guards `enableNotifications()` with a
+`useRef` flag checked and set synchronously at the top of the function,
+before any state update or async work — a second call within the same
+tick returns immediately instead of starting a competing permission
+request. `useRef` updates synchronously (unlike `useState`), so it
+closes the exact gap the disabled-button attribute couldn't.
