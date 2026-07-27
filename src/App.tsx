@@ -79,7 +79,15 @@ function App() {
   // attempt from Tonight, where it should open straight to Scrapbook --
   // see logAttempt below, and TabbedSection's defaultActiveId/key contract.
   const [historyDefaultTab, setHistoryDefaultTab] = useState<'archive' | 'scrapbook'>('archive')
-  const location = useLocationSeed({ autoRequest: !!alreadyEntered && !hasManualLocation })
+  const [onboardingFlowDismissed, setOnboardingFlowDismissed] = useState(() => hasCompletedOnboardingFlow())
+  // Deferred until onboarding is out of the way: a first-time visitor who
+  // just clicked "Get started" on the landing page shouldn't immediately
+  // get an OS geolocation permission popup before they've even seen
+  // OnboardingFlow's own "location" step (which offers the same "use my
+  // current location" option, deliberately). Once onboarding is done
+  // (finished or skipped) this reverts to the original behavior for anyone
+  // who still hasn't set a location.
+  const location = useLocationSeed({ autoRequest: !!alreadyEntered && !hasManualLocation && onboardingFlowDismissed })
   const motion = useParallax()
   const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
   const isMobile = useIsMobile()
@@ -177,7 +185,6 @@ function App() {
   // converting. Signed-in users and anyone who has already entered once
   // (flag persisted below) skip straight past this, same as before.
   const showLanding = routerLocation.pathname === '/' && !user && !alreadyEntered
-  const [onboardingFlowDismissed, setOnboardingFlowDismissed] = useState(() => hasCompletedOnboardingFlow())
   const showOnboardingFlow = Boolean(alreadyEntered) && !showLanding && !onboardingFlowDismissed
 
   function enterApp() {
@@ -186,14 +193,7 @@ function App() {
   }
 
   if (showLanding) {
-    return (
-      <LandingPage
-        isMobile={isMobile}
-        requestLocation={() => location.requestLocation(true)}
-        setManualLocation={setManualLocation}
-        onEnter={enterApp}
-      />
-    )
+    return <LandingPage isMobile={isMobile} onEnter={enterApp} />
   }
 
   if (isMobile) {
@@ -216,6 +216,7 @@ function App() {
             city={currentLocation}
             user={user}
             setManualLocation={setManualLocation}
+            requestLocation={() => location.requestLocation(true)}
             onDone={() => setOnboardingFlowDismissed(true)}
           />
         )}
@@ -231,6 +232,7 @@ function App() {
           city={currentLocation}
           user={user}
           setManualLocation={setManualLocation}
+          requestLocation={() => location.requestLocation(true)}
           onDone={() => setOnboardingFlowDismissed(true)}
         />
       )}

@@ -8,6 +8,13 @@ test.skip(process.env.ATLAS_CAPTURE_SCREENSHOTS !== '1', 'Set ATLAS_CAPTURE_SCRE
 
 test.beforeEach(async ({ page }) => {
   await mockProductData(page)
+  // Location moved from the landing page into OnboardingFlow's own
+  // "location" step -- seed it directly and skip onboarding so these
+  // screenshots keep capturing the same screens as before that move.
+  await page.addInitScript(() => {
+    window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
+    window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
+  })
 })
 
 test('captures product screenshots for the Atlas state-of-product doc', async ({ page }) => {
@@ -19,8 +26,7 @@ test('captures product screenshots for the Atlas state-of-product doc', async ({
   await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
   await capture(page, '01-landing-location.png')
 
-  await page.getByLabel('Where are you watching from?').fill('London')
-  await page.getByRole('button', { name: "See tonight's sky" }).click()
+  await page.getByRole('button', { name: 'Get started' }).click()
   await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
   await capture(page, '02-tonight-feed.png')
 

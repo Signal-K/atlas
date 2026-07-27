@@ -17,6 +17,7 @@ import { bortleExplainer, estimateLightPollution } from '../../lib/darkSky'
 import { forecastLookaheadDays } from '../../lib/entitlementLimits'
 import { useAuth } from '../../lib/auth'
 import { getPreferredEventTypes, hasCompletedEventPreferences } from '../../lib/eventPreferences'
+import { hasCompletedOnboardingFlow } from '../../components/OnboardingFlow'
 import { isLocalEvent } from '../../lib/eventFilters'
 import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
 import { EventPreferencePrompt } from '../../components/mobile/EventPreferencePrompt'
@@ -290,7 +291,12 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
 
   return (
     <div className="dt-hub dt-starfield-bg">
-      {!preferencesReady && <EventPreferencePrompt onSaved={applyPreferredKinds} />}
+      {/* Onboarding's own "interests" step already covers this for anyone
+          who hasn't been through onboarding yet -- showing this standalone
+          prompt at the same time duplicated it directly underneath the
+          onboarding modal. Only offer it as a later feed nudge once
+          onboarding is out of the way and the user still hasn't set any. */}
+      {!preferencesReady && hasCompletedOnboardingFlow() && <EventPreferencePrompt onSaved={applyPreferredKinds} />}
 
       {preferencesReady && preferredEvents.length > 0 && (
         <section className="dt-for-you">

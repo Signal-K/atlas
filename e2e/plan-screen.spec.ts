@@ -64,10 +64,14 @@ test.beforeEach(async ({ page }) => {
   // would otherwise surface the first-run OnboardingFlow overlay and block
   // every click these tests make -- this suite isn't testing onboarding, so
   // mark it done upfront.
-  await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
+  // Location moved from the landing page into OnboardingFlow's own
+  // "location" step -- seed it directly, same as setManualLocation() would.
+  await page.addInitScript(() => {
+    window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
+    window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
+  })
   await page.goto('/')
-  await page.getByLabel('Where are you watching from?').fill('London')
-  await page.getByRole('button', { name: "See tonight's sky" }).click()
+  await page.getByRole('button', { name: 'Get started' }).click()
   await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
 })
 

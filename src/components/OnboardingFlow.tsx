@@ -29,6 +29,12 @@ interface OnboardingFlowProps {
   city: CurrentLocation
   user: AuthUser | null
   setManualLocation?: (city: City | null) => void
+  // Landing no longer asks for location up front (it's deferred to this
+  // step specifically, so a first-time visitor sees what Atlas does before
+  // any permission prompt) -- this is how that step actually triggers the
+  // browser's own geolocation permission request, same as the old landing
+  // page's "use my current location" button did.
+  requestLocation?: () => void
   onDone: () => void
 }
 
@@ -37,7 +43,7 @@ interface OnboardingFlowProps {
 // pre-filled from whatever's already saved, so this never re-asks for
 // something the user already told Atlas via another surface (mobile's
 // EventPreferencePrompt, geolocation, etc).
-export function OnboardingFlow({ city, user, setManualLocation, onDone }: OnboardingFlowProps) {
+export function OnboardingFlow({ city, user, setManualLocation, requestLocation, onDone }: OnboardingFlowProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [name, setName] = useState(() => getDisplayName() ?? '')
   const [interests, setInterests] = useState<string[]>([])
@@ -99,6 +105,13 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
 
   function handleLocationContinue() {
     if (chosenCity) setManualLocation?.(chosenCity)
+    advance()
+  }
+
+  function handleUseCurrentLocation() {
+    setManualLocation?.(null)
+    requestLocation?.()
+    trackEvent('Onboarding location: use current location clicked')
     advance()
   }
 
@@ -221,6 +234,11 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
               }}
               placeholder="Search for your town or city"
             />
+            {requestLocation && !chosenCity && (
+              <button type="button" className="onboarding-flow-location-button" onClick={handleUseCurrentLocation}>
+                Use my current location
+              </button>
+            )}
             <div className="onboarding-flow-actions">
               <button
                 type="button"

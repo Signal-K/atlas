@@ -1,36 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { trackEvent } from '../lib/analytics'
-import { CITIES, cityLabel, type City } from '../lib/cities'
-import { LocationSearchInput } from '../components/LocationSearchInput'
-import '../mobile.css'
 
 interface LandingPageProps {
   isMobile: boolean
-  requestLocation: () => void
-  setManualLocation: (city: City | null) => void
   onEnter: () => void
 }
 
-function normalizeLocation(value: string): string {
-  return value.trim().toLocaleLowerCase()
-}
+// What Atlas does, not what it needs from you -- location used to be asked
+// for right here, before a first-time visitor had seen anything about the
+// product. It's now asked as part of OnboardingFlow's own "location" step
+// (with a "use my current location" option there), once someone has
+// actually chosen to get started.
+const PITCH_POINTS = [
+  'Tonight’s best target, ranked for your gear',
+  'Camera guidance for what’s actually in your sky right now',
+  'A nudge before it’s gone',
+]
 
-function findCity(query: string): City | null {
-  const normalized = normalizeLocation(query)
-  if (!normalized) return null
-  return (
-    CITIES.find((city) => normalizeLocation(city.name) === normalized) ??
-    CITIES.find((city) => normalizeLocation(city.name).startsWith(normalized)) ??
-    CITIES.find((city) => normalizeLocation(city.name).includes(normalized)) ??
-    null
-  )
-}
-
-export function LandingPage({ isMobile, requestLocation, setManualLocation, onEnter }: LandingPageProps) {
-  const [locationQuery, setLocationQuery] = useState('')
-  const [selectedCity, setSelectedCity] = useState<City | null>(null)
-  const [error, setError] = useState('')
-
+export function LandingPage({ isMobile, onEnter }: LandingPageProps) {
   useEffect(() => {
     trackEvent('Viewed landing page', { isMobile })
     // Only ever track the initial view of this mount, not on every
@@ -38,53 +25,22 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function enterWithCity(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const city = selectedCity ?? findCity(locationQuery)
-    if (!city) {
-      setError('Choose a nearby city from the list, or use your current location.')
-      return
-    }
-    setManualLocation(city)
-    trackEvent('Landing CTA clicked', { method: 'manual_city', city: city.name, isMobile })
+  function handleEnter() {
+    trackEvent('Landing CTA clicked', { method: 'get_started', isMobile })
     onEnter()
   }
 
-  function enterWithBrowserLocation() {
-    setManualLocation(null)
-    requestLocation()
-    trackEvent('Landing CTA clicked', { method: 'browser_geolocation', isMobile })
-    onEnter()
-  }
-
-  const form = (
-    <form className={isMobile ? 'dt-landing-form' : 'landing-form'} onSubmit={enterWithCity}>
-      <label htmlFor="landing-location">Where are you watching from?</label>
-      <div className={isMobile ? 'dt-landing-input-row' : 'landing-input-row'}>
-        <LocationSearchInput
-          id="landing-location"
-          value={locationQuery}
-          onChange={(value) => {
-            setLocationQuery(value)
-            setSelectedCity(null)
-            setError('')
-          }}
-          onSelect={(city) => {
-            setSelectedCity(city)
-            setLocationQuery(cityLabel(city))
-            setError('')
-            trackEvent('Location suggestion selected', { source: 'landing', city: city.name, country: city.country, timeZone: city.timeZone })
-          }}
-        />
-        <button type="submit" className={isMobile ? 'dt-landing-cta-primary' : 'landing-cta-primary'}>
-          See tonight&apos;s sky
-        </button>
-      </div>
-      <button type="button" className={isMobile ? 'dt-landing-location-button' : 'landing-location-button'} onClick={enterWithBrowserLocation}>
-        Use my current location
+  const cta = (
+    <>
+      <ul className={isMobile ? 'dt-landing-pitch-points' : 'landing-pitch-points'}>
+        {PITCH_POINTS.map((point) => (
+          <li key={point}>{point}</li>
+        ))}
+      </ul>
+      <button type="button" className={isMobile ? 'dt-landing-cta-primary' : 'landing-cta-primary'} onClick={handleEnter}>
+        Get started
       </button>
-      {error && <p className={isMobile ? 'dt-landing-error' : 'landing-error'}>{error}</p>}
-    </form>
+    </>
   )
 
   if (isMobile) {
@@ -93,8 +49,8 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
         <div className="dt-landing-hero">
           <img src="/atlas-icon.png" alt="" className="brand-mark brand-mark--landing" />
           <h1>What can I see in the sky tonight?</h1>
-          <p>Enter your location and Atlas will show what is visible, when to go outside, and where to look.</p>
-          {form}
+          <p>Atlas tells you when to go outside, what&apos;s visible from wherever you are, and how to actually get a good look at it.</p>
+          {cta}
         </div>
       </div>
     )
@@ -105,8 +61,8 @@ export function LandingPage({ isMobile, requestLocation, setManualLocation, onEn
       <div className="landing-hero">
         <img src="/atlas-icon.png" alt="" className="brand-mark brand-mark--landing" />
         <h1>What can I see in the sky tonight?</h1>
-        <p>Enter your location and Atlas will show what is visible, when to go outside, and where to look.</p>
-        {form}
+        <p>Atlas tells you when to go outside, what&apos;s visible from wherever you are, and how to actually get a good look at it.</p>
+        {cta}
       </div>
     </div>
   )

@@ -67,12 +67,30 @@ test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
 })
 
-test('manual city entry reaches tonight feed with selected city before signup', async ({ page }) => {
+// Location is no longer collected on the landing page itself -- it moved
+// into OnboardingFlow's "location" step, so it can be asked for after a
+// first-time visitor has actually seen what Atlas does, not before.
+// Getting there from a fresh "/" visit means clicking past the (skippable)
+// name and interests steps first.
+async function reachOnboardingLocationStep(page: Page) {
   await page.goto('/')
-
   await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-  await page.getByLabel('Where are you watching from?').fill('Zur')
-  await page.getByRole('button', { name: "See tonight's sky" }).click()
+  await page.getByRole('button', { name: 'Get started' }).click()
+  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Skip' }).click()
+  await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Skip' }).click()
+  await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
+}
+
+test('manual city entry reaches tonight feed with selected city before signup', async ({ page }) => {
+  await reachOnboardingLocationStep(page)
+
+  await page.getByPlaceholder('Search for your town or city').fill('Zur')
+  await expect(page.getByRole('option', { name: /Zurich/ })).toBeVisible()
+  await page.getByRole('option', { name: /Zurich/ }).click()
+  await page.getByRole('button', { name: 'Use this location' }).click()
+  await page.getByRole('button', { name: 'Not now' }).click()
 
   await expect(page).toHaveURL('/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near Zurich' })).toBeVisible({ timeout: 15_000 })
@@ -82,10 +100,10 @@ test('manual city entry reaches tonight feed with selected city before signup', 
 test('browser geolocation entry reaches tonight feed without signup', async ({ page, context }) => {
   await context.grantPermissions(['geolocation'], { origin: APP_URL })
   await context.setGeolocation({ latitude: 47.3769, longitude: 8.5417 })
-  await page.goto('/')
+  await reachOnboardingLocationStep(page)
 
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
   await page.getByRole('button', { name: 'Use my current location' }).click()
+  await page.getByRole('button', { name: 'Not now' }).click()
 
   await expect(page).toHaveURL('/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near Your location' })).toBeVisible({ timeout: 15_000 })
@@ -122,11 +140,12 @@ test('location search disambiguates cities by region and country', async ({ page
     })
   })
 
-  await page.goto('/')
-  await page.getByLabel('Where are you watching from?').fill('London')
+  await reachOnboardingLocationStep(page)
+  await page.getByPlaceholder('Search for your town or city').fill('London')
   await expect(page.getByRole('option', { name: /London Ontario, Canada/ })).toBeVisible()
   await page.getByRole('option', { name: /London Ontario, Canada/ }).click()
-  await page.getByRole('button', { name: "See tonight's sky" }).click()
+  await page.getByRole('button', { name: 'Use this location' }).click()
+  await page.getByRole('button', { name: 'Not now' }).click()
 
   await expect(page).toHaveURL('/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near London, Ontario, Canada' })).toBeVisible({ timeout: 15_000 })

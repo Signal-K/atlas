@@ -61,17 +61,22 @@ test.beforeEach(async ({ page }) => {
   // Entering the app from the landing page flips `alreadyEntered`, which
   // would otherwise surface the first-run OnboardingFlow overlay and block
   // every click this journey makes -- this suite isn't testing onboarding,
-  // so mark it done upfront.
-  await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
+  // so mark it done upfront. Landing no longer collects a location itself
+  // (that moved into OnboardingFlow's own "location" step), so seed it
+  // directly the same way OnboardingFlow's setManualLocation() would.
+  await page.addInitScript(() => {
+    window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
+    window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
+  })
 })
 
 test('signed-out visitor reaches a first plan before any signup prompt', async ({ page }) => {
   await page.goto('/')
 
-  // Landing: enter a city manually (no geolocation permission needed).
+  // Landing: a product pitch, not a location form -- location is seeded
+  // above (no geolocation permission needed).
   await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-  await page.getByLabel('Where are you watching from?').fill('London')
-  await page.getByRole('button', { name: "See tonight's sky" }).click()
+  await page.getByRole('button', { name: 'Get started' }).click()
 
   // Signed-out feed: reached without ever seeing a signup/account form.
   await expect(page.getByRole('heading', { name: /Tonight near/ })).toBeVisible({ timeout: 15_000 })
@@ -127,8 +132,7 @@ test('signed-out visitor reaches a first plan before any signup prompt', async (
 test('equipment prompt appears after first target tap and persists recommendation state', async ({ page }) => {
   await page.goto('/')
 
-  await page.getByLabel('Where are you watching from?').fill('London')
-  await page.getByRole('button', { name: "See tonight's sky" }).click()
+  await page.getByRole('button', { name: 'Get started' }).click()
   await expect(page.getByRole('heading', { name: /Tonight near/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.equipment-prompt')).toHaveCount(0)
 
