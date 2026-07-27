@@ -349,6 +349,10 @@ export function SkyMapCanvas({
         context.stroke()
       }
 
+      // Collected during the marker pass, drawn afterward once collision
+      // avoidance has decided who gets a visible label -- see below.
+      const labelCandidates: Array<{ text: string; x: number; y: number; fontSize: number; priority: number }> = []
+
       for (const object of objects) {
         const point =
           presentation === 'preview'
@@ -377,23 +381,56 @@ export function SkyMapCanvas({
 
         if (presentation === 'preview') continue
 
-        const shouldLabel =
-          object.kind === 'moon' ||
-          object.kind === 'sun' ||
-          (object.kind === 'planet' && (object.magnitude ?? 9) < 1.7) ||
-          (object.kind === 'deep_sky' && (object.magnitude ?? 9) < 3.8)
-
-        if (shouldLabel) {
-          context.fillStyle = tone.label
-          context.font = `${9 * dpr}px ui-monospace, monospace`
-          context.textAlign = 'left'
-          context.fillText(object.name, point.x + 7 * dpr, point.y + 3 * dpr)
+        // Lower number = higher priority to actually keep a label when
+        // things are crowded (a real conjunction, or several bright
+        // objects landing close together in the projection).
+        if (object.kind === 'moon' || object.kind === 'sun') {
+          labelCandidates.push({ text: object.name, x: point.x, y: point.y, fontSize: 9, priority: 0 })
+        } else if (object.kind === 'planet' && (object.magnitude ?? 9) < 1.7) {
+          labelCandidates.push({ text: object.name, x: point.x, y: point.y, fontSize: 9, priority: 1 })
+        } else if (object.kind === 'deep_sky' && (object.magnitude ?? 9) < 3.8) {
+          labelCandidates.push({ text: object.name, x: point.x, y: point.y, fontSize: 9, priority: 2 })
         } else if (object.kind === 'star' && (object.magnitude ?? 9) < 0.15) {
-          context.fillStyle = tone.label
-          context.font = `${8 * dpr}px ui-monospace, monospace`
-          context.textAlign = 'left'
-          context.fillText(object.name, point.x + 5 * dpr, point.y + 3 * dpr)
+          labelCandidates.push({ text: object.name, x: point.x, y: point.y, fontSize: 8, priority: 3 })
         }
+      }
+
+      // Greedy label placement: highest-priority objects claim a spot
+      // first: right of the marker, then a few fallback offsets around it.
+      // A candidate that would still overlap an already-placed label after
+      // trying every offset is dropped rather than drawn on top of
+      // something else -- fewer legible labels beats an illegible pile-up.
+      if (presentation === 'full' && labelCandidates.length > 0) {
+        const placedRects: Array<{ x: number; y: number; w: number; h: number }> = []
+        function rectsOverlap(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) {
+          return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+        }
+
+        labelCandidates
+          .slice()
+          .sort((a, b) => a.priority - b.priority)
+          .forEach((candidate) => {
+            context.font = `${candidate.fontSize * dpr}px ui-monospace, monospace`
+            const textWidth = context.measureText(candidate.text).width
+            const h = (candidate.fontSize + 4) * dpr
+            const pad = 2 * dpr
+            const offsets = [
+              { dx: 7 * dpr, dy: 3 * dpr }, // right (default)
+              { dx: 7 * dpr, dy: -10 * dpr }, // upper-right
+              { dx: 7 * dpr, dy: 16 * dpr }, // lower-right
+              { dx: -textWidth - 7 * dpr, dy: 3 * dpr }, // left
+              { dx: -textWidth - 7 * dpr, dy: -10 * dpr }, // upper-left
+            ]
+            for (const offset of offsets) {
+              const rect = { x: candidate.x + offset.dx - pad, y: candidate.y + offset.dy - candidate.fontSize * dpr, w: textWidth + pad * 2, h }
+              if (placedRects.some((placed) => rectsOverlap(rect, placed))) continue
+              placedRects.push(rect)
+              context.fillStyle = tone.label
+              context.textAlign = 'left'
+              context.fillText(candidate.text, candidate.x + offset.dx, candidate.y + offset.dy)
+              return
+            }
+          })
       }
 
       const marker = markerPositionRef.current
