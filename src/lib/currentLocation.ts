@@ -15,6 +15,13 @@ export interface CurrentLocation {
 
 export const MANUAL_LOCATION_KEY = 'atlas-manual-location'
 
+// Permanent (unlike geo.ts's 1-hour location cache) record that this
+// visitor has established a real location at least once, either by
+// picking one manually or by granting geolocation -- used by App.tsx to
+// decide whether someone who clicked past the landing page has actually
+// started onboarding, or just clicked "Get started" and left.
+export const LOCATION_ESTABLISHED_KEY = 'atlas-location-established'
+
 // Ultimate fallback when the user has neither granted geolocation nor
 // picked a manual location -- arbitrary but has to be something, and this
 // codebase already has Melbourne-specific content (melbourne-night-sky.mjs).
@@ -42,12 +49,17 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
 
   const setManualLocation = useCallback((city: City | null) => {
     setManualCityState(city)
-    if (city) localStorage.setItem(MANUAL_LOCATION_KEY, JSON.stringify(city))
-    else localStorage.removeItem(MANUAL_LOCATION_KEY)
+    if (city) {
+      localStorage.setItem(MANUAL_LOCATION_KEY, JSON.stringify(city))
+      localStorage.setItem(LOCATION_ESTABLISHED_KEY, '1')
+    } else {
+      localStorage.removeItem(MANUAL_LOCATION_KEY)
+    }
   }, [])
 
   useEffect(() => {
     if (manualCity || !geo.coordinates) return
+    localStorage.setItem(LOCATION_ESTABLISHED_KEY, '1')
     const { lat, lon } = geo.coordinates
     const key = `${lat},${lon}`
     let cancelled = false

@@ -22,7 +22,7 @@ import { EventsView } from './views/mobile/EventsView'
 import { PlanView } from './views/mobile/PlanView'
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
-import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
+import { LOCATION_ESTABLISHED_KEY, MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { refreshEntitlement, refreshEntitlementAfterCheckout, useAuth } from './lib/auth'
 import { identifyAnalyticsUser } from './lib/analytics'
 import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
@@ -71,7 +71,26 @@ function App() {
   const navigate = useNavigate()
   const view = PATH_VIEW[routerLocation.pathname] ?? 'tonight'
   const { user } = useAuth()
-  const alreadyEntered = user || localStorage.getItem(ENTERED_KEY) === '1'
+  // Whether *this session* has clicked past the landing page at all --
+  // keeps the app shell/onboarding flow visible immediately after
+  // enterApp() navigates away from "/", the same as before. Kept
+  // separate from hasPartiallyOnboarded below: right when someone clicks
+  // "Get started," they haven't given a location or finished onboarding
+  // yet, so gating onboarding's own visibility on that stricter signal
+  // would hide onboarding the instant it's supposed to appear.
+  const hasClickedIntoApp = user || localStorage.getItem(ENTERED_KEY) === '1'
+  // Merely clicking "Get started" used to be enough to permanently skip
+  // the landing page on every future visit -- so someone who clicked
+  // through, then closed the tab without giving a location or touching
+  // onboarding at all, would land straight back in the app shell next
+  // time with nothing actually set up. This is the stricter signal that
+  // decides whether landing reappears on a *fresh* visit to "/": clicked
+  // in AND either given a real location (manual or geolocation) or gone
+  // through the onboarding flow (finished or explicitly skipped -- both
+  // still mean they engaged with it, not just bounced off the pitch).
+  const hasLocationEstablished = localStorage.getItem(LOCATION_ESTABLISHED_KEY) === '1'
+  const hasPartiallyOnboarded = hasClickedIntoApp && (hasLocationEstablished || hasCompletedOnboardingFlow())
+  const skipLanding = user || hasPartiallyOnboarded
   const hasManualLocation = localStorage.getItem(MANUAL_LOCATION_KEY) != null
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
@@ -87,7 +106,7 @@ function App() {
   // current location" option, deliberately). Once onboarding is done
   // (finished or skipped) this reverts to the original behavior for anyone
   // who still hasn't set a location.
-  const location = useLocationSeed({ autoRequest: !!alreadyEntered && !hasManualLocation && onboardingFlowDismissed })
+  const location = useLocationSeed({ autoRequest: hasClickedIntoApp && !hasManualLocation && onboardingFlowDismissed })
   const motion = useParallax()
   const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
   const isMobile = useIsMobile()
@@ -154,9 +173,9 @@ function App() {
   // only for visitors who've already been through (or skipped) the landing
   // page, otherwise this would redirect away before they ever see it.
   useEffect(() => {
-    if (routerLocation.pathname === '/' && !isMobile && alreadyEntered) navigate(VIEW_PATH.tonight, { replace: true })
+    if (routerLocation.pathname === '/' && !isMobile && skipLanding) navigate(VIEW_PATH.tonight, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only redirect the bare landing path once isMobile/user is known
-  }, [alreadyEntered, isMobile])
+  }, [skipLanding, isMobile])
 
   // Remounts location-dependent views once per real location change (a
   // GPS fix arriving, or a manual pick) without thrashing on every minor
@@ -182,17 +201,21 @@ function App() {
   // First-time/unauthenticated visitors at "/" see the landing page instead
   // of being dropped straight into the full app shell -- see market
   // validation notes on why the previous "/" -> app redirect wasn't
-  // converting. Signed-in users and anyone who has already entered once
-  // (flag persisted below) skip straight past this, same as before.
-  const showLanding = routerLocation.pathname === '/' && !user && !alreadyEntered
-  const showOnboardingFlow = Boolean(alreadyEntered) && !showLanding && !onboardingFlowDismissed
+  // converting. Signed-in users and anyone who has actually engaged with
+  // onboarding (not just clicked through once) skip straight past this.
+  const showLanding = routerLocation.pathname === '/' && !skipLanding
+  // Fixed preview route: always renders the landing page regardless of
+  // sign-in/onboarding state, so it can actually be looked at/tested
+  // without clearing localStorage or opening a private window every time.
+  const isLandingPreview = routerLocation.pathname === '/landing'
+  const showOnboardingFlow = hasClickedIntoApp && !showLanding && !onboardingFlowDismissed
 
   function enterApp() {
     localStorage.setItem(ENTERED_KEY, '1')
     navigate(isMobile ? '/today' : VIEW_PATH.tonight, { replace: true })
   }
 
-  if (showLanding) {
+  if (showLanding || isLandingPreview) {
     return <LandingPage isMobile={isMobile} onEnter={enterApp} />
   }
 
