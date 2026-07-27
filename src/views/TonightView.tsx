@@ -418,13 +418,25 @@ export function TonightView({ city, locationStatus, onLogAttempt, setManualLocat
                           deviceUsed: CAMERA_PROFILES[getDefaultDevice()].name,
                           cameraRecipeUsed: recipeKey ?? undefined,
                           locationLabel: city.name,
+                          moonIlluminationPct: plan.moonIlluminationPct,
+                          cloudCoverPct: plan.todayAdvisory?.cloudCoverPct,
+                          directionLabel: target.direction?.compassLabel,
                         })
                       }
                     >
                       Log attempt
                     </button>
                   </div>
-                  {expanded && recipeKey && <CameraRecipe recipeKey={recipeKey} />}
+                  {expanded && recipeKey && (
+                    <CameraRecipe
+                      recipeKey={recipeKey}
+                      liveConditions={{
+                        cloudCoverPct: plan.todayAdvisory?.cloudCoverPct,
+                        moonIlluminationPct: plan.moonIlluminationPct,
+                        altitudeDeg: target.direction?.altitudeDeg,
+                      }}
+                    />
+                  )}
                 </li>
               )
             })}

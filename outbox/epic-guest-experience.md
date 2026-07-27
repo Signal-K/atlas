@@ -2,7 +2,7 @@
 id: epic-guest-experience
 type: epic
 title: Guest experience — lightweight, browser-storage first
-status: in-progress
+status: done
 priority: medium
 source: "Liam, in chat, following up on 'less punishing' skip-signup feedback"
 ---
@@ -31,4 +31,7 @@ limitation, an Atlas bug.
 
 ## Status
 
-Both done. See each story for specifics.
+Both child stories done, including a follow-up fix
+(story-reminder-notification-reliability's "onboarding stuck on
+'Enabling...'" section) for a second, related bug found right after the
+first notification fix shipped. See each story for specifics.

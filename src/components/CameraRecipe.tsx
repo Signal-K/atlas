@@ -10,7 +10,7 @@ import {
   type DeviceId,
   type DeviceMaker,
 } from '../lib/cameraProfiles'
-import { CAMERA_RECIPES, deviceRecipeFor, type RecipeKey } from '../lib/cameraRecipes'
+import { CAMERA_RECIPES, deviceRecipeFor, describeLiveConditions, type LiveRecipeConditions, type RecipeKey } from '../lib/cameraRecipes'
 import { trackEvent } from '../lib/analytics'
 import { importPresetFile, PresetImportError, recommendPresetsForTarget } from '../lib/cameraPresets'
 import type { CameraPreset } from '../lib/db'
@@ -55,7 +55,7 @@ const SETUP_STEPS: Record<DeviceMaker, string[]> = {
   ],
 }
 
-export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
+export function CameraRecipe({ recipeKey, liveConditions }: { recipeKey: RecipeKey; liveConditions?: LiveRecipeConditions }) {
   const { user } = useAuth()
   const scopeId = user?.id ?? LOCAL_USER_ID
   const initialDevice = getDefaultDevice()
@@ -109,6 +109,7 @@ export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
   const profile = CAMERA_PROFILES[device]
   const bundle = createPresetBundle(recipeKey, device)
   const tripodShopUrl = gearAffiliateUrl('phone tripod astrophotography')
+  const liveTip = liveConditions ? describeLiveConditions(recipeKey, liveConditions) : null
 
   return (
     <PaywallGate
@@ -121,6 +122,7 @@ export function CameraRecipe({ recipeKey }: { recipeKey: RecipeKey }) {
       }}
     >
       <div className="camera-recipe">
+        {liveTip && <p className="camera-recipe-live-tip">Tonight: {liveTip}</p>}
         <div className="camera-device-flow">
           <span className="camera-flow-label">1. Phone maker</span>
           <div className="filter-tabs camera-maker-tabs">

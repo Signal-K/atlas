@@ -7,4 +7,12 @@ export interface ObservationDraft {
   deviceUsed?: string
   cameraRecipeUsed?: string
   locationLabel?: string
+  // Conditions at the moment "Log attempt" was tapped -- already computed
+  // by whichever view is handing off the draft (moon phase, cloud cover,
+  // the target's compass direction), reused by ScrapbookView to suggest a
+  // starting caption instead of a blank textbox. Best-effort: any/all may
+  // be omitted if the calling view didn't have them on hand.
+  moonIlluminationPct?: number
+  cloudCoverPct?: number
+  directionLabel?: string
 }

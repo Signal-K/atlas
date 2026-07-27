@@ -85,6 +85,7 @@ async function mockProductData(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
+        timezone: 'Europe/London',
         daily: {
           time,
           cloud_cover_mean: [18, 12, 24, 30, 35, 42, 50],

@@ -15,6 +15,8 @@ import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
 import { useSignupWall } from '../lib/useSignupWall'
 import { cityStampsFromObservations, pushCityStampFromObservation, shareCityStamp } from '../lib/cityStamps'
 import { pb } from '../lib/pocketbase'
+import { requestPhotoCaption } from '../lib/photoCaption'
+import { suggestObservationCaption } from '../lib/observationCaptionSuggestion'
 
 // Entries made while signed out are scoped to this fixed local id so the
 // Scrapbook still works fully offline-first with no account. Once signed
@@ -48,6 +50,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [stampShareStatus, setStampShareStatus] = useState<{ cityName: string; message: string } | null>(null)
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
   const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
+  const [captionIsSuggested, setCaptionIsSuggested] = useState(false)
   const signupWall = useSignupWall()
 
   async function refresh(nextScopeId = scopeId) {
@@ -63,9 +66,20 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     getScrapbookPrompt().then(setPrompt)
   }, [])
 
+  // Metadata-driven starting caption -- no AI/network call, just what
+  // Atlas already computed before "Log attempt" was tapped (direction,
+  // moon/cloud conditions). Only offered when there's nothing typed yet,
+  // and stops being tagged "Suggested" the moment the user edits it.
+  useEffect(() => {
+    if (!draft) return
+    setNote((current) => (current.trim() ? current : suggestObservationCaption(draft)))
+    setCaptionIsSuggested(true)
+  }, [draft])
+
   function clearDraft() {
     setRating(null)
     setPhoto(null)
+    setCaptionIsSuggested(false)
     onDraftConsumed()
   }
 
@@ -96,10 +110,25 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     setNote('')
     clearDraft()
     await refresh()
-    await pushObservation(entry)
+    const remoteId = await pushObservation(entry)
     await pushCityStampFromObservation(entry)
     await recordWeeklyActivity()
     signupWall.promptAfterSave('log_observation')
+
+    // Sky Pass-only, best-effort: silently does nothing if the deployment
+    // has no ANTHROPIC_API_KEY configured, the user isn't entitled, or the
+    // request just fails -- see photoCaption.ts. Fired after everything
+    // else so a slow/failed caption never delays the rest of the save.
+    if (entry.photo && user?.entitled && remoteId) {
+      requestPhotoCaption({
+        photo: entry.photo,
+        targetName: entry.targetName,
+        observationId: entry.id,
+        observationRemoteId: remoteId,
+      }).then((caption) => {
+        if (caption) refresh()
+      })
+    }
   }
 
   // Reuses the Discoveries feed's own post creation (src/lib/discoveries.ts)
@@ -193,9 +222,13 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
         </div>
       )}
       <form className="scrapbook-form" onSubmit={handleSave}>
+        {captionIsSuggested && note.trim() && <p className="scrapbook-caption-hint">Suggested — edit as needed</p>}
         <textarea
           value={note}
-          onChange={(event) => setNote(event.target.value)}
+          onChange={(event) => {
+            setCaptionIsSuggested(false)
+            setNote(event.target.value)
+          }}
           placeholder={prompt}
           rows={3}
         />

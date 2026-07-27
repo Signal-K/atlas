@@ -44,6 +44,11 @@ export function ObservationCard({ entry }: { entry: ObservationLogEntry }) {
           </span>
         )}
         {entry.note && <p className="observation-card-note">{entry.note}</p>}
+        {entry.aiCaption && (
+          <p className="observation-card-ai-caption">
+            <span className="observation-card-ai-caption-label">AI caption</span> {entry.aiCaption}
+          </p>
+        )}
       </div>
     </div>
   )

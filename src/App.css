@@ -1106,6 +1106,22 @@
   margin: 0;
 }
 
+.observation-card-ai-caption {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted, #767676);
+}
+
+.observation-card-ai-caption-label {
+  font-style: normal;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+
 .scrapbook-entry-footer {
   display: flex;
   align-items: center;
@@ -1138,6 +1154,14 @@
   color: var(--text);
   opacity: 0.75;
   margin: 0 0 12px;
+}
+
+.scrapbook-caption-hint {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin: 0 0 4px;
 }
 
 .scrapbook-share-card {
@@ -2636,6 +2660,14 @@
   padding: 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
+}
+
+.camera-recipe-live-tip {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--accent-soft, rgba(122, 92, 255, 0.1));
+  font-size: 13px;
 }
 
 .camera-device-flow {

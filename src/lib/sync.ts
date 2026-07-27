@@ -157,13 +157,18 @@ export async function getPastEvents(limit = 20): Promise<SkyEvent[]> {
 // entry is already saved locally by the caller before this runs, so a
 // failure here just means it stays local-only rather than being lost —
 // a full offline write queue (retrying failed pushes later) is future work.
-export async function pushObservation(entry: ObservationLogEntry): Promise<void> {
-  if (!pb.authStore.isValid || !navigator.onLine) return
+// Returns the created PocketBase record id (also persisted onto the local
+// entry as `remoteId`) so callers that need the remote id right after
+// saving -- e.g. requesting an AI photo caption, which stores its result
+// back onto that same record -- don't have to duplicate this create call
+// the way shareObservation() previously did.
+export async function pushObservation(entry: ObservationLogEntry): Promise<string | null> {
+  if (!pb.authStore.isValid || !navigator.onLine) return null
 
   try {
     // The SDK auto-converts to multipart/form-data when a value is a
     // File/Blob, so `photo` can be passed straight through when present.
-    await pb.collection('atlas_observations').create({
+    const record = await pb.collection('atlas_observations').create({
       user: pb.authStore.record?.id,
       observed_at: entry.observedAt,
       event: entry.eventId,
@@ -176,7 +181,10 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<void>
       attempt_rating: entry.attemptRating,
       ...(entry.photo ? { photo: entry.photo } : {}),
     })
+    await db.observations.update(entry.id, { remoteId: record.id })
+    return record.id
   } catch {
     // Stays local-only; the user still sees it in their Scrapbook.
+    return null
   }
 }

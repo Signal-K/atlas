@@ -478,6 +478,8 @@ export function PlanView({
               deviceUsed: CAMERA_PROFILES[getDefaultDevice()].name,
               cameraRecipeUsed: selectedRecipeKey ?? undefined,
               locationLabel: city.name,
+              moonIlluminationPct: moonIlluminationPctAt(new Date(selected.startsAt)),
+              cloudCoverPct: selectedAdvisory?.cloudCoverPct,
             })
           }
           recipeKey={selectedRecipeKey}

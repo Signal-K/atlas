@@ -62,12 +62,15 @@ story-dashboard-widget-limits.
 
 A later batch of stories (`story-feed-day-grouping-improvements`,
 everything under `epic-event-data-expansion`, everything under
-`epic-guest-experience`, plus the "Follow-up fix" sections appended to
-the three onboarding stories) isn't sourced from the notebook pages at
-all -- it's from direct bug reports and feature requests Liam made in a
-following chat session, after the notebook-driven work above had already
-shipped. Logged here the same way regardless of source, per the standing
-instruction to keep this folder as the record of what was scoped/shipped.
+`epic-guest-experience`, everything under
+`epic-camera-and-photo-guidance`, everything under
+`epic-sky-map-standalone-page`, plus the "Follow-up fix" sections
+appended to the three onboarding stories) isn't sourced from the
+notebook pages at all -- it's from direct bug reports and feature
+requests Liam made in a following chat session, after the notebook-driven
+work above had already shipped. Logged here the same way regardless of
+source, per the standing instruction to keep this folder as the record of
+what was scoped/shipped.
 
 ## Index
 
@@ -102,6 +105,17 @@ instruction to keep this folder as the record of what was scoped/shipped.
 | story-new-keyless-event-sources | story | Add asteroid close-approach and fireball event sources | done |
 | story-satellite-visual-group-pass | story | Widen satellite pass coverage (Hubble, Celestrak visual group, longer windows) | done |
 | story-space-weather-donki | story | Solar flare events via NASA DONKI (built, not enabled in production) | blocked |
-| epic-guest-experience | epic | Guest experience — lightweight, browser-storage first | in-progress |
+| epic-guest-experience | epic | Guest experience — lightweight, browser-storage first | done |
 | story-guest-account-graduation | story | Reframe the signup prompt as an offer, with a permanent Settings graduation path | done |
 | story-reminder-notification-reliability | story | Fix local reminder notifications silently failing on mobile browsers | done |
+| epic-camera-and-photo-guidance | epic | Camera preset optimisation and photo guidance | in-progress |
+| story-smart-caption-suggestion | story | Suggest a starting observation caption from data Atlas already has | done |
+| story-condition-aware-camera-recipes | story | Camera recipes react to tonight's actual conditions | done |
+| story-ai-photo-captions | story | AI photo captions for Sky Pass observations (built, not enabled in production) | blocked |
+| story-starry-sky-baseline-recipe | story | Camera guidance for an ordinary night with nothing special happening | done |
+| epic-sky-map-standalone-page | epic | Sky map as its own page, with search | done |
+| story-sky-map-own-page | story | Sky map opens at a real, bookmarkable URL | done |
+| story-sky-map-search | story | Text search on the sky map (no API key, works offline) | done |
+| epic-ci-test-reliability | epic | CI test reliability fixes | in-progress |
+| story-tonight-window-timezone-fallback | story | Fix e2e mocks missing Open-Meteo timezone, truncating the tonight window | done |
+| story-entitlement-checkout-fallback-flake | story | Known flake — dynamic Polar checkout fallback tests in entitlement-refresh.spec.ts | backlog |

@@ -164,6 +164,31 @@ function scheduleReminder(reminder: GetReadyReminder) {
   }, delay)
 }
 
+// subscribeToPush() awaits navigator.serviceWorker.ready, which never
+// resolves at all if the service worker fails to register/activate for
+// any reason -- a real-world case, not hypothetical (STS bug report: the
+// onboarding "Enable notifications" button stuck on "Enabling..."
+// forever). That sync is a best-effort bonus on top of the local
+// permission grant this function's caller actually needs, so it must
+// never be allowed to block the whole call indefinitely.
+const PUSH_SYNC_TIMEOUT_MS = 6_000
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error('Timed out')), ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) return false
   if (Notification.permission === 'denied') return false
@@ -172,9 +197,10 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 
   if (pb.authStore.isValid && isPushSupported()) {
     try {
-      await subscribeToPush()
+      await withTimeout(subscribeToPush(), PUSH_SYNC_TIMEOUT_MS)
     } catch {
-      // Browser notifications are still available as a local fallback.
+      // Browser notifications are still available as a local fallback --
+      // covers both a real subscribeToPush() failure and this timeout.
     }
   }
 

@@ -31,3 +31,11 @@ notifications, each skippable, each starting pre-filled from whatever's
 already known (existing location, existing interests from mobile, etc).
 Triggered once per device on `App.tsx` right after a user enters the app,
 gated by `hasCompletedOnboardingFlow()`.
+
+Three of the four steps picked up real bug fixes in a later chat session
+-- see the "Follow-up fix" sections on `story-onboarding-location`
+(confirm-button stuck disabled), `story-onboarding-interests`
+(confusing pre-fill copy), and `story-onboarding-notifications` (guests
+couldn't get notifications at all; then a second fix in
+`story-reminder-notification-reliability` for the "stuck on
+'Enabling...'" bug that followed).

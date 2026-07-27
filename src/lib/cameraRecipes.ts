@@ -3,7 +3,16 @@
 // composition tip and one honest "expected result" per target type.
 import { CAMERA_PROFILES, type DeviceId, type RecipeFamily } from './cameraProfiles'
 
-export type RecipeKey = 'moon' | 'bright_planet' | 'iss_pass' | 'meteor_shower' | 'conjunction' | 'eclipse' | 'twilight' | 'milky_way'
+export type RecipeKey =
+  | 'moon'
+  | 'bright_planet'
+  | 'iss_pass'
+  | 'meteor_shower'
+  | 'conjunction'
+  | 'eclipse'
+  | 'twilight'
+  | 'milky_way'
+  | 'starry_sky'
 
 export type TripodRequirement = 'required' | 'recommended' | 'optional'
 
@@ -248,6 +257,42 @@ export const CAMERA_RECIPES: Record<RecipeKey, CameraRecipeEntry> = {
       },
     },
   },
+  // The baseline recipe: an ordinary night with nothing special happening
+  // still has a sky worth photographing (bright stars, planets, ambient
+  // glow), and every night has one of these attached via the
+  // buildDailySkyGuideEvents filler (night_sky_guide/local_night_sky).
+  // Deliberately not milky_way's recipe -- that one promises a dark-sky
+  // Milky Way core, which most nights and most locations won't deliver;
+  // this one is honest about "a handful of stars," works under typical
+  // suburban/light-polluted skies, and needs no genuinely dark site.
+  starry_sky: {
+    title: 'General starry sky',
+    compositionTip: 'Include a horizon, rooftop, or tree line for scale — an empty sky with nothing to anchor it against reads as a blank test pattern.',
+    expectedResult: 'The brightest stars and any visible planets as sharp points, plus ambient sky glow near a city — not a dense star field or Milky Way texture without a genuinely dark site.',
+    devices: {
+      apple: {
+        mode: 'Night mode, default duration is usually enough',
+        lens: 'Main (1x) for the widest usable field of view',
+        tripod: 'recommended',
+        exposure: "Let Night mode run its course; brace against a wall or railing if you have no tripod",
+        focus: 'Tap on the brightest star you can see and wait for focus lock',
+      },
+      nothing: {
+        mode: 'Night mode, default duration',
+        lens: 'Main camera',
+        tripod: 'recommended',
+        exposure: 'Let Night mode stack the scene; a steady brace works if no tripod is on hand',
+        focus: 'Tap to focus on the brightest point in the sky',
+      },
+      other: {
+        mode: 'Night mode if available, else standard with the longest exposure the app allows',
+        lens: 'Main',
+        tripod: 'recommended',
+        exposure: 'Brace the phone against something solid if you have no tripod',
+        focus: 'Tap to focus on the brightest star visible',
+      },
+    },
+  },
 }
 
 // Maps a SkyEvent/TonightTarget kind to the recipe that applies to it.
@@ -261,6 +306,8 @@ const RECIPE_KEY_FOR_EVENT_KIND: Record<string, RecipeKey> = {
   conjunction: 'conjunction',
   eclipse: 'eclipse',
   deep_sky: 'milky_way',
+  night_sky_guide: 'starry_sky',
+  local_night_sky: 'starry_sky',
 }
 
 export function recipeKeyForEventKind(kind: string): RecipeKey | null {
@@ -270,4 +317,40 @@ export function recipeKeyForEventKind(kind: string): RecipeKey | null {
 export function deviceRecipeFor(recipeKey: RecipeKey, device: DeviceId): DeviceRecipe {
   const family = CAMERA_PROFILES[device].recipeFamily
   return CAMERA_RECIPES[recipeKey].devices[family] ?? CAMERA_RECIPES[recipeKey].devices.other
+}
+
+export interface LiveRecipeConditions {
+  cloudCoverPct?: number
+  moonIlluminationPct?: number
+  altitudeDeg?: number
+}
+
+// Recipes above are evergreen field notes -- this fills the gap between
+// "how to shoot a Moon photo in general" and "should I bother tonight,
+// with tonight's actual sky." No new data source: cloud/moon/altitude are
+// already computed by the caller (TonightPlan, viewing advisory) before
+// the recipe panel ever renders.
+export function describeLiveConditions(recipeKey: RecipeKey, conditions: LiveRecipeConditions): string | null {
+  const { cloudCoverPct, moonIlluminationPct, altitudeDeg } = conditions
+  const notes: string[] = []
+
+  if (cloudCoverPct != null && cloudCoverPct >= 50) {
+    notes.push(`${Math.round(cloudCoverPct)}% cloud cover tonight will likely soften or hide this — worth waiting for a clearer night if you can.`)
+  }
+
+  const moonSensitiveRecipes: RecipeKey[] = ['milky_way', 'meteor_shower']
+  if (moonIlluminationPct != null && moonIlluminationPct >= 60 && moonSensitiveRecipes.includes(recipeKey)) {
+    notes.push(`Moon is ${Math.round(moonIlluminationPct)}% lit — its glow will wash out faint detail here more than usual.`)
+  }
+
+  if (altitudeDeg != null && altitudeDeg < 20) {
+    notes.push(`Only ${Math.round(altitudeDeg)}° above the horizon right now — expect more atmospheric blur than a higher pass would give.`)
+  }
+
+  if (notes.length === 0) {
+    if (cloudCoverPct != null && cloudCoverPct < 20) return 'Clear sky tonight — good conditions for this shot.'
+    return null
+  }
+
+  return notes.join(' ')
 }
