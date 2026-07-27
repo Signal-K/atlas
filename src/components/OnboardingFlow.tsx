@@ -125,7 +125,25 @@ export function OnboardingFlow({ city, user, setManualLocation, onDone }: Onboar
       // push if already signed in -- never throws just for being a guest,
       // unlike calling subscribeToPush() directly.
       const granted = await ensureNotificationPermission()
-      if (!granted) throw new Error('Notifications permission was not granted.')
+      if (!granted) {
+        // Notification.permission still reflects whatever
+        // requestPermission() actually resolved to. 'denied' means someone
+        // explicitly clicked Block at some point (handled above, before
+        // this call). If it's still 'default' after a request, no one
+        // answered anything -- the browser's own adaptive "quieter
+        // messaging" throttling (Chrome/Edge, triggered after a site racks
+        // up enough dismissed/ignored prompts) replaced the blocking
+        // dialog with a non-interactive address-bar chip that just fades
+        // out on its own. That reads to a user as "the prompt flashed and
+        // vanished before I could click anything" -- which is exactly
+        // right, and isn't something this page can force back open.
+        const quieted = 'Notification' in window && Notification.permission === 'default'
+        throw new Error(
+          quieted
+            ? 'Your browser auto-dismissed the notification prompt instead of asking you (a quieter permission UI it switches to after repeated dismissals). Look for a small bell/notification icon in the address bar, or reset this site’s notification permission in your browser’s site settings, then try again.'
+            : 'Notifications permission was not granted.',
+        )
+      }
       setPushEnabled(true)
       trackEvent('Enabled notifications', { source: 'onboarding', signedIn: Boolean(user) })
     } catch (err) {
