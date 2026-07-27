@@ -116,5 +116,6 @@ what was scoped/shipped.
 | epic-sky-map-standalone-page | epic | Sky map as its own page, with search | done |
 | story-sky-map-own-page | story | Sky map opens at a real, bookmarkable URL | done |
 | story-sky-map-search | story | Text search on the sky map (no API key, works offline) | done |
-| epic-ci-test-reliability | epic | CI test reliability fixes | done |
+| epic-ci-test-reliability | epic | CI test reliability fixes | in-progress |
 | story-tonight-window-timezone-fallback | story | Fix e2e mocks missing Open-Meteo timezone, truncating the tonight window | done |
+| story-entitlement-checkout-fallback-flake | story | Known flake — dynamic Polar checkout fallback tests in entitlement-refresh.spec.ts | backlog |

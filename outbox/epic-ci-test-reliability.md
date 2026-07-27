@@ -2,7 +2,7 @@
 id: epic-ci-test-reliability
 type: epic
 title: CI test reliability fixes
-status: done
+status: in-progress
 priority: medium
 source: "CI run 30238604971 (Deploy Cloudflare Pages preview) failing broadly on 8 e2e tests"
 ---
@@ -15,7 +15,12 @@ while investigating CI failures.
 ## Child stories
 
 - story-tonight-window-timezone-fallback
+- story-entitlement-checkout-fallback-flake
 
 ## Status
 
-One root cause found and fixed so far — see the child story.
+The tonight-window timezone bug (broad 8-test failures) is root-caused
+and fixed. A second, unrelated flake in `entitlement-refresh.spec.ts`'s
+dynamic-Polar-checkout-fallback tests is confirmed pre-existing across
+multiple unrelated commits and is tracked but not yet fixed -- see that
+child story for what's been ruled out.
