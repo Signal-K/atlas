@@ -14,6 +14,7 @@ async function mockTonightData(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
+        timezone: 'Europe/London',
         daily: {
           time,
           cloud_cover_mean: Array(days).fill(10),
@@ -42,8 +43,6 @@ async function mockTonightData(page: Page) {
             content: 'The Moon reaches its fullest point tonight.',
             starts_at: startsAt.toISOString(),
             ends_at: endsAt.toISOString(),
-            latitude: 0,
-            longitude: 0,
             updated: now.toISOString(),
           },
         ],

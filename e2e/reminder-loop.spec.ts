@@ -20,6 +20,7 @@ async function mockReminderData(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
+        timezone: 'Europe/London',
         daily: {
           time,
           cloud_cover_mean: Array(days).fill(8),
