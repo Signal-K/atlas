@@ -1,17 +1,13 @@
 import { Link } from 'react-router-dom'
 import { SkyMapCanvas } from './SkyMapCanvas'
 import { HubIcon } from './mobile/HubIcon'
-import { estimateLightPollution } from '../lib/darkSky'
+import { estimateLightPollution, skyQualityLabelForScore } from '../lib/darkSky'
 import { formatWatchValue } from '../lib/watchlist'
 import type { TonightPlan } from '../lib/tonightTargets'
 import type { CurrentLocation } from '../lib/currentLocation'
 
 function formatTime(iso: string, timeZone?: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
-}
-
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 // Requested directly: a way to see the mobile "Today" dashboard's widget
@@ -82,10 +78,10 @@ export function MobileDashboardPreview({ city, plan }: { city: CurrentLocation; 
           <span className="dt-widget-value">{plan.darknessWindow.sunsetAt ? formatTime(plan.darknessWindow.sunsetAt, plan.timeZone) : '—'}</span>
           <span className="dt-widget-caption">{city.name}</span>
         </div>
-        <div className="dt-widget-cell" title={`Bortle ${lightPollution.bortleClass} of 9`}>
+        <div className="dt-widget-cell" title={`Technical reference: Bortle ${lightPollution.bortleClass} of 9`}>
           <span className="dt-widget-eyebrow"><HubIcon name="spark" />Light</span>
-          <span className="dt-widget-value">{capitalize(lightPollution.label)}</span>
-          <span className="dt-widget-caption">Bortle {lightPollution.bortleClass} of 9</span>
+          <span className="dt-widget-value">{lightPollution.skyQualityScore}/5</span>
+          <span className="dt-widget-caption">{skyQualityLabelForScore(lightPollution.skyQualityScore)}</span>
         </div>
       </div>
     </section>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { AuthUser } from '../lib/auth'
 import { getDisplayName, saveDisplayName } from '../lib/displayName'
 import { forecastLookaheadDays, FREE_FORECAST_DAYS } from '../lib/entitlementLimits'
-import { estimateLightPollution, rankLowerLightPollutionSites } from '../lib/darkSky'
+import { estimateLightPollution, rankLowerLightPollutionSites, skyQualityScore } from '../lib/darkSky'
 import { getWeekConditions, hasBrightTarget, rateDayCondition, type DayCondition } from '../lib/weekConditions'
 import { getEventsInRange, pullSkyEvents } from '../lib/sync'
 import { localDateKey } from '../lib/weather'
@@ -276,7 +276,7 @@ export function WeekConditionsStrip({
       {showNearbyAlert && nearbyDarkerSite && hereLightPollution && (
         <p className="feed-nearby-alert">
           Darker sky nearby: <strong>{nearbyDarkerSite.name}</strong> is {Math.round(nearbyDarkerSite.distanceKm)} km away
-          (Bortle {nearbyDarkerSite.bortleClass} vs {hereLightPollution.bortleClass} here).{' '}
+          (sky quality {skyQualityScore(nearbyDarkerSite.bortleClass)}/5 vs {hereLightPollution.skyQualityScore}/5 here).{' '}
           <Link to="/app/plan" onClick={() => trackEvent('Nearby darker sky alert clicked', { site: nearbyDarkerSite.id })}>
             Plan a trip
           </Link>

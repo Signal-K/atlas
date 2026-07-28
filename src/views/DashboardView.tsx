@@ -25,6 +25,7 @@ function eventsForCity(events: SkyEvent[], city: City): SkyEvent[] {
 function LocationPicker() {
   const { city, setCity } = useLocationBrowse()
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -48,26 +49,43 @@ function LocationPicker() {
     return new Map(CITIES.map((candidate) => [candidate.name, eventsForCity(events, candidate).length]))
   }, [events])
 
-  const selectedCount = eventCounts.get(city.name) ?? 0
+  const selectedCount = events ? eventsForCity(events, city).length : 0
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  const searchResults = normalizedQuery
+    ? CITIES.filter((candidate) => candidate.name.toLocaleLowerCase().includes(normalizedQuery)).slice(0, 8)
+    : []
 
   return (
     <section className="widget-section">
       <div className="map-card-header">
         <h2>Browse the world</h2>
-        <select
-          className="map-location-select"
-          value={city.name}
-          onChange={(event) => {
-            const next = CITIES.find((c) => c.name === event.target.value)
-            if (next) setCity(next)
-          }}
-        >
-          {CITIES.map((c) => (
-            <option key={c.name} value={c.name}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <span className="map-location-current">Using {city.name}</span>
+      </div>
+      <div className="map-location-search">
+        <label htmlFor="world-location-search">Browse another city</label>
+        <input
+          id="world-location-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          placeholder="Search cities"
+        />
+        {searchResults.length > 0 && (
+          <div className="map-location-results" role="listbox" aria-label="City search results">
+            {searchResults.map((candidate) => (
+              <button
+                type="button"
+                key={candidate.name}
+                onClick={() => {
+                  setCity(candidate)
+                  setQuery('')
+                }}
+              >
+                {candidate.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="map-card">
         <WorldMap selected={city} onSelect={setCity} eventCounts={eventCounts} />
@@ -75,8 +93,7 @@ function LocationPicker() {
       <p className="scrapbook-hint">
         {events === null ? 'Loading event counts. ' : `${selectedCount} upcoming events are available for ${city.name}. `}
         ISS passes are shown for <strong>{city.name}</strong>. Moon phases, meteor showers, planets, eclipses, and
-        deep-sky objects are shown regardless of location. This is just for browsing other places — your own
-        default location is set in Settings.
+        deep-sky objects are shown regardless of location. This browser starts at your current location; use search or the map to compare another place.
       </p>
     </section>
   )

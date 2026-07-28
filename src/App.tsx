@@ -78,7 +78,7 @@ function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
   const view = PATH_VIEW[routerLocation.pathname] ?? 'tonight'
-  const { user } = useAuth()
+  const { user, entitlementRefreshing } = useAuth()
   // Whether *this session* has clicked past the landing page at all --
   // keeps the app shell/onboarding flow visible immediately after
   // enterApp() navigates away from "/", the same as before. Kept
@@ -310,10 +310,10 @@ function App() {
                 type="button"
                 className={`desktop-pass-status${user?.entitled ? ' is-active' : ''}`}
                 onClick={() => setView('settings')}
-                aria-label={user?.entitled ? 'Sky Pass active — open account settings' : 'Free account — view Sky Pass details'}
+                aria-label={user?.entitled ? 'Sky Pass active — open account settings' : entitlementRefreshing ? 'Checking Sky Pass access' : 'Free account — view Sky Pass details'}
               >
                 <span className="desktop-pass-status-dot" />
-                {user?.entitled ? 'Sky Pass active' : 'Free'}
+                {user?.entitled ? 'Sky Pass active' : entitlementRefreshing ? 'Checking access…' : 'Free'}
               </button>
             </div>
             <p className="dashboard-subtitle">{VIEW_SUBTITLE[view]}</p>
@@ -334,7 +334,7 @@ function App() {
               tabs={[
                 {
                   id: 'dashboard',
-                  label: 'Dashboard',
+                  label: 'Today',
                   // Keyed so the location provider re-initializes once the
                   // real location (geolocation fix or manual pick) settles
                   // -- it starts as the Melbourne default before that.
@@ -351,10 +351,11 @@ function App() {
                 },
                 {
                   id: 'calendar',
-                  label: 'Calendar',
+                  label: 'Plan',
                   content: (
                     <PaywallGate
                       user={user}
+                      entitlementRefreshing={entitlementRefreshing}
                       feature="The event calendar"
                       description="See sky events beyond tonight and plan ahead."
                       onSignInClick={goToSignUp}
@@ -369,6 +370,7 @@ function App() {
           {view === 'plan' && (
             <PaywallGate
               user={user}
+              entitlementRefreshing={entitlementRefreshing}
               feature="Planning"
               description="Build observing plans, compare dark-sky trips, save events, and prepare gear with the Sky Pass."
               freeNote="Today, Events, check-ins, and your Journal stay free. Discounted users still need to complete Polar checkout first."
@@ -407,6 +409,7 @@ function App() {
           {view === 'community' && (
             <PaywallGate
               user={user}
+              entitlementRefreshing={entitlementRefreshing}
               feature="Community"
               description="See discoveries shared by other sky-watchers and join event-tied photo challenges."
               onSignInClick={goToSignUp}
@@ -430,6 +433,7 @@ function App() {
                   content: (
                     <PaywallGate
                       user={user}
+                      entitlementRefreshing={entitlementRefreshing}
                       feature="The event archive"
                       description="Browse past sky events beyond tonight's."
                       onSignInClick={goToSignUp}

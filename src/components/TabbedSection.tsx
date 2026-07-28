@@ -6,8 +6,8 @@ export interface Tab {
   content: ReactNode
 }
 
-// Lets several distinct views share one sidebar slot (e.g. Dashboard +
-// Calendar under "Explore") via an in-page segmented control, rather than
+// Lets several distinct views share one sidebar slot (e.g. Today + Events +
+// Plan under "Explore") via an in-page segmented control, rather than
 // each getting its own top-level sidebar entry. `defaultActiveId` plus a
 // `key` on this component (set by the caller) is how a parent can force a
 // specific tab open when navigating in from elsewhere -- see App.tsx's

@@ -1,18 +1,14 @@
-import { estimateLightPollution, lightPollutionLabel, rankLowerLightPollutionSites } from '../../lib/darkSky'
+import { estimateLightPollution, rankLowerLightPollutionSites, skyQualityLabelForScore } from '../../lib/darkSky'
 import { NativeRoutePicker } from '../NativeRoutePicker'
 import { BackIcon, MobileIcon } from './MobileIcon'
 
-// Sites this far out are more "theoretical" than "trip-worthy" -- the
-// underlying catalog (src/lib/darkSky.ts) is currently weighted toward
-// Europe/NZ/Australia/the Americas, so anyone in, say, East or South Asia
-// sees only very distant options. Rather than let that read as broken,
-// call out the coverage gap once it's this extreme.
-const FAR_TRAVEL_MINUTES_THRESHOLD = 240
+export const MAX_QUICK_TRIP_MINUTES = 240
 
 export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lon: number; cityName: string; onBack: () => void }) {
   const lightPollution = estimateLightPollution(lat, lon)
-  const darkSites = rankLowerLightPollutionSites(lat, lon)
-  const nearestMinutes = darkSites[0]?.estimatedTravelMinutes ?? 0
+  const darkSites = rankLowerLightPollutionSites(lat, lon, 8)
+    .filter((site) => site.estimatedTravelMinutes <= MAX_QUICK_TRIP_MINUTES)
+    .slice(0, 3)
   const origin = { lat, lon }
 
   return (
@@ -25,16 +21,11 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
           <MobileIcon name="mountain" /> Dark sites
         </div>
         <p className="mobile-empty-hint">
-          Sky near {cityName} right now: {lightPollution.label} ({lightPollution.confidence === 'curated-site' ? 'curated site' : 'estimated'}
-          , Bortle {lightPollution.bortleClass} of 9 — 1 is the darkest sky, 9 the brightest).
+          Sky near {cityName}: <strong>{lightPollution.skyQualityScore}/5 · {skyQualityLabelForScore(lightPollution.skyQualityScore)}</strong>{' '}
+          ({lightPollution.confidence === 'curated-site' ? 'based on a known site' : 'estimated from nearby city lights'}).
         </p>
-        <p className="mobile-empty-hint">Lower light-pollution options ranked by trip time, with estimated sky improvement.</p>
-        {nearestMinutes > FAR_TRAVEL_MINUTES_THRESHOLD && (
-          <p className="mobile-empty-hint">
-            Our dark-sky site database is still Europe/US/Australia-focused, so nearby options can be sparse elsewhere — these are the
-            closest known sites, not necessarily close by.
-          </p>
-        )}
+        <p className="mobile-empty-hint">Darker-sky options within four hours by road, ranked by trip time.</p>
+        {darkSites.length === 0 && <p className="mobile-empty-hint">No quick trip is in the catalog yet. Atlas won&apos;t suggest a flight as a local observing trip.</p>}
         <div className="mobile-tool-list">
           {darkSites.map((site) => {
             const qualityPct = Math.round(((9 - site.bortleClass) / 8) * 100)
@@ -49,8 +40,8 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
                 </div>
                 <div className="mobile-tool-row-foot">
                   <span>
-                    {lightPollutionLabel(site.bortleClass).toUpperCase()} &middot;{' '}
-                    {(site.lightPollutionDelta ?? 0) > 0 ? 'NOTICEABLY DARKER THAN HOME' : 'BEST KNOWN MATCH'} &middot;{' '}
+                    {site.bortleClass <= 2 ? '5/5 · VERY DARK' : site.bortleClass <= 4 ? '4/5 · DARK' : site.bortleClass <= 6 ? '3/5 · SOME GLOW' : '2/5 · BRIGHT'} &middot;{' '}
+                    {(site.lightPollutionDelta ?? 0) > 0 ? 'DARKER THAN HOME' : 'BEST KNOWN MATCH'} &middot;{' '}
                     {Math.round(site.distanceKm)} KM
                   </span>
                 </div>
@@ -65,6 +56,6 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
 }
 
 export function darkSitesSummary(lat: number, lon: number) {
-  const darkSites = rankLowerLightPollutionSites(lat, lon)
+  const darkSites = rankLowerLightPollutionSites(lat, lon, 8).filter((site) => site.estimatedTravelMinutes <= MAX_QUICK_TRIP_MINUTES).slice(0, 3)
   return { count: darkSites.length, nearestMinutes: darkSites[0]?.estimatedTravelMinutes ?? null }
 }

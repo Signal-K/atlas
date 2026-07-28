@@ -26,6 +26,9 @@ export const DARK_SKY_SITES: DarkSkySite[] = [
   { id: 'warrumbungle', name: 'Warrumbungle National Park, NSW', lat: -31.2833, lon: 149.0, bortleClass: 2, notes: "Australia's first Dark Sky Park." },
   { id: 'kielder', name: 'Kielder Water & Forest Park', lat: 55.2278, lon: -2.5722, bortleClass: 2, notes: 'UK Dark Sky Park in Northumberland.' },
   { id: 'brecon-beacons', name: 'Brecon Beacons National Park', lat: 51.8833, lon: -3.4333, bortleClass: 3, notes: 'Accessible Dark Sky Reserve in Wales.' },
+  { id: 'korema', name: 'Kõrvemaa Landscape Protection Area', lat: 59.279, lon: 25.554, bortleClass: 4, notes: 'Rural forest and wetland landscape east of Tallinn.' },
+  { id: 'lahemaa', name: 'Lahemaa National Park', lat: 59.512, lon: 25.885, bortleClass: 4, notes: 'Rural coastal sky north-east of Tallinn.' },
+  { id: 'lerderderg', name: 'Lerderderg State Park', lat: -37.55, lon: 144.35, bortleClass: 4, notes: 'Rural observing area within an easy drive of Melbourne.' },
   { id: 'death-valley', name: 'Death Valley National Park', lat: 36.5054, lon: -117.0794, bortleClass: 2, notes: 'Gold-tier Dark Sky Park, US.' },
   { id: 'cherry-springs', name: 'Cherry Springs State Park, PA', lat: 41.6631, lon: -77.8258, bortleClass: 2, notes: 'One of the darkest sites in the Eastern US.' },
   { id: 'namibrand', name: 'NamibRand Nature Reserve', lat: -25.0, lon: 16.0, bortleClass: 1, notes: 'Gold-tier reserve, Namibia.' },
@@ -41,6 +44,8 @@ export interface RankedDarkSkySite extends DarkSkySite {
 export interface LightPollutionEstimate {
   bortleClass: number
   label: string
+  skyQualityScore: 1 | 2 | 3 | 4 | 5
+  skyQualityLabel: string
   skyQuality: 'urban' | 'suburban' | 'rural' | 'dark'
   confidence: 'estimated' | 'curated-site'
   nearestCityName: string
@@ -56,6 +61,26 @@ const ASSUMED_AVG_SPEED_KMH = 70
 // nothing to most users without this.
 export function bortleExplainer(bortleClass: number): string {
   return `Bortle scale ${bortleClass} of 9 (1 = darkest sky, 9 = brightest) — how much light pollution washes out faint stars.`
+}
+
+// Atlas uses a deliberately simple five-point scale in the UI. Bortle is
+// retained as an internal source value so the catalog can stay compatible
+// with astronomy data, but it should never be the first thing a visitor has
+// to decode.
+export function skyQualityScore(bortleClass: number): 1 | 2 | 3 | 4 | 5 {
+  if (bortleClass <= 2) return 5
+  if (bortleClass <= 4) return 4
+  if (bortleClass <= 6) return 3
+  if (bortleClass <= 8) return 2
+  return 1
+}
+
+export function skyQualityLabelForScore(score: 1 | 2 | 3 | 4 | 5): string {
+  if (score === 5) return 'Very dark'
+  if (score === 4) return 'Dark'
+  if (score === 3) return 'Some glow'
+  if (score === 2) return 'Bright'
+  return 'City glow'
 }
 
 export function lightPollutionLabel(bortleClass: number): string {
@@ -95,9 +120,12 @@ export function estimateLightPollution(lat: number, lon: number): LightPollution
   const nearestDarkSite = nearestCuratedDarkSite(lat, lon)
 
   if (nearestDarkSite && nearestDarkSite.distanceKm <= 15) {
+    const score = skyQualityScore(nearestDarkSite.bortleClass)
     return {
       bortleClass: nearestDarkSite.bortleClass,
       label: lightPollutionLabel(nearestDarkSite.bortleClass),
+      skyQualityScore: score,
+      skyQualityLabel: skyQualityLabelForScore(score),
       skyQuality: skyQualityForBortle(nearestDarkSite.bortleClass),
       confidence: 'curated-site',
       nearestCityName: nearestCity?.name ?? 'Unknown city',
@@ -113,6 +141,8 @@ export function estimateLightPollution(lat: number, lon: number): LightPollution
   return {
     bortleClass,
     label: lightPollutionLabel(bortleClass),
+    skyQualityScore: skyQualityScore(bortleClass),
+    skyQualityLabel: skyQualityLabelForScore(skyQualityScore(bortleClass)),
     skyQuality: skyQualityForBortle(bortleClass),
     confidence: 'estimated',
     nearestCityName: nearestCity?.name ?? 'Unknown city',

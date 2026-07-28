@@ -27,9 +27,9 @@ export function setPreferredMapProvider(provider: MapProvider): void {
 }
 
 export function getPreferredRouteMode(): RouteMode {
-  if (typeof localStorage === 'undefined') return 'transit'
+  if (typeof localStorage === 'undefined') return 'driving'
   const value = localStorage.getItem(MODE_KEY)
-  return value === 'driving' || value === 'transit' || value === 'walking' ? value : 'transit'
+  return value === 'driving' || value === 'transit' || value === 'walking' ? value : 'driving'
 }
 
 export function setPreferredRouteMode(mode: RouteMode): void {

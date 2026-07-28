@@ -37,6 +37,7 @@ export function EventsView({
   const [advisoryTimeZone, setAdvisoryTimeZone] = useState<string | undefined>(city.timeZone)
   const [status, setStatus] = useState('')
   const [browseCity, setBrowseCity] = useState<City | null>(null)
+  const [browseQuery, setBrowseQuery] = useState('')
   const { user } = useAuth()
   const hasPremium = Boolean(user?.entitled)
 
@@ -139,7 +140,11 @@ export function EventsView({
     trackEvent('Browsed other location', { action: 'select', city: next.name, source: 'mobile_events' })
   }
 
-  const sortedCities = useMemo(() => [...CITIES].sort((a, b) => cityLabel(a).localeCompare(cityLabel(b))), [])
+  const browseResults = useMemo(
+    () =>
+      CITIES.filter((candidate) => cityLabel(candidate).toLocaleLowerCase().includes(browseQuery.trim().toLocaleLowerCase())).slice(0, 8),
+    [browseQuery],
+  )
 
   const recipeKey = selected ? recipeKeyForEventKind(selected.kind) : null
   const selectedReminder = selected ? reminders.find((reminder) => reminder.eventId === selected.id) : null
@@ -159,17 +164,35 @@ export function EventsView({
 
       <div className="dt-browse-location">
         {hasPremium ? (
-          <label className="dt-browse-location-picker">
-            <span>{isBrowsingElsewhere ? 'Browsing' : 'Location'}</span>
-            <select value={browseCity?.name ?? ''} onChange={(event) => selectBrowseCity(event.target.value)}>
-              <option value="">{city.name} (my location)</option>
-              {sortedCities.map((option) => (
-                <option key={option.name} value={option.name}>
-                  {cityLabel(option)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="dt-browse-location-picker">
+            <span>{isBrowsingElsewhere ? `Browsing ${viewLocation.name}` : `Your location: ${city.name}`}</span>
+            <input
+              type="search"
+              value={browseQuery}
+              onChange={(event) => setBrowseQuery(event.currentTarget.value)}
+              placeholder="Search another city"
+              aria-label="Search another city"
+            />
+            {browseQuery.trim() && (
+              <div className="dt-browse-location-results" role="listbox" aria-label="Location results">
+                {browseResults.map((option) => (
+                  <button
+                    type="button"
+                    key={option.name}
+                    onClick={() => {
+                      selectBrowseCity(option.name)
+                      setBrowseQuery('')
+                    }}
+                  >
+                    {cityLabel(option)}
+                  </button>
+                ))}
+                <button type="button" onClick={() => { selectBrowseCity(''); setBrowseQuery('') }}>
+                  Use {city.name}
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <p className="dt-browse-location-locked">Sky Pass unlocks browsing events in other locations — you&rsquo;re seeing {city.name}.</p>
         )}

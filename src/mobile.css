@@ -4669,6 +4669,8 @@
 }
 
 .dt-browse-location-picker {
+  position: relative;
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -4678,7 +4680,7 @@
   color: var(--dt-ink-muted);
 }
 
-.dt-browse-location-picker select {
+.dt-browse-location-picker input {
   flex: 1;
   min-width: 0;
   border: 1px solid var(--dt-rule);
@@ -4688,6 +4690,34 @@
   font: 700 0.78rem/1.2 var(--dt-font-data);
   text-transform: none;
   letter-spacing: normal;
+}
+
+.dt-browse-location-results {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  display: grid;
+  padding: 4px;
+  border: 1px solid var(--dt-rule);
+  background: var(--dt-bg-page);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+.dt-browse-location-results button {
+  border: 0;
+  background: transparent;
+  color: var(--dt-ink);
+  padding: 8px 10px;
+  text-align: left;
+  font: 700 0.75rem/1.2 var(--dt-font-data);
+  cursor: pointer;
+}
+
+.dt-browse-location-results button:hover,
+.dt-browse-location-results button:focus-visible {
+  background: color-mix(in srgb, var(--dt-primary) 12%, var(--dt-bg-page));
 }
 
 .dt-browse-location-locked {
