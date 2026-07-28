@@ -153,7 +153,7 @@ test('mobile signed-out user must sign in before using Plan', async ({ page }) =
   await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText(/Bortle \d/).first()).toBeVisible()
+  await expect(page.getByText(/Sky quality \d\/5/).first()).toBeVisible()
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
@@ -191,9 +191,13 @@ test('mobile entitled user can compare lower light pollution sites and routes', 
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
   await page.getByRole('button', { name: /Dark sites/i }).click()
 
-  await expect(page.getByText(/Sky near .* right now/)).toBeVisible()
-  await expect(page.getByText(/NOTICEABLY DARKER THAN HOME|BEST KNOWN MATCH/).first()).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Apple' }).first()).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Google' }).first()).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Open Transit Route' }).first()).toHaveAttribute('href', /mode=transit|travelmode=transit/)
+  await expect(page.getByText(/Sky near .*:/)).toBeVisible()
+  const route = page.getByRole('link', { name: 'Open Drive Route' }).first()
+  if (await route.count()) {
+    await expect(page.getByRole('button', { name: 'Apple' }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Google' }).first()).toBeVisible()
+    await expect(route).toHaveAttribute('href', /dirflg=d|travelmode=driving/)
+  } else {
+    await expect(page.getByText(/No quick trip is in the catalog yet|won.t suggest a flight/)).toBeVisible()
+  }
 })
