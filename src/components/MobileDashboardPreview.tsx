@@ -79,7 +79,7 @@ export function MobileDashboardPreview({ city, plan }: { city: CurrentLocation; 
         </div>
         <div className="dt-widget-cell">
           <span className="dt-widget-eyebrow"><HubIcon name="sun" />Sunset</span>
-          <span className="dt-widget-value">{plan.darknessWindow.civilDuskAt ? formatTime(plan.darknessWindow.civilDuskAt, plan.timeZone) : '—'}</span>
+          <span className="dt-widget-value">{plan.darknessWindow.sunsetAt ? formatTime(plan.darknessWindow.sunsetAt, plan.timeZone) : '—'}</span>
           <span className="dt-widget-caption">{city.name}</span>
         </div>
         <div className="dt-widget-cell" title={`Bortle ${lightPollution.bortleClass} of 9`}>

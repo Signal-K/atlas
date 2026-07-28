@@ -171,7 +171,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
 
   const rankedTargets = sortTargetsByEquipment(plan.targets, equipment)
   const topTarget = rankedTargets[0]
-  const sunsetAt = plan.darknessWindow.civilDuskAt
+  const sunsetAt = plan.darknessWindow.sunsetAt
   const darkAt = plan.darknessWindow.astronomicalDuskAt
   const cloudCover = advisory ? `${Math.round(advisory.cloudCoverPct)}%` : '—'
   const lowCloud = advisory?.lowCloudCoverPct == null ? '—' : `${Math.round(advisory.lowCloudCoverPct)}%`
