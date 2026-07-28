@@ -1,25 +1,33 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Starfield } from './components/Starfield'
 import { applyTheme, getStoredTheme, getSystemTheme } from './lib/theme'
 import { Sidebar, type View } from './components/Sidebar'
-import { MobileShell } from './components/MobileShell'
 import { useIsMobile } from './lib/useIsMobile'
 import { TabbedSection } from './components/TabbedSection'
 import { LandingPage } from './views/LandingPage'
-import { TonightView } from './views/TonightView'
-import { DashboardView } from './views/DashboardView'
-import { CalendarView } from './views/CalendarView'
-import { FeedView } from './views/FeedView'
-import { ArchiveView } from './views/ArchiveView'
-import { ScrapbookView } from './views/ScrapbookView'
-import { PhotoChallengesView } from './views/PhotoChallengesView'
-import { SettingsView } from './views/SettingsView'
-import { LocalOpsView } from './views/LocalOpsView'
-import { DarkSkyView } from './views/DarkSkyView'
-import { DeepSkyPlannerView } from './views/DeepSkyPlannerView'
-import { EventsView } from './views/mobile/EventsView'
-import { PlanView } from './views/mobile/PlanView'
+// Everything below the landing page is code-split: a first-time visitor
+// lands on "/" and shouldn't have to download the mobile shell, every
+// desktop view, and astronomy-engine before anything paints. Each view
+// arrives as its own chunk when it's first rendered.
+const MobileShell = lazy(() => import('./components/MobileShell').then((m) => ({ default: m.MobileShell })))
+const TonightView = lazy(() => import('./views/TonightView').then((m) => ({ default: m.TonightView })))
+const DashboardView = lazy(() => import('./views/DashboardView').then((m) => ({ default: m.DashboardView })))
+const CalendarView = lazy(() => import('./views/CalendarView').then((m) => ({ default: m.CalendarView })))
+const FeedView = lazy(() => import('./views/FeedView').then((m) => ({ default: m.FeedView })))
+const ArchiveView = lazy(() => import('./views/ArchiveView').then((m) => ({ default: m.ArchiveView })))
+const ScrapbookView = lazy(() => import('./views/ScrapbookView').then((m) => ({ default: m.ScrapbookView })))
+const PhotoChallengesView = lazy(() =>
+  import('./views/PhotoChallengesView').then((m) => ({ default: m.PhotoChallengesView })),
+)
+const SettingsView = lazy(() => import('./views/SettingsView').then((m) => ({ default: m.SettingsView })))
+const LocalOpsView = lazy(() => import('./views/LocalOpsView').then((m) => ({ default: m.LocalOpsView })))
+const DarkSkyView = lazy(() => import('./views/DarkSkyView').then((m) => ({ default: m.DarkSkyView })))
+const DeepSkyPlannerView = lazy(() =>
+  import('./views/DeepSkyPlannerView').then((m) => ({ default: m.DeepSkyPlannerView })),
+)
+const EventsView = lazy(() => import('./views/mobile/EventsView').then((m) => ({ default: m.EventsView })))
+const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ default: m.PlanView })))
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { LOCATION_ESTABLISHED_KEY, MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
@@ -251,15 +259,17 @@ function App() {
     return (
       <>
         <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
-        <MobileShell
-          currentLocation={currentLocation}
-          locationStatus={location.status}
-          requestLocation={location.requestLocation}
-          manualCity={manualCity}
-          setManualLocation={setManualLocation}
-          needsMotionPermission={motion.needsMotionPermission}
-          requestMotionPermission={motion.requestMotionPermission}
-        />
+        <Suspense fallback={null}>
+          <MobileShell
+            currentLocation={currentLocation}
+            locationStatus={location.status}
+            requestLocation={location.requestLocation}
+            manualCity={manualCity}
+            setManualLocation={setManualLocation}
+            needsMotionPermission={motion.needsMotionPermission}
+            requestMotionPermission={motion.requestMotionPermission}
+          />
+        </Suspense>
         <FeedbackDock />
         <InstallPrompt />
         {showOnboardingFlow && (
@@ -309,6 +319,7 @@ function App() {
             <p className="dashboard-subtitle">{VIEW_SUBTITLE[view]}</p>
           </header>
           <hr className="hairline" />
+          <Suspense fallback={null}>
           {view === 'tonight' && (
             <TonightView
               key={locationKey}
@@ -458,6 +469,7 @@ function App() {
               ]}
             />
           )}
+          </Suspense>
         </main>
       </div>
       <FeedbackDock />

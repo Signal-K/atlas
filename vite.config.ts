@@ -32,8 +32,27 @@ export default defineConfig({
       injectManifest: {
         // App shell + local-first data live in IndexedDB (see src/lib/db.ts);
         // this cache only needs to keep the shell itself available offline.
+        // Only what the app actually serves is in public/ now -- the demo
+        // video and product screenshots moved to media/ (outside the web
+        // root), because this glob was sweeping them into the first-visit
+        // precache and spending ~600KB of a new visitor's bandwidth on
+        // files nothing in src/ references.
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // astronomy-engine is ~400KB on its own and is only reachable from
+        // views that actually compute sky positions. Pinning it (and the
+        // React runtime) to their own chunks keeps them out of the entry
+        // bundle and lets them stay cached across app deploys.
+        manualChunks(id) {
+          if (id.includes('node_modules/astronomy-engine')) return 'astronomy'
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return 'react'
+        },
+      },
+    },
+  },
 })

@@ -3,8 +3,8 @@ import http from 'node:http'
 import path from 'node:path'
 
 const root = process.cwd()
-const inputPath = path.join(root, 'public', 'app-video', 'atlas-mobile-app-demo-narration.txt')
-const outputPath = path.join(root, 'public', 'app-video', 'atlas-mobile-app-demo-narration.wav')
+const inputPath = path.join(root, 'media', 'app-video', 'atlas-mobile-app-demo-narration.txt')
+const outputPath = path.join(root, 'media', 'app-video', 'atlas-mobile-app-demo-narration.wav')
 const referencePath = process.env.ATLAS_VOICE_REFERENCE
   || '/Users/scroobz/Documents/NotOnce/Morning/Resources/VoiceReferences/CarlaOstmann/carla-ostmann-long-accent-reference.wav'
 const voiceServer = process.env.ATLAS_VOICE_SERVER || 'http://127.0.0.1:8765'

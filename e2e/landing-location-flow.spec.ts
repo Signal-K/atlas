@@ -100,13 +100,27 @@ test('manual city entry reaches tonight feed with selected city before signup', 
 test('browser geolocation entry reaches tonight feed without signup', async ({ page, context }) => {
   await context.grantPermissions(['geolocation'], { origin: APP_URL })
   await context.setGeolocation({ latitude: 47.3769, longitude: 8.5417 })
+
+  // useCurrentLocation shows "Your location" only until reverseGeocodeCity
+  // resolves, then swaps in the real place name. Left unmocked this hits
+  // api.bigdatacloud.net for real, so the heading raced the network: the
+  // generic label if the lookup was slow, "Zurich" if it landed first.
+  // Pinning the response makes the settled name deterministic.
+  await page.route('https://api.bigdatacloud.net/data/reverse-geocode-client**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ city: 'Zurich', locality: 'Zurich', principalSubdivision: 'Zurich' }),
+    })
+  })
+
   await reachOnboardingLocationStep(page)
 
   await page.getByRole('button', { name: 'Use my current location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
   await expect(page).toHaveURL('/app/tonight')
-  await expect(page.getByRole('heading', { name: 'Tonight near Your location' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: 'Tonight near Zurich' })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.account-form')).toHaveCount(0)
 })
 

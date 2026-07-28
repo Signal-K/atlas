@@ -4,7 +4,7 @@ import { cp, rename, rm } from 'node:fs/promises'
 import path from 'node:path'
 
 const baseURL = process.env.ATLAS_CAPTURE_BASE_URL || 'http://127.0.0.1:5173'
-const outputDir = path.join(process.cwd(), 'public', 'app-video')
+const outputDir = path.join(process.cwd(), 'media', 'app-video')
 const tempDir = path.join(process.cwd(), 'test-results', 'mobile-app-video')
 const outputPath = path.join(outputDir, 'atlas-mobile-app-demo.webm')
 const viewport = { width: 390, height: 844 }

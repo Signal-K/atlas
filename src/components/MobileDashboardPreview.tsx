@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { SkyMapCanvas } from './SkyMapCanvas'
 import { HubIcon } from './mobile/HubIcon'
-import { estimateLightPollution, lightPollutionLabel } from '../lib/darkSky'
+import { estimateLightPollution } from '../lib/darkSky'
 import { formatWatchValue } from '../lib/watchlist'
 import type { TonightPlan } from '../lib/tonightTargets'
 import type { CurrentLocation } from '../lib/currentLocation'

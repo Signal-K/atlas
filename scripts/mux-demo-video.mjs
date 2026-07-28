@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 
 const root = process.cwd()
-const dir = path.join(root, 'public', 'app-video')
+const dir = path.join(root, 'media', 'app-video')
 const video = path.join(dir, 'atlas-mobile-app-demo.webm')
 const audio = path.join(dir, 'atlas-mobile-app-demo-narration.wav')
 
