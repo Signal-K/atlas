@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import '../../mobile.css'
 import { KIND_LABELS } from '../../widgets/EventRow'
 import { isLocalEvent } from '../../lib/eventFilters'
 import {
