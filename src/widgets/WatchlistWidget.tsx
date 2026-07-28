@@ -28,9 +28,12 @@ export const EVENT_KINDS = [
   { value: 'local_night_sky', label: 'Local guides' },
 ]
 
+export const FEATURED_TARGETS = ['moon', 'jupiter', 'mars', 'saturn', 'venus', 'geminids', 'leonids', 'orionids', 'perseids', 'lyrids', 'm31', 'm42']
+
 function WatchlistWidget() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[] | null>(null)
   const [targets, setTargets] = useState<string[]>([])
+  const [targetQuery, setTargetQuery] = useState('')
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
   const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const signupWall = useSignupWall()
@@ -55,6 +58,14 @@ function WatchlistWidget() {
   }
 
   if (watchlist === null) return <p>Loading&hellip;</p>
+
+  const watchedTargets = watchlist.filter((item) => item.kind === 'target').map((item) => item.value)
+  const normalizedQuery = targetQuery.trim().toLocaleLowerCase()
+  const matchingTargets = normalizedQuery
+    ? targets.filter((target) => formatWatchValue(target).toLocaleLowerCase().includes(normalizedQuery))
+    : FEATURED_TARGETS.filter((target) => targets.includes(target))
+  const visibleTargets = Array.from(new Set([...watchedTargets, ...matchingTargets])).slice(0, normalizedQuery ? 20 : 14)
+  const hiddenTargetCount = Math.max(0, (normalizedQuery ? matchingTargets.length : targets.length) - visibleTargets.length)
 
   return (
     <div>
@@ -101,9 +112,20 @@ function WatchlistWidget() {
       </div>
       {targets.length > 0 && (
         <>
-          <p className="settings-label chip-row-label">Specific targets</p>
+          <div className="watchlist-target-heading">
+            <p className="settings-label chip-row-label">Specific targets</p>
+            <span>{normalizedQuery ? `${matchingTargets.length} matches` : `${targets.length} in catalogue`}</span>
+          </div>
+          <input
+            className="watchlist-target-search"
+            type="search"
+            value={targetQuery}
+            onChange={(event) => setTargetQuery(event.currentTarget.value)}
+            placeholder="Search the target catalogue"
+            aria-label="Search the target catalogue"
+          />
           <div className="chip-row">
-            {targets.map((target) => {
+            {visibleTargets.map((target) => {
               const watching = isWatching(watchlist, 'target', target)
               return (
                 <button
@@ -117,6 +139,7 @@ function WatchlistWidget() {
               )
             })}
           </div>
+          {hiddenTargetCount > 0 && <p className="scrapbook-hint">Search to find the other {hiddenTargetCount} targets.</p>}
         </>
       )}
     </div>

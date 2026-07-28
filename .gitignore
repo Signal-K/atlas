@@ -34,3 +34,8 @@ public/app-video/*_chunks/
 *.njsproj
 *.sln
 *.sw?
+
+# Generated demo media (the published demo lives on YouTube; regenerate
+# with npm run capture:video / render:voice / render:video)
+media/app-video/*
+!media/app-video/*.txt

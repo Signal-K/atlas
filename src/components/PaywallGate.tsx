@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { refreshEntitlement, type AuthUser } from '../lib/auth'
+import { hasValidSession, refreshEntitlement, type AuthUser, useAuth } from '../lib/auth'
 import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { trackEvent } from '../lib/analytics'
 
 interface PaywallGateProps {
   user: AuthUser | null
+  entitlementRefreshing?: boolean
   feature: string
   description: string
   onSignInClick: () => void
@@ -22,6 +23,7 @@ interface PaywallGateProps {
 // upgrade card instead of the gated content underneath.
 export function PaywallGate({
   user,
+  entitlementRefreshing = false,
   feature,
   description,
   onSignInClick,
@@ -30,12 +32,24 @@ export function PaywallGate({
   freeBullets = 'Tonight, 14-day event browsing, check-ins, and your private journal.',
   paidBullets = '90-day plans, saved targets, reminders, dark sites, gear fit, community, and archive.',
 }: PaywallGateProps) {
+  const { entitlementRefreshing: authEntitlementRefreshing } = useAuth()
+  const isEntitlementRefreshing = entitlementRefreshing || (user != null && authEntitlementRefreshing)
   const [isStartingCheckout, setIsStartingCheckout] = useState(false)
   const [isCheckingPurchase, setIsCheckingPurchase] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
   const [purchaseStatus, setPurchaseStatus] = useState('')
 
   if (user?.entitled) return <>{children}</>
+
+  if (user && isEntitlementRefreshing) {
+    return (
+      <div className="paywall-card paywall-card--checking" role="status">
+        <span className="paywall-card-badge">Sky Pass</span>
+        <h2>Checking your access…</h2>
+        <p>Atlas is confirming your purchase. This usually takes a moment.</p>
+      </div>
+    )
+  }
 
   async function handleCheckoutClick() {
     trackEvent('Paywall checkout clicked', { feature })
@@ -64,7 +78,14 @@ export function PaywallGate({
     setPurchaseStatus('')
     const refreshedUser = await refreshEntitlement()
     if (!refreshedUser) {
-      setPurchaseStatus('Could not reach Atlas. Your saved access has not changed.')
+      // Two very different causes, and the advice differs: an expired session
+      // can only be fixed by signing in again, which no amount of retrying or
+      // waiting for the network will do.
+      setPurchaseStatus(
+        hasValidSession()
+          ? 'Could not reach Atlas. Your saved access has not changed.'
+          : 'Your session has expired. Sign in again to restore your Sky Pass.',
+      )
     } else if (!refreshedUser.entitled) {
       setPurchaseStatus(`No paid Sky Pass was found for ${refreshedUser.email}. If you paid with another email, sign in with that account.`)
     }

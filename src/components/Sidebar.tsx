@@ -3,7 +3,7 @@ import { Fragment, type ReactElement } from 'react'
 // Reduced from 11 flat slots to 6: related views now share a single slot
 // and are switched between via an in-page TabbedSection instead of each
 // getting its own sidebar entry (see App.tsx) --
-//   Explore   = Dashboard + Calendar
+//   Explore   = Today + Events + Plan
 //   Community = Feed + Photo Challenges
 //   History   = Archive + Scrapbook
 //   Plan      = Dark-sky trips + Deep-sky planner

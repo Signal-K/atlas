@@ -14,7 +14,7 @@ export function AccountSettings({
   defaultMode?: 'sign-in' | 'sign-up'
   source?: string
 }) {
-  const { user } = useAuth()
+  const { user, entitlementRefreshing } = useAuth()
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>(defaultMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -78,18 +78,20 @@ export function AccountSettings({
             <p className="settings-pass-explainer">
               {user.entitled
                 ? 'Lifetime Sky Pass access is active on desktop and mobile for this account.'
-                : 'Free account. Sky Pass is a one-time purchase tied to the email used at checkout.'}
+                : entitlementRefreshing
+                  ? 'Checking the payment account used for this email…'
+                  : 'Free account. Sky Pass is a one-time purchase tied to the email used at checkout.'}
             </p>
           </div>
-          <span className={`settings-status settings-status--pill ${user.entitled ? 'settings-status--positive' : 'settings-status--warning'}`}>
-            {user.entitled ? 'Sky Pass active' : 'Free account'}
+          <span className={`settings-status settings-status--pill ${user.entitled ? 'settings-status--positive' : entitlementRefreshing ? '' : 'settings-status--warning'}`}>
+            {user.entitled ? 'Sky Pass active' : entitlementRefreshing ? 'Checking access…' : 'Free account'}
           </span>
         </div>
         <div className="settings-account-actions">
           <button type="button" onClick={signOut}>
             Sign out
           </button>
-          {user.entitled ? null : (
+          {user.entitled || entitlementRefreshing ? null : (
             <>
               <button type="button" className="paywall-card-cta" onClick={handleCheckoutClick} disabled={startingCheckout}>
                 {startingCheckout ? 'Starting checkout…' : 'Get the Sky Pass'}

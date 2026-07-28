@@ -13,7 +13,7 @@ import type { MobileTab } from '../../components/MobileShell'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
 import { trackEvent } from '../../lib/analytics'
-import { bortleExplainer, estimateLightPollution } from '../../lib/darkSky'
+import { estimateLightPollution, skyQualityLabelForScore } from '../../lib/darkSky'
 import { forecastLookaheadDays } from '../../lib/entitlementLimits'
 import { useAuth } from '../../lib/auth'
 import { getPreferredEventTypes, hasCompletedEventPreferences } from '../../lib/eventPreferences'
@@ -45,13 +45,6 @@ interface HubViewProps {
 
 function formatTime(iso: string, timeZone?: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
-}
-
-// lightPollutionLabel() stays lowercase (e.g. "suburban sky") so it also
-// reads correctly mid-sentence elsewhere -- capitalised here only where
-// it's the standalone headline value.
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 const KIND_KICKER: Record<string, { label: string; color: string }> = {
@@ -171,7 +164,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
 
   const rankedTargets = sortTargetsByEquipment(plan.targets, equipment)
   const topTarget = rankedTargets[0]
-  const sunsetAt = plan.darknessWindow.civilDuskAt
+  const sunsetAt = plan.darknessWindow.sunsetAt
   const darkAt = plan.darknessWindow.astronomicalDuskAt
   const cloudCover = advisory ? `${Math.round(advisory.cloudCoverPct)}%` : '—'
   const lowCloud = advisory?.lowCloudCoverPct == null ? '—' : `${Math.round(advisory.lowCloudCoverPct)}%`
@@ -331,10 +324,10 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
             <span className="dt-widget-value">{sunsetAt ? formatTime(sunsetAt, plan.timeZone) : '—'}</span>
             <span className="dt-widget-caption">{city.name}</span>
           </div>
-          <div className="dt-widget-cell" title={bortleExplainer(lightPollution.bortleClass)}>
-            <span className="dt-widget-eyebrow"><HubIcon name="spark" />Light</span>
-            <span className="dt-widget-value">{capitalize(lightPollution.label)}</span>
-            <span className="dt-widget-caption">Bortle {lightPollution.bortleClass} of 9</span>
+        <div className="dt-widget-cell" title={`Technical reference: Bortle ${lightPollution.bortleClass} of 9`}>
+          <span className="dt-widget-eyebrow"><HubIcon name="spark" />Light</span>
+          <span className="dt-widget-value">{lightPollution.skyQualityScore}/5</span>
+          <span className="dt-widget-caption">{skyQualityLabelForScore(lightPollution.skyQualityScore)}</span>
           </div>
         </div>
       </section>
@@ -347,14 +340,14 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           free accounts and this is meant to be part of their free taste. */}
       <section>
         <div className="dt-section-eyebrow"><HubIcon name="spark" />Sky conditions</div>
-        <p className="dt-empty-hint">{bortleExplainer(lightPollution.bortleClass)}</p>
+        <p className="dt-empty-hint">Sky quality {lightPollution.skyQualityScore}/5 · {skyQualityLabelForScore(lightPollution.skyQualityScore)}. Higher is darker and easier for stargazing.</p>
         <div className="mobile-mini-list">
           {outlook.slice(0, outlookDays).map((day, index) => (
             <div className="mobile-mini-row mobile-plan-row mobile-plan-row--status" key={day.date}>
               <span className="mobile-event-kind">
                 {index === 0 ? 'Today' : new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}
               </span>
-              <span className="mobile-mini-row-name">{capitalize(lightPollution.label)}</span>
+              <span className="mobile-mini-row-name">Sky quality {lightPollution.skyQualityScore}/5</span>
               <span className="mobile-mini-row-meta">{Math.round(day.cloudCoverPct)}% cloud</span>
               <span className="mobile-plan-row-status">{Math.round(day.precipitationChancePct)}% rain chance</span>
             </div>

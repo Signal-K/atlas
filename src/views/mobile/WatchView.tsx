@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { EVENT_KINDS } from '../../widgets/WatchlistWidget'
+import { EVENT_KINDS, FEATURED_TARGETS } from '../../widgets/WatchlistWidget'
 import {
   addToWatchlist,
   formatWatchValue,
@@ -23,6 +23,7 @@ interface WatchViewProps {
 export function WatchView({ city, onSavedForLater, canAddToPlan = true, onBlockedPlanAdd }: WatchViewProps) {
   const [watchlist, setWatchlist] = useState<Array<WatchlistItem & { status: WatchStatus }> | null>(null)
   const [targets, setTargets] = useState<string[]>([])
+  const [targetQuery, setTargetQuery] = useState('')
 
   async function refresh() {
     const [items, targetList, advisoryDays] = await Promise.all([
@@ -61,6 +62,13 @@ export function WatchView({ city, onSavedForLater, canAddToPlan = true, onBlocke
   }
 
   if (watchlist === null) return <p className="mobile-empty-hint">Loading&hellip;</p>
+
+  const watchedTargets = watchlist.filter((item) => item.kind === 'target').map((item) => item.value)
+  const normalizedQuery = targetQuery.trim().toLocaleLowerCase()
+  const matchingTargets = normalizedQuery
+    ? targets.filter((target) => formatWatchValue(target).toLocaleLowerCase().includes(normalizedQuery))
+    : FEATURED_TARGETS.filter((target) => targets.includes(target))
+  const visibleTargets = Array.from(new Set([...watchedTargets, ...matchingTargets])).slice(0, normalizedQuery ? 20 : 14)
 
   return (
     <div className="mobile-watch">
@@ -117,8 +125,16 @@ export function WatchView({ city, onSavedForLater, canAddToPlan = true, onBlocke
       {targets.length > 0 && (
         <section className="mobile-card">
           <div className="mobile-card-eyebrow">Specific targets</div>
+          <input
+            className="watchlist-target-search"
+            type="search"
+            value={targetQuery}
+            onChange={(event) => setTargetQuery(event.currentTarget.value)}
+            placeholder="Search the target catalogue"
+            aria-label="Search the target catalogue"
+          />
           <div className="chip-row">
-            {targets.map((target) => {
+            {visibleTargets.map((target) => {
               const watching = isWatching(watchlist, 'target', target)
               return (
                 <button

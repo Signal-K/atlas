@@ -165,6 +165,13 @@ test('desktop settings uses grouped account layout without duplicate headings', 
 test('falls back when dynamic Polar checkout creation fails', async ({ page }) => {
   await seedSignedInUser(page, false)
 
+  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ entitled: false }),
+    })
+  })
   await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
     await route.fulfill({
       status: 200,
@@ -196,6 +203,13 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
 test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailable', async ({ page }) => {
   await seedSignedInUser(page, false)
 
+  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ entitled: false }),
+    })
+  })
   await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
     await route.fulfill({
       status: 200,

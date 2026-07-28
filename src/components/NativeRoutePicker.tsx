@@ -18,8 +18,8 @@ const PROVIDERS: Array<{ id: MapProvider; label: string }> = [
 ]
 
 const MODES: Array<{ id: RouteMode; label: string }> = [
-  { id: 'transit', label: 'Transit' },
   { id: 'driving', label: 'Drive' },
+  { id: 'transit', label: 'Transit' },
   { id: 'walking', label: 'Walk' },
 ]
 

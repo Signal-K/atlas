@@ -1,4 +1,4 @@
-import { estimateLightPollution, lightPollutionLabel, rankLowerLightPollutionSites, type RankedDarkSkySite } from '../lib/darkSky'
+import { estimateLightPollution, rankLowerLightPollutionSites, skyQualityLabelForScore, type RankedDarkSkySite } from '../lib/darkSky'
 import { trackEvent } from '../lib/analytics'
 import { tourAffiliateUrl } from '../lib/affiliate'
 import { NativeRoutePicker } from '../components/NativeRoutePicker'
@@ -7,47 +7,36 @@ import { NativeRoutePicker } from '../components/NativeRoutePicker'
 // LocalOpsView.tsx/localOps.ts (an unrelated local PocketBase diagnostics
 // dashboard) -- despite the ticket's original name, this is new, unrelated
 // functionality.
-// Sites this far out are more "theoretical" than "trip-worthy" -- the
-// underlying catalog (src/lib/darkSky.ts) is currently weighted toward
-// Europe/NZ/Australia/the Americas, so anyone in, say, East or South Asia
-// sees only very distant options. Rather than let that read as broken,
-// call out the coverage gap once it's this extreme.
-const FAR_TRAVEL_MINUTES_THRESHOLD = 240
+const MAX_QUICK_TRIP_MINUTES = 240
 
 export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
   const lightPollution = estimateLightPollution(lat, lon)
-  const sites: RankedDarkSkySite[] = rankLowerLightPollutionSites(lat, lon)
-  const nearestMinutes = sites[0]?.estimatedTravelMinutes ?? 0
+  const sites: RankedDarkSkySite[] = rankLowerLightPollutionSites(lat, lon, 8)
+    .filter((site) => site.estimatedTravelMinutes <= MAX_QUICK_TRIP_MINUTES)
+    .slice(0, 3)
   const origin = { lat, lon }
 
   return (
     <section className="widget-section">
       <h2>Dark-sky trips</h2>
       <p className="darksky-hint">
-        Sky here right now: {lightPollution.label} ({lightPollution.confidence === 'curated-site' ? 'curated site' : 'estimated'},
-        Bortle {lightPollution.bortleClass} of 9 — 1 is the darkest sky, 9 the brightest). Nearby options below are ranked by travel
-        distance, darkest first.
+        Sky near you: <strong>{lightPollution.skyQualityScore}/5 · {skyQualityLabelForScore(lightPollution.skyQualityScore)}</strong>{' '}
+        ({lightPollution.confidence === 'curated-site' ? 'based on a known site' : 'estimated from nearby city lights'}). Nearby options are
+        ranked by driving time, with trips longer than four hours left out.
       </p>
-      {nearestMinutes > FAR_TRAVEL_MINUTES_THRESHOLD && (
-        <p className="darksky-hint">
-          Our dark-sky site database is still Europe/US/Australia-focused, so nearby options can be sparse elsewhere — these are the
-          closest known sites, not necessarily close by.
-        </p>
-      )}
+      {sites.length === 0 && <p className="darksky-hint">No darker-sky places are in the quick-trip range yet. Atlas won&apos;t suggest a flight as a local observing trip.</p>}
       <ul className="row-list darksky-list">
         {sites.map((site) => (
           <li key={site.id} className="darksky-site">
             <div className="darksky-site-header">
               <span className="darksky-site-name">{site.name}</span>
-              <span className={`darksky-bortle darksky-bortle--${site.bortleClass}`} title={`Bortle ${site.bortleClass} of 9`}>
-                {lightPollutionLabel(site.bortleClass)}
+              <span className={`darksky-bortle darksky-bortle--${site.bortleClass}`} title={`Technical reference: Bortle ${site.bortleClass} of 9`}>
+                {site.bortleClass <= 2 ? '5/5 · Very dark' : site.bortleClass <= 4 ? '4/5 · Dark' : site.bortleClass <= 6 ? '3/5 · Some glow' : '2/5 · Bright'}
               </span>
             </div>
             <p className="darksky-site-meta">
-              {site.distanceKm.toFixed(0)} km ·{' '}
-              {(site.lightPollutionDelta ?? 0) > 0 ? `noticeably darker sky than home` : 'best known match'} · ~
-              {Math.round(site.estimatedTravelMinutes / 60)}h{' '}
-              {site.estimatedTravelMinutes % 60}m drive (estimated)
+              {site.distanceKm.toFixed(0)} km · {(site.lightPollutionDelta ?? 0) > 0 ? `darker sky than home` : 'best known match'} ·{' '}
+              {site.estimatedTravelMinutes < 60 ? `${site.estimatedTravelMinutes} min` : `${Math.floor(site.estimatedTravelMinutes / 60)}h ${site.estimatedTravelMinutes % 60}m`} drive (estimated)
             </p>
             <p className="darksky-site-notes">{site.notes}</p>
             <NativeRoutePicker site={site} origin={origin} />
