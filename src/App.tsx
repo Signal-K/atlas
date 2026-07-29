@@ -12,7 +12,6 @@ import { LandingPage } from './views/LandingPage'
 // arrives as its own chunk when it's first rendered.
 const MobileShell = lazy(() => import('./components/MobileShell').then((m) => ({ default: m.MobileShell })))
 const TonightView = lazy(() => import('./views/TonightView').then((m) => ({ default: m.TonightView })))
-const DashboardView = lazy(() => import('./views/DashboardView').then((m) => ({ default: m.DashboardView })))
 const CalendarView = lazy(() => import('./views/CalendarView').then((m) => ({ default: m.CalendarView })))
 const FeedView = lazy(() => import('./views/FeedView').then((m) => ({ default: m.FeedView })))
 const ArchiveView = lazy(() => import('./views/ArchiveView').then((m) => ({ default: m.ArchiveView })))
@@ -28,6 +27,7 @@ const DeepSkyPlannerView = lazy(() =>
 )
 const EventsView = lazy(() => import('./views/mobile/EventsView').then((m) => ({ default: m.EventsView })))
 const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ default: m.PlanView })))
+const HubView = lazy(() => import('./views/mobile/HubView').then((m) => ({ default: m.HubView })))
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { LOCATION_ESTABLISHED_KEY, MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
@@ -54,6 +54,11 @@ const VIEW_PATH: Record<View, string> = {
 const PATH_VIEW: Record<string, View> = {
   '/app/tonight': 'tonight',
   '/app/explore': 'explore',
+  // HubView (reused for Explore's "Today" sub-tab, see below) opens the
+  // full sky map at this path -- it must resolve back to 'explore', not
+  // fall through to the generic 'tonight' default, or tapping the map
+  // preview would silently kick the desktop view out of Explore entirely.
+  '/app/sky-map': 'explore',
   '/app/plan': 'plan',
   '/app/community': 'community',
   '/app/history': 'history',
@@ -225,6 +230,12 @@ function App() {
     setVisitedViews((current) => (current.has(view) ? current : new Set(current).add(view)))
   }, [view])
 
+  // Which of Explore's own sub-tabs (Today/Events/Plan) is open -- lifted
+  // up (rather than left as TabbedSection's own internal state) so
+  // HubView's "Open events"/"Open plan" links, rendered as Explore's
+  // "Today" content, can switch this group's sub-tab directly.
+  const [exploreTab, setExploreTab] = useState<'dashboard' | 'events' | 'calendar'>('dashboard')
+
   function setView(nextView: View) {
     navigate(VIEW_PATH[nextView])
   }
@@ -345,14 +356,24 @@ function App() {
           {visitedViews.has('explore') && (
             <div hidden={view !== 'explore'}>
             <TabbedSection
+              activeId={exploreTab}
+              onActiveIdChange={(id) => setExploreTab(id as typeof exploreTab)}
               tabs={[
                 {
                   id: 'dashboard',
                   label: 'Today',
-                  // Keyed so the location provider re-initializes once the
-                  // real location (geolocation fix or manual pick) settles
-                  // -- it starts as the Melbourne default before that.
-                  content: <DashboardView key={locationKey} onSignUpClick={goToSignUp} defaultCity={currentLocation} />,
+                  content: (
+                    <div className="mobile-shell desktop-feature-surface">
+                      <HubView
+                        key={locationKey}
+                        city={currentLocation}
+                        onOpenTab={(tab) => {
+                          if (tab === 'events' || tab === 'calendar') setExploreTab(tab)
+                        }}
+                        onLogAttempt={logAttempt}
+                      />
+                    </div>
+                  ),
                 },
                 {
                   id: 'events',

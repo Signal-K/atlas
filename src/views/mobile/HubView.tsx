@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import '../../mobile.css'
 import { SkyMapCanvas } from '../../components/SkyMapCanvas'
 import { SkyMapOverlay } from '../../components/SkyMapOverlay'
 import { getTonightPlan, type TonightPlan } from '../../lib/tonightTargets'
@@ -416,7 +417,11 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           compassStatus={compass.status}
           pointing={compass.pointing}
           onEnableCompass={compass.enable}
-          onClose={() => navigate('/app/today')}
+          // Goes back in history rather than to a hardcoded path -- opening
+          // the map pushed a new entry on top of wherever this view was
+          // already mounted (mobile's Hub tab or desktop's Explore/Today),
+          // so this is the one close behavior that's correct in both.
+          onClose={() => navigate(-1)}
         />
       )}
 
