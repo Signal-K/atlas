@@ -24,6 +24,9 @@ import { isLocalEvent } from '../../lib/eventFilters'
 import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
 import { EventPreferencePrompt } from '../../components/mobile/EventPreferencePrompt'
 import { HubIcon } from '../../components/mobile/HubIcon'
+import { StreakSection } from '../../components/mobile/StreakSection'
+import { CitizenScienceSection } from '../../components/mobile/CitizenScienceSection'
+import { CommunityDigestSection } from '../../components/mobile/CommunityDigestSection'
 import type { SkyEvent } from '../../lib/db'
 import {
   describeWhatYouWouldSee,
@@ -591,6 +594,10 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           </div>
         )}
       </section>
+
+      <StreakSection />
+      <CitizenScienceSection />
+      <CommunityDigestSection onOpenJournal={() => onOpenTab('journal')} />
 
       {reminders.length > 0 && (
         <>
