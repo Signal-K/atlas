@@ -3654,62 +3654,6 @@
   color: var(--dt-ink);
 }
 
-.dt-landing-updates {
-  width: 100%;
-  max-width: 400px;
-  margin-top: 14px;
-  padding: 18px 22px;
-  border: 1px dashed var(--dt-rule);
-  border-radius: 16px;
-  text-align: center;
-}
-
-.dt-landing-updates h2 {
-  font-family: var(--dt-font-serif);
-  font-size: 14px;
-  color: var(--dt-ink);
-  margin: 0 0 4px;
-}
-
-.dt-landing-updates p {
-  font-size: 12px;
-  color: var(--dt-ink-muted);
-  margin: 0 0 12px;
-}
-
-.dt-landing-updates .updates-form {
-  display: flex;
-  gap: 8px;
-}
-
-.dt-landing-updates .updates-form input {
-  flex: 1;
-  font: inherit;
-  font-size: 13px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--dt-rule);
-  background: var(--dt-bg-page);
-  color: var(--dt-ink);
-}
-
-.dt-landing-updates .updates-form button {
-  font: 700 0.75rem/1 var(--dt-font-data);
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 0;
-  background: var(--dt-primary);
-  color: var(--dt-bg-page);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.dt-landing-updates .updates-form-success {
-  font-size: 13px;
-  color: var(--dt-primary);
-  margin: 0;
-}
-
 /* -- Header: sticky tab bar at the very top + a slim brand/location row -- */
 
 .dt-shell-header {
