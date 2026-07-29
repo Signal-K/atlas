@@ -1,4 +1,4 @@
-import { estimateLightPollution, rankLowerLightPollutionSites, skyQualityLabelForScore, type RankedDarkSkySite } from '../lib/darkSky'
+import { estimateLightPollution, rankLowerLightPollutionSites, skyQualityLabelForScore } from '../lib/darkSky'
 import { trackEvent } from '../lib/analytics'
 import { tourAffiliateUrl } from '../lib/affiliate'
 import { NativeRoutePicker } from '../components/NativeRoutePicker'
@@ -7,13 +7,10 @@ import { NativeRoutePicker } from '../components/NativeRoutePicker'
 // LocalOpsView.tsx/localOps.ts (an unrelated local PocketBase diagnostics
 // dashboard) -- despite the ticket's original name, this is new, unrelated
 // functionality.
-const MAX_QUICK_TRIP_MINUTES = 240
 
 export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
   const lightPollution = estimateLightPollution(lat, lon)
-  const sites: RankedDarkSkySite[] = rankLowerLightPollutionSites(lat, lon, 8)
-    .filter((site) => site.estimatedTravelMinutes <= MAX_QUICK_TRIP_MINUTES)
-    .slice(0, 3)
+  const sites = rankLowerLightPollutionSites(lat, lon, 3)
   const origin = { lat, lon }
 
   return (

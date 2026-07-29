@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import '../mobile.css'
 import { SkyMapCanvas } from './SkyMapCanvas'
 import { HubIcon } from './mobile/HubIcon'
 import { estimateLightPollution, skyQualityLabelForScore } from '../lib/darkSky'
