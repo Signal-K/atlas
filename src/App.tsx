@@ -30,7 +30,7 @@ const EventsView = lazy(() => import('./views/mobile/EventsView').then((m) => ({
 const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ default: m.PlanView })))
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
-import { LOCATION_ESTABLISHED_KEY, MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
+import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { refreshEntitlement, refreshEntitlementAfterCheckout, useAuth } from './lib/auth'
 import { identifyAnalyticsUser } from './lib/analytics'
 import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
@@ -69,14 +69,14 @@ const VIEW_SUBTITLE: Record<View, string> = {
   settings: 'Appearance, location, motion, and local diagnostics.',
 }
 
-// Set once a visitor either enters the app from the landing page or is
-// already signed in, so `/` stops showing the landing page for them again
-// on future visits (bookmarks/return traffic keep working as before).
+// Set once a visitor enters the product from the landing page. The public
+// index remains the landing page on every visit; the product lives at /app.
 const ENTERED_KEY = 'atlas-entered'
 
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
+  const isAppRoute = routerLocation.pathname.startsWith('/app')
   const view = PATH_VIEW[routerLocation.pathname] ?? 'tonight'
   const { user, entitlementRefreshing } = useAuth()
   // Whether *this session* has clicked past the landing page at all --
@@ -86,19 +86,7 @@ function App() {
   // "Get started," they haven't given a location or finished onboarding
   // yet, so gating onboarding's own visibility on that stricter signal
   // would hide onboarding the instant it's supposed to appear.
-  const hasClickedIntoApp = user || localStorage.getItem(ENTERED_KEY) === '1'
-  // Merely clicking "Get started" used to be enough to permanently skip
-  // the landing page on every future visit -- so someone who clicked
-  // through, then closed the tab without giving a location or touching
-  // onboarding at all, would land straight back in the app shell next
-  // time with nothing actually set up. This is the stricter signal that
-  // decides whether landing reappears on a *fresh* visit to "/": clicked
-  // in AND either given a real location (manual or geolocation) or gone
-  // through the onboarding flow (finished or explicitly skipped -- both
-  // still mean they engaged with it, not just bounced off the pitch).
-  const hasLocationEstablished = localStorage.getItem(LOCATION_ESTABLISHED_KEY) === '1'
-  const hasPartiallyOnboarded = hasClickedIntoApp && (hasLocationEstablished || hasCompletedOnboardingFlow())
-  const skipLanding = user || hasPartiallyOnboarded
+  const hasClickedIntoApp = Boolean(user) || localStorage.getItem(ENTERED_KEY) === '1'
   const hasManualLocation = localStorage.getItem(MANUAL_LOCATION_KEY) != null
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
@@ -114,7 +102,9 @@ function App() {
   // current location" option, deliberately). Once onboarding is done
   // (finished or skipped) this reverts to the original behavior for anyone
   // who still hasn't set a location.
-  const location = useLocationSeed({ autoRequest: hasClickedIntoApp && !hasManualLocation && onboardingFlowDismissed })
+  const location = useLocationSeed({
+    autoRequest: isAppRoute && hasClickedIntoApp && !hasManualLocation && onboardingFlowDismissed,
+  })
   const motion = useParallax()
   const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
   const isMobile = useIsMobile()
@@ -176,14 +166,6 @@ function App() {
     identifyAnalyticsUser(user)
   }, [user])
 
-  // "/" always renders the landing page -- see showLanding below -- so a
-  // visitor who should skip it (signed in, or already partially onboarded)
-  // is sent on to /app instead of the same URL silently rendering
-  // different content depending on invisible local-storage state.
-  useEffect(() => {
-    if (routerLocation.pathname === '/' && skipLanding) navigate('/app', { replace: true })
-  }, [routerLocation.pathname, skipLanding, navigate])
-
   // Bare "/app" has no view of its own -- redirect to whichever view/tab
   // this shell actually shows by default, same target enterApp() below
   // uses right after onboarding.
@@ -192,16 +174,8 @@ function App() {
   }, [routerLocation.pathname, isMobile, navigate])
 
   // Any path that isn't "/", "/landing", or under "/app" is not a real
-  // route -- it used to silently fall through to rendering the full app
-  // shell (PATH_VIEW's `?? 'tonight'` fallback covered *anything*, not
-  // just legitimate in-app paths). Sent to "/landing" specifically, not
-  // "/": "/" has its own skip-to-/app redirect for already-onboarded
-  // visitors right above, and routing an unknown path through "/" would
-  // ride that same redirect straight into the app -- the exact "every
-  // undefined route ends up being the app" behavior this is supposed to
-  // stop. "/landing" carries no forwarding logic at all, so a bogus path
-  // reliably dead-ends on the landing page no matter who's asking.
-  const isAppRoute = routerLocation.pathname.startsWith('/app')
+  // route. Unknown public URLs resolve to the landing-page alias rather
+  // than silently falling through to the app shell.
   useEffect(() => {
     if (routerLocation.pathname !== '/' && routerLocation.pathname !== '/landing' && !isAppRoute) {
       navigate('/landing', { replace: true })
@@ -229,13 +203,9 @@ function App() {
     setView('history')
   }
 
-  // "/" is the landing page, full stop -- no sign-in or onboarding-state
-  // check decides what renders at that URL. Signed-in/already-onboarded
-  // visitors don't see it lingering, but that's the redirect effect above
-  // moving them on to /app, not this page rendering something else in its
-  // place. /landing is a permanent alias: always the landing page,
-  // regardless of local storage, so it can actually be looked at on
-  // demand.
+  // "/" is the landing page, full stop. Signed-in visitors see their active
+  // session identified here, but are only sent into the product when they
+  // choose to open it. "/landing" remains a permanent alias.
   const showLanding = routerLocation.pathname === '/' || routerLocation.pathname === '/landing'
   const showOnboardingFlow = hasClickedIntoApp && isAppRoute && !onboardingFlowDismissed
 
@@ -245,7 +215,7 @@ function App() {
   }
 
   if (showLanding) {
-    return <LandingPage isMobile={isMobile} onEnter={enterApp} />
+    return <LandingPage authenticatedEmail={user?.email} isMobile={isMobile} onEnter={enterApp} />
   }
 
   // Not "/", not "/landing", not an /app/* route -- the redirect effect
