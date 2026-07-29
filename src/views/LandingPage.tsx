@@ -12,7 +12,7 @@ interface LandingPageProps {
 // (with a "use my current location" option there), once someone has
 // actually chosen to get started.
 const PITCH_POINTS = [
-  'Tonight’s best target, ranked for your gear',
+  'Tonight’s best target, picked for your phone — no telescope needed',
   'Camera guidance for what’s actually in your sky right now',
   'A nudge before it’s gone',
 ]

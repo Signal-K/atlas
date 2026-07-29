@@ -137,13 +137,13 @@ export function SettingsView({
 
   return (
     <section className="widget-section settings-panel">
-      <div className="settings-group" data-group="account">
-        <h3 className="calendar-selected-heading">Account</h3>
+      <details className="settings-group" data-group="account" open>
+        <summary className="calendar-selected-heading">Account</summary>
         <AccountSettings defaultMode={accountDefaultMode} source="settings" />
-      </div>
+      </details>
 
-      <div className="settings-group" data-group="appearance">
-        <h3 className="calendar-selected-heading">Appearance</h3>
+      <details className="settings-group" data-group="appearance" open>
+        <summary className="calendar-selected-heading">Appearance</summary>
         <div className="settings-row">
           <span className="settings-label">Theme</span>
           <div className="settings-choice">
@@ -155,10 +155,14 @@ export function SettingsView({
             </button>
           </div>
         </div>
-      </div>
+      </details>
 
-      <div className="settings-group" data-group="location">
-        <h3 className="calendar-selected-heading">Location</h3>
+      {/* Location and motion parallax are both device-permission toggles
+          Atlas needs to build tonight's plan and the AR-style sky pointing
+          -- grouped together instead of splitting motion parallax off into
+          "Notifications", which it has nothing to do with. */}
+      <details className="settings-group" data-group="location" open>
+        <summary className="calendar-selected-heading">Location &amp; sensors</summary>
         <div className="settings-row">
           <span className="settings-label">Location-based sky</span>
           <div className="settings-choice">
@@ -208,11 +212,6 @@ export function SettingsView({
             )}
           </div>
         </div>
-      </div>
-
-      <div className="settings-group" data-group="notifications">
-        <h3 className="calendar-selected-heading">Notifications</h3>
-        <PushSettings />
 
         <div className="settings-row">
           <span className="settings-label">Motion parallax</span>
@@ -227,17 +226,22 @@ export function SettingsView({
             )}
           </div>
         </div>
-      </div>
+      </details>
 
-      <div className="settings-group" data-group="leaderboard">
-        <h3 className="calendar-selected-heading">Streak leaderboard</h3>
+      <details className="settings-group" data-group="notifications">
+        <summary className="calendar-selected-heading">Notifications</summary>
+        <PushSettings />
+      </details>
+
+      <details className="settings-group" data-group="leaderboard">
+        <summary className="calendar-selected-heading">Streak leaderboard</summary>
         <LeaderboardSettings />
-      </div>
+      </details>
 
-      <div className="settings-group" data-group="widgets">
-        <h3 className="calendar-selected-heading">Dashboard widgets</h3>
+      <details className="settings-group" data-group="widgets">
+        <summary className="calendar-selected-heading">Dashboard widgets</summary>
         <WidgetSettings />
-      </div>
+      </details>
     </section>
   )
 }

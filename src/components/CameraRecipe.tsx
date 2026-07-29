@@ -10,7 +10,7 @@ import {
   type DeviceId,
   type DeviceMaker,
 } from '../lib/cameraProfiles'
-import { CAMERA_RECIPES, deviceRecipeFor, describeLiveConditions, type LiveRecipeConditions, type RecipeKey } from '../lib/cameraRecipes'
+import { CAMERA_RECIPES, TRIPOD_HANDHELD_TIP, TRIPOD_LABEL, deviceRecipeFor, describeLiveConditions, type LiveRecipeConditions, type RecipeKey } from '../lib/cameraRecipes'
 import { trackEvent } from '../lib/analytics'
 import { importPresetFile, PresetImportError, recommendPresetsForTarget } from '../lib/cameraPresets'
 import type { CameraPreset } from '../lib/db'
@@ -18,12 +18,6 @@ import { useAuth } from '../lib/auth'
 import { gearAffiliateUrl } from '../lib/affiliate'
 import { createPresetBundle, downloadPresetBundle } from '../lib/presetBundles'
 import { PaywallGate } from './PaywallGate'
-
-const TRIPOD_LABEL: Record<string, string> = {
-  required: 'Tripod required',
-  recommended: 'Tripod recommended',
-  optional: 'Tripod optional',
-}
 
 const LOCAL_USER_ID = 'local'
 
@@ -171,14 +165,16 @@ export function CameraRecipe({ recipeKey, liveConditions }: { recipeKey: RecipeK
             <dd>{deviceRecipe.lens}</dd>
           </div>
           <div>
-            <dt>{TRIPOD_LABEL[deviceRecipe.tripod]}</dt>
-            {deviceRecipe.tripod !== 'optional' && tripodShopUrl && (
-              <dd>
+            <dt>Stability</dt>
+            <dd>
+              {TRIPOD_LABEL[deviceRecipe.tripod]}
+              {TRIPOD_HANDHELD_TIP[deviceRecipe.tripod] && <small className="camera-recipe-handheld-tip">{TRIPOD_HANDHELD_TIP[deviceRecipe.tripod]}</small>}
+              {deviceRecipe.tripod !== 'optional' && tripodShopUrl && (
                 <a href={tripodShopUrl} target="_blank" rel="noopener noreferrer sponsored" className="camera-recipe-shop-link">
-                  Shop tripods
+                  Prefer a tripod? Shop tripods
                 </a>
-              </dd>
-            )}
+              )}
+            </dd>
           </div>
           <div>
             <dt>Exposure</dt>

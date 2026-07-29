@@ -251,10 +251,10 @@ export function PlanView({
         <PaywallGate
           user={user}
           feature="Planning"
-          description="Build observing plans, compare dark-sky trips, save events, and prepare gear with the Sky Pass."
+          description="Save targets, build a 90-day plan, and compare dark-sky trips with the Sky Pass."
           freeNote="Today, Events, check-ins, and your Journal stay free. Discounted users still need to complete Polar checkout first."
           freeBullets="Today's sky conditions, 10-day event browsing, check-ins, and your Journal."
-          paidBullets="90-day plans, saved targets & reminders, dark-sky trip routing, gear fit, and downloadable camera presets."
+          paidBullets="90-day plans, saved targets & reminders, dark-sky trip routing, plus optional gear fit and downloadable camera presets if you do have equipment."
           onSignInClick={() => {
             window.location.href = '/app/settings'
           }}

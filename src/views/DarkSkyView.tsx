@@ -1,4 +1,11 @@
-import { estimateLightPollution, rankLowerLightPollutionSites, skyQualityLabelForScore, type RankedDarkSkySite } from '../lib/darkSky'
+import {
+  estimateLightPollution,
+  formatTripDriveTime,
+  rankLowerLightPollutionSites,
+  skyQualityLabelForScore,
+  tripComparisonNote,
+  tripSiteQualityLabel,
+} from '../lib/darkSky'
 import { trackEvent } from '../lib/analytics'
 import { tourAffiliateUrl } from '../lib/affiliate'
 import { NativeRoutePicker } from '../components/NativeRoutePicker'
@@ -7,13 +14,10 @@ import { NativeRoutePicker } from '../components/NativeRoutePicker'
 // LocalOpsView.tsx/localOps.ts (an unrelated local PocketBase diagnostics
 // dashboard) -- despite the ticket's original name, this is new, unrelated
 // functionality.
-const MAX_QUICK_TRIP_MINUTES = 240
 
 export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
   const lightPollution = estimateLightPollution(lat, lon)
-  const sites: RankedDarkSkySite[] = rankLowerLightPollutionSites(lat, lon, 8)
-    .filter((site) => site.estimatedTravelMinutes <= MAX_QUICK_TRIP_MINUTES)
-    .slice(0, 3)
+  const sites = rankLowerLightPollutionSites(lat, lon, 3)
   const origin = { lat, lon }
 
   return (
@@ -31,12 +35,12 @@ export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
             <div className="darksky-site-header">
               <span className="darksky-site-name">{site.name}</span>
               <span className={`darksky-bortle darksky-bortle--${site.bortleClass}`} title={`Technical reference: Bortle ${site.bortleClass} of 9`}>
-                {site.bortleClass <= 2 ? '5/5 · Very dark' : site.bortleClass <= 4 ? '4/5 · Dark' : site.bortleClass <= 6 ? '3/5 · Some glow' : '2/5 · Bright'}
+                {tripSiteQualityLabel(site.bortleClass)}
               </span>
             </div>
             <p className="darksky-site-meta">
-              {site.distanceKm.toFixed(0)} km · {(site.lightPollutionDelta ?? 0) > 0 ? `darker sky than home` : 'best known match'} ·{' '}
-              {site.estimatedTravelMinutes < 60 ? `${site.estimatedTravelMinutes} min` : `${Math.floor(site.estimatedTravelMinutes / 60)}h ${site.estimatedTravelMinutes % 60}m`} drive (estimated)
+              {site.distanceKm.toFixed(0)} km · {tripComparisonNote(site.lightPollutionDelta)} ·{' '}
+              {formatTripDriveTime(site.estimatedTravelMinutes)} drive (estimated)
             </p>
             <p className="darksky-site-notes">{site.notes}</p>
             <NativeRoutePicker site={site} origin={origin} />

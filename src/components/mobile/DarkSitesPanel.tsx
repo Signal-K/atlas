@@ -1,14 +1,16 @@
-import { estimateLightPollution, rankLowerLightPollutionSites, skyQualityLabelForScore } from '../../lib/darkSky'
+import {
+  estimateLightPollution,
+  rankLowerLightPollutionSites,
+  skyQualityLabelForScore,
+  tripComparisonNote,
+  tripSiteQualityLabel,
+} from '../../lib/darkSky'
 import { NativeRoutePicker } from '../NativeRoutePicker'
 import { BackIcon, MobileIcon } from './MobileIcon'
 
-export const MAX_QUICK_TRIP_MINUTES = 240
-
 export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lon: number; cityName: string; onBack: () => void }) {
   const lightPollution = estimateLightPollution(lat, lon)
-  const darkSites = rankLowerLightPollutionSites(lat, lon, 8)
-    .filter((site) => site.estimatedTravelMinutes <= MAX_QUICK_TRIP_MINUTES)
-    .slice(0, 3)
+  const darkSites = rankLowerLightPollutionSites(lat, lon, 3)
   const origin = { lat, lon }
 
   return (
@@ -40,8 +42,8 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
                 </div>
                 <div className="mobile-tool-row-foot">
                   <span>
-                    {site.bortleClass <= 2 ? '5/5 · VERY DARK' : site.bortleClass <= 4 ? '4/5 · DARK' : site.bortleClass <= 6 ? '3/5 · SOME GLOW' : '2/5 · BRIGHT'} &middot;{' '}
-                    {(site.lightPollutionDelta ?? 0) > 0 ? 'DARKER THAN HOME' : 'BEST KNOWN MATCH'} &middot;{' '}
+                    {tripSiteQualityLabel(site.bortleClass).toUpperCase()} &middot;{' '}
+                    {tripComparisonNote(site.lightPollutionDelta).toUpperCase()} &middot;{' '}
                     {Math.round(site.distanceKm)} KM
                   </span>
                 </div>
@@ -56,6 +58,6 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
 }
 
 export function darkSitesSummary(lat: number, lon: number) {
-  const darkSites = rankLowerLightPollutionSites(lat, lon, 8).filter((site) => site.estimatedTravelMinutes <= MAX_QUICK_TRIP_MINUTES).slice(0, 3)
+  const darkSites = rankLowerLightPollutionSites(lat, lon, 3)
   return { count: darkSites.length, nearestMinutes: darkSites[0]?.estimatedTravelMinutes ?? null }
 }
