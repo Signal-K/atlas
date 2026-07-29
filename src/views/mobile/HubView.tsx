@@ -11,7 +11,7 @@ import { turnInstruction, useDeviceCompass } from '../../lib/deviceCompass'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { MobileTab } from '../../components/MobileShell'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
-import { CAMERA_RECIPES, deviceRecipeFor, recipeKeyForEventKind, type RecipeKey } from '../../lib/cameraRecipes'
+import { CAMERA_RECIPES, TRIPOD_HANDHELD_TIP, TRIPOD_LABEL, deviceRecipeFor, recipeKeyForEventKind, type RecipeKey } from '../../lib/cameraRecipes'
 import { trackEvent } from '../../lib/analytics'
 import { estimateLightPollution, skyQualityLabelForScore } from '../../lib/darkSky'
 import { getStarObjects, type SkyMapObject } from '../../lib/skyMapLayers'
@@ -369,10 +369,13 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
             <strong>{cameraDeviceRecipe.lens}</strong>
           </div>
           <div>
-            <span>Tripod</span>
-            <strong>{cameraDeviceRecipe.tripod}</strong>
+            <span>Stability</span>
+            <strong>{TRIPOD_LABEL[cameraDeviceRecipe.tripod]}</strong>
           </div>
         </div>
+        {TRIPOD_HANDHELD_TIP[cameraDeviceRecipe.tripod] && (
+          <p className="dt-empty-hint">{TRIPOD_HANDHELD_TIP[cameraDeviceRecipe.tripod]}</p>
+        )}
         <button type="button" className="dt-chevron-btn dt-camera-setup-link" onClick={() => onOpenTab('calendar')}>
           Full setup, presets &amp; gear fit <HubIcon name="chevron" />
         </button>
@@ -478,12 +481,23 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
         </div>
         {plan.targets.length === 0 ? (
           <>
-            <p className="dt-empty-hint">
-              {plan.rating === 'skip' ? 'Nothing worth going outside for tonight.' : 'No events cached yet — try again once online.'}
-            </p>
-            {visibleStars.length > 0 && (
+            {/* A skip night should explain why (not just declare defeat) and
+                always point to the best realistic alternative -- either
+                tonight's brightest stars or the next clear window. */}
+            {plan.rating === 'skip' && plan.reasons.length > 0 ? (
+              <ul className="dt-empty-reasons">
+                {plan.reasons.map((reason) => (
+                  <li key={reason} className="dt-empty-hint">{reason}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="dt-empty-hint">
+                {plan.rating === 'skip' ? 'Nothing worth going outside for tonight.' : 'No events cached yet — try again once online.'}
+              </p>
+            )}
+            {visibleStars.length > 0 ? (
               <>
-                <p className="dt-empty-hint">The brightest naked-eye stars up right now:</p>
+                <p className="dt-empty-hint">Still worth a look — the brightest naked-eye stars up right now:</p>
                 <div className="mobile-mini-list">
                   {visibleStars.map((star) => (
                     <div className="mobile-mini-row mobile-plan-row mobile-plan-row--status" key={star.id}>
@@ -495,6 +509,12 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
                   ))}
                 </div>
               </>
+            ) : (
+              plan.nextClearWindow && (
+                <p className="dt-empty-hint">
+                  Clouded out tonight — {new Date(`${plan.nextClearWindow.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long' })} looks better ({Math.round(plan.nextClearWindow.cloudCoverPct)}% cloud).
+                </p>
+              )
             )}
           </>
         ) : (

@@ -55,6 +55,18 @@ function formatOptionalNumber(value: number | undefined, suffix = ''): string | 
   return `${Number(value.toFixed(1))}${suffix}`
 }
 
+// Plain-language gloss before the raw magnitude number -- same pattern as
+// the Bortle scale in darkSky.ts (translate first, show the technical value
+// second), so a beginner isn't handed a bare astronomy number to decode.
+function brightnessLabel(magnitude: number | undefined): string | null {
+  if (magnitude == null || Number.isNaN(magnitude)) return null
+  if (magnitude <= 1) return 'Very bright'
+  if (magnitude <= 3) return 'Easy naked-eye'
+  if (magnitude <= 4.5) return 'Naked-eye'
+  if (magnitude <= 6.5) return 'Naked-eye in a dark sky'
+  return 'Binoculars help here'
+}
+
 function estimatePointingAltitude(pitchDeg: number | null): number {
   if (pitchDeg == null) return 0
   return Math.max(0, Math.min(90, 90 - Math.abs(pitchDeg)))
@@ -230,8 +242,10 @@ export function SkyMapOverlay({
               </div>
               {formatOptionalNumber(selectedObject.magnitude) && (
                 <div>
-                  <dt>Mag</dt>
-                  <dd>{formatOptionalNumber(selectedObject.magnitude)}</dd>
+                  <dt>Brightness</dt>
+                  <dd title={`Technical reference: magnitude ${formatOptionalNumber(selectedObject.magnitude)}`}>
+                    {brightnessLabel(selectedObject.magnitude)}
+                  </dd>
                 </div>
               )}
               {selectedObject.constellation && (

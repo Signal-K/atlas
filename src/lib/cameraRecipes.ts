@@ -16,6 +16,23 @@ export type RecipeKey =
 
 export type TripodRequirement = 'required' | 'recommended' | 'optional'
 
+// Shared across the desktop CameraRecipe panel and the mobile Hub's free
+// "Camera setup" card, so there's one place that decides how "required" is
+// worded -- never just the bare word "required" with no phone-only option,
+// which reads as an equipment gate rather than a tip (see brand guardrail:
+// never imply expensive equipment is needed to participate).
+export const TRIPOD_LABEL: Record<TripodRequirement, string> = {
+  required: 'Steadiest braced or on a tripod',
+  recommended: 'Steadier with a tripod',
+  optional: 'Handheld is fine',
+}
+
+export const TRIPOD_HANDHELD_TIP: Record<TripodRequirement, string> = {
+  required: "No tripod? Brace the phone against a wall, railing, or rock — it just needs to hold still.",
+  recommended: 'No tripod on hand? Bracing against something solid works fine.',
+  optional: '',
+}
+
 export interface DeviceRecipe {
   mode: string
   lens: string

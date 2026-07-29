@@ -372,7 +372,7 @@ function App() {
               user={user}
               entitlementRefreshing={entitlementRefreshing}
               feature="Planning"
-              description="Build observing plans, compare dark-sky trips, save events, and prepare gear with the Sky Pass."
+              description="Save targets, build a 90-day plan, and compare dark-sky trips with the Sky Pass."
               freeNote="Today, Events, check-ins, and your Journal stay free. Discounted users still need to complete Polar checkout first."
               onSignInClick={goToSignUp}
             >

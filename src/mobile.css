@@ -3508,41 +3508,6 @@
   --dt-primary: #6ec0e3;
 }
 
-/* -- Desktop Tonight view's mobile-dashboard comparison section -- reuses
-   the dt-* widget-grid/map-preview markup outside of .mobile-shell, so it
-   needs its own copy of the token block too. -- */
-.mobile-dashboard-preview {
-  --dt-ink: #16181c;
-  --dt-ink-soft: #2b2f36;
-  --dt-ink-muted: #5b636f;
-  --dt-ink-faded: #9099a4;
-  --dt-rule: #d9dde3;
-  --dt-bg-page: #f7f5ee;
-  --dt-primary: #0a82b3;
-  --dt-font-display: 'Turret Road', 'Source Serif 4', Georgia, serif;
-  --dt-font-serif: 'Source Serif 4', Charter, Georgia, 'Times New Roman', serif;
-  --dt-font-data: 'Oxanium', ui-monospace, 'SF Mono', 'Roboto Mono', monospace;
-  max-width: 480px;
-}
-
-:root[data-theme='dark'] .mobile-dashboard-preview {
-  --dt-ink: #ecedf0;
-  --dt-ink-soft: #c5c9d2;
-  --dt-ink-muted: #8a93a0;
-  --dt-ink-faded: #5e6671;
-  --dt-rule: #2a2f37;
-  --dt-bg-page: #111316;
-  --dt-primary: #6ec0e3;
-}
-
-.mobile-dashboard-preview-header h2 {
-  margin-bottom: 4px;
-}
-
-.mobile-dashboard-preview-map {
-  margin-top: 12px;
-}
-
 .dt-landing-hero {
   max-width: 480px;
   text-align: center;
@@ -4586,6 +4551,11 @@
 .dt-empty-hint {
   font: 400 0.9rem/1.55 var(--dt-font-serif);
   color: var(--dt-ink-muted);
+}
+
+.dt-empty-reasons {
+  margin: 0;
+  padding: 0 0 0 18px;
 }
 
 .dt-search-panel {

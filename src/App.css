@@ -2916,11 +2916,22 @@
   margin: 6px 0 0;
 }
 
+.camera-recipe-handheld-tip {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.7;
+}
+
 .camera-recipe-shop-link {
-  font-size: 12px;
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
+  opacity: 0.85;
 }
 
 .camera-recipe-placeholder {
