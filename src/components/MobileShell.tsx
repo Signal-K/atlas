@@ -210,6 +210,14 @@ export function MobileShell({
     storeTheme(isDark ? 'dark' : 'light')
   }, [isDark])
 
+  useEffect(() => {
+    if (!profileOpen) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setProfileOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [profileOpen])
 
   useEffect(() => {
     if (!searchOpen) return
@@ -385,27 +393,38 @@ export function MobileShell({
             >
               {accountInitial}
             </button>
-            {profileOpen && (
-              <div className="dt-profile-menu">
-                <div className="dt-profile-menu-head">
-                  <span>Profile</span>
-                  <strong>{accountLabel}</strong>
-                </div>
-                <button type="button" onClick={openSettings}>
-                  Account & settings
-                </button>
-                <button type="button" onClick={toggleTheme}>
-                  {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                </button>
-                {user && (
-                  <button type="button" onClick={signOut}>
-                    Sign out
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Rendered as a sibling of .dt-brand-row (not nested inside it) so
+            the menu is never clipped by the brand row's overflow: hidden,
+            which only exists to animate that row's scroll-collapse (see
+            .dt-header-collapsed above) -- nesting the menu in there cut most
+            of its height off whenever it was open. Anchored to the bottom
+            edge of the whole header (top: 100% of this full-height overlay)
+            so it lands in the right place whether the brand row is expanded
+            or collapsed, with no hardcoded offset to fall out of sync. */}
+        {profileOpen && (
+          <div className="dt-profile-menu-overlay" onClick={() => setProfileOpen(false)}>
+            <div className="dt-profile-menu" onClick={(event) => event.stopPropagation()}>
+              <div className="dt-profile-menu-head">
+                <span>Profile</span>
+                <strong>{accountLabel}</strong>
+              </div>
+              <button type="button" onClick={openSettings}>
+                Account & settings
+              </button>
+              <button type="button" onClick={toggleTheme}>
+                {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              </button>
+              {user && (
+                <button type="button" onClick={signOut}>
+                  Sign out
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="mobile-content" ref={contentRef}>

@@ -11,9 +11,10 @@ import { turnInstruction, useDeviceCompass } from '../../lib/deviceCompass'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { MobileTab } from '../../components/MobileShell'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
-import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
+import { CAMERA_RECIPES, deviceRecipeFor, recipeKeyForEventKind, type RecipeKey } from '../../lib/cameraRecipes'
 import { trackEvent } from '../../lib/analytics'
 import { estimateLightPollution, skyQualityLabelForScore } from '../../lib/darkSky'
+import { getStarObjects, type SkyMapObject } from '../../lib/skyMapLayers'
 import { forecastLookaheadDays } from '../../lib/entitlementLimits'
 import { useAuth } from '../../lib/auth'
 import { getPreferredEventTypes, hasCompletedEventPreferences } from '../../lib/eventPreferences'
@@ -164,6 +165,24 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
 
   const rankedTargets = sortTargetsByEquipment(plan.targets, equipment)
   const topTarget = rankedTargets[0]
+  // Naked-eye-bright stars, up right now -- shown as a fallback so Tonight
+  // always has something concrete to look at even on a night with nothing
+  // in the event cache, instead of just an empty-state sentence.
+  const visibleStars: SkyMapObject[] =
+    plan.targets.length === 0
+      ? getStarObjects(new Date(), city.lat, city.lon)
+          .filter((star) => star.visible && (star.magnitude ?? 99) <= 2.5)
+          .sort((a, b) => b.altitudeDeg - a.altitudeDeg)
+          .slice(0, 6)
+      : []
+  // Basic camera setup, free for every account -- the deeper device-specific
+  // walkthrough, preset downloads, and gear fit stay behind the Sky Pass in
+  // Plan (see PlanView/CameraRecipe), but the essential mode/lens/tripod
+  // call should never be paywalled.
+  const cameraRecipeKey: RecipeKey = (topTarget ? recipeKeyForEventKind(topTarget.kind) : null) ?? 'starry_sky'
+  const cameraDevice = getDefaultDevice()
+  const cameraDeviceRecipe = deviceRecipeFor(cameraRecipeKey, cameraDevice)
+  const cameraRecipeTitle = CAMERA_RECIPES[cameraRecipeKey].title
   const sunsetAt = plan.darknessWindow.sunsetAt
   const darkAt = plan.darknessWindow.astronomicalDuskAt
   const cloudCover = advisory ? `${Math.round(advisory.cloudCoverPct)}%` : '—'
@@ -334,6 +353,33 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
 
       <div className="dt-stitch" />
 
+      {/* Essential mode/lens/tripod for the default device -- free for every
+          account. The deeper device-specific walkthrough, downloadable
+          presets, and gear fit stay behind the Sky Pass, in Plan. */}
+      <section>
+        <div className="dt-section-eyebrow"><HubIcon name="target" />Camera setup</div>
+        <p className="dt-empty-hint">Shooting {cameraRecipeTitle.toLowerCase()} on {CAMERA_PROFILES[cameraDevice].name}:</p>
+        <div className="dt-camera-setup-facts">
+          <div>
+            <span>Mode</span>
+            <strong>{cameraDeviceRecipe.mode}</strong>
+          </div>
+          <div>
+            <span>Lens</span>
+            <strong>{cameraDeviceRecipe.lens}</strong>
+          </div>
+          <div>
+            <span>Tripod</span>
+            <strong>{cameraDeviceRecipe.tripod}</strong>
+          </div>
+        </div>
+        <button type="button" className="dt-chevron-btn dt-camera-setup-link" onClick={() => onOpenTab('calendar')}>
+          Full setup, presets &amp; gear fit <HubIcon name="chevron" />
+        </button>
+      </section>
+
+      <div className="dt-stitch" />
+
       {/* Free accounts see this capped to a 3-day outlook (see
           entitlementLimits.ts); Sky Pass unlocks the full 16-day window.
           Lives here on Today (not Plan) because Plan is fully paywalled for
@@ -431,9 +477,26 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           </button>
         </div>
         {plan.targets.length === 0 ? (
-          <p className="dt-empty-hint">
-            {plan.rating === 'skip' ? 'Nothing worth going outside for tonight.' : 'No events cached yet — try again once online.'}
-          </p>
+          <>
+            <p className="dt-empty-hint">
+              {plan.rating === 'skip' ? 'Nothing worth going outside for tonight.' : 'No events cached yet — try again once online.'}
+            </p>
+            {visibleStars.length > 0 && (
+              <>
+                <p className="dt-empty-hint">The brightest naked-eye stars up right now:</p>
+                <div className="mobile-mini-list">
+                  {visibleStars.map((star) => (
+                    <div className="mobile-mini-row mobile-plan-row mobile-plan-row--status" key={star.id}>
+                      <span className="mobile-event-kind">STAR</span>
+                      <span className="mobile-mini-row-name">{star.name}</span>
+                      <span className="mobile-mini-row-meta">{star.compassLabel}, {Math.round(star.altitudeDeg)}° up</span>
+                      <span className="mobile-plan-row-status">{star.constellation ?? ''}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         ) : (
           <>
             <div className="dt-today-rule">

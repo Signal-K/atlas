@@ -504,6 +504,33 @@
   text-transform: uppercase;
 }
 
+/* Each group is a <details> now -- only Account/Appearance/Location start
+   expanded, the rest (Notifications, leaderboard, widgets) start collapsed
+   so Settings opens as a short list instead of one long uniform scroll. */
+.settings-group > summary.calendar-selected-heading {
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-group > summary.calendar-selected-heading::-webkit-details-marker {
+  display: none;
+}
+
+.settings-group > summary.calendar-selected-heading::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.15s ease;
+}
+
+.settings-group[open] > summary.calendar-selected-heading::before {
+  transform: rotate(90deg);
+}
+
+.settings-group[open] > summary.calendar-selected-heading {
+  margin-bottom: 6px;
+}
+
 .settings-group .settings-row:last-child {
   padding-bottom: 0;
 }
