@@ -259,6 +259,24 @@ export function rankLowerLightPollutionSites(lat: number, lon: number, limit = 5
     .slice(0, limit)
 }
 
+// Shared by the desktop DarkSkyView and mobile DarkSitesPanel so both
+// surfaces describe a ranked site the same way instead of each keeping its
+// own copy of the same bortleClass/delta ternary (they'd already drifted
+// into different casing before this existed).
+export function tripSiteQualityLabel(bortleClass: number): string {
+  const score = skyQualityScore(bortleClass)
+  return `${score}/5 · ${skyQualityLabelForScore(score)}`
+}
+
+export function tripComparisonNote(lightPollutionDelta: number | undefined): string {
+  return (lightPollutionDelta ?? 0) > 0 ? 'darker sky than home' : 'best known match'
+}
+
+export function formatTripDriveTime(estimatedTravelMinutes: number): string {
+  if (estimatedTravelMinutes < 60) return `${estimatedTravelMinutes} min`
+  return `${Math.floor(estimatedTravelMinutes / 60)}h ${estimatedTravelMinutes % 60}m`
+}
+
 // Deep-links to the device's native maps app for turn-by-turn directions
 // (v1 scope per the AC) rather than an in-app routing engine.
 export function directionsUrl(

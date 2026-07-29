@@ -1,4 +1,10 @@
-import { estimateLightPollution, rankLowerLightPollutionSites, skyQualityLabelForScore } from '../../lib/darkSky'
+import {
+  estimateLightPollution,
+  rankLowerLightPollutionSites,
+  skyQualityLabelForScore,
+  tripComparisonNote,
+  tripSiteQualityLabel,
+} from '../../lib/darkSky'
 import { NativeRoutePicker } from '../NativeRoutePicker'
 import { BackIcon, MobileIcon } from './MobileIcon'
 
@@ -36,8 +42,8 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
                 </div>
                 <div className="mobile-tool-row-foot">
                   <span>
-                    {site.bortleClass <= 2 ? '5/5 · VERY DARK' : site.bortleClass <= 4 ? '4/5 · DARK' : site.bortleClass <= 6 ? '3/5 · SOME GLOW' : '2/5 · BRIGHT'} &middot;{' '}
-                    {(site.lightPollutionDelta ?? 0) > 0 ? 'DARKER THAN HOME' : 'BEST KNOWN MATCH'} &middot;{' '}
+                    {tripSiteQualityLabel(site.bortleClass).toUpperCase()} &middot;{' '}
+                    {tripComparisonNote(site.lightPollutionDelta).toUpperCase()} &middot;{' '}
                     {Math.round(site.distanceKm)} KM
                   </span>
                 </div>
