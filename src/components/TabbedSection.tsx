@@ -14,8 +14,22 @@ export interface Tab {
 // `logAttempt`, which needs "History" to open on the Scrapbook tab rather
 // than whichever tab was last active.
 export function TabbedSection({ tabs, defaultActiveId }: { tabs: Tab[]; defaultActiveId?: string }) {
-  const [activeId, setActiveId] = useState(defaultActiveId ?? tabs[0].id)
+  const initialId = defaultActiveId ?? tabs[0].id
+  const [activeId, setActiveId] = useState(initialId)
+  // Every tab that's ever been opened stays mounted (hidden via CSS)
+  // afterward instead of unmounting -- rendering only `active.content`
+  // used to throw away and rebuild the whole tab's component tree on every
+  // switch, re-running its data loads from scratch and reading as "the page
+  // refreshing" (see MobileShell's identical visitedTabs fix for the mobile
+  // tab bar). Mounted lazily, not all tabs upfront, so a tab nobody has
+  // opened yet doesn't fire its effects for nothing.
+  const [visitedIds, setVisitedIds] = useState<Set<string>>(() => new Set([initialId]))
   const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0]
+
+  function selectTab(id: string) {
+    setActiveId(id)
+    setVisitedIds((current) => (current.has(id) ? current : new Set(current).add(id)))
+  }
 
   return (
     <div className="tabbed-section">
@@ -27,13 +41,20 @@ export function TabbedSection({ tabs, defaultActiveId }: { tabs: Tab[]; defaultA
             role="tab"
             aria-selected={tab.id === active.id}
             className={`tabbed-section-tab${tab.id === active.id ? ' is-active' : ''}`}
-            onClick={() => setActiveId(tab.id)}
+            onClick={() => selectTab(tab.id)}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      {active.content}
+      {tabs.map(
+        (tab) =>
+          visitedIds.has(tab.id) && (
+            <div key={tab.id} role="tabpanel" hidden={tab.id !== active.id}>
+              {tab.content}
+            </div>
+          ),
+      )}
     </div>
   )
 }

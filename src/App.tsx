@@ -214,6 +214,17 @@ function App() {
   // useLocationSeed already uses.
   const locationKey = `${currentLocation.source}:${currentLocation.lat.toFixed(1)},${currentLocation.lon.toFixed(1)}`
 
+  // Every top-level view that's ever been opened stays mounted (hidden via
+  // CSS) afterward instead of unmounting -- rendering only the active
+  // `view === 'x' && (...)` branch used to throw away and rebuild each
+  // view's whole component tree (and its data loads) on every sidebar
+  // click, which reads as the page reloading. Same fix as TabbedSection's
+  // visitedIds and MobileShell's visitedTabs.
+  const [visitedViews, setVisitedViews] = useState<Set<View>>(() => new Set([view]))
+  useEffect(() => {
+    setVisitedViews((current) => (current.has(view) ? current : new Set(current).add(view)))
+  }, [view])
+
   function setView(nextView: View) {
     navigate(VIEW_PATH[nextView])
   }
@@ -320,16 +331,19 @@ function App() {
           </header>
           <hr className="hairline" />
           <Suspense fallback={null}>
-          {view === 'tonight' && (
-            <TonightView
-              key={locationKey}
-              city={currentLocation}
-              locationStatus={location.status}
-              onLogAttempt={logAttempt}
-              setManualLocation={setManualLocation}
-            />
+          {visitedViews.has('tonight') && (
+            <div hidden={view !== 'tonight'}>
+              <TonightView
+                key={locationKey}
+                city={currentLocation}
+                locationStatus={location.status}
+                onLogAttempt={logAttempt}
+                setManualLocation={setManualLocation}
+              />
+            </div>
           )}
-          {view === 'explore' && (
+          {visitedViews.has('explore') && (
+            <div hidden={view !== 'explore'}>
             <TabbedSection
               tabs={[
                 {
@@ -366,8 +380,10 @@ function App() {
                 },
               ]}
             />
+            </div>
           )}
-          {view === 'plan' && (
+          {visitedViews.has('plan') && (
+            <div hidden={view !== 'plan'}>
             <PaywallGate
               user={user}
               entitlementRefreshing={entitlementRefreshing}
@@ -405,8 +421,10 @@ function App() {
                 ]}
               />
             </PaywallGate>
+            </div>
           )}
-          {view === 'community' && (
+          {visitedViews.has('community') && (
+            <div hidden={view !== 'community'}>
             <PaywallGate
               user={user}
               entitlementRefreshing={entitlementRefreshing}
@@ -421,8 +439,10 @@ function App() {
                 ]}
               />
             </PaywallGate>
+            </div>
           )}
-          {view === 'history' && (
+          {visitedViews.has('history') && (
+            <div hidden={view !== 'history'}>
             <TabbedSection
               key={historyDefaultTab}
               defaultActiveId={historyDefaultTab}
@@ -449,8 +469,10 @@ function App() {
                 },
               ]}
             />
+            </div>
           )}
-          {view === 'settings' && (
+          {visitedViews.has('settings') && (
+            <div hidden={view !== 'settings'}>
             <TabbedSection
               tabs={[
                 {
@@ -472,6 +494,7 @@ function App() {
                 ...(import.meta.env.DEV ? [{ id: 'ops', label: 'Diagnostics', content: <LocalOpsView /> }] : []),
               ]}
             />
+            </div>
           )}
           </Suspense>
         </main>
