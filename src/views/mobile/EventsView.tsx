@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import '../../mobile.css'
 import { recipeKeyForEventKind } from '../../lib/cameraRecipes'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { isLocalEvent } from '../../lib/eventFilters'

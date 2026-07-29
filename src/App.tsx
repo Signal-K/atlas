@@ -63,7 +63,7 @@ const PATH_VIEW: Record<string, View> = {
 const VIEW_SUBTITLE: Record<View, string> = {
   tonight: 'Is tonight worth going outside, and what to point your phone at.',
   explore: 'Sky events, calendar, watchlist, and weather — offline-first.',
-  plan: 'Dark-sky trips and deep-sky targets, ranked for your gear.',
+  plan: 'Dark-sky trips and deep-sky targets, with tips for whatever you’re shooting with.',
   community: 'Discoveries shared by sky-watchers, and event-tied photo challenges.',
   history: 'Events that have already happened, and your own sky-watching notes.',
   settings: 'Appearance, location, motion, and local diagnostics.',

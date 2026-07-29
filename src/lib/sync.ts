@@ -91,7 +91,11 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
   const filter = `starts_at >= "${now.toISOString()}" && starts_at <= "${end.toISOString()}"`
 
   try {
-    const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at' })
+    // Bounded so an unreachable/slow PocketBase can't hang this call (and
+    // whatever awaits it, e.g. Today's initial load) for minutes -- the
+    // catch below already falls back to cached/local data, but only once
+    // this actually rejects instead of sitting pending indefinitely.
+    const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', signal: AbortSignal.timeout(8000) })
     const events: SkyEvent[] = records.map((record) => ({
       id: record.id,
       kind: record.kind,
