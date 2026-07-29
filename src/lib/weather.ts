@@ -24,7 +24,12 @@ export async function fetchViewingForecast(lat: number, lon: number, days = 7): 
   url.searchParams.set('forecast_days', String(days))
   url.searchParams.set('timezone', 'auto')
 
-  const response = await fetch(url)
+  // No timeout here previously left the whole Today/Tonight page stuck on
+  // "Loading..." for as long as the browser's own TCP timeout (which can be
+  // minutes) whenever Open-Meteo was slow or unreachable, since a hung fetch
+  // never rejects for a .catch() to handle. AbortSignal.timeout turns that
+  // into a real, boundeded failure the caller's fallback path can act on.
+  const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
   if (!response.ok) throw new Error(`Open-Meteo request failed: ${response.status}`)
   const data = await response.json()
 

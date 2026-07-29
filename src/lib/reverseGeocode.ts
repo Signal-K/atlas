@@ -60,7 +60,12 @@ export async function reverseGeocodeCity(lat: number, lon: number): Promise<stri
   url.searchParams.set('localityLanguage', 'en')
 
   try {
-    const response = await fetch(url)
+    // Bounded: this comment already promised callers a fast fallback rather
+    // than a block, but without a timeout a hung request never rejects for
+    // the catch below to act on -- it just sits pending until the browser's
+    // own TCP timeout, stalling every page that waits on the resolved
+    // location name (which is most of them, on first load).
+    const response = await fetch(url, { signal: AbortSignal.timeout(6000) })
     if (!response.ok) return null
     const data = (await response.json()) as ReverseGeocodeResponse
     const name = data.city || data.locality || data.principalSubdivision || null
