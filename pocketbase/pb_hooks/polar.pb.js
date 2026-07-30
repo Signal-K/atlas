@@ -239,5 +239,32 @@ routerAdd('POST', '/webhooks/polar', (e) => {
   user.set('entitled', true)
   $app.save(user)
 
+  // Best-effort server-side capture -- the client never sees this webhook,
+  // so it's the only place "entitlement granted via Polar" can be recorded.
+  // Never let a PostHog outage fail the webhook or block entitlement.
+  try {
+    const posthogKey = $os.getenv('POSTHOG_KEY')
+    if (posthogKey) {
+      const posthogHost = $os.getenv('POSTHOG_HOST') || 'https://us.i.posthog.com'
+      $http.send({
+        url: posthogHost + '/capture/',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: posthogKey,
+          event: 'Entitlement granted (server)',
+          distinct_id: user.id,
+          properties: {
+            email,
+            source: 'polar_webhook',
+            orderId: payload.data && payload.data.id,
+          },
+        }),
+      })
+    }
+  } catch (err) {
+    console.error('PostHog capture failed for order.paid webhook:', err)
+  }
+
   return e.json(200, { ok: true })
 })

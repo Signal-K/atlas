@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { trackEvent } from '../lib/analytics'
+import { getActiveSurveys, trackEvent } from '../lib/analytics'
 import { useAuth } from '../lib/auth'
 
 type FeedbackMode = 'nps' | 'micro' | 'feature' | null
@@ -16,6 +16,12 @@ const MICRO_STATE_KEY = 'atlas-feedback-micro-state'
 const ACTIVITY_THRESHOLD = 4
 const DISMISS_COOLDOWN_DAYS = 30
 
+// PostHog survey object IDs -- set once scripts/posthog-surveys-setup.mjs
+// has created the matching survey in the dashboard. Undefined is fine:
+// these only annotate capture() calls for PostHog's Surveys analytics tab,
+// the local trigger/dedup logic below works identically either way.
+const NPS_SURVEY_ID = import.meta.env.VITE_POSTHOG_NPS_SURVEY_ID as string | undefined
+
 const MEANINGFUL_EVENTS = new Set([
   'Tapped visible target',
   'Answered equipment prompt',
@@ -27,16 +33,18 @@ const MEANINGFUL_EVENTS = new Set([
   'Paywall checkout clicked',
 ])
 
-const MICRO_SURVEY_TRIGGERS: Record<string, { id: string; question: string; options: string[] }> = {
+const MICRO_SURVEY_TRIGGERS: Record<string, { id: string; question: string; options: string[]; surveyId?: string }> = {
   'Submitted reminder feedback': {
     id: 'reminder_feedback_helpfulness',
     question: 'Was that reminder/check-in useful?',
     options: ['Yes', 'Somewhat', 'No'],
+    surveyId: import.meta.env.VITE_POSTHOG_SURVEY_REMINDER_ID as string | undefined,
   },
   'Tapped visible target': {
     id: 'target_detail_clarity',
     question: 'Did this help you decide what to look for?',
     options: ['Yes', 'Not sure', 'No'],
+    surveyId: import.meta.env.VITE_POSTHOG_SURVEY_TARGET_ID as string | undefined,
   },
 }
 
@@ -111,8 +119,24 @@ export function FeedbackDock() {
   const [microNote, setMicroNote] = useState('')
   const npsSubmitted = localStorage.getItem(NPS_STATE_KEY) === 'submitted'
   const npsDismissedRecently = daysSince(localStorage.getItem(NPS_DISMISSED_KEY)) < DISMISS_COOLDOWN_DAYS
+  // null = not checked yet. Only surveys with a PostHog survey ID wired up
+  // (see NPS_SURVEY_ID / MICRO_SURVEY_TRIGGERS[*].surveyId) get gated on
+  // this; until scripts/posthog-surveys-setup.mjs has been run, every
+  // survey here is unconfigured and display falls back to the local
+  // trigger/dedup logic exactly as before.
+  const [activeSurveyIds, setActiveSurveyIds] = useState<Set<string> | null>(null)
 
   useEffect(() => {
+    getActiveSurveys().then((surveys) => setActiveSurveyIds(new Set(surveys.map((s) => s.id))))
+  }, [])
+
+  useEffect(() => {
+    function surveyIsActive(surveyId: string | undefined): boolean {
+      if (!surveyId) return true
+      if (activeSurveyIds === null) return true
+      return activeSurveyIds.has(surveyId)
+    }
+
     function onAnalyticsEvent(event: Event) {
       const detail = (event as CustomEvent<AnalyticsEventDetail>).detail
       if (!detail?.name) return
@@ -122,22 +146,28 @@ export function FeedbackDock() {
         localStorage.setItem(ACTIVITY_KEY, String(nextCount))
         setActivityCount(nextCount)
 
-        if (!npsSubmitted && !npsDismissedRecently && nextCount >= ACTIVITY_THRESHOLD) {
+        if (!npsSubmitted && !npsDismissedRecently && nextCount >= ACTIVITY_THRESHOLD && surveyIsActive(NPS_SURVEY_ID)) {
           setNpsTrigger(detail.name)
-          setMode((current) => current ?? 'nps')
+          setMode((current) => {
+            if (current == null && NPS_SURVEY_ID) trackEvent('survey shown', { $survey_id: NPS_SURVEY_ID })
+            return current ?? 'nps'
+          })
         }
       }
 
       const survey = MICRO_SURVEY_TRIGGERS[detail.name]
-      if (!survey || localStorage.getItem(`${MICRO_STATE_KEY}:${survey.id}`)) return
+      if (!survey || localStorage.getItem(`${MICRO_STATE_KEY}:${survey.id}`) || !surveyIsActive(survey.surveyId)) return
       setMicroSurvey(survey)
       setMicroNote('')
-      setMode((current) => current ?? 'micro')
+      setMode((current) => {
+        if (current == null && survey.surveyId) trackEvent('survey shown', { $survey_id: survey.surveyId })
+        return current ?? 'micro'
+      })
     }
 
     window.addEventListener('atlas:analytics-event', onAnalyticsEvent)
     return () => window.removeEventListener('atlas:analytics-event', onAnalyticsEvent)
-  }, [npsDismissedRecently, npsSubmitted])
+  }, [npsDismissedRecently, npsSubmitted, activeSurveyIds])
 
   const canSubmitFeature = featureText.trim().length >= 6
   const canSubmitNps = npsScore != null
@@ -151,11 +181,19 @@ export function FeedbackDock() {
   function closePanel() {
     if (mode === 'nps') {
       localStorage.setItem(NPS_DISMISSED_KEY, new Date().toISOString())
-      trackEvent('NPS prompt dismissed', { activityCount })
+      if (NPS_SURVEY_ID) {
+        trackEvent('survey dismissed', { $survey_id: NPS_SURVEY_ID, activityCount })
+      } else {
+        trackEvent('NPS prompt dismissed', { activityCount })
+      }
     }
     if (mode === 'micro' && microSurvey) {
       localStorage.setItem(`${MICRO_STATE_KEY}:${microSurvey.id}`, 'dismissed')
-      trackEvent('Micro survey dismissed', { surveyId: microSurvey.id })
+      if (microSurvey.surveyId) {
+        trackEvent('survey dismissed', { $survey_id: microSurvey.surveyId, surveyKey: microSurvey.id })
+      } else {
+        trackEvent('Micro survey dismissed', { surveyId: microSurvey.id })
+      }
     }
     setMode(null)
   }
@@ -163,25 +201,46 @@ export function FeedbackDock() {
   function submitNps() {
     if (!canSubmitNps) return
     localStorage.setItem(NPS_STATE_KEY, 'submitted')
-    trackEvent('NPS survey submitted', {
-      score: npsScore,
-      reason: npsReason.trim() || undefined,
-      trigger: npsTrigger,
-      activityCount,
-      source: 'feedback_dock',
-    })
+    if (NPS_SURVEY_ID) {
+      trackEvent('survey sent', {
+        $survey_id: NPS_SURVEY_ID,
+        $survey_response: npsScore,
+        reason: npsReason.trim() || undefined,
+        trigger: npsTrigger,
+        activityCount,
+        source: 'feedback_dock',
+      })
+    } else {
+      trackEvent('NPS survey submitted', {
+        score: npsScore,
+        reason: npsReason.trim() || undefined,
+        trigger: npsTrigger,
+        activityCount,
+        source: 'feedback_dock',
+      })
+    }
     setMode(null)
   }
 
   function submitMicro(answer: string) {
     if (!microSurvey) return
     localStorage.setItem(`${MICRO_STATE_KEY}:${microSurvey.id}`, 'submitted')
-    trackEvent('Micro survey submitted', {
-      surveyId: microSurvey.id,
-      answer,
-      note: microNote.trim() || undefined,
-      source: 'feedback_dock',
-    })
+    if (microSurvey.surveyId) {
+      trackEvent('survey sent', {
+        $survey_id: microSurvey.surveyId,
+        $survey_response: answer,
+        surveyKey: microSurvey.id,
+        note: microNote.trim() || undefined,
+        source: 'feedback_dock',
+      })
+    } else {
+      trackEvent('Micro survey submitted', {
+        surveyId: microSurvey.id,
+        answer,
+        note: microNote.trim() || undefined,
+        source: 'feedback_dock',
+      })
+    }
     setMode(null)
   }
 
