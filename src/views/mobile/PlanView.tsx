@@ -18,11 +18,9 @@ import { addToWatchlist, getWatchlist, isWatching, matchesWatchlist, removeFromW
 import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '../../lib/weather'
 import { scoreTonight, type TonightRating } from '../../lib/tonightScore'
 import { trackEvent } from '../../lib/analytics'
-import { moonIlluminationPctAt } from '../../lib/moonPhase'
 import { formatEventDate, daysUntil } from '../../lib/eventFormat'
 import { DarkSitesPanel, darkSitesSummary } from '../../components/mobile/DarkSitesPanel'
 import { GearFitPanel, defaultGearFitSummary } from '../../components/mobile/GearFitPanel'
-import { EventDetailPanel } from '../../components/mobile/EventDetailPanel'
 import { useEventPointing } from '../../components/mobile/EventPointing'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
 import { MobileIcon } from '../../components/mobile/MobileIcon'
@@ -30,9 +28,11 @@ import { PaywallGate } from '../../components/PaywallGate'
 import { useAuth } from '../../lib/auth'
 import { eventLookaheadDays, forecastLookaheadDays } from '../../lib/entitlementLimits'
 import { buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
+import { buildEventDetail, detailInputFromEvent, type EntryDetailSubject } from '../../lib/entryDetail'
+import { getDarknessWindow } from '../../lib/darknessWindow'
+import { tonightWindowForTimeZone } from '../../lib/timeZone'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
-import type { ObservationDraft } from '../../lib/observationDraft'
 import { WatchView } from './WatchView'
 
 type PlanMode = 'ready' | 'watchlist' | 'calendar' | 'browse'
@@ -47,20 +47,19 @@ function ratingToStatus(rating: TonightRating): 'go' | 'marginal' | 'poor' {
 export function PlanView({
   city,
   onOpenEvents,
-  onLogAttempt,
   onSavedForLater,
+  onOpenEntry,
 }: {
   city: CurrentLocation
   onOpenEvents: () => void
-  onLogAttempt: (draft: ObservationDraft) => void
   onSavedForLater?: () => void
+  onOpenEntry: (subject: EntryDetailSubject, actions?: { watching?: boolean; onToggleWatch?: () => void; reminderActive?: boolean; onRemind?: () => void; onPoint?: () => void }) => void
 }) {
   const [mode, setMode] = useState<PlanMode>('browse')
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
   const [pendingFeedback, setPendingFeedback] = useState<GetReadyReminder[]>(() => listPendingReminderFeedback())
-  const [selected, setSelected] = useState<SkyEvent | null>(null)
   const [status, setStatus] = useState('')
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
   const [advisoryTimeZone, setAdvisoryTimeZone] = useState<string | undefined>(city.timeZone)
@@ -214,9 +213,19 @@ export function PlanView({
     trackEvent('Blocked free plan add', { action: 'watch', source })
   }
 
-  const selectedReminder = selected ? reminders.find((reminder) => reminder.eventId === selected.id) : null
-  const selectedRecipeKey = selected ? recipeKeyForEventKind(selected.kind) : null
-  const selectedAdvisory = selected ? advisoryFor(selected) : null
+  function selectEvent(event: SkyEvent) {
+    const { start, end } = tonightWindowForTimeZone(new Date(event.startsAt), city.timeZone)
+    const darknessWindow = getDarknessWindow(city.lat, city.lon, start, end)
+    const subject = buildEventDetail(detailInputFromEvent(event, city.lat, city.lon, darknessWindow), advisoryFor(event))
+    const reminder = reminders.find((candidate) => candidate.eventId === event.id)
+    onOpenEntry(subject, {
+      watching: isWatching(watchlist, 'target', event.target),
+      onToggleWatch: () => toggleWatch(event),
+      reminderActive: !!reminder,
+      onRemind: () => addReminder(event),
+      onPoint: pointActionFor(event)?.onPoint,
+    })
+  }
 
   const darkSites = useMemo(() => darkSitesSummary(city.lat, city.lon), [city.lat, city.lon])
   const gearFit = useMemo(() => defaultGearFitSummary(), [])
@@ -324,7 +333,7 @@ export function PlanView({
                 const reminder = reminders.find((item) => item.eventId === event.id)
                 const recipeKey = recipeKeyForEventKind(event.kind)
                 return (
-                  <button type="button" className="mobile-mini-row mobile-plan-row" key={event.id} onClick={() => setSelected(event)}>
+                  <button type="button" className="mobile-mini-row mobile-plan-row" key={event.id} onClick={() => selectEvent(event)}>
                     <span className="mobile-event-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>
                     <span className="mobile-mini-row-name">{event.title}</span>
                     <span className="mobile-mini-row-meta">{daysUntil(event.startsAt)}</span>
@@ -402,7 +411,7 @@ export function PlanView({
                     </div>
                     <div className="mobile-mini-list">
                       {group.events.map((event) => (
-                        <button type="button" className="mobile-mini-row mobile-plan-row" key={event.id} onClick={() => setSelected(event)}>
+                        <button type="button" className="mobile-mini-row mobile-plan-row" key={event.id} onClick={() => selectEvent(event)}>
                           <span className="mobile-event-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>
                           <span className="mobile-mini-row-name">{event.title}</span>
                           <span className="mobile-mini-row-meta">{formatEventDate(event.startsAt)}</span>
@@ -419,7 +428,7 @@ export function PlanView({
 
       {mode === 'browse' && (
         <>
-          <SkyEventBrowser events={events} onSelect={setSelected} statusForEvent={statusForEvent} />
+          <SkyEventBrowser events={events} onSelect={selectEvent} statusForEvent={statusForEvent} />
 
           <section className="mobile-card">
             <div className="mobile-card-eyebrow">Planning tools</div>
@@ -455,37 +464,6 @@ export function PlanView({
         </>
       )}
 
-      {selected && (
-        <EventDetailPanel
-          event={selected}
-          onClose={() => setSelected(null)}
-          bestViewingLabel={`${formatEventDate(selected.startsAt)} – ${new Date(selected.endsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}
-          relevance={isLocalEvent(selected, city.lat, city.lon) ? 'local' : 'global'}
-          conditions={{
-            moonPct: moonIlluminationPctAt(new Date(selected.startsAt)),
-            cloudPct: selectedAdvisory ? selectedAdvisory.cloudCoverPct : null,
-            rainPct: selectedAdvisory ? selectedAdvisory.precipitationChancePct : null,
-          }}
-          forecastUnavailableHint={selectedAdvisory ? undefined : 'Cloud/rain forecast unavailable this far out — check closer to the date.'}
-          watching={isWatching(watchlist, 'target', selected.target)}
-          onToggleWatch={() => toggleWatch(selected)}
-          reminderActive={!!selectedReminder}
-          onRemind={() => addReminder(selected)}
-          point={pointActionFor(selected)}
-          onLogAttempt={() =>
-            onLogAttempt({
-              eventId: selected.id,
-              targetName: selected.title,
-              deviceUsed: CAMERA_PROFILES[getDefaultDevice()].name,
-              cameraRecipeUsed: selectedRecipeKey ?? undefined,
-              locationLabel: city.name,
-              moonIlluminationPct: moonIlluminationPctAt(new Date(selected.startsAt)),
-              cloudCoverPct: selectedAdvisory?.cloudCoverPct,
-            })
-          }
-          recipeKey={selectedRecipeKey}
-        />
-      )}
       {pointingOverlay}
     </div>
   )

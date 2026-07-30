@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import '../mobile.css'
 import { useAuth } from '../lib/auth'
 import {
   addComment,
@@ -11,11 +12,42 @@ import {
   type Discovery,
   type DiscoveryComment,
 } from '../lib/discoveries'
-import {
-  PHOTO_CHALLENGES,
-  discoveryCaptionForChallenge,
-  type PhotoChallenge,
-} from '../lib/photoChallenges'
+import { PHOTO_CHALLENGES, discoveryCaptionForChallenge, type PhotoChallenge } from '../lib/photoChallenges'
+import { BackIcon } from '../components/mobile/MobileIcon'
+
+// A short, sketchbook-style caption line above the ruled caption text --
+// Discovery has no separate title field, so this is derived from the
+// target (when set) or the caption's own first few words.
+function titleForDiscovery(discovery: Discovery): string {
+  if (discovery.target) return `${discovery.target}, spotted`
+  const words = discovery.caption.trim().split(/\s+/).slice(0, 6).join(' ')
+  return words || 'Field sighting'
+}
+
+function metaForDiscovery(discovery: Discovery): string {
+  const time = new Date(discovery.created).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  const gear = [discovery.camera, discovery.telescope, discovery.filters].filter(Boolean).join(' · ')
+  return [discovery.target, time, gear].filter(Boolean).join(' · ')
+}
+
+// Small deterministic per-card hash so the "pinned photo" tilt and pin
+// color read as hand-placed instead of jittering on every re-render.
+function hashOf(id: string): number {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 10_000
+  return hash
+}
+
+const PIN_COLORS = ['#d9bce1', '#6ec0e3', '#f5b094', '#c9dfb8', '#fbd680']
+
+function rotationFor(id: string): string {
+  const deg = (hashOf(id) / 10_000) * 1.6 - 0.8
+  return `${deg.toFixed(2)}deg`
+}
+
+function pinColorFor(id: string): string {
+  return PIN_COLORS[hashOf(id) % PIN_COLORS.length]
+}
 
 function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: () => void }) {
   const { user } = useAuth()
@@ -53,31 +85,30 @@ function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: 
   }
 
   return (
-    <li className="discovery-card">
-      {discovery.imageUrl && <img className="discovery-image" src={discovery.imageUrl} alt={discovery.caption} loading="lazy" />}
-      <div className="discovery-body">
-        <p className="discovery-caption">{discovery.caption}</p>
-        <p className="discovery-meta">
-          {discovery.authorName} &middot;{' '}
-          {new Date(discovery.created).toLocaleDateString(undefined, { dateStyle: 'medium' })}
-          {discovery.target && <> &middot; {discovery.target}</>}
-        </p>
-        {(discovery.camera || discovery.telescope || discovery.filters) && (
-          <ul className="discovery-equipment">
-            {discovery.camera && <li>Camera: {discovery.camera}</li>}
-            {discovery.telescope && <li>Scope: {discovery.telescope}</li>}
-            {discovery.filters && <li>Filters: {discovery.filters}</li>}
-          </ul>
+    <li className="dt-feed-card" style={{ transform: `rotate(${rotationFor(discovery.id)})` }}>
+      <div className="dt-feed-card-photo-wrap">
+        {discovery.imageUrl ? (
+          <img className="dt-feed-card-photo" src={discovery.imageUrl} alt={discovery.caption} loading="lazy" />
+        ) : (
+          <div className="dt-feed-card-photo dt-feed-card-photo--empty">No photo yet</div>
         )}
-        <div className="discovery-actions">
-          <button type="button" className={`discovery-vote${discovery.hasVoted ? ' is-active' : ''}`} onClick={handleVote} disabled={!user}>
-            ▲ {discovery.voteCount}
-          </button>
-          <button type="button" className="discovery-comment-toggle" onClick={toggleExpanded}>
-            Comments{comments ? ` (${comments.length})` : ''}
-          </button>
-        </div>
-        <div className="discovery-reactions">
+        <span className="dt-feed-card-pin" style={{ background: pinColorFor(discovery.id) }}>
+          {(discovery.target ?? discovery.authorName).slice(0, 3).toUpperCase()}
+        </span>
+      </div>
+      <div className="dt-feed-card-title">{titleForDiscovery(discovery)}</div>
+      <p className="dt-feed-card-caption">{discovery.caption}</p>
+      <div className="dt-feed-card-meta">
+        {metaForDiscovery(discovery)} &middot; {discovery.authorName}
+      </div>
+      <div className="dt-feed-card-footer">
+        <button type="button" className={`dt-feed-card-vote${discovery.hasVoted ? ' is-active' : ''}`} onClick={handleVote} disabled={!user}>
+          &#9650; {discovery.voteCount}
+        </button>
+        <button type="button" className="dt-feed-card-comments-toggle" onClick={toggleExpanded}>
+          {comments ? `${comments.length} comment${comments.length === 1 ? '' : 's'}` : 'Comments'}
+        </button>
+        <div className="dt-feed-card-reactions">
           {REACTIONS.map((reaction) => {
             const mine = discovery.myReactions.has(reaction.id)
             const count = discovery.reactionCounts[reaction.id] ?? 0
@@ -85,7 +116,7 @@ function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: 
               <button
                 key={reaction.id}
                 type="button"
-                className={`discovery-reaction${mine ? ' is-active' : ''}`}
+                className={`dt-feed-card-reaction${mine ? ' is-active' : ''}`}
                 onClick={() => handleReact(reaction.id)}
                 disabled={!user}
                 title={reaction.label}
@@ -95,54 +126,53 @@ function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: 
             )
           })}
         </div>
-        {expanded && (
-          <div className="discovery-comments">
-            {comments === null && <p>Loading&hellip;</p>}
-            {comments?.map((comment) => (
-              <p key={comment.id} className="discovery-comment">
-                <strong>{comment.authorName}</strong> {comment.text}
-              </p>
-            ))}
-            {user ? (
-              <form className="discovery-comment-form" onSubmit={handleComment}>
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(event) => setCommentText(event.target.value)}
-                  placeholder="Add a comment"
-                />
-                <button type="submit">Post</button>
-              </form>
-            ) : (
-              <p className="scrapbook-hint">Sign in (Settings) to comment.</p>
-            )}
-          </div>
-        )}
       </div>
+      {expanded && (
+        <div className="dt-feed-card-comments">
+          {comments === null && <p className="dt-empty-hint">Loading&hellip;</p>}
+          {comments?.map((comment) => (
+            <p key={comment.id} className="dt-feed-card-comment">
+              <strong>{comment.authorName}</strong> {comment.text}
+            </p>
+          ))}
+          {user ? (
+            <form className="dt-feed-card-comment-form" onSubmit={handleComment}>
+              <input
+                type="text"
+                value={commentText}
+                onChange={(event) => setCommentText(event.target.value)}
+                placeholder="Add a comment"
+              />
+              <button type="submit">Post</button>
+            </form>
+          ) : (
+            <p className="dt-empty-hint">Sign in (Settings) to comment.</p>
+          )}
+        </div>
+      )}
     </li>
   )
 }
 
 function ChallengePicker({ selectedId, onSelect }: { selectedId: string; onSelect: (challenge: PhotoChallenge) => void }) {
   return (
-    <div className="challenge-strip">
+    <div className="dt-sighting-challenges">
       {PHOTO_CHALLENGES.map((challenge) => (
         <button
           key={challenge.id}
           type="button"
-          className={`challenge-card${selectedId === challenge.id ? ' is-active' : ''}`}
+          className={`dt-sighting-challenge${selectedId === challenge.id ? ' is-active' : ''}`}
           onClick={() => onSelect(challenge)}
+          title={challenge.prompt}
         >
-          <span className="challenge-title">{challenge.title}</span>
-          <span className="challenge-prompt">{challenge.prompt}</span>
-          <span className="challenge-tip">{challenge.tip}</span>
+          {challenge.title}
         </button>
       ))}
     </div>
   )
 }
 
-function PostForm({ onPosted }: { onPosted: () => void }) {
+function NewSightingForm({ onPosted, onCancel }: { onPosted: () => void; onCancel: () => void }) {
   const [caption, setCaption] = useState('')
   const [target, setTarget] = useState('')
   const [camera, setCamera] = useState('')
@@ -151,9 +181,10 @@ function PostForm({ onPosted }: { onPosted: () => void }) {
   const [image, setImage] = useState<File | null>(null)
   const [selectedChallengeId, setSelectedChallengeId] = useState('')
   const [busy, setBusy] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
   function selectChallenge(challenge: PhotoChallenge) {
-    setSelectedChallengeId(challenge.id)
+    setSelectedChallengeId((current) => (current === challenge.id ? '' : challenge.id))
     setTarget((current) => current || challenge.target)
     setCaption((current) => current || discoveryCaptionForChallenge(challenge))
   }
@@ -164,40 +195,89 @@ function PostForm({ onPosted }: { onPosted: () => void }) {
     setBusy(true)
     try {
       await createDiscovery({ caption: caption.trim(), target, camera, telescope, filters, image })
-      setCaption('')
-      setTarget('')
-      setCamera('')
-      setTelescope('')
-      setFilters('')
-      setImage(null)
-      setSelectedChallengeId('')
-      onPosted()
+      setSubmitted(true)
+      window.setTimeout(onPosted, 900)
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <form className="discovery-form" onSubmit={handleSubmit}>
-      <ChallengePicker selectedId={selectedChallengeId} onSelect={selectChallenge} />
-      <textarea value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="What did you capture?" rows={2} required />
-      <div className="discovery-form-grid">
-        <input type="text" value={target} onChange={(event) => setTarget(event.target.value)} placeholder="Target (e.g. Orion Nebula)" />
-        <input type="text" value={camera} onChange={(event) => setCamera(event.target.value)} placeholder="Camera" />
-        <input type="text" value={telescope} onChange={(event) => setTelescope(event.target.value)} placeholder="Telescope" />
-        <input type="text" value={filters} onChange={(event) => setFilters(event.target.value)} placeholder="Filters" />
-      </div>
-      <input type="file" accept="image/*" onChange={(event) => setImage(event.target.files?.[0] ?? null)} />
-      <button type="submit" className="scrapbook-submit" disabled={busy}>
-        Share discovery
+    <div className="dt-feed-scope dt-sighting">
+      <button type="button" className="dt-entry-back dt-sighting-back" onClick={onCancel}>
+        <BackIcon />
+        <span>Back to feed</span>
       </button>
-    </form>
+      <h2 className="dt-sighting-title">New Sighting</h2>
+      <p className="dt-sighting-subtitle">Add it to your journal, then share if you like</p>
+
+      <form className="dt-sighting-form" onSubmit={handleSubmit}>
+        <label className="dt-sighting-photo">
+          <input type="file" accept="image/*" onChange={(event) => setImage(event.target.files?.[0] ?? null)} hidden />
+          {image ? <span>{image.name}</span> : <span>Drop a photo, or add later</span>}
+        </label>
+
+        <div>
+          <div className="dt-section-eyebrow">What did you see?</div>
+          <textarea
+            value={caption}
+            onChange={(event) => setCaption(event.target.value)}
+            placeholder="the Perseids were incredible tonight&hellip;"
+            rows={3}
+            required
+            className="dt-sighting-caption"
+          />
+        </div>
+
+        <div>
+          <div className="dt-section-eyebrow">Photo challenge (optional)</div>
+          <ChallengePicker selectedId={selectedChallengeId} onSelect={selectChallenge} />
+        </div>
+
+        <div className="dt-sighting-grid">
+          <label>
+            <span className="dt-section-eyebrow">Target</span>
+            <input type="text" value={target} onChange={(event) => setTarget(event.target.value)} placeholder="e.g. Orion Nebula" />
+          </label>
+          <label>
+            <span className="dt-section-eyebrow">Camera</span>
+            <input type="text" value={camera} onChange={(event) => setCamera(event.target.value)} placeholder="e.g. iPhone 16 Pro" />
+          </label>
+          <label>
+            <span className="dt-section-eyebrow">Telescope</span>
+            <input type="text" value={telescope} onChange={(event) => setTelescope(event.target.value)} placeholder="&mdash;" />
+          </label>
+          <label>
+            <span className="dt-section-eyebrow">Filters</span>
+            <input type="text" value={filters} onChange={(event) => setFilters(event.target.value)} placeholder="&mdash;" />
+          </label>
+        </div>
+
+        {submitted && (
+          <div className="dt-sighting-confirm">
+            <span>Added to your journal &middot; shared to the Field Feed</span>
+          </div>
+        )}
+
+        <div className="dt-sighting-actions">
+          <button type="submit" className="dt-sighting-submit" disabled={busy || submitted}>
+            {submitted ? 'Shared ✓' : 'Share Sighting'}
+          </button>
+          <div className="dt-sighting-stamp">
+            Field
+            <br />
+            Log
+          </div>
+        </div>
+      </form>
+    </div>
   )
 }
 
 export function FeedView() {
   const { user } = useAuth()
   const [discoveries, setDiscoveries] = useState<Discovery[] | null>(null)
+  const [composing, setComposing] = useState(false)
 
   async function refresh() {
     setDiscoveries(await listDiscoveries())
@@ -207,19 +287,40 @@ export function FeedView() {
     refresh()
   }, [])
 
+  if (composing) {
+    return (
+      <NewSightingForm
+        onCancel={() => setComposing(false)}
+        onPosted={() => {
+          setComposing(false)
+          refresh()
+        }}
+      />
+    )
+  }
+
   return (
-    <section className="widget-section">
-      <h2>Feed</h2>
-      {user ? <PostForm onPosted={refresh} /> : <p className="scrapbook-hint">Sign in (Settings) to share a discovery.</p>}
-      {discoveries === null && <p>Loading&hellip;</p>}
-      {discoveries !== null && discoveries.length === 0 && <p>No discoveries shared yet — be the first.</p>}
+    <div className="dt-feed-scope dt-feed">
+      <div className="dt-feed-head">
+        <h2 className="dt-feed-title">Field Feed</h2>
+        <p className="dt-feed-subtitle">Shared sightings from tonight and beyond</p>
+        {user ? (
+          <button type="button" className="dt-feed-share-btn" onClick={() => setComposing(true)}>
+            + Share what you saw tonight
+          </button>
+        ) : (
+          <p className="dt-empty-hint">Sign in (Settings) to share a discovery.</p>
+        )}
+      </div>
+      {discoveries === null && <p className="dt-empty-hint">Loading&hellip;</p>}
+      {discoveries !== null && discoveries.length === 0 && <p className="dt-empty-hint">No discoveries shared yet — be the first.</p>}
       {discoveries !== null && discoveries.length > 0 && (
-        <ul className="discovery-list">
+        <ul className="dt-feed-list">
           {discoveries.map((discovery) => (
             <DiscoveryCard key={discovery.id} discovery={discovery} onVoted={refresh} />
           ))}
         </ul>
       )}
-    </section>
+    </div>
   )
 }

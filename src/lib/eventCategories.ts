@@ -18,7 +18,7 @@ export interface EventCategory {
 // of thing" -- no catch-all "timed events" bucket mixing an eclipse with a
 // comet. "Guides" is deliberately separate from every real dated event: it
 // holds the recurring "check an external source" pointer cards (comet
-// tracker, generic night-sky guides), which SkyEventBrowser/EventDetailPanel
+// tracker, generic night-sky guides), which SkyEventBrowser/EntryDetailView
 // tag visibly so they never again read as a real scheduled event (the
 // "visible planets this month" bug this replaces).
 export const EVENT_CATEGORIES: EventCategory[] = [

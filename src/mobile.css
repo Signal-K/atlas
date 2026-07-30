@@ -4231,3 +4231,879 @@
   max-height: min(560px, calc(100dvh - env(safe-area-inset-bottom, 0px) - 150px));
   overflow: auto;
 }
+
+/* ============================================================
+   Atlas Tonight & Feed Redesign (Atlas Tonight & Feed Redesign.dc.html)
+   -- Visible Tonight table, shared Entry Detail page, and a sketchbook/
+   chalky Field Feed + New Sighting composer. Extends the dt-* design
+   system above (Daily Transit hub redesign) rather than introducing a
+   new palette or fonts -- the mockup already matches those tokens.
+   ============================================================ */
+
+/* Field Feed is reachable from both the mobile shell (already a
+   `.mobile-shell` descendant) and the desktop Community tab (rendered
+   standalone, no `.mobile-shell` ancestor) -- like `.dt-landing` above,
+   it needs its own copy of just the --dt-* variables (not the rest of
+   `.mobile-shell`'s full-viewport dark layout) so it looks right either
+   way. */
+.dt-feed-scope {
+  --dt-ink: #16181c;
+  --dt-ink-soft: #2b2f36;
+  --dt-ink-muted: #5b636f;
+  --dt-ink-faded: #9099a4;
+  --dt-rule: #d9dde3;
+  --dt-bg-page: #f7f5ee;
+  --dt-primary: #0a82b3;
+  --dt-glacier-200: #a4d8ef;
+  --dt-glacier-300: #6ec0e3;
+  --dt-glacier-400: #36a3d1;
+  --dt-rust-200: #f5b094;
+  --dt-rust-400: #d76131;
+  --dt-moss-200: #c9dfb8;
+  --dt-moss-400: #5e944a;
+  --dt-plum-200: #d9bce1;
+  --dt-plum-400: #8a4ea1;
+  --dt-solar-200: #fbd680;
+  --dt-solar-400: #f1a417;
+  --dt-font-display: 'Turret Road', 'Source Serif 4', Georgia, serif;
+  --dt-font-serif: 'Source Serif 4', Charter, Georgia, 'Times New Roman', serif;
+  --dt-font-data: 'Oxanium', ui-monospace, 'SF Mono', 'Roboto Mono', monospace;
+}
+
+:root[data-theme='dark'] .dt-feed-scope {
+  --dt-ink: #ecedf0;
+  --dt-ink-soft: #c5c9d2;
+  --dt-ink-muted: #8a93a0;
+  --dt-ink-faded: #5e6671;
+  --dt-rule: #2a2f37;
+  --dt-bg-page: #111316;
+  --dt-primary: #6ec0e3;
+}
+
+.dt-visible-tonight,
+.dt-entry {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  background: var(--dt-bg-page);
+  color: var(--dt-ink);
+}
+
+.dt-entry-missing {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: var(--dt-bg-page);
+  color: var(--dt-ink-muted);
+  font-family: var(--dt-font-serif);
+}
+
+.dt-entry-missing button {
+  font: 700 11px/1 var(--dt-font-data);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 12px 18px;
+  border: 1px solid var(--dt-ink);
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+  cursor: pointer;
+}
+
+.dt-entry-back,
+.dt-visible-tonight-head .dt-entry-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  margin-bottom: 14px;
+  color: var(--dt-ink-muted);
+  font: 700 10px/1 var(--dt-font-data);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dt-entry-back svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- Visible Tonight (Frame 1) --- */
+
+.dt-visible-tonight-head {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px 14px;
+  border-bottom: 1px solid var(--dt-rule);
+}
+
+.dt-visible-tonight-darkness {
+  font: italic 400 13px/1.5 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+  margin-top: 8px;
+}
+
+.dt-visible-tonight-rating {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 6px 10px 6px 22px;
+  border: 1px solid var(--dt-ink);
+  border-radius: 3px;
+  font: 700 11px/1 var(--dt-font-data);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--dt-moss-200);
+  color: var(--dt-ink);
+}
+
+.dt-visible-tonight-rating::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dt-moss-400);
+}
+
+.dt-visible-tonight-rating.is-maybe {
+  background: var(--dt-solar-200);
+}
+.dt-visible-tonight-rating.is-maybe::before {
+  background: var(--dt-solar-400);
+}
+.dt-visible-tonight-rating.is-poor {
+  background: var(--dt-rust-200);
+}
+.dt-visible-tonight-rating.is-poor::before {
+  background: var(--dt-rust-400);
+}
+
+.dt-visible-tonight-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0 24px;
+}
+
+.dt-visible-tonight-scroll .dt-section-eyebrow {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 14px 18px 6px;
+  box-sizing: border-box;
+}
+
+.dt-visible-row {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 18px;
+  border: none;
+  border-bottom: 1px solid var(--dt-rule);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: var(--dt-font-serif);
+  box-sizing: border-box;
+}
+
+.dt-visible-row--star {
+  align-items: center;
+}
+
+.dt-visible-row-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dt-visible-row-star-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--dt-ink);
+  flex-shrink: 0;
+}
+
+.dt-visible-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dt-visible-row-name {
+  font: 600 15px/1.25 var(--dt-font-serif);
+  color: var(--dt-ink);
+}
+
+.dt-visible-row-meta {
+  font: 400 11px/1.4 var(--dt-font-data);
+  color: var(--dt-ink-faded);
+}
+
+.dt-visible-row-time {
+  flex-shrink: 0;
+  width: 62px;
+  text-align: right;
+  font: 700 12px/1.3 var(--dt-font-data);
+  color: var(--dt-ink-soft);
+}
+
+.dt-visible-row-badge {
+  flex-shrink: 0;
+  align-self: center;
+  font: 700 9px/1 var(--dt-font-data);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 7px;
+  border-radius: 2px;
+  border: 1px solid var(--dt-ink-faded);
+  color: var(--dt-ink-muted);
+}
+
+.dt-visible-row-badge.is-filled {
+  border-color: var(--dt-ink);
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+}
+
+.dt-visible-row-camera-note {
+  flex-shrink: 0;
+  align-self: center;
+  max-width: 92px;
+  text-align: right;
+  font: italic 400 11px/1.3 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+}
+
+/* --- Entry Detail (Frame 2) --- */
+
+.dt-entry-rule {
+  height: 4px;
+  flex-shrink: 0;
+}
+
+.dt-entry-scroll {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px 24px;
+  font-family: var(--dt-font-serif);
+}
+
+.dt-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dt-entry-swatch {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  border: 1px solid var(--dt-ink);
+  flex-shrink: 0;
+}
+
+.dt-entry-title {
+  font: 800 24px/1.1 var(--dt-font-display);
+  color: var(--dt-ink);
+  margin: 0;
+}
+
+.dt-entry-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font: 700 10px/1.4 var(--dt-font-data);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--dt-ink-faded);
+  margin-top: 4px;
+}
+
+.dt-entry-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  margin-top: 18px;
+  border: 1px solid var(--dt-rule);
+  border-radius: 3px;
+}
+
+.dt-entry-facts > div {
+  padding: 10px 12px;
+  border-right: 1px solid var(--dt-rule);
+}
+
+.dt-entry-facts > div:last-child {
+  border-right: none;
+}
+
+.dt-entry-facts span {
+  display: block;
+  font: 700 9px/1 var(--dt-font-data);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dt-ink-faded);
+}
+
+.dt-entry-facts strong {
+  display: block;
+  font: 700 14px/1.3 var(--dt-font-data);
+  color: var(--dt-ink);
+  margin-top: 4px;
+}
+
+.dt-entry-section {
+  margin-top: 20px;
+}
+
+.dt-entry-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dt-entry-pill {
+  font: 700 10px/1 var(--dt-font-data);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 2px;
+  border: 1px solid var(--dt-ink-faded);
+  color: var(--dt-ink-muted);
+}
+
+.dt-entry-pill.is-active {
+  border-color: var(--dt-ink);
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+}
+
+.dt-entry-note {
+  font: italic 400 13px/1.55 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+  margin: 10px 0 0;
+}
+
+.dt-entry-body {
+  font: 400 14px/1.6 var(--dt-font-serif);
+  color: var(--dt-ink);
+  margin: 0;
+}
+
+.dt-entry-weather .dt-entry-body {
+  color: var(--dt-ink-muted);
+  font-size: 13px;
+}
+
+.dt-entry-timeline {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  margin-top: 4px;
+  background: linear-gradient(90deg, var(--dt-rule), var(--dt-ink-soft), var(--dt-rule));
+}
+
+.dt-entry-timeline-marker {
+  position: absolute;
+  top: -4px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--dt-bg-page);
+  box-shadow: 0 0 0 1px var(--dt-ink);
+  transform: translateX(-50%);
+}
+
+.dt-entry-timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font: 700 9px/1 var(--dt-font-data);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dt-ink-faded);
+}
+
+.dt-entry-recipe {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--dt-rule);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.dt-entry-quick-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dt-rule);
+}
+
+.dt-entry-quick-action {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 1px solid var(--dt-rule);
+  border-radius: 4px;
+  background: none;
+  color: var(--dt-ink-muted);
+  font: 700 9px/1 var(--dt-font-data);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dt-entry-quick-action svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dt-entry-quick-action.is-active {
+  border-color: var(--dt-ink);
+  color: var(--dt-ink);
+  background: var(--dt-glacier-200);
+}
+
+.dt-entry-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 14px 18px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  border-top: 1px solid var(--dt-rule);
+  background: var(--dt-bg-page);
+}
+
+.dt-entry-recipe-toggle,
+.dt-entry-log {
+  flex: 1;
+  font: 700 11px/1 var(--dt-font-data);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 12px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.dt-entry-recipe-toggle {
+  border: 1px solid var(--dt-ink);
+  background: none;
+  color: var(--dt-ink);
+}
+
+.dt-entry-log {
+  border: 1px solid var(--dt-ink);
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+}
+
+/* Desktop reuse of the mobile Entry Detail (Explore/Plan tabs, see App.tsx) */
+.desktop-entry-overlay {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  z-index: 200;
+}
+
+/* ------------------------------------------------------------
+   Field Feed + New Sighting -- sketchbook/chalky, GraphComment-ish,
+   reusing the ink/glacier accent palette instead of a new one.
+   ------------------------------------------------------------ */
+
+.dt-feed {
+  font-family: var(--dt-font-serif);
+  color: var(--dt-ink);
+}
+
+.dt-feed-head {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--dt-rule);
+  margin-bottom: 16px;
+}
+
+.dt-feed-title {
+  font: 800 22px/1.1 var(--dt-font-display);
+  color: var(--dt-ink);
+  margin: 0;
+}
+
+.dt-feed-subtitle {
+  font: 400 12px/1.4 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+  margin: 4px 0 0;
+}
+
+.dt-feed-share-btn {
+  margin-top: 12px;
+  width: 100%;
+  text-align: left;
+  font: 600 13px/1.2 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+  padding: 11px 12px;
+  border: 1.5px dashed var(--dt-plum-400);
+  border-radius: 4px;
+  background: none;
+  transform: rotate(-0.4deg);
+  cursor: pointer;
+}
+
+.dt-feed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dt-feed-card {
+  background: #fff;
+  border: 1px solid var(--dt-ink);
+  border-radius: 3px;
+  padding: 12px;
+  position: relative;
+  box-shadow: 0 6px 14px -8px rgba(22, 24, 28, 0.3);
+}
+
+.dt-feed-card-photo-wrap {
+  position: relative;
+}
+
+.dt-feed-card-photo {
+  width: 100%;
+  height: 190px;
+  display: block;
+  object-fit: cover;
+  border-radius: 2px;
+  background: var(--dt-rule);
+}
+
+.dt-feed-card-photo--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 10px/1 var(--dt-font-data);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dt-ink-faded);
+  background: var(--dt-rule);
+}
+
+.dt-feed-card-pin {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dt-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 10px/1 var(--dt-font-data);
+  color: var(--dt-ink);
+}
+
+.dt-feed-card-title {
+  font: 600 18px/1.2 'Bradley Hand', 'Segoe Print', 'Chalkboard SE', cursive;
+  color: var(--dt-ink);
+  margin-top: 10px;
+}
+
+.dt-feed-card-caption {
+  font: 400 13px/1.5 var(--dt-font-serif);
+  color: var(--dt-ink-soft);
+  margin: 4px 0 8px;
+}
+
+.dt-feed-card-meta {
+  font: 700 9px/1.3 var(--dt-font-data);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dt-ink-faded);
+}
+
+.dt-feed-card-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--dt-rule);
+}
+
+.dt-feed-card-vote {
+  font: 700 12px/1 var(--dt-font-data);
+  color: var(--dt-ink);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dt-feed-card-vote.is-active {
+  color: var(--dt-rust-400);
+}
+
+.dt-feed-card-vote:disabled,
+.dt-feed-card-reaction:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dt-feed-card-comments-toggle {
+  font: 600 12px/1 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dt-feed-card-reactions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.dt-feed-card-reaction {
+  font: 400 12px/1 var(--dt-font-serif);
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.dt-feed-card-reaction.is-active {
+  background: var(--dt-glacier-200);
+}
+
+.dt-feed-card-comments {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--dt-rule);
+  font: 400 12px/1.6 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+}
+
+.dt-feed-card-comment {
+  margin: 0 0 6px;
+}
+
+.dt-feed-card-comment-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.dt-feed-card-comment-form input {
+  flex: 1;
+  border: 1px solid var(--dt-rule);
+  border-radius: 3px;
+  padding: 7px 9px;
+  font: 400 13px/1.4 var(--dt-font-serif);
+  background: var(--dt-bg-page);
+  color: var(--dt-ink);
+}
+
+.dt-feed-card-comment-form button {
+  font: 700 10px/1 var(--dt-font-data);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0 12px;
+  border: 1px solid var(--dt-ink);
+  background: none;
+  color: var(--dt-ink);
+  cursor: pointer;
+}
+
+/* --- New Sighting composer (Frame 4) --- */
+
+.dt-sighting {
+  font-family: var(--dt-font-serif);
+  color: var(--dt-ink);
+}
+
+.dt-sighting-back {
+  margin-bottom: 10px;
+}
+
+.dt-sighting-title {
+  font: 800 22px/1.1 var(--dt-font-display);
+  color: var(--dt-ink);
+  margin: 0;
+}
+
+.dt-sighting-subtitle {
+  font: 400 12px/1.4 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+  margin: 4px 0 18px;
+}
+
+.dt-sighting-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dt-sighting-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 150px;
+  border: 1.5px dashed var(--dt-rust-400);
+  border-radius: 5px;
+  color: var(--dt-ink-muted);
+  font: 400 13px/1.4 var(--dt-font-serif);
+  cursor: pointer;
+  text-align: center;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.dt-sighting-caption {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--dt-rule);
+  border-radius: 3px;
+  padding: 10px;
+  background: repeating-linear-gradient(var(--dt-bg-page) 0px, var(--dt-bg-page) 26px, var(--dt-rule) 27px, var(--dt-bg-page) 28px);
+  font: 400 15px/27px 'Bradley Hand', 'Segoe Print', 'Chalkboard SE', cursive;
+  color: var(--dt-ink);
+  resize: none;
+}
+
+.dt-sighting-challenges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dt-sighting-challenge {
+  font: 600 12px/1 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+  padding: 7px 12px;
+  border: 1px solid var(--dt-rule);
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.dt-sighting-challenge.is-active {
+  color: var(--dt-ink);
+  border: 2px solid var(--dt-plum-400);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dt-plum-400) 14%, transparent);
+  transform: rotate(-1.5deg);
+}
+
+.dt-sighting-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+}
+
+.dt-sighting-grid label {
+  display: block;
+}
+
+.dt-sighting-grid input {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  border-bottom: 1px solid var(--dt-rule);
+  padding: 5px 0;
+  font: 400 14px/1.6 var(--dt-font-serif);
+  color: var(--dt-ink);
+  background: none;
+}
+
+.dt-sighting-confirm {
+  padding: 10px 12px;
+  border: 1px solid var(--dt-moss-400);
+  border-radius: 3px;
+  background: var(--dt-moss-200);
+  font: 700 12px/1 var(--dt-font-data);
+  color: var(--dt-ink);
+}
+
+.dt-sighting-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dt-sighting-submit {
+  font: 700 12px/1 var(--dt-font-data);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 13px 22px;
+  border: 2px solid var(--dt-ink);
+  border-radius: 3px;
+  transform: rotate(-1.5deg);
+  cursor: pointer;
+  background: none;
+  color: var(--dt-ink);
+}
+
+.dt-sighting-submit:disabled {
+  opacity: 0.6;
+}
+
+.dt-sighting-stamp {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dt-ink-faded);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transform: rotate(6deg);
+  flex-shrink: 0;
+  font: 700 7px/1.2 var(--dt-font-data);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--dt-ink-faded);
+}
