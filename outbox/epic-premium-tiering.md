@@ -4,7 +4,7 @@ type: epic
 title: Premium tiering & smart alerts
 status: in-progress
 priority: high
-source: "Notebook page 1, 'Some rules/ideas' items 2-6"
+source: "Notebook page 1, 'Some rules/ideas' items 2-6; later chat: 'a section on desktop that shows a global feed... all real events' plus 'example photos... so I can get an idea if I want to go outside', both premium-only"
 ---
 
 # Premium tiering & smart alerts
@@ -26,6 +26,8 @@ nudges that should make the paid tier feel worth it:
 - story-premium-forecast-window
 - story-nearby-better-conditions-alert
 - story-paid-location-override
+- story-premium-global-feed
+- story-premium-example-photos
 
 ## Status
 
@@ -33,4 +35,10 @@ Free-tier caps already existed (`src/lib/entitlementLimits.ts`,
 `FREE_EVENT_LOOKAHEAD_DAYS`/`FREE_FORECAST_DAYS`). The premium forecast
 window (with a per-day rating header + "what you can see" line),
 nearby-better-conditions alert, and inline location change all now ship
-in `WeekConditionsStrip`. All four child stories are done.
+in `WeekConditionsStrip`. First four child stories done.
+
+Two more added from a later chat request: a location-agnostic desktop
+"global feed" of genuinely global real events, and example reference
+photos (sourced from Atlas's own nearby community discoveries, not stock
+imagery) so a premium user can gauge whether tonight is worth going
+outside for before checking the sky themselves.

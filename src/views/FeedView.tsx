@@ -16,6 +16,7 @@ import {
   discoveryCaptionForChallenge,
   type PhotoChallenge,
 } from '../lib/photoChallenges'
+import type { CurrentLocation } from '../lib/currentLocation'
 
 function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: () => void }) {
   const { user } = useAuth()
@@ -142,7 +143,7 @@ function ChallengePicker({ selectedId, onSelect }: { selectedId: string; onSelec
   )
 }
 
-function PostForm({ onPosted }: { onPosted: () => void }) {
+function PostForm({ onPosted, city }: { onPosted: () => void; city?: CurrentLocation }) {
   const [caption, setCaption] = useState('')
   const [target, setTarget] = useState('')
   const [camera, setCamera] = useState('')
@@ -163,7 +164,16 @@ function PostForm({ onPosted }: { onPosted: () => void }) {
     if (!caption.trim()) return
     setBusy(true)
     try {
-      await createDiscovery({ caption: caption.trim(), target, camera, telescope, filters, image })
+      await createDiscovery({
+        caption: caption.trim(),
+        target,
+        camera,
+        telescope,
+        filters,
+        image,
+        latitude: city?.lat,
+        longitude: city?.lon,
+      })
       setCaption('')
       setTarget('')
       setCamera('')
@@ -195,7 +205,7 @@ function PostForm({ onPosted }: { onPosted: () => void }) {
   )
 }
 
-export function FeedView() {
+export function FeedView({ city }: { city?: CurrentLocation }) {
   const { user } = useAuth()
   const [discoveries, setDiscoveries] = useState<Discovery[] | null>(null)
 
@@ -210,7 +220,11 @@ export function FeedView() {
   return (
     <section className="widget-section">
       <h2>Feed</h2>
-      {user ? <PostForm onPosted={refresh} /> : <p className="scrapbook-hint">Sign in (Settings) to share a discovery.</p>}
+      {user ? (
+        <PostForm onPosted={refresh} city={city} />
+      ) : (
+        <p className="scrapbook-hint">Sign in (Settings) to share a discovery.</p>
+      )}
       {discoveries === null && <p>Loading&hellip;</p>}
       {discoveries !== null && discoveries.length === 0 && <p>No discoveries shared yet — be the first.</p>}
       {discoveries !== null && discoveries.length > 0 && (

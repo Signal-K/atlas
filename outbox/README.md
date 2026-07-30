@@ -119,3 +119,8 @@ what was scoped/shipped.
 | epic-ci-test-reliability | epic | CI test reliability fixes | in-progress |
 | story-tonight-window-timezone-fallback | story | Fix e2e mocks missing Open-Meteo timezone, truncating the tonight window | done |
 | story-entitlement-checkout-fallback-flake | story | Known flake — dynamic Polar checkout fallback tests in entitlement-refresh.spec.ts | backlog |
+| epic-highlights-and-discovery | epic | Visual highlights & discovering more events | in-progress |
+| story-visual-highlight-cards | story | Card-style "You can see tonight" highlights | in-progress |
+| story-discover-more-events | story | "Discover more" link from the highlights row | in-progress |
+| story-premium-global-feed | story | Premium: location-agnostic global events feed (desktop) | in-progress |
+| story-premium-example-photos | story | Premium: example photos from nearby sky-watchers | in-progress |

@@ -37,3 +37,10 @@ export const GUIDE_KIND_IDS = new Set(['comet', 'night_sky_guide', 'local_night_
 export function categoryForKind(kind: string): EventCategory | undefined {
   return EVENT_CATEGORIES.find((category) => category.kinds.includes(kind))
 }
+
+// "Real" as opposed to the recurring Guides filler (comet tracker, generic
+// night-sky pointers) -- used anywhere that should only surface actual
+// dated events, e.g. highlight cards and the premium global feed.
+export function isRealEvent(kind: string): boolean {
+  return !GUIDE_KIND_IDS.has(kind)
+}

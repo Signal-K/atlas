@@ -26,6 +26,11 @@ export interface Discovery {
   hasVoted: boolean
   reactionCounts: Record<string, number>
   myReactions: Set<string>
+  // Best-effort, captured from the poster's current location at submit time
+  // (see FeedView) -- used to match nearby example photos to events (see
+  // examplePhotos.ts), never shown as an exact address.
+  latitude?: number
+  longitude?: number
 }
 
 export interface DiscoveryComment {
@@ -42,6 +47,8 @@ export interface NewDiscovery {
   telescope: string
   filters: string
   image: File | null
+  latitude?: number
+  longitude?: number
 }
 
 function requireUser() {
@@ -119,6 +126,8 @@ export async function listDiscoveries(): Promise<Discovery[]> {
     camera: record.camera || undefined,
     telescope: record.telescope || undefined,
     filters: record.filters || undefined,
+    latitude: typeof record.latitude === 'number' ? record.latitude : undefined,
+    longitude: typeof record.longitude === 'number' ? record.longitude : undefined,
     created: record.created,
     voteCount: countByDiscovery.get(record.id) ?? 0,
     hasVoted: votedByCurrentUser.has(record.id),
@@ -137,6 +146,8 @@ export async function createDiscovery(input: NewDiscovery): Promise<void> {
   form.append('camera', input.camera)
   form.append('telescope', input.telescope)
   form.append('filters', input.filters)
+  if (input.latitude != null) form.append('latitude', String(input.latitude))
+  if (input.longitude != null) form.append('longitude', String(input.longitude))
   if (input.image) form.append('image', input.image)
 
   await pb.collection('atlas_discoveries').create(form)

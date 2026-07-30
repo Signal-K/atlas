@@ -11,7 +11,9 @@ import { diversifyEvents } from '../lib/eventFilters'
 import { trackEvent } from '../lib/analytics'
 import { LocationSearchInput } from './LocationSearchInput'
 import { InterestsPicker, categoryLabelsForKinds } from './InterestsPicker'
+import { HighlightCards } from './HighlightCards'
 import { getPreferredEventTypes, savePreferredEventTypes } from '../lib/eventPreferences'
+import { listDiscoveries, type Discovery } from '../lib/discoveries'
 import type { City } from '../lib/cities'
 import type { SkyEvent } from '../lib/db'
 import type { TonightPlan } from '../lib/tonightTargets'
@@ -193,6 +195,7 @@ export function WeekConditionsStrip({
 }) {
   const [days, setDays] = useState<DayCondition[] | null>(null)
   const [weekEvents, setWeekEvents] = useState<SkyEvent[]>([])
+  const [discoveries, setDiscoveries] = useState<Discovery[]>([])
   const entitled = Boolean(user?.entitled)
   const unlockedDays = forecastLookaheadDays(entitled)
   const name = getDisplayName()
@@ -227,6 +230,20 @@ export function WeekConditionsStrip({
     }
   }, [city.lat, city.lon])
 
+  // Only fetched for Sky Pass users -- the example-photo matching in
+  // HighlightCards is a paid-only feature, so free users shouldn't pay the
+  // network/parse cost for a dataset they'll never see rendered.
+  useEffect(() => {
+    if (!entitled) return
+    let cancelled = false
+    listDiscoveries().then((result) => {
+      if (!cancelled) setDiscoveries(result)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [entitled])
+
   const eventsByDate = useMemo(() => {
     const map = new Map<string, SkyEvent[]>()
     for (const event of weekEvents) {
@@ -238,7 +255,8 @@ export function WeekConditionsStrip({
     return map
   }, [weekEvents, plan?.timeZone])
 
-  const highlights = (plan?.targets ?? []).slice(0, 3).map((target) => target.title)
+  const todayKey = localDateKey(new Date().toISOString(), plan?.timeZone)
+  const todayHighlightEvents = diversifyEvents(eventsByDate.get(todayKey) ?? [], 4)
 
   const nearbyDarkerSite = entitled ? rankLowerLightPollutionSites(city.lat, city.lon, 1)[0] : null
   const hereLightPollution = entitled && nearbyDarkerSite ? estimateLightPollution(city.lat, city.lon) : null
@@ -265,11 +283,12 @@ export function WeekConditionsStrip({
         </div>
       </div>
 
-      {highlights.length > 0 && (
-        <p className="feed-highlights">
-          You can see: <strong>{highlights.join(', ')}</strong> tonight.
-        </p>
-      )}
+      <HighlightCards
+        events={todayHighlightEvents}
+        timeZone={plan?.timeZone}
+        examplePhotos={entitled ? { discoveries, city: { lat: city.lat, lon: city.lon } } : undefined}
+        showDiscoverMore
+      />
 
       <InterestsSummary />
 

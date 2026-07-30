@@ -386,7 +386,7 @@ function App() {
             >
               <TabbedSection
                 tabs={[
-                  { id: 'feed', label: 'Feed', content: <FeedView /> },
+                  { id: 'feed', label: 'Feed', content: <FeedView city={currentLocation} /> },
                   { id: 'challenges', label: 'Photo Challenges', content: <PhotoChallengesView /> },
                 ]}
               />

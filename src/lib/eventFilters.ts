@@ -14,6 +14,16 @@ export function isLocalEvent(event: SkyEvent, lat: number, lon: number): boolean
   return haversineKm({ lat, lon }, { lat: event.latitude, lon: event.longitude }) <= LOCAL_EVENT_RADIUS_KM
 }
 
+// Genuinely location-agnostic (moon phases, meteor showers, eclipses,
+// conjunctions, aurora/space-weather) as opposed to ISS/satellite passes,
+// which only mean anything for a specific viewer -- see sync.ts's note on
+// why (0,0) is normalized to undefined rather than treated as a real
+// coordinate. Used by the premium global feed, which should never show a
+// pass time that's wrong for whoever's actually reading it.
+export function isGlobalEvent(event: SkyEvent): boolean {
+  return event.latitude == null && event.longitude == null
+}
+
 export function localEventDistanceKm(event: SkyEvent, lat: number, lon: number): number | null {
   if (event.latitude == null || event.longitude == null) return null
   return haversineKm({ lat, lon }, { lat: event.latitude, lon: event.longitude })
