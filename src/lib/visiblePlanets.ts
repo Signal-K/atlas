@@ -52,7 +52,7 @@ function describeVisibleSky(now: Date, lat: number, lon: number): string {
   return parts.join(' ')
 }
 
-// Client-only, non-persisted SkyEvent so it can reuse EventDetailPanel and
+// Client-only, non-persisted SkyEvent so it can reuse EntryDetailView and
 // SkyEventBrowser exactly like a real synced event, but its content is
 // computed fresh per location/date instead of coming from Dexie -- see the
 // "visible planets this month" bug this replaces (STS bug report, 2026-07).

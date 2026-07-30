@@ -28,6 +28,7 @@ const DeepSkyPlannerView = lazy(() =>
 )
 const EventsView = lazy(() => import('./views/mobile/EventsView').then((m) => ({ default: m.EventsView })))
 const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ default: m.PlanView })))
+const EntryDetailView = lazy(() => import('./views/mobile/EntryDetailView').then((m) => ({ default: m.EntryDetailView })))
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
@@ -39,6 +40,8 @@ import { FeedbackDock } from './components/FeedbackDock'
 import { InstallPrompt } from './components/InstallPrompt'
 import { OnboardingFlow, hasCompletedOnboardingFlow } from './components/OnboardingFlow'
 import type { ObservationDraft } from './lib/observationDraft'
+import type { EntryDetailSubject } from './lib/entryDetail'
+import type { EntryDetailActions } from './views/mobile/EntryDetailView'
 import './App.css'
 
 // Real, bookmarkable/back-button-able routes per desktop view.
@@ -203,6 +206,37 @@ function App() {
     setView('history')
   }
 
+  // Desktop's Explore/Plan tabs reuse the mobile EventsView/PlanView
+  // components directly (see the `.mobile-shell.desktop-feature-surface`
+  // wrapper below) -- they need the same lifted entry-detail state
+  // MobileShell provides, since router state can't hold callbacks.
+  const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions?: EntryDetailActions; onLogAttempt: () => void } | null>(
+    null,
+  )
+  const entryOpen = routerLocation.pathname === '/app/entry'
+
+  function openEntry(subject: EntryDetailSubject, actions?: EntryDetailActions) {
+    setEntryDetail({
+      subject,
+      actions,
+      onLogAttempt: () =>
+        logAttempt({
+          eventId: subject.id,
+          targetName: subject.title,
+          cameraRecipeUsed: subject.recipeKey ?? undefined,
+          locationLabel: currentLocation.name,
+          moonIlluminationPct: subject.moonPct ?? undefined,
+          directionLabel: subject.direction?.compassLabel,
+        }),
+    })
+    navigate('/app/entry')
+  }
+
+  useEffect(() => {
+    if (!entryOpen) setEntryDetail(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only pathname should clear the lifted detail state
+  }, [entryOpen])
+
   // "/" is the landing page, full stop. Signed-in visitors see their active
   // session identified here, but are only sent into the product when they
   // choose to open it. "/landing" remains a permanent alias.
@@ -315,7 +349,7 @@ function App() {
                   label: 'Events',
                   content: (
                     <div className="mobile-shell desktop-feature-surface">
-                      <EventsView city={currentLocation} onLogAttempt={logAttempt} />
+                      <EventsView city={currentLocation} onOpenEntry={openEntry} />
                     </div>
                   ),
                 },
@@ -357,7 +391,7 @@ function App() {
                           key={locationKey}
                           city={currentLocation}
                           onOpenEvents={() => setView('explore')}
-                          onLogAttempt={logAttempt}
+                          onOpenEntry={openEntry}
                         />
                       </div>
                     ),
@@ -446,6 +480,18 @@ function App() {
           </Suspense>
         </main>
       </div>
+      {entryOpen && entryDetail && (
+        <div className="mobile-shell desktop-feature-surface desktop-entry-overlay">
+          <Suspense fallback={null}>
+            <EntryDetailView
+              subject={entryDetail.subject}
+              actions={entryDetail.actions}
+              onClose={() => navigate(-1)}
+              onLogAttempt={entryDetail.onLogAttempt}
+            />
+          </Suspense>
+        </div>
+      )}
       <FeedbackDock />
       <InstallPrompt />
     </>
