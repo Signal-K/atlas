@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { authErrorMessage, refreshEntitlement, signIn, signOut, signUp, useAuth } from '../lib/auth'
+import { authErrorMessage, refreshEntitlement, requestPasswordReset, signIn, signOut, signUp, useAuth } from '../lib/auth'
 import { trackEvent } from '../lib/analytics'
 import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
 import { pb } from '../lib/pocketbase'
 import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
 import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
+import { AccountManagement } from '../components/AccountManagement'
 
 export function AccountSettings({
   defaultMode = 'sign-in',
@@ -27,6 +28,23 @@ export function AccountSettings({
   const [startingCheckout, setStartingCheckout] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
   const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+
+  async function handleForgotPassword() {
+    setResetError(null)
+    if (!email) {
+      setResetError('Enter your email above first.')
+      return
+    }
+    try {
+      await requestPasswordReset(email)
+      trackEvent('Password reset requested', { source })
+      setResetSent(true)
+    } catch (err) {
+      setResetError(authErrorMessage(err, 'Could not send reset email.'))
+    }
+  }
 
   function trackFormStarted() {
     if (startedRef.current) return
@@ -103,6 +121,7 @@ export function AccountSettings({
           )}
         </div>
         {checkoutError && <p className="settings-help settings-status--negative">{checkoutError}</p>}
+        <AccountManagement email={user.email} />
       </div>
     )
   }
@@ -171,8 +190,15 @@ export function AccountSettings({
           <button type="button" className="account-form-switch" onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}>
             {mode === 'sign-in' ? 'Need an account?' : 'Have an account?'}
           </button>
+          {mode === 'sign-in' && (
+            <button type="button" className="account-form-switch" onClick={handleForgotPassword}>
+              Forgot password?
+            </button>
+          )}
         </div>
         {error && <p className="account-form-error">{error}</p>}
+        {resetSent && <p className="settings-help settings-status--positive">Password reset link sent to {email}.</p>}
+        {resetError && <p className="account-form-error">{resetError}</p>}
       </form>
     </div>
   )

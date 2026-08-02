@@ -92,6 +92,38 @@ export function signOut(): void {
   pb.authStore.clear()
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await pb.collection('users').requestPasswordReset(email)
+}
+
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  const id = pb.authStore.record?.id as string | undefined
+  if (!id) throw new Error('Not signed in')
+  await pb.collection('users').update(id, {
+    oldPassword,
+    password: newPassword,
+    passwordConfirm: newPassword,
+  })
+}
+
+// PocketBase never applies the new address directly -- it emails a
+// confirmation link to newEmail and the change only takes effect once that
+// link is opened, so a typo or someone else's address can't lock the real
+// owner out.
+export async function requestEmailChange(newEmail: string): Promise<void> {
+  await pb.collection('users').requestEmailChange(newEmail)
+}
+
+// Permanent. Whatever the users collection's delete API rule allows is what
+// happens here -- this only calls it and clears the local session on
+// success; it doesn't grant any permission the backend didn't already have.
+export async function deleteAccount(): Promise<void> {
+  const id = pb.authStore.record?.id as string | undefined
+  if (!id) throw new Error('Not signed in')
+  await pb.collection('users').delete(id)
+  pb.authStore.clear()
+}
+
 // Re-fetches the signed-in user's record (e.g. `entitled`, flipped
 // server-side by the Polar webhook after a purchase) since the cached
 // authStore snapshot only otherwise updates on the next sign-in.
