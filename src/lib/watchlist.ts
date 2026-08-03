@@ -1,5 +1,6 @@
 import { db, type Favourite, type SkyEvent, type WatchlistEntry } from './db'
 import { pb } from './pocketbase'
+import { enqueueSync } from './syncQueue'
 
 const LOCAL_USER_ID = 'local'
 
@@ -86,11 +87,16 @@ export async function addToWatchlist(kind: Favourite['kind'], value: string): Pr
   if (!favourite) {
     favourite = { id: crypto.randomUUID(), userId: user, kind, value }
     await db.favourites.put(favourite)
-    if (pb.authStore.isValid && navigator.onLine) {
-      try {
-        await pb.collection('atlas_favourites').create({ user: pb.authStore.record?.id, kind, value })
-      } catch {
-        // Likely already exists (unique index) or offline race — local copy stands either way.
+    if (pb.authStore.isValid) {
+      const payload = { user: pb.authStore.record?.id, kind, value }
+      if (!navigator.onLine) {
+        await enqueueSync('atlas_favourites', 'create', favourite.id, payload)
+      } else {
+        try {
+          await pb.collection('atlas_favourites').create(payload)
+        } catch {
+          await enqueueSync('atlas_favourites', 'create', favourite.id, payload)
+        }
       }
     }
   }
@@ -104,15 +110,16 @@ export async function addToWatchlist(kind: Favourite['kind'], value: string): Pr
 
   const entry: WatchlistEntry = { id: crypto.randomUUID(), userId: user, favouriteId: favourite.id, notifyOnGoodViewing: true }
   await db.watchlist.put(entry)
-  if (pb.authStore.isValid && navigator.onLine) {
-    try {
-      await pb.collection('atlas_watchlist').create({
-        user: pb.authStore.record?.id,
-        favourite: favourite.id,
-        notify_on_good_viewing: true,
-      })
-    } catch {
-      // Offline race — local copy stands.
+  if (pb.authStore.isValid) {
+    const payload = { user: pb.authStore.record?.id, favourite: favourite.id, notify_on_good_viewing: true }
+    if (!navigator.onLine) {
+      await enqueueSync('atlas_watchlist', 'create', entry.id, payload)
+    } else {
+      try {
+        await pb.collection('atlas_watchlist').create(payload)
+      } catch {
+        await enqueueSync('atlas_watchlist', 'create', entry.id, payload)
+      }
     }
   }
   await bumpWatchCount(kind, value, 1)

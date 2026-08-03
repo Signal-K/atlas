@@ -38,6 +38,7 @@ import { PaywallGate } from './components/PaywallGate'
 import { FeedbackDock } from './components/FeedbackDock'
 import { InstallPrompt } from './components/InstallPrompt'
 import { OnboardingFlow, hasCompletedOnboardingFlow } from './components/OnboardingFlow'
+import { OfflineBanner } from './components/OfflineBanner'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
@@ -259,6 +260,7 @@ function App() {
     return (
       <>
         <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
+        <OfflineBanner />
         <Suspense fallback={null}>
           <MobileShell
             currentLocation={currentLocation}
@@ -288,6 +290,7 @@ function App() {
   return (
     <>
       <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
+      <OfflineBanner />
       {showOnboardingFlow && (
         <OnboardingFlow
           city={currentLocation}
