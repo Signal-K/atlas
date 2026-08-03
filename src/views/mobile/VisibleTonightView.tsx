@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import '../../mobile.css'
 import { getTonightPlan, type TonightPlan, type TonightTarget } from '../../lib/tonightTargets'
 import { fetchViewingAdvisory, type DailyViewingAdvisory } from '../../lib/weather'
 import { categoryForKind } from '../../lib/eventCategories'

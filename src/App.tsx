@@ -28,9 +28,8 @@ const DeepSkyPlannerView = lazy(() =>
 const EventsView = lazy(() => import('./views/mobile/EventsView').then((m) => ({ default: m.EventsView })))
 const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ default: m.PlanView })))
 const HubView = lazy(() => import('./views/mobile/HubView').then((m) => ({ default: m.HubView })))
-const EntryDetailView = lazy(() =>
-  import('./views/mobile/EntryDetailView').then((m) => ({ default: m.EntryDetailView })),
-)
+const EntryDetailView = lazy(() => import('./views/mobile/EntryDetailView').then((m) => ({ default: m.EntryDetailView })))
+const VisibleTonightView = lazy(() => import('./views/mobile/VisibleTonightView').then((m) => ({ default: m.VisibleTonightView })))
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
@@ -64,6 +63,11 @@ const PATH_VIEW: Record<string, View> = {
   // fall through to the generic 'tonight' default, or tapping the map
   // preview would silently kick the desktop view out of Explore entirely.
   '/app/sky-map': 'explore',
+  // Same reasoning as '/app/sky-map' above -- HubView/EventsView/PlanView's
+  // shared entry-detail overlay and the "visible tonight" screen both open
+  // at these paths regardless of which Explore/Plan sub-tab triggered them.
+  '/app/entry': 'explore',
+  '/app/visible-tonight': 'explore',
   '/app/plan': 'plan',
   '/app/community': 'community',
   '/app/history': 'history',
@@ -238,6 +242,7 @@ function App() {
     null,
   )
   const entryOpen = routerLocation.pathname === '/app/entry'
+  const tonightOpen = routerLocation.pathname === '/app/visible-tonight'
 
   function openEntry(subject: EntryDetailSubject, actions?: EntryDetailActions) {
     setEntryDetail({
@@ -378,7 +383,7 @@ function App() {
                         }}
                         onLogAttempt={logAttempt}
                         onOpenEntry={openEntry}
-                        onOpenTonight={() => setExploreTab('events')}
+                        onOpenTonight={() => navigate('/app/visible-tonight')}
                       />
                     </div>
                   ),
@@ -528,6 +533,13 @@ function App() {
           </Suspense>
         </main>
       </div>
+      {tonightOpen && (
+        <div className="mobile-shell desktop-feature-surface desktop-entry-overlay">
+          <Suspense fallback={null}>
+            <VisibleTonightView city={currentLocation} onClose={() => navigate(-1)} onOpenEntry={(subject) => openEntry(subject)} />
+          </Suspense>
+        </div>
+      )}
       {entryOpen && entryDetail && (
         <div className="mobile-shell desktop-feature-surface desktop-entry-overlay">
           <Suspense fallback={null}>
