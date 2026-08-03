@@ -272,8 +272,12 @@ function App() {
             requestMotionPermission={motion.requestMotionPermission}
           />
         </Suspense>
-        <FeedbackDock />
-        <InstallPrompt />
+        {!showOnboardingFlow && (
+          <>
+            <FeedbackDock />
+            <InstallPrompt />
+          </>
+        )}
         {showOnboardingFlow && (
           <OnboardingFlow
             city={currentLocation}
@@ -479,8 +483,12 @@ function App() {
           </Suspense>
         </main>
       </div>
-      <FeedbackDock />
-      <InstallPrompt />
+      {!showOnboardingFlow && (
+        <>
+          <FeedbackDock />
+          <InstallPrompt />
+        </>
+      )}
     </>
   )
 }
