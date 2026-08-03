@@ -2366,6 +2366,13 @@
   cursor: pointer;
 }
 
+.landing-pricing {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--dt-text-muted, #8a8f9a);
+  text-align: center;
+}
+
 .dt-landing-secondary {
   width: 100%;
   max-width: 400px;

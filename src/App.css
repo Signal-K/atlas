@@ -1919,6 +1919,10 @@
   max-width: 400px;
 }
 
+.auth-gate-modal {
+  max-width: 380px;
+}
+
 .onboarding-flow-progress {
   display: flex;
   gap: 6px;
@@ -3861,6 +3865,13 @@
 
 .landing-cta-primary:hover {
   filter: brightness(1.05);
+}
+
+.landing-pricing {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--text-muted, #767676);
+  text-align: center;
 }
 
 .feedback-dock {

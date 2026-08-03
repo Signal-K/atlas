@@ -10,11 +10,7 @@ import { ObservationCard } from '../components/ObservationCard'
 import { trackEvent } from '../lib/analytics'
 import type { ObservationDraft } from '../lib/observationDraft'
 import { downloadObservationsCsv } from '../lib/observationExport'
-import { SignupWallModal } from '../components/SignupWallModal'
-import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
-import { useSignupWall } from '../lib/useSignupWall'
 import { cityStampsFromObservations, pushCityStampFromObservation, shareCityStamp } from '../lib/cityStamps'
-import { pb } from '../lib/pocketbase'
 import { requestPhotoCaption } from '../lib/photoCaption'
 import { suggestObservationCaption } from '../lib/observationCaptionSuggestion'
 
@@ -48,10 +44,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [photo, setPhoto] = useState<File | null>(null)
   const [shareStatus, setShareStatus] = useState<{ entryId: string; message: string } | null>(null)
   const [stampShareStatus, setStampShareStatus] = useState<{ cityName: string; message: string } | null>(null)
-  const [mergeStatus, setMergeStatus] = useState<string | null>(null)
-  const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const [captionIsSuggested, setCaptionIsSuggested] = useState(false)
-  const signupWall = useSignupWall()
 
   async function refresh(nextScopeId = scopeId) {
     const all = await db.observations.where('userId').equals(nextScopeId).reverse().sortBy('observedAt')
@@ -113,7 +106,6 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     const remoteId = await pushObservation(entry)
     await pushCityStampFromObservation(entry)
     await recordWeeklyActivity()
-    signupWall.promptAfterSave('log_observation')
 
     // Sky Pass-only, best-effort: silently does nothing if the deployment
     // has no ANTHROPIC_API_KEY configured, the user isn't entitled, or the
@@ -184,33 +176,6 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
           </button>
         )}
       </div>
-      {!user && <p className="scrapbook-hint">Sign in (Settings) to sync your notes to your account.</p>}
-      {mergeStatus && <p className="scrapbook-hint">{mergeStatus}</p>}
-      {signupWall.reason && (
-        <SignupWallModal
-          reason={signupWall.reason}
-          onDismiss={signupWall.dismiss}
-          onSignedUp={(mergedCount) => {
-            signupWall.complete()
-            setWelcomeMergedCount(mergedCount)
-            const signedInUserId = pb.authStore.record?.id as string | undefined
-            refresh(signedInUserId)
-          }}
-        />
-      )}
-      {welcomeMergedCount != null && (
-        <SignupWelcomeBeat
-          mergedCount={welcomeMergedCount}
-          onDone={() => {
-            setMergeStatus(
-              welcomeMergedCount > 0
-                ? `Account created — brought over ${welcomeMergedCount} saved item${welcomeMergedCount === 1 ? '' : 's'}.`
-                : 'Account created.',
-            )
-            setWelcomeMergedCount(null)
-          }}
-        />
-      )}
       {draft && (
         <div className="scrapbook-draft-banner">
           <span>

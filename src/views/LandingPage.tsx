@@ -40,6 +40,7 @@ export function LandingPage({ isMobile, onEnter }: LandingPageProps) {
       <button type="button" className={isMobile ? 'dt-landing-cta-primary' : 'landing-cta-primary'} onClick={handleEnter}>
         Get started
       </button>
+      <p className="landing-pricing">Free to use. Sky Pass — trip/deep-sky planning and the community feed — is a one-time CHF 55 upgrade, forever.</p>
     </>
   )
 

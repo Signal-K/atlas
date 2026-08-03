@@ -12,10 +12,7 @@ import { getUpcomingEvents } from '../lib/sync'
 import { formatEventDate } from '../lib/eventFormat'
 import { addToWatchlist, formatWatchValue, getWatchableTargets, getWatchlist, isWatching, removeFromWatchlist, type WatchlistItem } from '../lib/watchlist'
 import { trackEvent } from '../lib/analytics'
-import { SignupWallModal } from './SignupWallModal'
-import { SignupWelcomeBeat } from './SignupWelcomeBeat'
 import { PaywallGate } from './PaywallGate'
-import { useSignupWall } from '../lib/useSignupWall'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { LocationStatus } from '../lib/geo'
 import type { City } from '../lib/cities'
@@ -137,9 +134,7 @@ export function MobileShell({
   const [searchWatchlist, setSearchWatchlist] = useState<WatchlistItem[]>([])
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
   const [isDark, setIsDark] = useState(() => (getStoredTheme() ?? getSystemTheme()) === 'dark')
-  const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
   const { user } = useAuth()
-  const signupWall = useSignupWall()
   const [headerCollapsed, setHeaderCollapsed] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   // Every tab that's ever been visited stays mounted (hidden via CSS)
@@ -246,7 +241,6 @@ export function MobileShell({
       await removeFromWatchlist('target', target)
     } else {
       await addToWatchlist('target', target)
-      signupWall.promptAfterSave('favourite')
     }
     setSearchWatchlist(await getWatchlist())
   }
@@ -428,19 +422,6 @@ export function MobileShell({
       </header>
 
       <div className="mobile-content" ref={contentRef}>
-        {signupWall.reason && (
-          <SignupWallModal
-            reason={signupWall.reason}
-            onDismiss={signupWall.dismiss}
-            onSignedUp={(mergedCount) => {
-              signupWall.complete()
-              setWelcomeMergedCount(mergedCount)
-            }}
-          />
-        )}
-        {welcomeMergedCount != null && (
-          <SignupWelcomeBeat mergedCount={welcomeMergedCount} onDone={() => setWelcomeMergedCount(null)} />
-        )}
         {searchOpen ? (
           <div className="dt-search-panel">
             <div className="dt-section-eyebrow">Search</div>
@@ -516,17 +497,12 @@ export function MobileShell({
             )}
             {visitedTabs.has('events') && (
               <div hidden={tab !== 'events'}>
-                <EventsView city={currentLocation} onLogAttempt={logAttempt} onSavedForLater={() => signupWall.promptAfterSave('favourite')} />
+                <EventsView city={currentLocation} onLogAttempt={logAttempt} />
               </div>
             )}
             {visitedTabs.has('calendar') && (
               <div hidden={tab !== 'calendar'}>
-                <PlanView
-                  city={currentLocation}
-                  onOpenEvents={() => goToTab('events')}
-                  onLogAttempt={logAttempt}
-                  onSavedForLater={() => signupWall.promptAfterSave('favourite')}
-                />
+                <PlanView city={currentLocation} onOpenEvents={() => goToTab('events')} onLogAttempt={logAttempt} />
               </div>
             )}
             {visitedTabs.has('journal') && (

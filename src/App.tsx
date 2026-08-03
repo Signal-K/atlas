@@ -39,6 +39,7 @@ import { FeedbackDock } from './components/FeedbackDock'
 import { InstallPrompt } from './components/InstallPrompt'
 import { OnboardingFlow, hasCompletedOnboardingFlow } from './components/OnboardingFlow'
 import { OfflineBanner } from './components/OfflineBanner'
+import { AuthGate } from './components/AuthGate'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
@@ -242,6 +243,7 @@ function App() {
 
   function enterApp() {
     localStorage.setItem(ENTERED_KEY, '1')
+    setAccountDefaultMode('sign-up')
     navigate(isMobile ? '/app/today' : VIEW_PATH.tonight, { replace: true })
   }
 
@@ -254,6 +256,21 @@ function App() {
   // rather than falling through to the app shell below.
   if (!isAppRoute) {
     return null
+  }
+
+  // "Get started" (or a direct link into /app/*) no longer drops a visitor
+  // straight into onboarding/the app shell as a guest -- an account is
+  // required before anything past this renders. Existing local-first data
+  // (favourites/watchlist/observations saved before an account existed)
+  // still gets merged in on sign-up via mergeLocalDataIntoAccount, same as
+  // before; this just moves *when* that account has to exist.
+  if (!user) {
+    return (
+      <>
+        <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
+        <AuthGate defaultMode={accountDefaultMode} />
+      </>
+    )
   }
 
   if (isMobile) {
