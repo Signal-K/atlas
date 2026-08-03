@@ -12,7 +12,6 @@ import { LandingPage } from './views/LandingPage'
 // arrives as its own chunk when it's first rendered.
 const MobileShell = lazy(() => import('./components/MobileShell').then((m) => ({ default: m.MobileShell })))
 const TonightView = lazy(() => import('./views/TonightView').then((m) => ({ default: m.TonightView })))
-const DashboardView = lazy(() => import('./views/DashboardView').then((m) => ({ default: m.DashboardView })))
 const CalendarView = lazy(() => import('./views/CalendarView').then((m) => ({ default: m.CalendarView })))
 const FeedView = lazy(() => import('./views/FeedView').then((m) => ({ default: m.FeedView })))
 const ArchiveView = lazy(() => import('./views/ArchiveView').then((m) => ({ default: m.ArchiveView })))
@@ -28,7 +27,9 @@ const DeepSkyPlannerView = lazy(() =>
 )
 const EventsView = lazy(() => import('./views/mobile/EventsView').then((m) => ({ default: m.EventsView })))
 const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ default: m.PlanView })))
+const HubView = lazy(() => import('./views/mobile/HubView').then((m) => ({ default: m.HubView })))
 const EntryDetailView = lazy(() => import('./views/mobile/EntryDetailView').then((m) => ({ default: m.EntryDetailView })))
+const VisibleTonightView = lazy(() => import('./views/mobile/VisibleTonightView').then((m) => ({ default: m.VisibleTonightView })))
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
@@ -57,6 +58,16 @@ const VIEW_PATH: Record<View, string> = {
 const PATH_VIEW: Record<string, View> = {
   '/app/tonight': 'tonight',
   '/app/explore': 'explore',
+  // HubView (reused for Explore's "Today" sub-tab, see below) opens the
+  // full sky map at this path -- it must resolve back to 'explore', not
+  // fall through to the generic 'tonight' default, or tapping the map
+  // preview would silently kick the desktop view out of Explore entirely.
+  '/app/sky-map': 'explore',
+  // Same reasoning as '/app/sky-map' above -- HubView/EventsView/PlanView's
+  // shared entry-detail overlay and the "visible tonight" screen both open
+  // at these paths regardless of which Explore/Plan sub-tab triggered them.
+  '/app/entry': 'explore',
+  '/app/visible-tonight': 'explore',
   '/app/plan': 'plan',
   '/app/community': 'community',
   '/app/history': 'history',
@@ -191,6 +202,23 @@ function App() {
   // useLocationSeed already uses.
   const locationKey = `${currentLocation.source}:${currentLocation.lat.toFixed(1)},${currentLocation.lon.toFixed(1)}`
 
+  // Every top-level view that's ever been opened stays mounted (hidden via
+  // CSS) afterward instead of unmounting -- rendering only the active
+  // `view === 'x' && (...)` branch used to throw away and rebuild each
+  // view's whole component tree (and its data loads) on every sidebar
+  // click, which reads as the page reloading. Same fix as TabbedSection's
+  // visitedIds and MobileShell's visitedTabs.
+  const [visitedViews, setVisitedViews] = useState<Set<View>>(() => new Set([view]))
+  useEffect(() => {
+    setVisitedViews((current) => (current.has(view) ? current : new Set(current).add(view)))
+  }, [view])
+
+  // Which of Explore's own sub-tabs (Today/Events/Plan) is open -- lifted
+  // up (rather than left as TabbedSection's own internal state) so
+  // HubView's "Open events"/"Open plan" links, rendered as Explore's
+  // "Today" content, can switch this group's sub-tab directly.
+  const [exploreTab, setExploreTab] = useState<'dashboard' | 'events' | 'calendar'>('dashboard')
+
   function setView(nextView: View) {
     navigate(VIEW_PATH[nextView])
   }
@@ -214,6 +242,7 @@ function App() {
     null,
   )
   const entryOpen = routerLocation.pathname === '/app/entry'
+  const tonightOpen = routerLocation.pathname === '/app/visible-tonight'
 
   function openEntry(subject: EntryDetailSubject, actions?: EntryDetailActions) {
     setEntryDetail({
@@ -324,25 +353,40 @@ function App() {
           </header>
           <hr className="hairline" />
           <Suspense fallback={null}>
-          {view === 'tonight' && (
-            <TonightView
-              key={locationKey}
-              city={currentLocation}
-              locationStatus={location.status}
-              onLogAttempt={logAttempt}
-              setManualLocation={setManualLocation}
-            />
+          {visitedViews.has('tonight') && (
+            <div hidden={view !== 'tonight'}>
+              <TonightView
+                key={locationKey}
+                city={currentLocation}
+                locationStatus={location.status}
+                onLogAttempt={logAttempt}
+                setManualLocation={setManualLocation}
+              />
+            </div>
           )}
-          {view === 'explore' && (
+          {visitedViews.has('explore') && (
+            <div hidden={view !== 'explore'}>
             <TabbedSection
+              activeId={exploreTab}
+              onActiveIdChange={(id) => setExploreTab(id as typeof exploreTab)}
               tabs={[
                 {
                   id: 'dashboard',
                   label: 'Today',
-                  // Keyed so the location provider re-initializes once the
-                  // real location (geolocation fix or manual pick) settles
-                  // -- it starts as the Melbourne default before that.
-                  content: <DashboardView key={locationKey} onSignUpClick={goToSignUp} defaultCity={currentLocation} />,
+                  content: (
+                    <div className="mobile-shell desktop-feature-surface">
+                      <HubView
+                        key={locationKey}
+                        city={currentLocation}
+                        onOpenTab={(tab) => {
+                          if (tab === 'events' || tab === 'calendar') setExploreTab(tab)
+                        }}
+                        onLogAttempt={logAttempt}
+                        onOpenEntry={openEntry}
+                        onOpenTonight={() => navigate('/app/visible-tonight')}
+                      />
+                    </div>
+                  ),
                 },
                 {
                   id: 'events',
@@ -370,8 +414,10 @@ function App() {
                 },
               ]}
             />
+            </div>
           )}
-          {view === 'plan' && (
+          {visitedViews.has('plan') && (
+            <div hidden={view !== 'plan'}>
             <PaywallGate
               user={user}
               entitlementRefreshing={entitlementRefreshing}
@@ -409,8 +455,10 @@ function App() {
                 ]}
               />
             </PaywallGate>
+            </div>
           )}
-          {view === 'community' && (
+          {visitedViews.has('community') && (
+            <div hidden={view !== 'community'}>
             <PaywallGate
               user={user}
               entitlementRefreshing={entitlementRefreshing}
@@ -425,8 +473,10 @@ function App() {
                 ]}
               />
             </PaywallGate>
+            </div>
           )}
-          {view === 'history' && (
+          {visitedViews.has('history') && (
+            <div hidden={view !== 'history'}>
             <TabbedSection
               key={historyDefaultTab}
               defaultActiveId={historyDefaultTab}
@@ -453,8 +503,10 @@ function App() {
                 },
               ]}
             />
+            </div>
           )}
-          {view === 'settings' && (
+          {visitedViews.has('settings') && (
+            <div hidden={view !== 'settings'}>
             <TabbedSection
               tabs={[
                 {
@@ -476,10 +528,18 @@ function App() {
                 ...(import.meta.env.DEV ? [{ id: 'ops', label: 'Diagnostics', content: <LocalOpsView /> }] : []),
               ]}
             />
+            </div>
           )}
           </Suspense>
         </main>
       </div>
+      {tonightOpen && (
+        <div className="mobile-shell desktop-feature-surface desktop-entry-overlay">
+          <Suspense fallback={null}>
+            <VisibleTonightView city={currentLocation} onClose={() => navigate(-1)} onOpenEntry={(subject) => openEntry(subject)} />
+          </Suspense>
+        </div>
+      )}
       {entryOpen && entryDetail && (
         <div className="mobile-shell desktop-feature-surface desktop-entry-overlay">
           <Suspense fallback={null}>

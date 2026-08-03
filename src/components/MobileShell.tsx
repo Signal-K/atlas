@@ -135,7 +135,18 @@ export function MobileShell({
   // so this path can't collide even though only one of them ever mounts at
   // a time.
   const tonightOpen = location.pathname === '/app/visible-tonight'
-  const tab = tabFromPathname(location.pathname)
+  // Overlay routes (entry detail, visible tonight, settings) aren't tabs --
+  // falling back to tabFromPathname's 'hub' default for them used to hide
+  // whichever real tab was open underneath (its wrapper div's `hidden`
+  // flipped on), so state set from within the overlay (e.g. a reminder
+  // confirmation) rendered into a display:none subtree. Only advance `tab`
+  // when the path actually matches one, so it stays put while an overlay is
+  // open on top of it.
+  const [tab, setTab] = useState<MobileTab>(() => tabFromPathname(location.pathname))
+  useEffect(() => {
+    const matchedTab = PATH_TAB[location.pathname]
+    if (matchedTab) setTab(matchedTab)
+  }, [location.pathname])
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')

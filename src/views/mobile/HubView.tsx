@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import '../../mobile.css'
 import { SkyMapCanvas } from '../../components/SkyMapCanvas'
 import { SkyMapOverlay } from '../../components/SkyMapOverlay'
 import { getTonightPlan, type TonightPlan } from '../../lib/tonightTargets'
@@ -23,6 +24,9 @@ import { isLocalEvent } from '../../lib/eventFilters'
 import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
 import { EventPreferencePrompt } from '../../components/mobile/EventPreferencePrompt'
 import { HubIcon } from '../../components/mobile/HubIcon'
+import { StreakSection } from '../../components/mobile/StreakSection'
+import { CitizenScienceSection } from '../../components/mobile/CitizenScienceSection'
+import { CommunityDigestSection } from '../../components/mobile/CommunityDigestSection'
 import { buildEventDetail, detailInputFromTonightTarget, type EntryDetailSubject } from '../../lib/entryDetail'
 import type { SkyEvent } from '../../lib/db'
 import {
@@ -87,6 +91,12 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
   const mapOpen = location.pathname === '/app/sky-map'
   const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
   const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
+  // The full-screen entry detail overlay sits above everything (dt-entry,
+  // z-index 90) -- opening it in the same tap that first surfaces the
+  // equipment prompt used to bury the prompt underneath it, unclickable.
+  // Hold the tapped target here and open its entry only once the prompt is
+  // answered or skipped, so the two never fight for the screen.
+  const [pendingTarget, setPendingTarget] = useState<TonightPlan['targets'][number] | null>(null)
   const [outlook, setOutlook] = useState<DailyViewingAdvisory[]>([])
   const trackedFeedLoadRef = useRef<string | null>(null)
   const compass = useDeviceCompass()
@@ -208,12 +218,20 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
     setPreferencesReady(true)
   }
 
+  function openEntryForTarget(target: TonightPlan['targets'][number]) {
+    if (!plan) return
+    onOpenEntry(buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow), advisory))
+  }
+
   function expandTarget(target: TonightPlan['targets'][number]) {
     recordLocalTargetTap(target, 'mobile_hub', city.name)
     trackEvent('Tapped visible target', { targetId: target.eventId, title: target.title, kind: target.kind, source: 'mobile_hub' })
-    if (!equipment && shouldAskForEquipment()) setShowEquipmentPrompt(true)
-    if (!plan) return
-    onOpenEntry(buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow), advisory))
+    if (!equipment && shouldAskForEquipment()) {
+      setShowEquipmentPrompt(true)
+      setPendingTarget(target)
+      return
+    }
+    openEntryForTarget(target)
   }
 
   function chooseEquipment(choice: EquipmentChoice) {
@@ -221,12 +239,20 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
     setEquipment(choice)
     setShowEquipmentPrompt(false)
     trackEvent('Answered equipment prompt', { choice, source: 'mobile_hub' })
+    if (pendingTarget) {
+      openEntryForTarget(pendingTarget)
+      setPendingTarget(null)
+    }
   }
 
   function skipEquipment() {
     dismissEquipmentPrompt()
     setShowEquipmentPrompt(false)
     trackEvent('Skipped equipment prompt', { source: 'mobile_hub' })
+    if (pendingTarget) {
+      openEntryForTarget(pendingTarget)
+      setPendingTarget(null)
+    }
   }
 
   return (
@@ -417,7 +443,11 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
           compassStatus={compass.status}
           pointing={compass.pointing}
           onEnableCompass={compass.enable}
-          onClose={() => navigate('/app/today')}
+          // Goes back in history rather than to a hardcoded path -- opening
+          // the map pushed a new entry on top of wherever this view was
+          // already mounted (mobile's Hub tab or desktop's Explore/Today),
+          // so this is the one close behavior that's correct in both.
+          onClose={() => navigate(-1)}
         />
       )}
 
@@ -574,6 +604,10 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
           </div>
         )}
       </section>
+
+      <StreakSection />
+      <CitizenScienceSection />
+      <CommunityDigestSection onOpenJournal={() => onOpenTab('journal')} />
 
       {reminders.length > 0 && (
         <>
