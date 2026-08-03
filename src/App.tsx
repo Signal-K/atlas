@@ -28,6 +28,9 @@ const DeepSkyPlannerView = lazy(() =>
 const EventsView = lazy(() => import('./views/mobile/EventsView').then((m) => ({ default: m.EventsView })))
 const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ default: m.PlanView })))
 const HubView = lazy(() => import('./views/mobile/HubView').then((m) => ({ default: m.HubView })))
+const EntryDetailView = lazy(() =>
+  import('./views/mobile/EntryDetailView').then((m) => ({ default: m.EntryDetailView })),
+)
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
 import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
@@ -374,6 +377,8 @@ function App() {
                           if (tab === 'events' || tab === 'calendar') setExploreTab(tab)
                         }}
                         onLogAttempt={logAttempt}
+                        onOpenEntry={openEntry}
+                        onOpenTonight={() => setExploreTab('events')}
                       />
                     </div>
                   ),
