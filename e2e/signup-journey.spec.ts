@@ -143,3 +143,20 @@ test('signup happens via the auth gate before onboarding, then observations save
 
   await expect(page.getByText('Saw the Moon through thin cloud.')).toBeVisible()
 })
+
+test('an existing account signs in without being sent through onboarding again', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Get started' }).click()
+  await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
+  await page.getByRole('button', { name: 'Have an account?' }).click()
+  await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+
+  await page.getByPlaceholder('Email').fill('observer@example.com')
+  await page.getByPlaceholder('Password').fill('correct-horse-battery')
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+
+  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete'))).toBe('1')
+})

@@ -39,7 +39,13 @@ import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
 import { PaywallGate } from './components/PaywallGate'
 import { FeedbackDock } from './components/FeedbackDock'
 import { InstallPrompt } from './components/InstallPrompt'
-import { OnboardingFlow, hasCompletedOnboardingFlow } from './components/OnboardingFlow'
+import {
+  OnboardingFlow,
+  hasCompletedOnboardingFlow,
+  markOnboardingComplete,
+  markOnboardingRequired,
+  requiresOnboardingFlow,
+} from './components/OnboardingFlow'
 import { OfflineBanner } from './components/OfflineBanner'
 import { AuthGate } from './components/AuthGate'
 import type { ObservationDraft } from './lib/observationDraft'
@@ -110,7 +116,13 @@ function App() {
   // attempt from Tonight, where it should open straight to Scrapbook --
   // see logAttempt below, and TabbedSection's defaultActiveId/key contract.
   const [historyDefaultTab, setHistoryDefaultTab] = useState<'archive' | 'scrapbook'>('archive')
-  const [onboardingFlowDismissed, setOnboardingFlowDismissed] = useState(() => hasCompletedOnboardingFlow())
+  // A returning authenticated account should not be treated like a brand-new
+  // signup just because this browser has no local onboarding-complete flag.
+  // New signups set a separate persisted requirement below so an interrupted
+  // onboarding still resumes after reload.
+  const [onboardingFlowDismissed, setOnboardingFlowDismissed] = useState(
+    () => hasCompletedOnboardingFlow() || (Boolean(user) && !requiresOnboardingFlow()),
+  )
   // Deferred until onboarding is out of the way: a first-time visitor who
   // just clicked "Get started" on the landing page shouldn't immediately
   // get an OS geolocation permission popup before they've even seen
@@ -280,6 +292,16 @@ function App() {
     navigate(isMobile ? '/app/today' : VIEW_PATH.tonight, { replace: true })
   }
 
+  function handleSignedIn() {
+    markOnboardingComplete()
+    setOnboardingFlowDismissed(true)
+  }
+
+  function handleSignedUp() {
+    markOnboardingRequired()
+    setOnboardingFlowDismissed(false)
+  }
+
   if (showLanding) {
     return <LandingPage authenticatedEmail={user?.email} isMobile={isMobile} onEnter={enterApp} />
   }
@@ -301,7 +323,7 @@ function App() {
     return (
       <>
         <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
-        <AuthGate defaultMode={accountDefaultMode} />
+        <AuthGate defaultMode={accountDefaultMode} onSignedIn={handleSignedIn} onSignedUp={handleSignedUp} />
       </>
     )
   }

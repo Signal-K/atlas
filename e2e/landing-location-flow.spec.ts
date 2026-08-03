@@ -127,8 +127,9 @@ test('index stays on the landing page for a signed-in visitor and identifies the
 // (skippable) name and interests steps first.
 async function reachOnboardingLocationStep(page: Page) {
   // Onboarding only runs after authentication. These tests exercise its
-  // location step, so seed a signed-in, not-yet-onboarded account here
-  // without affecting the signed-out landing-page test above.
+  // location step, so seed a newly-created, not-yet-onboarded account here
+  // without affecting the returning-account landing-page test above.
+  await page.addInitScript(() => localStorage.setItem('atlas-onboarding-flow-required', '1'))
   await seedSignedInUser(page, { onboardingComplete: false })
   await page.goto('/app')
   await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible()

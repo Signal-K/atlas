@@ -13,11 +13,13 @@ export interface AuthFormProps {
   // this account existed) got merged in. Settings uses this to show
   // SignupWelcomeBeat; other callers can ignore it.
   onSignedUp?: (mergedCount: number) => void
+  onSignedIn?: () => void
+  onModeChange?: (mode: 'sign-in' | 'sign-up') => void
 }
 
 // Shared sign-in/sign-up form, used both embedded in Settings (signed-out
 // state) and as the full-screen AuthGate shown before onboarding.
-export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp }: AuthFormProps) {
+export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp, onSignedIn, onModeChange }: AuthFormProps) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>(defaultMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -60,6 +62,7 @@ export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp }:
         await signIn(email, password)
         const demoAccess = await redeemStoredDemoAccessCode()
         trackEvent('Sign in completed', { source, demoAccess })
+        onSignedIn?.()
       } else {
         await signUp(email, password)
         const demoAccess = await redeemStoredDemoAccessCode()
@@ -107,7 +110,15 @@ export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp }:
           <button type="submit" disabled={busy}>
             {mode === 'sign-in' ? 'Sign in' : 'Create account'}
           </button>
-          <button type="button" className="account-form-switch" onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}>
+          <button
+            type="button"
+            className="account-form-switch"
+            onClick={() => {
+              const nextMode = mode === 'sign-in' ? 'sign-up' : 'sign-in'
+              setMode(nextMode)
+              onModeChange?.(nextMode)
+            }}
+          >
             {mode === 'sign-in' ? 'Need an account?' : 'Have an account?'}
           </button>
           {mode === 'sign-in' && (

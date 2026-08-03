@@ -10,9 +10,24 @@ import type { City } from '../lib/cities'
 import type { CurrentLocation } from '../lib/currentLocation'
 
 export const ONBOARDING_FLOW_KEY = 'atlas-onboarding-flow-complete'
+export const ONBOARDING_REQUIRED_KEY = 'atlas-onboarding-flow-required'
 
 export function hasCompletedOnboardingFlow(): boolean {
   return localStorage.getItem(ONBOARDING_FLOW_KEY) === '1'
+}
+
+export function requiresOnboardingFlow(): boolean {
+  return localStorage.getItem(ONBOARDING_REQUIRED_KEY) === '1'
+}
+
+export function markOnboardingRequired(): void {
+  localStorage.removeItem(ONBOARDING_FLOW_KEY)
+  localStorage.setItem(ONBOARDING_REQUIRED_KEY, '1')
+}
+
+export function markOnboardingComplete(): void {
+  localStorage.setItem(ONBOARDING_FLOW_KEY, '1')
+  localStorage.removeItem(ONBOARDING_REQUIRED_KEY)
 }
 
 type Step = 'name' | 'interests' | 'location' | 'notifications'
@@ -73,7 +88,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
   const step = STEPS[stepIndex]
 
   function finish() {
-    localStorage.setItem(ONBOARDING_FLOW_KEY, '1')
+    markOnboardingComplete()
     trackEvent('Completed onboarding flow')
     onDone()
   }
