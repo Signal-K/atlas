@@ -9,9 +9,6 @@ import {
   removeFromWatchlist,
   type WatchlistItem,
 } from '../lib/watchlist'
-import { SignupWallModal } from '../components/SignupWallModal'
-import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
-import { useSignupWall } from '../lib/useSignupWall'
 
 export const EVENT_KINDS = [
   { value: 'moon_phase', label: 'Moon phases' },
@@ -34,9 +31,6 @@ function WatchlistWidget() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[] | null>(null)
   const [targets, setTargets] = useState<string[]>([])
   const [targetQuery, setTargetQuery] = useState('')
-  const [mergeStatus, setMergeStatus] = useState<string | null>(null)
-  const [welcomeMergedCount, setWelcomeMergedCount] = useState<number | null>(null)
-  const signupWall = useSignupWall()
 
   async function refresh() {
     setWatchlist(await getWatchlist())
@@ -52,7 +46,6 @@ function WatchlistWidget() {
       await removeFromWatchlist(kind, value)
     } else {
       await addToWatchlist(kind, value)
-      signupWall.promptAfterSave('favourite')
     }
     await refresh()
   }
@@ -70,31 +63,6 @@ function WatchlistWidget() {
   return (
     <div>
       <p className="scrapbook-hint">Watch an event type or a specific target to flag it wherever it appears, and (once notifications land) get a heads-up for good viewing.</p>
-      {mergeStatus && <p className="scrapbook-hint">{mergeStatus}</p>}
-      {signupWall.reason && (
-        <SignupWallModal
-          reason={signupWall.reason}
-          onDismiss={signupWall.dismiss}
-          onSignedUp={(mergedCount) => {
-            signupWall.complete()
-            setWelcomeMergedCount(mergedCount)
-            refresh()
-          }}
-        />
-      )}
-      {welcomeMergedCount != null && (
-        <SignupWelcomeBeat
-          mergedCount={welcomeMergedCount}
-          onDone={() => {
-            setMergeStatus(
-              welcomeMergedCount > 0
-                ? `Account created — brought over ${welcomeMergedCount} saved item${welcomeMergedCount === 1 ? '' : 's'}.`
-                : 'Account created.',
-            )
-            setWelcomeMergedCount(null)
-          }}
-        />
-      )}
       <div className="chip-row">
         {EVENT_KINDS.map((kind) => {
           const watching = isWatching(watchlist, 'event_type', kind.value)

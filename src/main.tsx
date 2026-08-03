@@ -11,8 +11,10 @@ const CityStampSharePage = lazy(() =>
   import('./views/CityStampSharePage.tsx').then((m) => ({ default: m.CityStampSharePage })),
 )
 import { initAnalytics } from './lib/analytics.ts'
+import { startSyncQueue } from './lib/syncQueue.ts'
 
 initAnalytics()
+startSyncQueue()
 
 function SharePageRoute() {
   const { remoteId } = useParams<{ remoteId: string }>()

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { seedSignedInUser } from './support/auth'
 
 const APP_URL = `http://localhost:${process.env.PLAYWRIGHT_PORT || '5173'}`
 
@@ -65,6 +66,11 @@ async function mockTonightData(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
+  // Onboarding (where the location step actually lives) only runs once an
+  // account exists (see AuthGate in App.tsx) -- these tests are about the
+  // location step, not the auth gate, so seed a signed-in, not-yet-onboarded
+  // account up front.
+  await seedSignedInUser(page, { onboardingComplete: false })
 })
 
 test('index stays on the landing page for a returning signed-out visitor', async ({ page }) => {
@@ -120,13 +126,12 @@ test('index stays on the landing page for a signed-in visitor and identifies the
 
 // Location is no longer collected on the landing page itself -- it moved
 // into OnboardingFlow's "location" step, so it can be asked for after a
-// first-time visitor has actually seen what Atlas does, not before.
-// Getting there from a fresh "/" visit means clicking past the (skippable)
-// name and interests steps first.
+// first-time visitor has actually seen what Atlas does, not before. A
+// signed-in visitor (seeded above) skips landing entirely -- "/" redirects
+// straight to "/app" -- so this goes there directly and clicks past the
+// (skippable) name and interests steps first.
 async function reachOnboardingLocationStep(page: Page) {
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Get started' }).click()
+  await page.goto('/app')
   await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible()
   await page.getByRole('button', { name: 'Skip' }).click()
   await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
@@ -134,7 +139,7 @@ async function reachOnboardingLocationStep(page: Page) {
   await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
 }
 
-test('manual city entry reaches tonight feed with selected city before signup', async ({ page }) => {
+test('manual city entry reaches tonight feed with selected city', async ({ page }) => {
   await reachOnboardingLocationStep(page)
 
   await page.getByPlaceholder('Search for your town or city').fill('Zur')
@@ -145,10 +150,9 @@ test('manual city entry reaches tonight feed with selected city before signup', 
 
   await expect(page).toHaveURL('/app/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near Zurich' })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.account-form')).toHaveCount(0)
 })
 
-test('browser geolocation entry reaches tonight feed without signup', async ({ page, context }) => {
+test('browser geolocation entry reaches tonight feed', async ({ page, context }) => {
   await context.grantPermissions(['geolocation'], { origin: APP_URL })
   await context.setGeolocation({ latitude: 47.3769, longitude: 8.5417 })
 
@@ -172,7 +176,6 @@ test('browser geolocation entry reaches tonight feed without signup', async ({ p
 
   await expect(page).toHaveURL('/app/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near Zurich' })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.account-form')).toHaveCount(0)
 })
 
 test('location search disambiguates cities by region and country', async ({ page }) => {
@@ -218,9 +221,10 @@ test('location search disambiguates cities by region and country', async ({ page
 
 test('mobile header keeps location switching available after onboarding', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
+  // Overrides the beforeEach's onboardingComplete: false -- this test is
+  // about the already-onboarded header, not the location step itself.
+  await seedSignedInUser(page, { onboardingComplete: true })
   await page.addInitScript(() => {
-    localStorage.setItem('atlas-entered', '1')
-    localStorage.setItem('atlas-onboarding-flow-complete', '1')
     localStorage.setItem(
       'atlas-manual-location',
       JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278, admin1: 'England', country: 'United Kingdom', timeZone: 'Europe/London' }),

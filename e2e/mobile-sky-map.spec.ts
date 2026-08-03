@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { seedSignedInUser } from './support/auth'
 
 async function mockTonightData(page: Page) {
   await page.route('https://api.open-meteo.com/**', async (route) => {
@@ -90,6 +91,7 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockDeviceOrientation(page)
   await mockTonightData(page)
+  await seedSignedInUser(page)
 })
 
 async function canvasHasRenderedSky(page: Page, selector: string) {

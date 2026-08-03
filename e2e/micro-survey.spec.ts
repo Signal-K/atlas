@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { seedSignedInUser } from './support/auth'
 
 declare global {
   interface Window {
@@ -26,6 +27,7 @@ async function latestEvent(page: Page, name: string) {
 }
 
 test('contextual micro-survey submits one-tap answer with optional note', async ({ page }) => {
+  await seedSignedInUser(page)
   await page.goto('/app/today')
   await captureAnalytics(page)
 
@@ -47,6 +49,7 @@ test('contextual micro-survey submits one-tap answer with optional note', async 
 })
 
 test('contextual micro-survey is locally throttled after dismissal', async ({ page }) => {
+  await seedSignedInUser(page)
   await page.goto('/app/today')
   await captureAnalytics(page)
 

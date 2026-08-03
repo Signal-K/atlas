@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { seedSignedInUser } from './support/auth'
 
 async function mockCloudyTonight(page: Page) {
   await page.route('https://api.open-meteo.com/**', async (route) => {
@@ -60,18 +61,17 @@ async function mockSkyEvents(page: Page) {
 test.beforeEach(async ({ page }) => {
   await mockCloudyTonight(page)
   await mockSkyEvents(page)
-  // Entering the app from the landing page flips `alreadyEntered`, which
-  // would otherwise surface the first-run OnboardingFlow overlay and block
-  // every click these tests make -- this suite isn't testing onboarding, so
-  // mark it done upfront.
-  // Location moved from the landing page into OnboardingFlow's own
-  // "location" step -- seed it directly, same as setManualLocation() would.
+  // "Get started" now requires an account before onboarding/the app shell
+  // render at all (see AuthGate in App.tsx) -- this suite isn't testing
+  // that gate or onboarding, so seed a signed-in, already-onboarded session
+  // up front. Location moved from the landing page into OnboardingFlow's
+  // own "location" step -- seed it directly, same as setManualLocation()
+  // would.
+  await seedSignedInUser(page)
   await page.addInitScript(() => {
-    window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
     window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
   })
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Get started' }).click()
+  await page.goto('/app/tonight')
   await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
 })
 

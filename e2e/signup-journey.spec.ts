@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { makeAuthToken } from './support/auth'
 
 async function mockTonightData(page: Page) {
   await page.route('https://api.open-meteo.com/**', async (route) => {
@@ -71,7 +72,7 @@ async function mockAuth(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ token: 'e2e.signup.token', record }),
+      body: JSON.stringify({ token: makeAuthToken(), record }),
     })
   })
   await page.route('**/api/collections/atlas_observations/records', async (route) => {
@@ -86,45 +87,30 @@ async function mockAuth(page: Page) {
 test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
   await mockAuth(page)
-  // Entering the app from the landing page flips `alreadyEntered`, which
-  // would otherwise surface the first-run OnboardingFlow overlay and block
-  // every click this journey makes -- this suite isn't testing onboarding,
-  // so mark it done upfront.
   // Location moved from the landing page into OnboardingFlow's own
   // "location" step -- seed it directly, same as setManualLocation() would.
   await page.addInitScript(() => {
-    window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
     window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
   })
 })
 
-test('signup appears after observation save, merges local journey, and returns to scrapbook context', async ({ page }) => {
+// "Get started" now requires an account before onboarding or the app shell
+// render at all (see AuthGate in App.tsx) -- signup no longer happens
+// after a guest has already saved something locally (that whole flow,
+// SignupWallModal, was removed as dead code). This proves the new order:
+// landing -> auth gate -> account created -> onboarding -> the feature that
+// used to require a signup wall (logging an observation) just works.
+test('signup happens via the auth gate before onboarding, then observations save directly', async ({ page }) => {
   await page.goto('/')
 
+  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
   await page.getByRole('button', { name: 'Get started' }).click()
-  await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.account-form')).toHaveCount(0)
 
-  await page.locator('.tonight-target-main').first().click()
-  await page.locator('.equipment-prompt').getByRole('button', { name: 'My phone' }).click()
-  await page.getByRole('button', { name: 'Log attempt' }).first().click()
-
-  await expect(page).toHaveURL('/app/history')
-  await expect(page.getByText('Logging attempt for')).toBeVisible()
-  await expect(page.locator('.account-form')).toHaveCount(0)
-  await page.getByPlaceholder(/What did you see tonight|How did/).fill('Saw the Moon through thin cloud.')
-  await page.getByRole('button', { name: 'Good' }).click()
-  await page.getByRole('button', { name: 'Save observation' }).click()
-
-  await expect(page.getByRole('heading', { name: 'Sign up to sync?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
   await page.getByPlaceholder('Email').fill('observer@example.com')
   await page.getByPlaceholder('Password').fill('correct-horse-battery')
   await page.getByRole('button', { name: 'Create account' }).click()
 
-  await expect(page.getByRole('status')).toContainText('Atlas is watching the sky with you.')
-  await expect(page.getByText('3 saved items carried into your account.')).toBeVisible()
-  await expect(page).toHaveURL('/app/history')
-  await expect(page.getByText('Saw the Moon through thin cloud.')).toBeVisible()
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -133,5 +119,27 @@ test('signup appears after observation save, merges local journey, and returns t
       }),
     )
     .toBe('observer@example.com')
-  await expect(page.locator('.account-form')).toHaveCount(0)
+
+  // Onboarding runs right after account creation, not before it.
+  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Skip' }).click()
+  await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Skip' }).click()
+  await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Looks good' }).click()
+  await page.getByRole('button', { name: 'Not now' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
+
+  await page.locator('.tonight-target-main').first().click()
+  await page.locator('.equipment-prompt').getByRole('button', { name: 'My phone' }).click()
+  await page.getByRole('button', { name: 'Log attempt' }).first().click()
+
+  await expect(page).toHaveURL('/app/history')
+  await expect(page.getByText('Logging attempt for')).toBeVisible()
+  await page.getByPlaceholder(/What did you see tonight|How did/).fill('Saw the Moon through thin cloud.')
+  await page.getByRole('button', { name: 'Good' }).click()
+  await page.getByRole('button', { name: 'Save observation' }).click()
+
+  await expect(page.getByText('Saw the Moon through thin cloud.')).toBeVisible()
 })

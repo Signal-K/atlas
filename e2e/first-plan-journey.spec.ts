@@ -1,10 +1,12 @@
 import { test, expect, type Page } from '@playwright/test'
+import { seedSignedInUser } from './support/auth'
 
-// STS-333: proves a fresh, signed-out visitor can reach a first stargazing
-// plan -- landing -> location entry -> signed-out feed -> target tap ->
-// (optional) equipment prompt -> plan with all four sections -- without any
-// signup prompt appearing along the way. Network calls that would otherwise
-// make this flaky (weather, sky events) are mocked so the test is
+// STS-333: proves a signed-in visitor can reach a first stargazing plan --
+// tonight feed -> target tap -> (optional) equipment prompt -> plan with all
+// four sections. "Get started" now requires an account before any of this
+// (see AuthGate in App.tsx), so this suite seeds a signed-in session up
+// front rather than testing the auth gate itself. Network calls that would
+// otherwise make this flaky (weather, sky events) are mocked so the test is
 // deterministic regardless of real-world conditions or the date it runs.
 
 async function mockWeather(page: Page) {
@@ -58,29 +60,22 @@ async function mockSkyEvents(page: Page) {
 test.beforeEach(async ({ page }) => {
   await mockWeather(page)
   await mockSkyEvents(page)
-  // Entering the app from the landing page flips `alreadyEntered`, which
-  // would otherwise surface the first-run OnboardingFlow overlay and block
-  // every click this journey makes -- this suite isn't testing onboarding,
-  // so mark it done upfront. Landing no longer collects a location itself
-  // (that moved into OnboardingFlow's own "location" step), so seed it
-  // directly the same way OnboardingFlow's setManualLocation() would.
+  await seedSignedInUser(page)
+  // Onboarding is already marked done (default of seedSignedInUser) --
+  // this suite isn't testing onboarding, so it would otherwise surface the
+  // first-run OnboardingFlow overlay and block every click this journey
+  // makes. Landing no longer collects a location itself (that moved into
+  // OnboardingFlow's own "location" step), so seed it directly the same
+  // way OnboardingFlow's setManualLocation() would.
   await page.addInitScript(() => {
-    window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
     window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
   })
 })
 
-test('signed-out visitor reaches a first plan before any signup prompt', async ({ page }) => {
-  await page.goto('/')
+test('signed-in visitor reaches a first plan', async ({ page }) => {
+  await page.goto('/app/tonight')
 
-  // Landing: a product pitch, not a location form -- location is seeded
-  // above (no geolocation permission needed).
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Get started' }).click()
-
-  // Signed-out feed: reached without ever seeing a signup/account form.
   await expect(page.getByRole('heading', { name: /Tonight near/ })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.account-form')).toHaveCount(0)
   await expect(page.locator('.equipment-prompt')).toHaveCount(0)
 
   // First target tap -- expands the preview and, per STS-301/313, may show
@@ -120,19 +115,13 @@ test('signed-out visitor reaches a first plan before any signup prompt', async (
       locationLabel: 'London',
     })
 
-  // Save action: "Log attempt" is available without an account (STS-320) --
-  // clicking it must not itself trigger a signup wall.
+  // Save action: "Log attempt" (STS-320).
   await page.getByRole('button', { name: 'Log attempt' }).first().click()
-  await expect(page.locator('.account-form')).toHaveCount(0)
-
-  // The whole journey above must never have shown a signup/account form.
-  await expect(page.locator('.account-form')).toHaveCount(0)
 })
 
 test('equipment prompt appears after first target tap and persists recommendation state', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/app/tonight')
 
-  await page.getByRole('button', { name: 'Get started' }).click()
   await expect(page.getByRole('heading', { name: /Tonight near/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.equipment-prompt')).toHaveCount(0)
 
