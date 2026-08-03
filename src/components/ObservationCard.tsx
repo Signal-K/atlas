@@ -28,7 +28,7 @@ export function ObservationCard({ entry }: { entry: ObservationLogEntry }) {
     <div className="observation-card">
       {photoUrl && (
         <div className="observation-card-photo">
-          <img src={photoUrl} alt={entry.targetName ?? 'Observation'} />
+          <img src={photoUrl} alt={entry.targetName ?? 'Observation'} loading="lazy" />
         </div>
       )}
       <div className="observation-card-body">
