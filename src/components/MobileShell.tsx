@@ -548,7 +548,6 @@ export function MobileShell({
               <div hidden={tab !== 'events'}>
                 <EventsView
                   city={currentLocation}
-                  onSavedForLater={() => signupWall.promptAfterSave('favourite')}
                   onOpenEntry={openEntry}
                 />
               </div>
@@ -558,7 +557,6 @@ export function MobileShell({
                 <PlanView
                   city={currentLocation}
                   onOpenEvents={() => goToTab('events')}
-                  onSavedForLater={() => signupWall.promptAfterSave('favourite')}
                   onOpenEntry={openEntry}
                 />
               </div>

@@ -119,7 +119,9 @@ export function LandingPage({ authenticatedEmail, isMobile, onEnter }: LandingPa
               </a>
             </div>
 
-            <p className="atlas-landing-fineprint">Start free in your browser. No telescope required.</p>
+            <p className="atlas-landing-fineprint">
+              Start free in your browser. No telescope required. Sky Pass is a one-time CHF 55 upgrade, forever.
+            </p>
           </div>
 
           <div className="atlas-product-preview" aria-label="A preview of the Atlas web app">

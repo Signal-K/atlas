@@ -66,11 +66,6 @@ async function mockTonightData(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
-  // Onboarding (where the location step actually lives) only runs once an
-  // account exists (see AuthGate in App.tsx) -- these tests are about the
-  // location step, not the auth gate, so seed a signed-in, not-yet-onboarded
-  // account up front.
-  await seedSignedInUser(page, { onboardingComplete: false })
 })
 
 test('index stays on the landing page for a returning signed-out visitor', async ({ page }) => {
@@ -131,6 +126,10 @@ test('index stays on the landing page for a signed-in visitor and identifies the
 // straight to "/app" -- so this goes there directly and clicks past the
 // (skippable) name and interests steps first.
 async function reachOnboardingLocationStep(page: Page) {
+  // Onboarding only runs after authentication. These tests exercise its
+  // location step, so seed a signed-in, not-yet-onboarded account here
+  // without affecting the signed-out landing-page test above.
+  await seedSignedInUser(page, { onboardingComplete: false })
   await page.goto('/app')
   await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible()
   await page.getByRole('button', { name: 'Skip' }).click()

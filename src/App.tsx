@@ -576,8 +576,12 @@ function App() {
           </Suspense>
         </div>
       )}
-      <FeedbackDock />
-      <InstallPrompt />
+      {!showOnboardingFlow && (
+        <>
+          <FeedbackDock />
+          <InstallPrompt />
+        </>
+      )}
     </>
   )
 }
