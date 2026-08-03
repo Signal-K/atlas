@@ -16,8 +16,19 @@ export function initAnalytics() {
   loading = import('posthog-js').then(({ default: posthog }) => {
     posthog.init(apiKey, {
       api_host: (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ?? 'https://us.i.posthog.com',
-      capture_pageview: false,
+      // Atlas is a client-side-routed SPA (react-router), so a one-shot
+      // pageview on init would miss every subsequent route change --
+      // 'history_change' hooks the History API directly instead of
+      // requiring a manual $pageview capture() on every navigate() call.
+      capture_pageview: 'history_change',
       persistence: 'localStorage',
+      // Mask all form input by default (unknown recording audience); the
+      // feedback/email fields get an explicit second mask since they're
+      // the most likely place free-text PII shows up.
+      session_recording: {
+        maskAllInputs: true,
+        maskTextSelector: '.feedback-panel textarea, input[type="email"]',
+      },
     })
     return posthog
   })
@@ -46,4 +57,33 @@ export function identifyAnalyticsUser(user: { id: string; email: string; entitle
       entitled: user.entitled,
     }),
   )
+}
+
+// Analytics never having loaded (no key, blocked chunk) reads as "flag off"
+// rather than an error -- callers can gate UI on this without an extra
+// try/catch or "is analytics ready" check of their own.
+export function isFeatureEnabled(key: string): Promise<boolean> {
+  if (!loading) return Promise.resolve(false)
+  return loading.then((posthog) => posthog.isFeatureEnabled(key) ?? false).catch(() => false)
+}
+
+export function getFeatureFlag(key: string): Promise<string | boolean | undefined> {
+  if (!loading) return Promise.resolve(undefined)
+  return loading.then((posthog) => posthog.getFeatureFlag(key)).catch(() => undefined)
+}
+
+// Surveys created in PostHog as headless (type: "api") so Atlas keeps
+// rendering FeedbackDock's own markup -- this only asks PostHog whether a
+// given survey is still active/targeted for the current user, it never
+// renders PostHog's own widget.
+export function getActiveSurveys(): Promise<Array<{ id: string; name: string }>> {
+  if (!loading) return Promise.resolve([])
+  return loading
+    .then(
+      (posthog) =>
+        new Promise<Array<{ id: string; name: string }>>((resolve) => {
+          posthog.getActiveMatchingSurveys((surveys) => resolve(surveys.map((s) => ({ id: s.id, name: s.name }))), true)
+        }),
+    )
+    .catch(() => [])
 }

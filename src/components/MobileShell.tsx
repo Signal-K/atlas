@@ -6,6 +6,9 @@ import { EventsView } from '../views/mobile/EventsView'
 import { PlanView } from '../views/mobile/PlanView'
 import { JournalView } from '../views/mobile/JournalView'
 import { SettingsView } from '../views/SettingsView'
+import { EntryDetailView, type EntryDetailActions } from '../views/mobile/EntryDetailView'
+import { VisibleTonightView } from '../views/mobile/VisibleTonightView'
+import type { EntryDetailSubject } from '../lib/entryDetail'
 import { signOut, useAuth } from '../lib/auth'
 import { applyTheme, getStoredTheme, getSystemTheme, storeTheme } from '../lib/theme'
 import { getUpcomingEvents } from '../lib/sync'
@@ -123,7 +126,24 @@ export function MobileShell({
   const location = useLocation()
   const navigate = useNavigate()
   const settingsOpen = location.pathname === '/app/settings'
-  const tab = tabFromPathname(location.pathname)
+  const entryOpen = location.pathname === '/app/entry'
+  // Distinct from desktop's own "/app/tonight" (VIEW_PATH.tonight in
+  // App.tsx, a completely different view) -- the two apps share a router,
+  // so this path can't collide even though only one of them ever mounts at
+  // a time.
+  const tonightOpen = location.pathname === '/app/visible-tonight'
+  // Overlay routes (entry detail, visible tonight, settings) aren't tabs --
+  // falling back to tabFromPathname's 'hub' default for them used to hide
+  // whichever real tab was open underneath (its wrapper div's `hidden`
+  // flipped on), so state set from within the overlay (e.g. a reminder
+  // confirmation) rendered into a display:none subtree. Only advance `tab`
+  // when the path actually matches one, so it stays put while an overlay is
+  // open on top of it.
+  const [tab, setTab] = useState<MobileTab>(() => tabFromPathname(location.pathname))
+  useEffect(() => {
+    const matchedTab = PATH_TAB[location.pathname]
+    if (matchedTab) setTab(matchedTab)
+  }, [location.pathname])
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -133,6 +153,9 @@ export function MobileShell({
   const [searchTargets, setSearchTargets] = useState<string[]>([])
   const [searchWatchlist, setSearchWatchlist] = useState<WatchlistItem[]>([])
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
+  const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions?: EntryDetailActions; onLogAttempt: () => void } | null>(
+    null,
+  )
   const [isDark, setIsDark] = useState(() => (getStoredTheme() ?? getSystemTheme()) === 'dark')
   const { user } = useAuth()
   const [headerCollapsed, setHeaderCollapsed] = useState(false)
@@ -286,6 +309,32 @@ export function MobileShell({
     setProfileOpen(false)
     navigate(TAB_PATH.journal)
   }
+
+  // One shared full-screen detail page for Hub, Visible Tonight, Events,
+  // and Plan -- lifted here (not router state, which can't hold callbacks)
+  // so any tab can push it via a real, back-button-able URL while still
+  // wiring up its Watch/Remind/Point actions and the Journal hand-off.
+  function openEntry(subject: EntryDetailSubject, actions?: EntryDetailActions) {
+    setEntryDetail({
+      subject,
+      actions,
+      onLogAttempt: () =>
+        logAttempt({
+          eventId: subject.id,
+          targetName: subject.title,
+          cameraRecipeUsed: subject.recipeKey ?? undefined,
+          locationLabel: currentLocation.name,
+          moonIlluminationPct: subject.moonPct ?? undefined,
+          directionLabel: subject.direction?.compassLabel,
+        }),
+    })
+    navigate('/app/entry')
+  }
+
+  useEffect(() => {
+    if (!entryOpen) setEntryDetail(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only pathname should clear the lifted detail state
+  }, [entryOpen])
 
   const locationLabel = `${currentLocation.name.toUpperCase()} · ${TAB_CONTEXT[tab]}`
   const accountLabel = user?.email ?? 'Offline profile'
@@ -492,17 +541,26 @@ export function MobileShell({
           <>
             {visitedTabs.has('hub') && (
               <div hidden={tab !== 'hub'}>
-                <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} />
+                <HubView city={currentLocation} onOpenTab={goToTab} onLogAttempt={logAttempt} onOpenEntry={openEntry} onOpenTonight={() => navigate('/app/visible-tonight')} />
               </div>
             )}
             {visitedTabs.has('events') && (
               <div hidden={tab !== 'events'}>
-                <EventsView city={currentLocation} onLogAttempt={logAttempt} />
+                <EventsView
+                  city={currentLocation}
+                  onSavedForLater={() => signupWall.promptAfterSave('favourite')}
+                  onOpenEntry={openEntry}
+                />
               </div>
             )}
             {visitedTabs.has('calendar') && (
               <div hidden={tab !== 'calendar'}>
-                <PlanView city={currentLocation} onOpenEvents={() => goToTab('events')} onLogAttempt={logAttempt} />
+                <PlanView
+                  city={currentLocation}
+                  onOpenEvents={() => goToTab('events')}
+                  onSavedForLater={() => signupWall.promptAfterSave('favourite')}
+                  onOpenEntry={openEntry}
+                />
               </div>
             )}
             {visitedTabs.has('journal') && (
@@ -512,6 +570,27 @@ export function MobileShell({
             )}
           </>
         )}
+
+        {tonightOpen && (
+          <VisibleTonightView city={currentLocation} onClose={() => navigate(-1)} onOpenEntry={(subject) => openEntry(subject)} />
+        )}
+
+        {entryOpen &&
+          (entryDetail ? (
+            <EntryDetailView
+              subject={entryDetail.subject}
+              actions={entryDetail.actions}
+              onClose={() => navigate(-1)}
+              onLogAttempt={entryDetail.onLogAttempt}
+            />
+          ) : (
+            <div className="dt-entry-missing">
+              <p>Nothing to show here directly — head back and pick something to inspect.</p>
+              <button type="button" onClick={() => navigate('/app/today')}>
+                Back to Atlas
+              </button>
+            </div>
+          ))}
       </div>
     </div>
   )

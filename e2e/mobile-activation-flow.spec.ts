@@ -74,9 +74,18 @@ test('mobile signed-in user lands on visible-tonight feed', async ({ page }) => 
   await expect(target).toContainText(/naked-eye|needs binoculars or a scope/)
   await target.click()
 
-  const preview = page.locator('.dt-feed-preview').first()
-  await expect(preview).toBeVisible()
-  await expect(preview.getByText('You would see the Moon clearly, with shape, shadow, or surface detail visible by eye.')).toBeVisible()
+  // First-ever tap also surfaces the equipment prompt; it takes the full
+  // screen ahead of the entry detail page, so answer it before the entry is
+  // reachable.
+  const prompt = page.locator('.dt-equipment-prompt')
+  await expect(prompt).toBeVisible()
+  await prompt.getByRole('button', { name: 'Skip for now' }).click()
+  await expect(prompt).toHaveCount(0)
+
+  const entry = page.locator('.dt-entry')
+  await expect(entry).toBeVisible()
+  await expect(entry.getByRole('heading', { name: 'Full Moon' })).toBeVisible()
+  await expect(entry.getByText('Bright and easy to frame with any phone camera.')).toBeVisible()
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -108,13 +117,19 @@ test('mobile equipment prompt waits for first target tap and saves gear choice',
   await expect(prompt).toHaveCount(0)
   await expect(page.evaluate(() => window.localStorage.getItem('atlas-first-plan-equipment'))).resolves.toBe('phone')
   await expect(page.evaluate(() => window.localStorage.getItem('atlas-first-plan-equipment-dismissed'))).resolves.toBe('1')
-  await expect(page.getByText('Good match for a phone camera.')).toBeVisible()
+
+  // Answering the prompt opens the entry it was blocking for the tapped target.
+  const entry = page.locator('.dt-entry')
+  await expect(entry).toBeVisible()
+  await expect(entry.getByRole('heading', { name: 'Full Moon' })).toBeVisible()
+  await entry.getByRole('button', { name: 'Back' }).click()
+  await expect(entry).toHaveCount(0)
 
   await page.reload()
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await page.locator('.dt-feed-row').first().click()
   await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
-  await expect(page.getByText('Good match for a phone camera.')).toBeVisible()
+  await expect(page.locator('.dt-entry').getByRole('heading', { name: 'Full Moon' })).toBeVisible()
 })
 
 test('mobile signed-out visitor is blocked by the auth gate before reaching the feed', async ({ page }) => {

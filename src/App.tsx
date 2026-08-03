@@ -12,7 +12,6 @@ import { LandingPage } from './views/LandingPage'
 // arrives as its own chunk when it's first rendered.
 const MobileShell = lazy(() => import('./components/MobileShell').then((m) => ({ default: m.MobileShell })))
 const TonightView = lazy(() => import('./views/TonightView').then((m) => ({ default: m.TonightView })))
-const DashboardView = lazy(() => import('./views/DashboardView').then((m) => ({ default: m.DashboardView })))
 const CalendarView = lazy(() => import('./views/CalendarView').then((m) => ({ default: m.CalendarView })))
 const FeedView = lazy(() => import('./views/FeedView').then((m) => ({ default: m.FeedView })))
 const ArchiveView = lazy(() => import('./views/ArchiveView').then((m) => ({ default: m.ArchiveView })))
@@ -28,9 +27,12 @@ const DeepSkyPlannerView = lazy(() =>
 )
 const EventsView = lazy(() => import('./views/mobile/EventsView').then((m) => ({ default: m.EventsView })))
 const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ default: m.PlanView })))
+const HubView = lazy(() => import('./views/mobile/HubView').then((m) => ({ default: m.HubView })))
+const EntryDetailView = lazy(() => import('./views/mobile/EntryDetailView').then((m) => ({ default: m.EntryDetailView })))
+const VisibleTonightView = lazy(() => import('./views/mobile/VisibleTonightView').then((m) => ({ default: m.VisibleTonightView })))
 import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
-import { LOCATION_ESTABLISHED_KEY, MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
+import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
 import { refreshEntitlement, refreshEntitlementAfterCheckout, useAuth } from './lib/auth'
 import { identifyAnalyticsUser } from './lib/analytics'
 import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
@@ -41,6 +43,8 @@ import { OnboardingFlow, hasCompletedOnboardingFlow } from './components/Onboard
 import { OfflineBanner } from './components/OfflineBanner'
 import { AuthGate } from './components/AuthGate'
 import type { ObservationDraft } from './lib/observationDraft'
+import type { EntryDetailSubject } from './lib/entryDetail'
+import type { EntryDetailActions } from './views/mobile/EntryDetailView'
 import './App.css'
 
 // Real, bookmarkable/back-button-able routes per desktop view.
@@ -56,6 +60,16 @@ const VIEW_PATH: Record<View, string> = {
 const PATH_VIEW: Record<string, View> = {
   '/app/tonight': 'tonight',
   '/app/explore': 'explore',
+  // HubView (reused for Explore's "Today" sub-tab, see below) opens the
+  // full sky map at this path -- it must resolve back to 'explore', not
+  // fall through to the generic 'tonight' default, or tapping the map
+  // preview would silently kick the desktop view out of Explore entirely.
+  '/app/sky-map': 'explore',
+  // Same reasoning as '/app/sky-map' above -- HubView/EventsView/PlanView's
+  // shared entry-detail overlay and the "visible tonight" screen both open
+  // at these paths regardless of which Explore/Plan sub-tab triggered them.
+  '/app/entry': 'explore',
+  '/app/visible-tonight': 'explore',
   '/app/plan': 'plan',
   '/app/community': 'community',
   '/app/history': 'history',
@@ -71,14 +85,14 @@ const VIEW_SUBTITLE: Record<View, string> = {
   settings: 'Appearance, location, motion, and local diagnostics.',
 }
 
-// Set once a visitor either enters the app from the landing page or is
-// already signed in, so `/` stops showing the landing page for them again
-// on future visits (bookmarks/return traffic keep working as before).
+// Set once a visitor enters the product from the landing page. The public
+// index remains the landing page on every visit; the product lives at /app.
 const ENTERED_KEY = 'atlas-entered'
 
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
+  const isAppRoute = routerLocation.pathname.startsWith('/app')
   const view = PATH_VIEW[routerLocation.pathname] ?? 'tonight'
   const { user, entitlementRefreshing } = useAuth()
   // Whether *this session* has clicked past the landing page at all --
@@ -88,19 +102,7 @@ function App() {
   // "Get started," they haven't given a location or finished onboarding
   // yet, so gating onboarding's own visibility on that stricter signal
   // would hide onboarding the instant it's supposed to appear.
-  const hasClickedIntoApp = user || localStorage.getItem(ENTERED_KEY) === '1'
-  // Merely clicking "Get started" used to be enough to permanently skip
-  // the landing page on every future visit -- so someone who clicked
-  // through, then closed the tab without giving a location or touching
-  // onboarding at all, would land straight back in the app shell next
-  // time with nothing actually set up. This is the stricter signal that
-  // decides whether landing reappears on a *fresh* visit to "/": clicked
-  // in AND either given a real location (manual or geolocation) or gone
-  // through the onboarding flow (finished or explicitly skipped -- both
-  // still mean they engaged with it, not just bounced off the pitch).
-  const hasLocationEstablished = localStorage.getItem(LOCATION_ESTABLISHED_KEY) === '1'
-  const hasPartiallyOnboarded = hasClickedIntoApp && (hasLocationEstablished || hasCompletedOnboardingFlow())
-  const skipLanding = user || hasPartiallyOnboarded
+  const hasClickedIntoApp = Boolean(user) || localStorage.getItem(ENTERED_KEY) === '1'
   const hasManualLocation = localStorage.getItem(MANUAL_LOCATION_KEY) != null
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
@@ -116,7 +118,9 @@ function App() {
   // current location" option, deliberately). Once onboarding is done
   // (finished or skipped) this reverts to the original behavior for anyone
   // who still hasn't set a location.
-  const location = useLocationSeed({ autoRequest: hasClickedIntoApp && !hasManualLocation && onboardingFlowDismissed })
+  const location = useLocationSeed({
+    autoRequest: isAppRoute && hasClickedIntoApp && !hasManualLocation && onboardingFlowDismissed,
+  })
   const motion = useParallax()
   const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
   const isMobile = useIsMobile()
@@ -178,14 +182,6 @@ function App() {
     identifyAnalyticsUser(user)
   }, [user])
 
-  // "/" always renders the landing page -- see showLanding below -- so a
-  // visitor who should skip it (signed in, or already partially onboarded)
-  // is sent on to /app instead of the same URL silently rendering
-  // different content depending on invisible local-storage state.
-  useEffect(() => {
-    if (routerLocation.pathname === '/' && skipLanding) navigate('/app', { replace: true })
-  }, [routerLocation.pathname, skipLanding, navigate])
-
   // Bare "/app" has no view of its own -- redirect to whichever view/tab
   // this shell actually shows by default, same target enterApp() below
   // uses right after onboarding.
@@ -194,16 +190,8 @@ function App() {
   }, [routerLocation.pathname, isMobile, navigate])
 
   // Any path that isn't "/", "/landing", or under "/app" is not a real
-  // route -- it used to silently fall through to rendering the full app
-  // shell (PATH_VIEW's `?? 'tonight'` fallback covered *anything*, not
-  // just legitimate in-app paths). Sent to "/landing" specifically, not
-  // "/": "/" has its own skip-to-/app redirect for already-onboarded
-  // visitors right above, and routing an unknown path through "/" would
-  // ride that same redirect straight into the app -- the exact "every
-  // undefined route ends up being the app" behavior this is supposed to
-  // stop. "/landing" carries no forwarding logic at all, so a bogus path
-  // reliably dead-ends on the landing page no matter who's asking.
-  const isAppRoute = routerLocation.pathname.startsWith('/app')
+  // route. Unknown public URLs resolve to the landing-page alias rather
+  // than silently falling through to the app shell.
   useEffect(() => {
     if (routerLocation.pathname !== '/' && routerLocation.pathname !== '/landing' && !isAppRoute) {
       navigate('/landing', { replace: true })
@@ -215,6 +203,23 @@ function App() {
   // GPS jitter -- rounded coordinates match the ~11km stability window
   // useLocationSeed already uses.
   const locationKey = `${currentLocation.source}:${currentLocation.lat.toFixed(1)},${currentLocation.lon.toFixed(1)}`
+
+  // Every top-level view that's ever been opened stays mounted (hidden via
+  // CSS) afterward instead of unmounting -- rendering only the active
+  // `view === 'x' && (...)` branch used to throw away and rebuild each
+  // view's whole component tree (and its data loads) on every sidebar
+  // click, which reads as the page reloading. Same fix as TabbedSection's
+  // visitedIds and MobileShell's visitedTabs.
+  const [visitedViews, setVisitedViews] = useState<Set<View>>(() => new Set([view]))
+  useEffect(() => {
+    setVisitedViews((current) => (current.has(view) ? current : new Set(current).add(view)))
+  }, [view])
+
+  // Which of Explore's own sub-tabs (Today/Events/Plan) is open -- lifted
+  // up (rather than left as TabbedSection's own internal state) so
+  // HubView's "Open events"/"Open plan" links, rendered as Explore's
+  // "Today" content, can switch this group's sub-tab directly.
+  const [exploreTab, setExploreTab] = useState<'dashboard' | 'events' | 'calendar'>('dashboard')
 
   function setView(nextView: View) {
     navigate(VIEW_PATH[nextView])
@@ -231,13 +236,41 @@ function App() {
     setView('history')
   }
 
-  // "/" is the landing page, full stop -- no sign-in or onboarding-state
-  // check decides what renders at that URL. Signed-in/already-onboarded
-  // visitors don't see it lingering, but that's the redirect effect above
-  // moving them on to /app, not this page rendering something else in its
-  // place. /landing is a permanent alias: always the landing page,
-  // regardless of local storage, so it can actually be looked at on
-  // demand.
+  // Desktop's Explore/Plan tabs reuse the mobile EventsView/PlanView
+  // components directly (see the `.mobile-shell.desktop-feature-surface`
+  // wrapper below) -- they need the same lifted entry-detail state
+  // MobileShell provides, since router state can't hold callbacks.
+  const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions?: EntryDetailActions; onLogAttempt: () => void } | null>(
+    null,
+  )
+  const entryOpen = routerLocation.pathname === '/app/entry'
+  const tonightOpen = routerLocation.pathname === '/app/visible-tonight'
+
+  function openEntry(subject: EntryDetailSubject, actions?: EntryDetailActions) {
+    setEntryDetail({
+      subject,
+      actions,
+      onLogAttempt: () =>
+        logAttempt({
+          eventId: subject.id,
+          targetName: subject.title,
+          cameraRecipeUsed: subject.recipeKey ?? undefined,
+          locationLabel: currentLocation.name,
+          moonIlluminationPct: subject.moonPct ?? undefined,
+          directionLabel: subject.direction?.compassLabel,
+        }),
+    })
+    navigate('/app/entry')
+  }
+
+  useEffect(() => {
+    if (!entryOpen) setEntryDetail(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only pathname should clear the lifted detail state
+  }, [entryOpen])
+
+  // "/" is the landing page, full stop. Signed-in visitors see their active
+  // session identified here, but are only sent into the product when they
+  // choose to open it. "/landing" remains a permanent alias.
   const showLanding = routerLocation.pathname === '/' || routerLocation.pathname === '/landing'
   const showOnboardingFlow = hasClickedIntoApp && isAppRoute && !onboardingFlowDismissed
 
@@ -248,7 +281,7 @@ function App() {
   }
 
   if (showLanding) {
-    return <LandingPage isMobile={isMobile} onEnter={enterApp} />
+    return <LandingPage authenticatedEmail={user?.email} isMobile={isMobile} onEnter={enterApp} />
   }
 
   // Not "/", not "/landing", not an /app/* route -- the redirect effect
@@ -344,32 +377,47 @@ function App() {
           </header>
           <hr className="hairline" />
           <Suspense fallback={null}>
-          {view === 'tonight' && (
-            <TonightView
-              key={locationKey}
-              city={currentLocation}
-              locationStatus={location.status}
-              onLogAttempt={logAttempt}
-              setManualLocation={setManualLocation}
-            />
+          {visitedViews.has('tonight') && (
+            <div hidden={view !== 'tonight'}>
+              <TonightView
+                key={locationKey}
+                city={currentLocation}
+                locationStatus={location.status}
+                onLogAttempt={logAttempt}
+                setManualLocation={setManualLocation}
+              />
+            </div>
           )}
-          {view === 'explore' && (
+          {visitedViews.has('explore') && (
+            <div hidden={view !== 'explore'}>
             <TabbedSection
+              activeId={exploreTab}
+              onActiveIdChange={(id) => setExploreTab(id as typeof exploreTab)}
               tabs={[
                 {
                   id: 'dashboard',
                   label: 'Today',
-                  // Keyed so the location provider re-initializes once the
-                  // real location (geolocation fix or manual pick) settles
-                  // -- it starts as the Melbourne default before that.
-                  content: <DashboardView key={locationKey} onSignUpClick={goToSignUp} defaultCity={currentLocation} />,
+                  content: (
+                    <div className="mobile-shell desktop-feature-surface">
+                      <HubView
+                        key={locationKey}
+                        city={currentLocation}
+                        onOpenTab={(tab) => {
+                          if (tab === 'events' || tab === 'calendar') setExploreTab(tab)
+                        }}
+                        onLogAttempt={logAttempt}
+                        onOpenEntry={openEntry}
+                        onOpenTonight={() => navigate('/app/visible-tonight')}
+                      />
+                    </div>
+                  ),
                 },
                 {
                   id: 'events',
                   label: 'Events',
                   content: (
                     <div className="mobile-shell desktop-feature-surface">
-                      <EventsView city={currentLocation} onLogAttempt={logAttempt} />
+                      <EventsView city={currentLocation} onOpenEntry={openEntry} />
                     </div>
                   ),
                 },
@@ -390,8 +438,10 @@ function App() {
                 },
               ]}
             />
+            </div>
           )}
-          {view === 'plan' && (
+          {visitedViews.has('plan') && (
+            <div hidden={view !== 'plan'}>
             <PaywallGate
               user={user}
               entitlementRefreshing={entitlementRefreshing}
@@ -411,7 +461,7 @@ function App() {
                           key={locationKey}
                           city={currentLocation}
                           onOpenEvents={() => setView('explore')}
-                          onLogAttempt={logAttempt}
+                          onOpenEntry={openEntry}
                         />
                       </div>
                     ),
@@ -429,8 +479,10 @@ function App() {
                 ]}
               />
             </PaywallGate>
+            </div>
           )}
-          {view === 'community' && (
+          {visitedViews.has('community') && (
+            <div hidden={view !== 'community'}>
             <PaywallGate
               user={user}
               entitlementRefreshing={entitlementRefreshing}
@@ -445,8 +497,10 @@ function App() {
                 ]}
               />
             </PaywallGate>
+            </div>
           )}
-          {view === 'history' && (
+          {visitedViews.has('history') && (
+            <div hidden={view !== 'history'}>
             <TabbedSection
               key={historyDefaultTab}
               defaultActiveId={historyDefaultTab}
@@ -473,8 +527,10 @@ function App() {
                 },
               ]}
             />
+            </div>
           )}
-          {view === 'settings' && (
+          {visitedViews.has('settings') && (
+            <div hidden={view !== 'settings'}>
             <TabbedSection
               tabs={[
                 {
@@ -496,16 +552,32 @@ function App() {
                 ...(import.meta.env.DEV ? [{ id: 'ops', label: 'Diagnostics', content: <LocalOpsView /> }] : []),
               ]}
             />
+            </div>
           )}
           </Suspense>
         </main>
       </div>
-      {!showOnboardingFlow && (
-        <>
-          <FeedbackDock />
-          <InstallPrompt />
-        </>
+      {tonightOpen && (
+        <div className="mobile-shell desktop-feature-surface desktop-entry-overlay">
+          <Suspense fallback={null}>
+            <VisibleTonightView city={currentLocation} onClose={() => navigate(-1)} onOpenEntry={(subject) => openEntry(subject)} />
+          </Suspense>
+        </div>
       )}
+      {entryOpen && entryDetail && (
+        <div className="mobile-shell desktop-feature-surface desktop-entry-overlay">
+          <Suspense fallback={null}>
+            <EntryDetailView
+              subject={entryDetail.subject}
+              actions={entryDetail.actions}
+              onClose={() => navigate(-1)}
+              onLogAttempt={entryDetail.onLogAttempt}
+            />
+          </Suspense>
+        </div>
+      )}
+      <FeedbackDock />
+      <InstallPrompt />
     </>
   )
 }

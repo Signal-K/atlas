@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import '../../mobile.css'
 import { SkyMapCanvas } from '../../components/SkyMapCanvas'
 import { SkyMapOverlay } from '../../components/SkyMapOverlay'
 import { getTonightPlan, type TonightPlan } from '../../lib/tonightTargets'
@@ -23,12 +24,14 @@ import { isLocalEvent } from '../../lib/eventFilters'
 import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
 import { EventPreferencePrompt } from '../../components/mobile/EventPreferencePrompt'
 import { HubIcon } from '../../components/mobile/HubIcon'
+import { StreakSection } from '../../components/mobile/StreakSection'
+import { CitizenScienceSection } from '../../components/mobile/CitizenScienceSection'
+import { CommunityDigestSection } from '../../components/mobile/CommunityDigestSection'
+import { buildEventDetail, detailInputFromTonightTarget, type EntryDetailSubject } from '../../lib/entryDetail'
 import type { SkyEvent } from '../../lib/db'
 import {
-  describeWhatYouWouldSee,
   dismissEquipmentPrompt,
   EQUIPMENT_OPTIONS,
-  equipmentFitNote,
   getEquipmentChoice,
   recordLocalTargetTap,
   saveEquipmentChoice,
@@ -42,6 +45,8 @@ interface HubViewProps {
   city: CurrentLocation
   onOpenTab: (tab: MobileTab) => void
   onLogAttempt: (draft: ObservationDraft) => void
+  onOpenEntry: (subject: EntryDetailSubject) => void
+  onOpenTonight: () => void
 }
 
 function formatTime(iso: string, timeZone?: string): string {
@@ -68,7 +73,7 @@ function kickerFor(kind: string): { label: string; color: string } {
   return KIND_KICKER[kind] ?? { label: 'SKY EVENT', color: 'var(--dt-primary)' }
 }
 
-export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
+export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenTonight }: HubViewProps) {
   const [plan, setPlan] = useState<TonightPlan | null>(null)
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
@@ -84,9 +89,14 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const mapOpen = location.pathname === '/app/sky-map'
-  const [expandedTargetId, setExpandedTargetId] = useState<string | null>(null)
   const [equipment, setEquipment] = useState<EquipmentChoice | null>(() => getEquipmentChoice())
   const [showEquipmentPrompt, setShowEquipmentPrompt] = useState(() => shouldAskForEquipment())
+  // The full-screen entry detail overlay sits above everything (dt-entry,
+  // z-index 90) -- opening it in the same tap that first surfaces the
+  // equipment prompt used to bury the prompt underneath it, unclickable.
+  // Hold the tapped target here and open its entry only once the prompt is
+  // answered or skipped, so the two never fight for the screen.
+  const [pendingTarget, setPendingTarget] = useState<TonightPlan['targets'][number] | null>(null)
   const [outlook, setOutlook] = useState<DailyViewingAdvisory[]>([])
   const trackedFeedLoadRef = useRef<string | null>(null)
   const compass = useDeviceCompass()
@@ -208,11 +218,20 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
     setPreferencesReady(true)
   }
 
+  function openEntryForTarget(target: TonightPlan['targets'][number]) {
+    if (!plan) return
+    onOpenEntry(buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow), advisory))
+  }
+
   function expandTarget(target: TonightPlan['targets'][number]) {
     recordLocalTargetTap(target, 'mobile_hub', city.name)
     trackEvent('Tapped visible target', { targetId: target.eventId, title: target.title, kind: target.kind, source: 'mobile_hub' })
-    setExpandedTargetId((current) => (current === target.eventId ? null : target.eventId))
-    if (!equipment && shouldAskForEquipment()) setShowEquipmentPrompt(true)
+    if (!equipment && shouldAskForEquipment()) {
+      setShowEquipmentPrompt(true)
+      setPendingTarget(target)
+      return
+    }
+    openEntryForTarget(target)
   }
 
   function chooseEquipment(choice: EquipmentChoice) {
@@ -220,12 +239,20 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
     setEquipment(choice)
     setShowEquipmentPrompt(false)
     trackEvent('Answered equipment prompt', { choice, source: 'mobile_hub' })
+    if (pendingTarget) {
+      openEntryForTarget(pendingTarget)
+      setPendingTarget(null)
+    }
   }
 
   function skipEquipment() {
     dismissEquipmentPrompt()
     setShowEquipmentPrompt(false)
     trackEvent('Skipped equipment prompt', { source: 'mobile_hub' })
+    if (pendingTarget) {
+      openEntryForTarget(pendingTarget)
+      setPendingTarget(null)
+    }
   }
 
   return (
@@ -416,7 +443,11 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           compassStatus={compass.status}
           pointing={compass.pointing}
           onEnableCompass={compass.enable}
-          onClose={() => navigate('/app/today')}
+          // Goes back in history rather than to a hardcoded path -- opening
+          // the map pushed a new entry on top of wherever this view was
+          // already mounted (mobile's Hub tab or desktop's Explore/Today),
+          // so this is the one close behavior that's correct in both.
+          onClose={() => navigate(-1)}
         />
       )}
 
@@ -475,7 +506,7 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
       <section>
         <div className="dt-section-head">
           <span className="dt-section-eyebrow"><HubIcon name="spark" />Tonight&rsquo;s events</span>
-          <button type="button" className="dt-chevron-btn" onClick={() => onOpenTab('events')} aria-label="View all events">
+          <button type="button" className="dt-chevron-btn" onClick={onOpenTonight} aria-label="View all of tonight's events and stars">
             <HubIcon name="chevron" />
           </button>
         </div>
@@ -525,37 +556,24 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
             </div>
             {rankedTargets.slice(0, 3).map((target) => {
               const kicker = kickerFor(target.kind)
-              const expanded = expandedTargetId === target.eventId
               return (
-                <div key={target.eventId} className="dt-feed-row-wrap">
-                  <button type="button" className="dt-feed-row" onClick={() => expandTarget(target)} aria-expanded={expanded}>
-                    <div className="dt-feed-row-top">
-                      <span className="dt-feed-kicker" style={{ color: kicker.color }}>
-                        <span className="dt-dot" />
-                        {kicker.label}
-                      </span>
-                      <span className="dt-feed-time">{formatTime(target.bestTime, plan.timeZone)}</span>
-                    </div>
-                    <div className="dt-feed-headline-row">
-                      <span className="dt-feed-headline">{target.title}</span>
-                      <span className="dt-feed-chevron">{expanded ? '−' : '+'}</span>
-                    </div>
-                    <span className="dt-feed-meta">
-                      {target.direction ? `${target.direction.compassLabel}, ${Math.round(target.direction.altitudeDeg)}° up` : 'Direction varies'} ·{' '}
-                      {target.nakedEyeVisible ? 'naked-eye' : 'needs binoculars or a scope'}
+                <button type="button" key={target.eventId} className="dt-feed-row" onClick={() => expandTarget(target)}>
+                  <div className="dt-feed-row-top">
+                    <span className="dt-feed-kicker" style={{ color: kicker.color }}>
+                      <span className="dt-dot" />
+                      {kicker.label}
                     </span>
-                  </button>
-                  {expanded && (
-                    <div className="dt-feed-preview">
-                      <p>{describeWhatYouWouldSee(target)}</p>
-                      <p className="dt-feed-equipment-note">{target.viewingNote}</p>
-                      {equipmentFitNote(target, equipment) && <p className="dt-feed-equipment-note">{equipmentFitNote(target, equipment)}</p>}
-                      <button type="button" onClick={() => onOpenTab('events')}>
-                        Open details
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    <span className="dt-feed-time">{formatTime(target.bestTime, plan.timeZone)}</span>
+                  </div>
+                  <div className="dt-feed-headline-row">
+                    <span className="dt-feed-headline">{target.title}</span>
+                    <span className="dt-feed-chevron">+</span>
+                  </div>
+                  <span className="dt-feed-meta">
+                    {target.direction ? `${target.direction.compassLabel}, ${Math.round(target.direction.altitudeDeg)}° up` : 'Direction varies'} ·{' '}
+                    {target.nakedEyeVisible ? 'naked-eye' : 'needs binoculars or a scope'}
+                  </span>
+                </button>
               )
             })}
           </>
@@ -586,6 +604,10 @@ export function HubView({ city, onOpenTab, onLogAttempt }: HubViewProps) {
           </div>
         )}
       </section>
+
+      <StreakSection />
+      <CitizenScienceSection />
+      <CommunityDigestSection onOpenJournal={() => onOpenTab('journal')} />
 
       {reminders.length > 0 && (
         <>
