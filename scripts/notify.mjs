@@ -12,6 +12,8 @@ const PB_ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:liam@skinetics.tech'
+const POSTHOG_KEY = process.env.POSTHOG_KEY
+const POSTHOG_HOST = process.env.POSTHOG_HOST ?? 'https://us.i.posthog.com'
 
 // Notify for events starting within this window from now — short enough
 // that "good viewing coming up" is still true by the time someone reads it,
@@ -19,6 +21,28 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:liam@skinetics.tech'
 const NOTIFY_WINDOW_HOURS = 48
 const CLOUD_COVER_GOOD_THRESHOLD = 70
 const GET_READY_LOOKAHEAD_MINUTES = 10
+
+// Best-effort server-side capture: this cron sweep is the only place that
+// knows *why* a push was skipped (weather gate, no subscription), which the
+// client-side event stream never sees. A PostHog outage must never fail a
+// notification send, so this only logs and swallows.
+async function captureServerEvent(distinctId, event, properties) {
+  if (!POSTHOG_KEY || !distinctId) return
+  try {
+    await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: POSTHOG_KEY,
+        event,
+        distinct_id: distinctId,
+        properties: { ...properties, source: 'notify_cron' },
+      }),
+    })
+  } catch (error) {
+    console.error(`PostHog capture failed for "${event}":`, error.message)
+  }
+}
 
 async function fetchCloudCoverPct(lat, lon, date) {
   const url = new URL('https://api.open-meteo.com/v1/forecast')
@@ -124,6 +148,10 @@ async function sendGetReadyReminders(pb, now) {
         last_error: '',
       })
       skippedWeather += 1
+      await captureServerEvent(reminder.user, 'Reminder push skipped (server)', {
+        reminderId: reminder.id,
+        reason: condition.reason,
+      })
       continue
     }
 
@@ -131,6 +159,10 @@ async function sendGetReadyReminders(pb, now) {
     if (subscriptions.length === 0) {
       await pb.collection('atlas_get_ready_reminders').update(reminder.id, { last_error: 'no_push_subscription' })
       skippedNoSubscription += 1
+      await captureServerEvent(reminder.user, 'Reminder push skipped (server)', {
+        reminderId: reminder.id,
+        reason: 'no_push_subscription',
+      })
       continue
     }
 
@@ -149,13 +181,25 @@ async function sendGetReadyReminders(pb, now) {
           last_error: '',
         })
         sent += sentForReminder
+        await captureServerEvent(reminder.user, 'Reminder push delivered (server)', {
+          reminderId: reminder.id,
+          subscriptionCount: sentForReminder,
+        })
       } else {
         await pb.collection('atlas_get_ready_reminders').update(reminder.id, { last_error: 'no_active_push_subscription' })
         skippedNoSubscription += 1
+        await captureServerEvent(reminder.user, 'Reminder push skipped (server)', {
+          reminderId: reminder.id,
+          reason: 'no_active_push_subscription',
+        })
       }
     } catch (error) {
       await pb.collection('atlas_get_ready_reminders').update(reminder.id, { last_error: error.message ?? 'push_failed' })
       failed += 1
+      await captureServerEvent(reminder.user, 'Reminder push skipped (server)', {
+        reminderId: reminder.id,
+        reason: 'push_failed',
+      })
     }
   }
 
@@ -208,6 +252,10 @@ async function main() {
         const cloudCover = await fetchCloudCoverPct(event.latitude, event.longitude, date)
         if (cloudCover != null && cloudCover >= CLOUD_COVER_GOOD_THRESHOLD) {
           skippedWeather += 1
+          await captureServerEvent(entry.user, 'Reminder push skipped (server)', {
+            eventId: event.id,
+            reason: 'weather',
+          })
           continue
         }
       }
@@ -215,6 +263,10 @@ async function main() {
       const subscriptions = await subscriptionsForUser(pb, entry.user)
       if (subscriptions.length === 0) {
         skippedNoSubscription += 1
+        await captureServerEvent(entry.user, 'Reminder push skipped (server)', {
+          eventId: event.id,
+          reason: 'no_push_subscription',
+        })
         continue
       }
 
@@ -224,6 +276,7 @@ async function main() {
         url: '/',
       })
 
+      let sentForEvent = 0
       for (const subscription of subscriptions) {
         try {
           await webpush.sendNotification(
@@ -231,6 +284,7 @@ async function main() {
             payload,
           )
           notified += 1
+          sentForEvent += 1
         } catch (error) {
           if (error.statusCode === 404 || error.statusCode === 410) {
             await pb.collection('atlas_push_subscriptions').delete(subscription.id)
@@ -238,6 +292,13 @@ async function main() {
             console.error(`Push failed for subscription ${subscription.id}:`, error.message)
           }
         }
+      }
+
+      if (sentForEvent > 0) {
+        await captureServerEvent(entry.user, 'Reminder push delivered (server)', {
+          eventId: event.id,
+          subscriptionCount: sentForEvent,
+        })
       }
     }
   }

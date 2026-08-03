@@ -92,6 +92,18 @@ body {
   position: relative;
 }
 
+.app-boot-status {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #10151d;
+  color: #c9c9c1;
+  font: 600 13px/1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 h1,
 h2 {
   font-family: var(--sans);

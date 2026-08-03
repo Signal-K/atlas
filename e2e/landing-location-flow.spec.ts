@@ -67,6 +67,57 @@ test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
 })
 
+test('index stays on the landing page for a returning signed-out visitor', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript(() => {
+    localStorage.setItem('atlas-entered', '1')
+    localStorage.setItem('atlas-onboarding-flow-complete', '1')
+  })
+
+  await page.goto('/')
+
+  await expect(page).toHaveURL('/')
+  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Get started' })).toBeVisible()
+  await expect(page.getByText('You’re signed in as')).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+})
+
+test('index stays on the landing page for a signed-in visitor and identifies the session', async ({ page }) => {
+  const tokenPayload = {
+    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+    type: 'auth',
+    collectionId: 'users',
+  }
+  const token = ['e2e', Buffer.from(JSON.stringify(tokenPayload)).toString('base64url'), 'sig'].join('.')
+
+  await page.addInitScript(
+    ({ tokenValue }) => {
+      localStorage.setItem(
+        'pocketbase_auth',
+        JSON.stringify({
+          token: tokenValue,
+          record: {
+            id: 'e2e-landing-user',
+            email: 'signed-in@example.com',
+            entitled: false,
+          },
+        }),
+      )
+      localStorage.setItem('atlas-entered', '1')
+      localStorage.setItem('atlas-onboarding-flow-complete', '1')
+    },
+    { tokenValue: token },
+  )
+
+  await page.goto('/')
+
+  await expect(page).toHaveURL('/')
+  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
+  await expect(page.getByText('You’re signed in as')).toContainText('signed-in@example.com')
+  await expect(page.getByRole('button', { name: 'Open Atlas' }).first()).toBeVisible()
+})
+
 // Location is no longer collected on the landing page itself -- it moved
 // into OnboardingFlow's "location" step, so it can be asked for after a
 // first-time visitor has actually seen what Atlas does, not before.

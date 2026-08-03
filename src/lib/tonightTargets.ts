@@ -66,7 +66,7 @@ export interface TonightPlan {
   generalPhotoWindow: GeneralPhotoWindow | null
 }
 
-interface KindMeta {
+export interface KindMeta {
   priority: number
   difficulty: TargetDifficulty
   phoneFriendly: boolean
@@ -196,7 +196,7 @@ const TRANSIT_KINDS = new Set(['planet_event'])
 // to decide a pass is worth surfacing at all.
 const LOW_ALTITUDE_DEG = 20
 
-function metaFor(kind: string): KindMeta {
+export function metaFor(kind: string): KindMeta {
   return KIND_META[kind] ?? DEFAULT_META
 }
 
