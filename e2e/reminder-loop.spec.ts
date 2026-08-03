@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { seedSignedInUser } from './support/auth'
 
 declare global {
   interface Window {
@@ -121,7 +122,8 @@ test.beforeEach(async ({ page }) => {
   await mockReminderData(page)
 })
 
-test('mobile signed-out user can arm an event reminder without an account wall', async ({ page }) => {
+test('mobile signed-in user can arm an event reminder', async ({ page }) => {
+  await seedSignedInUser(page)
   await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: /Tonight.s sky, reported/ })).toBeVisible({ timeout: 15_000 })
@@ -130,7 +132,6 @@ test('mobile signed-out user can arm an event reminder without an account wall',
   await page.getByRole('button', { name: 'Remind' }).click()
 
   await expect(page.getByText('Reminder armed.')).toBeVisible()
-  await expect(page.locator('.account-form')).toHaveCount(0)
   await expect
     .poll(() =>
       page.evaluate(() => {

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { seedSignedInUser } from './support/auth'
 
 declare global {
   interface Window {
@@ -28,6 +29,7 @@ async function latestEvent(page: Page, name: string) {
 }
 
 test('NPS prompt appears only after meaningful activity threshold and submits structured analytics', async ({ page }) => {
+  await seedSignedInUser(page)
   await page.goto('/app/tonight')
   await captureAnalytics(page)
 
@@ -55,6 +57,7 @@ test('NPS prompt appears only after meaningful activity threshold and submits st
 })
 
 test('NPS dismissal is locally throttled', async ({ page }) => {
+  await seedSignedInUser(page)
   await page.goto('/app/tonight')
   await captureAnalytics(page)
 

@@ -1,38 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-
-const E2E_TOKEN = makeAuthToken()
-
-function makeAuthToken() {
-  const payload = {
-    exp: Math.floor(Date.now() / 1000) + 60 * 60,
-    type: 'auth',
-    collectionId: 'users',
-  }
-  return ['e2e', Buffer.from(JSON.stringify(payload)).toString('base64url'), 'sig'].join('.')
-}
-
-function seedSignedInUser(page: Page, entitled: boolean) {
-  return page.addInitScript(
-    ({ entitledValue, tokenValue }) => {
-      window.localStorage.setItem(
-        'pocketbase_auth',
-        JSON.stringify({
-          token: tokenValue,
-          record: {
-            id: 'e2e-mobile-user',
-            email: 'atlas-mobile-e2e@example.com',
-            entitled: entitledValue,
-          },
-        }),
-      )
-      // Signing in flips `alreadyEntered`, which would otherwise surface the
-      // first-run OnboardingFlow overlay and block every click these tests
-      // make -- this suite isn't testing onboarding, so mark it done upfront.
-      window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
-    },
-    { entitledValue: entitled, tokenValue: E2E_TOKEN },
-  )
-}
+import { seedSignedInUser } from './support/auth'
 
 async function mockTonightData(page: Page) {
   await page.route('https://api.open-meteo.com/**', async (route) => {
@@ -94,11 +61,11 @@ test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
 })
 
-test('mobile signed-out user lands on visible-tonight feed before signup', async ({ page }) => {
+test('mobile signed-in user lands on visible-tonight feed', async ({ page }) => {
+  await seedSignedInUser(page)
   await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.account-form')).toHaveCount(0)
   await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
 
   const target = page.locator('.dt-feed-row').first()
@@ -127,6 +94,7 @@ test('mobile signed-out user lands on visible-tonight feed before signup', async
 })
 
 test('mobile equipment prompt waits for first target tap and saves gear choice', async ({ page }) => {
+  await seedSignedInUser(page)
   await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
@@ -149,30 +117,16 @@ test('mobile equipment prompt waits for first target tap and saves gear choice',
   await expect(page.getByText('Good match for a phone camera.')).toBeVisible()
 })
 
-test('mobile signed-out user must sign in before using Plan', async ({ page }) => {
+test('mobile signed-out visitor is blocked by the auth gate before reaching the feed', async ({ page }) => {
   await page.goto('/app/today')
 
-  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText(/Sky quality \d\/5/).first()).toBeVisible()
-  await page.getByRole('button', { name: 'Plan', exact: true }).click()
-
-  await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
-  await expect(page.getByText('Discounted users still need to complete Polar checkout first.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Sign in / create account' })).toBeVisible()
-  await expect(page.getByLabel('Plan sections')).toHaveCount(0)
-
-  await page.getByRole('button', { name: 'Search', exact: true }).click()
-  await page.getByPlaceholder(/Search events/).fill('moon')
-  await page.getByRole('button', { name: 'Watch' }).first().click()
-
-  await expect(page.getByText('Sky Pass is required to add targets to a plan. Browsing and check-ins stay free.')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Unlock Add to plan with Sky Pass' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Sign in / create account' })).toBeVisible()
-  await expect(page.locator('.account-form')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Plan', exact: true })).toHaveCount(0)
 })
 
 test('mobile signed-in free user must checkout before using Plan', async ({ page }) => {
-  await seedSignedInUser(page, false)
+  await seedSignedInUser(page, { entitled: false })
   await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
@@ -184,7 +138,7 @@ test('mobile signed-in free user must checkout before using Plan', async ({ page
 })
 
 test('mobile entitled user can compare lower light pollution sites and routes', async ({ page }) => {
-  await seedSignedInUser(page, true)
+  await seedSignedInUser(page, { entitled: true })
   await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
