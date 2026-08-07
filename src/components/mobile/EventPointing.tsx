@@ -26,7 +26,6 @@ export function useEventPointing(city: CurrentLocation): {
     target && body ? (
       <SkyMapOverlay
         cityName={city.name}
-        clarity={70}
         lat={city.lat}
         lon={city.lon}
         targetLabel={target.title}

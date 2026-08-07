@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { KIND_LABELS } from '../../widgets/EventRow'
 import { categoryForKind, EVENT_CATEGORIES, GUIDE_KIND_IDS } from '../../lib/eventCategories'
 import { dateGroupLabel } from '../../lib/eventFormat'
+import { localDateKey } from '../../lib/weather'
 import { SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import type { SkyEvent } from '../../lib/db'
 import { MobileIcon } from './MobileIcon'
@@ -22,10 +23,12 @@ export function SkyEventBrowser({
   events,
   onSelect,
   statusForEvent,
+  timeZone,
 }: {
   events: SkyEvent[] | null
   onSelect: (event: SkyEvent) => void
   statusForEvent?: (event: SkyEvent) => EventStatus | null
+  timeZone?: string
 }) {
   const [categoryId, setCategoryId] = useState<string>(ALL_CATEGORY_ID)
   // Wikimedia hotlinks occasionally fail to load -- fall back to the
@@ -49,20 +52,20 @@ export function SkyEventBrowser({
   )
 
   const days = useMemo(() => {
+    const todayKey = localDateKey(new Date().toISOString(), timeZone)
     return Array.from({ length: SKY_GUIDE_WINDOW_DAYS }).map((_, i) => {
-      const d = new Date()
-      d.setHours(0, 0, 0, 0)
-      d.setDate(d.getDate() + i)
+      const d = new Date(`${todayKey}T12:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + i)
       const dateKey = d.toISOString().slice(0, 10)
-      const hasEvents = scopedEvents.some((event) => event.startsAt.slice(0, 10) === dateKey)
-      return { dateKey, date: d, hasEvents }
+      const hasEvents = scopedEvents.some((event) => localDateKey(event.startsAt, timeZone) === dateKey)
+      return { dateKey, hasEvents }
     })
-  }, [scopedEvents])
+  }, [scopedEvents, timeZone])
 
   const dayFilteredEvents = useMemo(() => {
     if (viewMode !== 'calendar' || !selectedDay) return scopedEvents
-    return scopedEvents.filter((event) => event.startsAt.slice(0, 10) === selectedDay)
-  }, [scopedEvents, viewMode, selectedDay])
+    return scopedEvents.filter((event) => localDateKey(event.startsAt, timeZone) === selectedDay)
+  }, [scopedEvents, viewMode, selectedDay, timeZone])
 
   // Everything already lives in memory (a bounded upcoming-events window),
   // so "show more" just extends the visible slice -- no refetch, and never
@@ -85,15 +88,15 @@ export function SkyEventBrowser({
   // Today / Tomorrow / a short weekday+date -- per the feed-row spec: no
   // cards, groups separated by a rule instead.
   const groupedEvents = useMemo(() => {
-    const groups: Array<{ label: string; items: SkyEvent[] }> = []
+    const groups = new Map<string, { dateKey: string; label: string; items: SkyEvent[] }>()
     for (const event of filteredEvents) {
-      const label = dateGroupLabel(event.startsAt)
-      const last = groups[groups.length - 1]
-      if (last && last.label === label) last.items.push(event)
-      else groups.push({ label, items: [event] })
+      const dateKey = localDateKey(event.startsAt, timeZone)
+      const group = groups.get(dateKey)
+      if (group) group.items.push(event)
+      else groups.set(dateKey, { dateKey, label: dateGroupLabel(event.startsAt, timeZone), items: [event] })
     }
-    return groups
-  }, [filteredEvents])
+    return [...groups.values()]
+  }, [filteredEvents, timeZone])
 
   return (
     <div>
@@ -138,12 +141,12 @@ export function SkyEventBrowser({
           {days.map((day) => (
             <button
               type="button"
-              key={day.dateKey}
+              key={`day-${day.dateKey}`}
               className={`dt-day-chip${selectedDay === day.dateKey ? ' is-active' : ''}`}
               onClick={() => setSelectedDay((current) => (current === day.dateKey ? null : day.dateKey))}
             >
-              <span>{day.date.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2).toUpperCase()}</span>
-              <strong>{day.date.getDate()}</strong>
+              <span>{new Date(`${day.dateKey}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2).toUpperCase()}</span>
+              <strong>{Number(day.dateKey.slice(8, 10))}</strong>
               <span className={`dt-day-chip-dot${day.hasEvents ? ' has-events' : ''}`} />
             </button>
           ))}
@@ -156,7 +159,7 @@ export function SkyEventBrowser({
         <p className="dt-empty-hint">No events in view.</p>
       ) : (
         groupedEvents.map((group) => (
-          <div key={group.label}>
+          <div key={`event-group-${group.dateKey}`}>
             <div className="dt-today-rule">
               <span>{group.label.toUpperCase()}</span>
               <span />
@@ -182,7 +185,7 @@ export function SkyEventBrowser({
                     <span className="dt-feed-headline">{event.title}</span>
                   </span>
                   <span className="dt-feed-time">
-                    {new Date(event.startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                    {new Date(event.startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })}
                   </span>
                   <span className={`dt-status-dot${eventStatus ? ` dt-status-dot--${eventStatus}` : ''}`} />
                   <span className="dt-feed-chevron">

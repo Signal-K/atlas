@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDisplayName, saveDisplayName } from '../lib/displayName'
+import { syncOnboardingToAccount } from '../lib/auth'
 import { InterestsPicker } from './InterestsPicker'
 import { getPreferredEventTypes, savePreferredEventTypes } from '../lib/eventPreferences'
 import { LocationSearchInput } from './LocationSearchInput'
@@ -89,6 +90,10 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
 
   function finish() {
     markOnboardingComplete()
+    // Signed-in accounts also get this persisted on the account itself (not
+    // just this browser's localStorage) so a new device/browser doesn't get
+    // sent through onboarding again just because it's never seen this flag.
+    if (user) void syncOnboardingToAccount()
     trackEvent('Completed onboarding flow')
     onDone()
   }

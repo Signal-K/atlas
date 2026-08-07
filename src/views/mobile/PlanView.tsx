@@ -17,7 +17,9 @@ import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
 import { addToWatchlist, getWatchlist, isWatching, matchesWatchlist, removeFromWatchlist, type WatchlistItem } from '../../lib/watchlist'
 import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '../../lib/weather'
 import { scoreTonight, type TonightRating } from '../../lib/tonightScore'
+import { hasBrightTarget } from '../../lib/weekConditions'
 import { trackEvent } from '../../lib/analytics'
+import { moonIlluminationPctAt } from '../../lib/moonPhase'
 import { formatEventDate, daysUntil } from '../../lib/eventFormat'
 import { DarkSitesPanel, darkSitesSummary } from '../../components/mobile/DarkSitesPanel'
 import { GearFitPanel, defaultGearFitSummary } from '../../components/mobile/GearFitPanel'
@@ -76,13 +78,13 @@ export function PlanView({
     const planEnd = new Date(now.getTime() + eventLookaheadDays(hasPremium) * 86_400_000)
     const [upcoming, watched] = await Promise.all([getEventsInRange(now, planEnd), getWatchlist()])
     const localUpcoming = upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon))
-    const daysWithEvents = new Set(localUpcoming.map((event) => event.startsAt.slice(0, 10)))
+    const daysWithEvents = new Set(localUpcoming.map((event) => localDateKey(event.startsAt, city.timeZone)))
     const guides = buildDailySkyGuideEvents(
       now,
       Math.min(eventLookaheadDays(hasPremium), SKY_GUIDE_WINDOW_DAYS),
       city.lat,
       city.lon,
-    ).filter((guide) => !daysWithEvents.has(guide.startsAt.slice(0, 10)))
+    ).filter((guide) => !daysWithEvents.has(localDateKey(guide.startsAt, city.timeZone)))
     setEvents([...guides, ...localUpcoming])
     setWatchlist(watched)
     setReminders(listGetReadyReminders())
@@ -129,15 +131,15 @@ export function PlanView({
     const planned = (events ?? [])
       .filter((event) => reminderIds.has(event.id) || matchesWatchlist(event, watchlist))
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-    const groups: Array<{ dateKey: string; events: SkyEvent[] }> = []
+    const groups = new Map<string, { dateKey: string; events: SkyEvent[] }>()
     for (const event of planned) {
-      const dateKey = event.startsAt.slice(0, 10)
-      const last = groups[groups.length - 1]
-      if (last?.dateKey === dateKey) last.events.push(event)
-      else groups.push({ dateKey, events: [event] })
+      const dateKey = localDateKey(event.startsAt, advisoryTimeZone)
+      const group = groups.get(dateKey)
+      if (group) group.events.push(event)
+      else groups.set(dateKey, { dateKey, events: [event] })
     }
-    return groups
-  }, [events, reminders, watchlist])
+    return [...groups.values()]
+  }, [advisoryTimeZone, events, reminders, watchlist])
 
   function advisoryFor(event: SkyEvent): DailyViewingAdvisory | null {
     return advisory.find((day) => day.date === localDateKey(event.startsAt, advisoryTimeZone)) ?? null
@@ -149,8 +151,8 @@ export function PlanView({
     const { rating } = scoreTonight({
       cloudCoverPct: day.cloudCoverPct,
       precipitationChancePct: day.precipitationChancePct,
-      moonIlluminationPct: 50,
-      hasBrightTarget: true,
+      moonIlluminationPct: moonIlluminationPctAt(new Date(event.startsAt)),
+      hasBrightTarget: hasBrightTarget([event.kind]),
     })
     return ratingToStatus(rating)
   }
@@ -441,7 +443,7 @@ export function PlanView({
                   <strong>Dark sites</strong>
                   <span>Nearest dark-sky trip options</span>
                   <span className="mobile-tool-card-meta">
-                    {darkSites.count} SITES · {darkSites.nearestMinutes ?? '—'} MIN
+                    {darkSites.count} SITES · NEAREST ~{darkSites.nearestDistanceKm ?? '—'} KM
                   </span>
                 </span>
                 <MobileIcon name="chevron" />

@@ -59,13 +59,13 @@ export function EventsView({
     await pullSkyEvents()
     const [upcoming, watched] = await Promise.all([getUpcomingEvents(lookaheadDays), getWatchlist()])
     const localUpcoming = upcoming.filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon))
-    const daysWithEvents = new Set(localUpcoming.map((event) => event.startsAt.slice(0, 10)))
+    const daysWithEvents = new Set(localUpcoming.map((event) => localDateKey(event.startsAt, viewLocation.timeZone)))
     const guides = buildDailySkyGuideEvents(
       new Date(),
       Math.min(lookaheadDays, SKY_GUIDE_WINDOW_DAYS),
       viewLocation.lat,
       viewLocation.lon,
-    ).filter((guide) => !daysWithEvents.has(guide.startsAt.slice(0, 10)))
+    ).filter((guide) => !daysWithEvents.has(localDateKey(guide.startsAt, viewLocation.timeZone)))
     setEvents([...guides, ...localUpcoming])
     setWatchlist(watched)
     setReminders(listGetReadyReminders())

@@ -1,3 +1,6 @@
+import { moonIlluminationPctAt } from './moonPhase'
+import { scoreTonight, tonightRatingScore } from './tonightScore'
+
 export interface DailyViewingAdvisory {
   date: string // YYYY-MM-DD
   cloudCoverPct: number
@@ -20,8 +23,12 @@ export async function fetchViewingForecast(lat: number, lon: number, days = 7): 
   url.searchParams.set('latitude', String(lat))
   url.searchParams.set('longitude', String(lon))
   url.searchParams.set('daily', 'cloud_cover_mean,precipitation_probability_mean')
-  url.searchParams.set('hourly', 'cloud_cover_low,cloud_cover_high')
-  url.searchParams.set('forecast_days', String(days))
+  url.searchParams.set('hourly', 'cloud_cover,cloud_cover_low,cloud_cover_high,precipitation_probability')
+  // A night belongs to its evening date but includes the following morning.
+  // Request one extra calendar day whenever the API ceiling allows it, so a
+  // one-day "tonight" request still contains 00:00-06:00 tomorrow.
+  const requestedDays = Math.min(days + 1, 16)
+  url.searchParams.set('forecast_days', String(requestedDays))
   url.searchParams.set('timezone', 'auto')
 
   // No timeout here previously left the whole Today/Tonight page stuck on
@@ -37,23 +44,45 @@ export async function fetchViewingForecast(lat: number, lon: number, days = 7): 
   const cloudCover: number[] = data.daily?.cloud_cover_mean ?? []
   const precipitation: number[] = data.daily?.precipitation_probability_mean ?? []
   const hourlyDates: string[] = data.hourly?.time ?? []
+  const hourlyCloud: Array<number | null> = data.hourly?.cloud_cover ?? []
   const hourlyLow: Array<number | null> = data.hourly?.cloud_cover_low ?? []
   const hourlyHigh: Array<number | null> = data.hourly?.cloud_cover_high ?? []
+  const hourlyPrecipitation: Array<number | null> = data.hourly?.precipitation_probability ?? []
 
-  function layerAverageForDate(values: Array<number | null>, date: string): number | undefined {
-    const matching = values.filter((value, index) => hourlyDates[index]?.slice(0, 10) === date && typeof value === 'number') as number[]
+  // Open-Meteo timestamps are returned in the requested location's local
+  // time. Associate an evening with its following early-morning hours so a
+  // "Monday night" forecast covers Monday 18:00 through Tuesday 05:59,
+  // rather than using a whole-day average dominated by daylight weather.
+  function nextDateKey(date: string): string {
+    const next = new Date(`${date}T12:00:00Z`)
+    next.setUTCDate(next.getUTCDate() + 1)
+    return next.toISOString().slice(0, 10)
+  }
+
+  function nightlyAverage(values: Array<number | null>, date: string): number | undefined {
+    const nextDate = nextDateKey(date)
+    const matching = values.filter((value, index) => {
+      if (typeof value !== 'number') return false
+      const timestamp = hourlyDates[index]
+      const timestampDate = timestamp?.slice(0, 10)
+      const hour = Number(timestamp?.slice(11, 13))
+      return (timestampDate === date && hour >= 18) || (timestampDate === nextDate && hour < 6)
+    }) as number[]
     if (matching.length === 0) return undefined
     return matching.reduce((sum, value) => sum + value, 0) / matching.length
   }
 
-  const forecastDays: DailyViewingAdvisory[] = dates.map((date, i) => {
-    const cloudCoverPct = cloudCover[i] ?? 100
+  const forecastDays: DailyViewingAdvisory[] = dates.slice(0, days).map((date, i) => {
+    // Keep the daily fields as a compatibility fallback for cached responses
+    // and test fixtures created before hourly viewing-window data was added.
+    const cloudCoverPct = nightlyAverage(hourlyCloud, date) ?? cloudCover[i] ?? 100
+    const precipitationChancePct = nightlyAverage(hourlyPrecipitation, date) ?? precipitation[i] ?? 0
     return {
       date,
       cloudCoverPct,
-      lowCloudCoverPct: layerAverageForDate(hourlyLow, date),
-      highCloudCoverPct: layerAverageForDate(hourlyHigh, date),
-      precipitationChancePct: precipitation[i] ?? 0,
+      lowCloudCoverPct: nightlyAverage(hourlyLow, date),
+      highCloudCoverPct: nightlyAverage(hourlyHigh, date),
+      precipitationChancePct,
       quality: cloudCoverPct < 30 ? 'clear' : cloudCoverPct < 70 ? 'partly-cloudy' : 'cloudy',
     }
   })
@@ -70,8 +99,12 @@ export async function fetchViewingAdvisory(lat: number, lon: number, days = 7): 
 // silently drifts the match a day off whenever local time and UTC land on
 // different calendar dates -- which is most evenings, in most timezones.
 export function localDateKey(isoString: string, timeZone?: string): string {
-  if (!timeZone) return isoString.slice(0, 10)
-  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(isoString))
+  return new Intl.DateTimeFormat('en-CA', {
+    ...(timeZone ? { timeZone } : {}),
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(isoString))
 }
 
 // STS-319: when tonight is cloudy, the plan screen's weather section offers
@@ -81,5 +114,21 @@ export function localDateKey(isoString: string, timeZone?: string): string {
 export function findNextClearWindow(advisory: DailyViewingAdvisory[]): DailyViewingAdvisory | null {
   const upcoming = advisory.slice(1)
   if (upcoming.length === 0) return null
-  return upcoming.find((day) => day.quality !== 'cloudy') ?? upcoming.reduce((best, day) => (day.cloudCoverPct < best.cloudCoverPct ? day : best))
+  return upcoming
+    .map((day, index) => {
+      const rating = scoreTonight({
+        cloudCoverPct: day.cloudCoverPct,
+        precipitationChancePct: day.precipitationChancePct,
+        moonIlluminationPct: moonIlluminationPctAt(new Date(`${day.date}T23:00:00`)),
+        hasBrightTarget: false,
+      })
+      return { day, index, score: tonightRatingScore(rating.rating) }
+    })
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.day.precipitationChancePct - b.day.precipitationChancePct ||
+        a.day.cloudCoverPct - b.day.cloudCoverPct ||
+        a.index - b.index,
+    )[0].day
 }

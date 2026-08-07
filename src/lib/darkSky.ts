@@ -125,13 +125,13 @@ export interface LightPollutionEstimate {
   nearestCityDistanceKm: number
 }
 
-// Rough average speed assumption for a driving trip (no live routing
-// service integrated yet) -- good enough for an estimated travel time, not
-// turn-by-turn directions.
+// Rough average speed used only to provide a coarse proximity estimate. This
+// is straight-line distance, not routing data; UI copy must not call it an
+// actual drive time.
 const ASSUMED_AVG_SPEED_KMH = 70
 
-// A "trip" recommendation is a local/regional drive, not a flight -- so
-// anything past this driving time is excluded at the source (rankDarkSkySites
+// A "trip" recommendation is intended to be local/regional, not a flight --
+// so anything past this coarse proximity threshold is excluded at the source (rankDarkSkySites
 // and rankLowerLightPollutionSites) rather than left to each caller to filter.
 // Without this baked in, a sparse region can fall through to the single
 // globally-nearest site regardless of continent (e.g. suggesting a US park
@@ -273,8 +273,8 @@ export function tripComparisonNote(lightPollutionDelta: number | undefined): str
 }
 
 export function formatTripDriveTime(estimatedTravelMinutes: number): string {
-  if (estimatedTravelMinutes < 60) return `${estimatedTravelMinutes} min`
-  return `${Math.floor(estimatedTravelMinutes / 60)}h ${estimatedTravelMinutes % 60}m`
+  if (estimatedTravelMinutes < 60) return `roughly ${estimatedTravelMinutes} min away`
+  return `roughly ${Math.floor(estimatedTravelMinutes / 60)}h ${estimatedTravelMinutes % 60}m away`
 }
 
 // Deep-links to the device's native maps app for turn-by-turn directions

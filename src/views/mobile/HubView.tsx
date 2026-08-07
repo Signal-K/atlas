@@ -4,7 +4,9 @@ import '../../mobile.css'
 import { SkyMapCanvas } from '../../components/SkyMapCanvas'
 import { SkyMapOverlay } from '../../components/SkyMapOverlay'
 import { getTonightPlan, type TonightPlan } from '../../lib/tonightTargets'
-import { fetchViewingAdvisory, fetchViewingForecast, type DailyViewingAdvisory } from '../../lib/weather'
+import { fetchViewingAdvisory, type DailyViewingAdvisory } from '../../lib/weather'
+import { getWeekConditions, rateDayCondition, type DayCondition } from '../../lib/weekConditions'
+import { tonightRatingLabel, tonightRatingScore } from '../../lib/tonightScore'
 import { getUpcomingEvents, pullSkyEvents } from '../../lib/sync'
 import { formatWatchValue, getWatchlist, type WatchlistItem } from '../../lib/watchlist'
 import { listGetReadyReminders, scheduleStoredReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
@@ -21,6 +23,7 @@ import { useAuth } from '../../lib/auth'
 import { getPreferredEventTypes, hasCompletedEventPreferences } from '../../lib/eventPreferences'
 import { hasCompletedOnboardingFlow } from '../../components/OnboardingFlow'
 import { isLocalEvent } from '../../lib/eventFilters'
+import { daysUntil } from '../../lib/eventFormat'
 import { buildVisiblePlanetsEvent } from '../../lib/visiblePlanets'
 import { EventPreferencePrompt } from '../../components/mobile/EventPreferencePrompt'
 import { HubIcon } from '../../components/mobile/HubIcon'
@@ -79,6 +82,7 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [preferredKinds, setPreferredKinds] = useState<string[]>([])
   const [preferredEvents, setPreferredEvents] = useState<SkyEvent[]>([])
+  const [majorEvents, setMajorEvents] = useState<SkyEvent[]>([])
   const [preferencesReady, setPreferencesReady] = useState(() => hasCompletedEventPreferences())
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
   // The sky map opens at a real, bookmarkable URL (/sky-map) rather than
@@ -97,7 +101,7 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
   // Hold the tapped target here and open its entry only once the prompt is
   // answered or skipped, so the two never fight for the screen.
   const [pendingTarget, setPendingTarget] = useState<TonightPlan['targets'][number] | null>(null)
-  const [outlook, setOutlook] = useState<DailyViewingAdvisory[]>([])
+  const [outlook, setOutlook] = useState<DayCondition[]>([])
   const trackedFeedLoadRef = useRef<string | null>(null)
   const compass = useDeviceCompass()
   const { user } = useAuth()
@@ -120,6 +124,18 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
       const preferred = await getPreferredEventTypes()
       setPreferredKinds(preferred)
       const upcoming = await getUpcomingEvents(80)
+      const majorEventWindowMs = Date.now() + 7 * 86_400_000
+      setMajorEvents(
+        upcoming
+          .filter(
+            (event) =>
+              (event.kind === 'eclipse' || event.kind === 'meteor_shower') &&
+              new Date(event.startsAt).getTime() <= majorEventWindowMs &&
+              isLocalEvent(event, city.lat, city.lon),
+          )
+          .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+          .slice(0, 2),
+      )
       setPreferredEvents(
         [buildVisiblePlanetsEvent(new Date(), city.lat, city.lon), ...upcoming.filter((event) => isLocalEvent(event, city.lat, city.lon))]
           .sort((a, b) => {
@@ -144,9 +160,9 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
 
   useEffect(() => {
     let cancelled = false
-    fetchViewingForecast(city.lat, city.lon, outlookDays)
-      .then((forecast) => {
-        if (!cancelled) setOutlook(forecast.days)
+    getWeekConditions(city.lat, city.lon, outlookDays)
+      .then((days) => {
+        if (!cancelled) setOutlook(days)
       })
       .catch(() => {
         if (!cancelled) setOutlook([])
@@ -201,7 +217,7 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
   const visibility = advisory ? formatWatchValue(advisory.quality) : '—'
   const moon = `${Math.round(plan.moonIlluminationPct)}%`
   const lightPollution = estimateLightPollution(city.lat, city.lon)
-  const clarity = advisory ? Math.max(0, 100 - advisory.cloudCoverPct) : 70
+  const clarity = advisory ? Math.max(0, 100 - advisory.cloudCoverPct) : null
   const targetDirection = topTarget?.direction
   const turnHint =
     compass.headingDeg != null && targetDirection ? turnInstruction(compass.headingDeg, targetDirection.azimuthDeg) : 'Enable compass'
@@ -264,6 +280,21 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
           onboarding is out of the way and the user still hasn't set any. */}
       {!preferencesReady && hasCompletedOnboardingFlow() && <EventPreferencePrompt onSaved={applyPreferredKinds} />}
 
+      {majorEvents.length > 0 && (
+        <section className="dt-major-events">
+          {majorEvents.map((event) => (
+            <button type="button" className="dt-major-event-card" key={event.id} onClick={() => onOpenTab('events')}>
+              {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" />}
+              <div className="dt-major-event-body">
+                <span className="dt-major-event-badge">{event.kind === 'eclipse' ? 'ECLIPSE' : 'METEOR SHOWER'} · {daysUntil(event.startsAt)}</span>
+                <strong>{event.title}</strong>
+                <span className="dt-major-event-desc">{event.description}</span>
+              </div>
+            </button>
+          ))}
+        </section>
+      )}
+
       {preferencesReady && preferredEvents.length > 0 && (
         <section className="dt-for-you">
           <div className="dt-section-head">
@@ -310,7 +341,7 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
           <span className="dt-bc-bl" />
           <div className="sky-map-frame sky-map-frame--hub">
             <SkyMapCanvas
-              clarity={clarity}
+              clarity={clarity ?? 70}
               date={new Date()}
               lat={city.lat}
               lon={city.lon}
@@ -370,8 +401,15 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
             <span className="dt-widget-value">{sunsetAt ? formatTime(sunsetAt, plan.timeZone) : '—'}</span>
             <span className="dt-widget-caption">{city.name}</span>
           </div>
-        <div className="dt-widget-cell" title={`Technical reference: Bortle ${lightPollution.bortleClass} of 9`}>
-          <span className="dt-widget-eyebrow"><HubIcon name="spark" />Light</span>
+        <div
+          className="dt-widget-cell"
+          title={
+            lightPollution.confidence === 'curated-site'
+              ? `Known-site reference: Bortle ${lightPollution.bortleClass} of 9`
+              : `Coarse estimate from distance to nearby city lights; approximately Bortle ${lightPollution.bortleClass} of 9`
+          }
+        >
+          <span className="dt-widget-eyebrow"><HubIcon name="spark" />{lightPollution.confidence === 'estimated' ? 'Estimated light' : 'Light'}</span>
           <span className="dt-widget-value">{lightPollution.skyQualityScore}/5</span>
           <span className="dt-widget-caption">{skyQualityLabelForScore(lightPollution.skyQualityScore)}</span>
           </div>
@@ -416,18 +454,24 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
           free accounts and this is meant to be part of their free taste. */}
       <section>
         <div className="dt-section-eyebrow"><HubIcon name="spark" />Sky conditions</div>
-        <p className="dt-empty-hint">Sky quality {lightPollution.skyQualityScore}/5 · {skyQualityLabelForScore(lightPollution.skyQualityScore)}. Higher is darker and easier for stargazing.</p>
+        <p className="dt-empty-hint">
+          {lightPollution.confidence === 'estimated' ? 'Estimated local darkness' : 'Local darkness'} {lightPollution.skyQualityScore}/5 · {skyQualityLabelForScore(lightPollution.skyQualityScore)}. This location-based value stays roughly constant; each night&apos;s viewing score below changes with cloud, rain, and moonlight.
+        </p>
         <div className="mobile-mini-list">
-          {outlook.slice(0, outlookDays).map((day, index) => (
-            <div className="mobile-mini-row mobile-plan-row mobile-plan-row--status" key={day.date}>
-              <span className="mobile-event-kind">
-                {index === 0 ? 'Today' : new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}
-              </span>
-              <span className="mobile-mini-row-name">Sky quality {lightPollution.skyQualityScore}/5</span>
-              <span className="mobile-mini-row-meta">{Math.round(day.cloudCoverPct)}% cloud</span>
-              <span className="mobile-plan-row-status">{Math.round(day.precipitationChancePct)}% rain chance</span>
-            </div>
-          ))}
+          {outlook.slice(0, outlookDays).map((day, index) => {
+            const rating = rateDayCondition(day, false)
+            const score = tonightRatingScore(rating.rating)
+            return (
+              <div className="mobile-mini-row mobile-plan-row mobile-plan-row--status" key={day.date}>
+                <span className="mobile-event-kind">
+                  {index === 0 ? 'Today' : new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}
+                </span>
+                <span className="mobile-mini-row-name">Viewing conditions {score}/5</span>
+                <span className="mobile-mini-row-meta">{Math.round(day.cloudCoverPct)}% cloud · {Math.round(day.moonIlluminationPct)}% moon</span>
+                <span className="mobile-plan-row-status">{tonightRatingLabel(rating.rating)} · {Math.round(day.precipitationChancePct)}% rain</span>
+              </div>
+            )
+          })}
         </div>
         {!hasPremium && <p className="mobile-empty-hint">Sky Pass unlocks the full 16-day outlook — you're seeing the next {outlookDays} days.</p>}
       </section>

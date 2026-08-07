@@ -179,3 +179,16 @@ test('mobile sky map opens as a rendered full-screen canvas with floating contro
   await expect(map).toHaveCount(0)
   await expect(page.locator('.feedback-dock')).toBeVisible()
 })
+
+test('sky map labels cloud data unavailable instead of inventing 70% clarity', async ({ page }) => {
+  await page.unroute('https://api.open-meteo.com/**')
+  await page.route('https://api.open-meteo.com/**', (route) => route.abort())
+  await page.goto('/app/today')
+
+  await expect(page.getByRole('button', { name: 'Open full sky map' })).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Open full sky map' }).click()
+
+  const map = page.getByRole('dialog', { name: 'Live sky map' })
+  await expect(map.getByText('Cloud forecast unavailable')).toBeVisible()
+  await expect(map.getByText('70% clear')).toHaveCount(0)
+})

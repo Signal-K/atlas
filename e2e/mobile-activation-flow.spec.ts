@@ -10,6 +10,22 @@ async function mockTonightData(page: Page) {
       d.setDate(d.getDate() + i)
       return d.toISOString().slice(0, 10)
     })
+    const nightlyCloud = [5, 65, 90, 24, 58, 46, 76]
+    const nightlyRain = [4, 8, 12, 5, 35, 10, 65]
+    const hourlyTime: string[] = []
+    const hourlyCloud: number[] = []
+    const hourlyRain: number[] = []
+    for (let dayIndex = 0; dayIndex <= days; dayIndex += 1) {
+      const date = new Date(today)
+      date.setDate(date.getDate() + dayIndex)
+      const dateKey = date.toISOString().slice(0, 10)
+      for (let hour = 0; hour < 24; hour += 1) {
+        hourlyTime.push(`${dateKey}T${String(hour).padStart(2, '0')}:00`)
+        const nightIndex = hour < 6 ? Math.max(0, dayIndex - 1) : dayIndex
+        hourlyCloud.push(hour >= 18 || hour < 6 ? (nightlyCloud[nightIndex] ?? 76) : 5)
+        hourlyRain.push(hour >= 18 || hour < 6 ? (nightlyRain[nightIndex] ?? 65) : 0)
+      }
+    }
 
     await route.fulfill({
       status: 200,
@@ -18,8 +34,17 @@ async function mockTonightData(page: Page) {
         timezone: 'Europe/London',
         daily: {
           time,
-          cloud_cover_mean: Array(days).fill(12),
-          precipitation_probability_mean: Array(days).fill(4),
+          // Deliberately identical daytime means: the UI must derive its
+          // changing night scores from the hourly viewing window below.
+          cloud_cover_mean: Array(days).fill(5),
+          precipitation_probability_mean: Array(days).fill(0),
+        },
+        hourly: {
+          time: hourlyTime,
+          cloud_cover: hourlyCloud,
+          cloud_cover_low: hourlyCloud,
+          cloud_cover_high: hourlyCloud,
+          precipitation_probability: hourlyRain,
         },
       }),
     })
@@ -62,11 +87,24 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('mobile signed-in user lands on visible-tonight feed', async ({ page }) => {
+  const requestedForecastDays: string[] = []
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://api.open-meteo.com/')) {
+      requestedForecastDays.push(new URL(request.url()).searchParams.get('forecast_days') ?? '')
+    }
+  })
   await seedSignedInUser(page)
   await page.goto('/app/today')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
+  await expect(page.getByText(/local darkness \d\/5/i)).toBeVisible()
+  await expect(page.getByText('Viewing conditions 1/5')).toBeVisible()
+  await expect
+    .poll(async () => new Set(await page.locator('.mobile-mini-row-name').filter({ hasText: 'Viewing conditions' }).allTextContents()).size)
+    .toBeGreaterThan(1)
+  await expect(page.getByText(/Sky quality \d\/5/)).toHaveCount(0)
+  expect(requestedForecastDays).toContain('2')
 
   const target = page.locator('.dt-feed-row').first()
   await expect(target).toBeVisible()

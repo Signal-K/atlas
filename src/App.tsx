@@ -119,9 +119,13 @@ function App() {
   // A returning authenticated account should not be treated like a brand-new
   // signup just because this browser has no local onboarding-complete flag.
   // New signups set a separate persisted requirement below so an interrupted
-  // onboarding still resumes after reload.
+  // onboarding still resumes after reload. `user.onboarded` (synced
+  // server-side by OnboardingFlow's finish(), see lib/auth.ts's
+  // syncOnboardingToAccount) is OR'd in on top of that local heuristic: it's
+  // what actually makes this correct across devices/browsers, rather than
+  // just within a session that happens to remember signing in vs up.
   const [onboardingFlowDismissed, setOnboardingFlowDismissed] = useState(
-    () => hasCompletedOnboardingFlow() || (Boolean(user) && !requiresOnboardingFlow()),
+    () => hasCompletedOnboardingFlow() || Boolean(user?.onboarded) || (Boolean(user) && !requiresOnboardingFlow()),
   )
   // Deferred until onboarding is out of the way: a first-time visitor who
   // just clicked "Get started" on the landing page shouldn't immediately
