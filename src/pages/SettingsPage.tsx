@@ -3,7 +3,6 @@ import { ThemeSettings } from '../components/ThemeSettings'
 import { LocationSettings } from '../components/LocationSettings'
 import { PushSettings } from '../components/PushSettings'
 import { LeaderboardSettings } from '../components/LeaderboardSettings'
-import { WidgetSettings } from '../components/WidgetSettings'
 import { Card } from '../ui/Card'
 import type { LocationStatus } from '../lib/geo'
 import type { City } from '../lib/cities'
@@ -26,7 +25,6 @@ const SECTIONS: Array<{ id: string; title: string }> = [
   { id: 'location', title: 'Location & sensors' },
   { id: 'notifications', title: 'Notifications' },
   { id: 'leaderboard', title: 'Streak leaderboard' },
-  { id: 'widgets', title: 'Dashboard widgets' },
 ]
 
 export function SettingsPage({
@@ -64,7 +62,6 @@ export function SettingsPage({
           )}
           {section.id === 'notifications' && <PushSettings />}
           {section.id === 'leaderboard' && <LeaderboardSettings />}
-          {section.id === 'widgets' && <WidgetSettings />}
         </Card>
       ))}
     </div>

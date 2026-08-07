@@ -12,7 +12,6 @@ import { formatWatchValue, getWatchlist, type WatchlistItem } from '../../lib/wa
 import { listGetReadyReminders, scheduleStoredReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
 import { turnInstruction, useDeviceCompass } from '../../lib/deviceCompass'
 import type { CurrentLocation } from '../../lib/currentLocation'
-import type { MobileTab } from '../../components/MobileShell'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { CAMERA_RECIPES, TRIPOD_HANDHELD_TIP, TRIPOD_LABEL, deviceRecipeFor, recipeKeyForEventKind, type RecipeKey } from '../../lib/cameraRecipes'
 import { trackEvent } from '../../lib/analytics'
@@ -43,6 +42,8 @@ import {
   type EquipmentChoice,
 } from '../../lib/firstPlanJourney'
 import type { ObservationDraft } from '../../lib/observationDraft'
+
+type MobileTab = 'hub' | 'events' | 'calendar' | 'journal'
 
 interface HubViewProps {
   city: CurrentLocation
