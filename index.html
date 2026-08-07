@@ -22,6 +22,156 @@
     <meta property="og:image" content="/pwa-512.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>Atlas — See Tonight's Sky</title>
+    <script>
+      // A tab can stay open across a Cloudflare deployment and ask for an
+      // older Vite chunk after that hashed file has disappeared. Cloudflare's
+      // SPA fallback answers with index.html, which the browser correctly
+      // refuses to execute as JavaScript. Install this recovery before the
+      // entry module loads so both entry and lazy-chunk failures get one
+      // cache-busted retry instead of leaving a blank React root.
+      ;(() => {
+        const retryKey = 'atlas-chunk-recovery-at'
+        const recoveryParam = '_atlas_recovery'
+        const retryWindowMs = 60_000
+        const assetUrlPattern = /\/assets\/[^?#]+\.(?:js|css)(?:[?#]|$)/i
+        const chunkErrorPattern =
+          /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Expected a JavaScript-or-Wasm module script|ChunkLoadError|Loading chunk [\d]+ failed/i
+        let reloadScheduled = false
+
+        function reasonText(reason) {
+          if (typeof reason === 'string') return reason
+          if (reason && typeof reason.message === 'string') return reason.message
+          return ''
+        }
+
+        function isChunkFailure(reason) {
+          return chunkErrorPattern.test(reasonText(reason))
+        }
+
+        function latestUrl() {
+          const url = new URL(window.location.href)
+          url.searchParams.set(recoveryParam, Date.now().toString(36))
+          return url.toString()
+        }
+
+        async function reloadLatest(clearPrecache) {
+          if (reloadScheduled) return
+          reloadScheduled = true
+
+          const maintenance = []
+          if (clearPrecache && 'caches' in window) {
+            maintenance.push(
+              caches
+                .keys()
+                .then((names) =>
+                  Promise.all(names.filter((name) => name.includes('workbox-precache')).map((name) => caches.delete(name))),
+                )
+                .catch(() => undefined),
+            )
+          }
+          if ('serviceWorker' in navigator) {
+            maintenance.push(
+              navigator.serviceWorker
+                .getRegistrations()
+                .then((registrations) => Promise.allSettled(registrations.map((registration) => registration.update())))
+                .catch(() => undefined),
+            )
+          }
+
+          // Do not let an unavailable service-worker update block recovery.
+          await Promise.race([
+            Promise.allSettled(maintenance),
+            new Promise((resolve) => window.setTimeout(resolve, 1_200)),
+          ])
+          window.location.replace(latestUrl())
+        }
+
+        function showRecoveryScreen() {
+          const render = () => {
+            const root = document.getElementById('root')
+            if (!root) return
+            document.title = 'Atlas — Refresh required'
+            root.innerHTML = `
+              <main style="min-height:100svh;display:grid;place-items:center;padding:24px;background:#10151d;color:#f1efe7;font-family:system-ui,-apple-system,sans-serif;text-align:center">
+                <div style="max-width:520px">
+                  <img src="/atlas-icon.png" alt="" width="64" height="64" style="border-radius:50%;margin-bottom:20px">
+                  <h1 style="margin:0 0 14px;font:600 clamp(32px,7vw,52px)/1.05 Georgia,serif;color:#f1efe7">Atlas needs a fresh copy</h1>
+                  <p style="margin:0 auto 26px;max-width:440px;color:#c9c9c1;line-height:1.6">The app was updated while this page was open. Reload the latest version to get back to the sky.</p>
+                  <button id="atlas-recovery-button" type="button" style="min-height:48px;padding:0 22px;border:0;border-radius:999px;background:#a8c7cb;color:#172027;font:700 13px system-ui;cursor:pointer">Reload latest version</button>
+                </div>
+              </main>
+            `
+            document.getElementById('atlas-recovery-button')?.addEventListener('click', () => {
+              sessionStorage.removeItem(retryKey)
+              reloadScheduled = false
+              void reloadLatest(true)
+            })
+          }
+
+          if (document.getElementById('root')) render()
+          else document.addEventListener('DOMContentLoaded', render, { once: true })
+        }
+
+        function recoverFromChunkFailure() {
+          if (reloadScheduled) return
+          const lastAttempt = Number(sessionStorage.getItem(retryKey) || 0)
+          if (Date.now() - lastAttempt < retryWindowMs) {
+            reloadScheduled = true
+            showRecoveryScreen()
+            return
+          }
+          sessionStorage.setItem(retryKey, String(Date.now()))
+          void reloadLatest(false)
+        }
+
+        window.__atlasRecover = (clearPrecache = false) => {
+          if (clearPrecache) {
+            sessionStorage.removeItem(retryKey)
+            reloadScheduled = false
+            void reloadLatest(true)
+          } else {
+            recoverFromChunkFailure()
+          }
+        }
+
+        window.addEventListener('vite:preloadError', (event) => {
+          event.preventDefault()
+          recoverFromChunkFailure()
+        })
+
+        window.addEventListener('unhandledrejection', (event) => {
+          if (!isChunkFailure(event.reason)) return
+          event.preventDefault()
+          recoverFromChunkFailure()
+        })
+
+        window.addEventListener(
+          'error',
+          (event) => {
+            const target = event.target
+            const assetUrl =
+              target instanceof HTMLScriptElement || target instanceof HTMLLinkElement
+                ? target.src || target.href
+                : ''
+            if (assetUrlPattern.test(assetUrl) || isChunkFailure(event.error || event.message)) {
+              recoverFromChunkFailure()
+            }
+          },
+          true,
+        )
+
+        // Keep the retry timestamp long enough to stop a reload loop, but
+        // remove the cache-busting query from the user's address bar once
+        // the replacement document has had time to boot.
+        if (new URL(window.location.href).searchParams.has(recoveryParam)) {
+          window.setTimeout(() => {
+            const cleanUrl = new URL(window.location.href)
+            cleanUrl.searchParams.delete(recoveryParam)
+            window.history.replaceState(window.history.state, '', cleanUrl)
+          }, 8_000)
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

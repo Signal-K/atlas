@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDisplayName, saveDisplayName } from '../lib/displayName'
-import { markOnboardingComplete } from '../lib/auth'
+import { syncOnboardingToAccount } from '../lib/auth'
 import { InterestsPicker } from './InterestsPicker'
 import { getPreferredEventTypes, savePreferredEventTypes } from '../lib/eventPreferences'
 import { LocationSearchInput } from './LocationSearchInput'
@@ -11,9 +11,24 @@ import type { City } from '../lib/cities'
 import type { CurrentLocation } from '../lib/currentLocation'
 
 export const ONBOARDING_FLOW_KEY = 'atlas-onboarding-flow-complete'
+export const ONBOARDING_REQUIRED_KEY = 'atlas-onboarding-flow-required'
 
 export function hasCompletedOnboardingFlow(): boolean {
   return localStorage.getItem(ONBOARDING_FLOW_KEY) === '1'
+}
+
+export function requiresOnboardingFlow(): boolean {
+  return localStorage.getItem(ONBOARDING_REQUIRED_KEY) === '1'
+}
+
+export function markOnboardingRequired(): void {
+  localStorage.removeItem(ONBOARDING_FLOW_KEY)
+  localStorage.setItem(ONBOARDING_REQUIRED_KEY, '1')
+}
+
+export function markOnboardingComplete(): void {
+  localStorage.setItem(ONBOARDING_FLOW_KEY, '1')
+  localStorage.removeItem(ONBOARDING_REQUIRED_KEY)
 }
 
 type Step = 'name' | 'interests' | 'location' | 'notifications'
@@ -74,11 +89,11 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
   const step = STEPS[stepIndex]
 
   function finish() {
-    localStorage.setItem(ONBOARDING_FLOW_KEY, '1')
-    // Signed-in accounts also get this persisted server-side (auth.ts) so a
-    // new device/browser doesn't get sent through onboarding again just
-    // because this browser's localStorage is empty.
-    if (user) void markOnboardingComplete()
+    markOnboardingComplete()
+    // Signed-in accounts also get this persisted on the account itself (not
+    // just this browser's localStorage) so a new device/browser doesn't get
+    // sent through onboarding again just because it's never seen this flag.
+    if (user) void syncOnboardingToAccount()
     trackEvent('Completed onboarding flow')
     onDone()
   }

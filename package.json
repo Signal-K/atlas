@@ -16,6 +16,7 @@
     "notify": "node scripts/notify.mjs",
     "moderate": "node scripts/moderate-photo-challenges.mjs",
     "vapid": "node scripts/generate-vapid-keys.mjs",
+    "posthog:surveys": "node scripts/posthog-surveys-setup.mjs",
     "capture:video": "node scripts/capture-mobile-video.mjs",
     "render:voice": "node scripts/render-demo-narration.mjs",
     "render:video": "node scripts/mux-demo-video.mjs"
