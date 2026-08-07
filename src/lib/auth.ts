@@ -186,7 +186,9 @@ export async function refreshEntitlementAfterCheckout(): Promise<void> {
 // clearly knowing who they are. Best-effort: if this fails (offline, etc.)
 // the local flag OnboardingFlow also sets still prevents a re-prompt on the
 // same browser, and the next successful sign-in/refresh retries the sync.
-export async function markOnboardingComplete(): Promise<void> {
+// Named distinctly from OnboardingFlow's own (localStorage-only)
+// markOnboardingComplete() -- this one talks to the account.
+export async function syncOnboardingToAccount(): Promise<void> {
   const id = pb.authStore.record?.id as string | undefined
   if (!id) return
   try {
