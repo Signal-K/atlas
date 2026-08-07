@@ -25,8 +25,8 @@ export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
       <h2>Dark-sky trips</h2>
       <p className="darksky-hint">
         Sky near you: <strong>{lightPollution.skyQualityScore}/5 · {skyQualityLabelForScore(lightPollution.skyQualityScore)}</strong>{' '}
-        ({lightPollution.confidence === 'curated-site' ? 'based on a known site' : 'estimated from nearby city lights'}). Nearby options are
-        ranked by driving time, with trips longer than four hours left out.
+        ({lightPollution.confidence === 'curated-site' ? 'based on a known site' : 'a coarse estimate from nearby city lights'}). Nearby options are
+        ranked by straight-line proximity; open the map route for real travel time.
       </p>
       {sites.length === 0 && <p className="darksky-hint">No darker-sky places are in the quick-trip range yet. Atlas won&apos;t suggest a flight as a local observing trip.</p>}
       <ul className="row-list darksky-list">
@@ -40,7 +40,7 @@ export function DarkSkyView({ lat, lon }: { lat: number; lon: number }) {
             </div>
             <p className="darksky-site-meta">
               {site.distanceKm.toFixed(0)} km · {tripComparisonNote(site.lightPollutionDelta)} ·{' '}
-              {formatTripDriveTime(site.estimatedTravelMinutes)} drive (estimated)
+              {formatTripDriveTime(site.estimatedTravelMinutes)} by straight-line estimate
             </p>
             <p className="darksky-site-notes">{site.notes}</p>
             <NativeRoutePicker site={site} origin={origin} />

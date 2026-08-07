@@ -22,6 +22,30 @@ export interface TonightScoreResult {
   reasons: string[]
 }
 
+const RATING_SCORE: Record<TonightRating, 1 | 2 | 3 | 4 | 5> = {
+  skip: 1,
+  poor: 2,
+  maybe: 3,
+  good: 4,
+  great: 5,
+}
+
+const RATING_LABEL: Record<TonightRating, string> = {
+  skip: 'Skip',
+  poor: 'Poor',
+  maybe: 'Maybe',
+  good: 'Good',
+  great: 'Great',
+}
+
+export function tonightRatingScore(rating: TonightRating): 1 | 2 | 3 | 4 | 5 {
+  return RATING_SCORE[rating]
+}
+
+export function tonightRatingLabel(rating: TonightRating): string {
+  return RATING_LABEL[rating]
+}
+
 function ratingForPoints(points: number): TonightRating {
   if (points >= 85) return 'great'
   if (points >= 65) return 'good'

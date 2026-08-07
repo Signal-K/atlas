@@ -24,9 +24,9 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
         </div>
         <p className="mobile-empty-hint">
           Sky near {cityName}: <strong>{lightPollution.skyQualityScore}/5 · {skyQualityLabelForScore(lightPollution.skyQualityScore)}</strong>{' '}
-          ({lightPollution.confidence === 'curated-site' ? 'based on a known site' : 'estimated from nearby city lights'}).
+          ({lightPollution.confidence === 'curated-site' ? 'based on a known site' : 'a coarse estimate from nearby city lights'}).
         </p>
-        <p className="mobile-empty-hint">Darker-sky options within four hours by road, ranked by trip time.</p>
+        <p className="mobile-empty-hint">Nearby darker-sky options ranked by straight-line distance. Open a route for real travel time.</p>
         {darkSites.length === 0 && <p className="mobile-empty-hint">No quick trip is in the catalog yet. Atlas won&apos;t suggest a flight as a local observing trip.</p>}
         <div className="mobile-tool-list">
           {darkSites.map((site) => {
@@ -35,7 +35,7 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
               <div className="mobile-tool-row" key={site.id}>
                 <div className="mobile-tool-row-head">
                   <strong>{site.name}</strong>
-                  <span>{site.estimatedTravelMinutes} MIN</span>
+                  <span>~{Math.round(site.distanceKm)} KM</span>
                 </div>
                 <div className="mobile-tool-bar">
                   <div className="mobile-tool-bar-fill" style={{ width: `${qualityPct}%` }} />
@@ -59,5 +59,5 @@ export function DarkSitesPanel({ lat, lon, cityName, onBack }: { lat: number; lo
 
 export function darkSitesSummary(lat: number, lon: number) {
   const darkSites = rankLowerLightPollutionSites(lat, lon, 3)
-  return { count: darkSites.length, nearestMinutes: darkSites[0]?.estimatedTravelMinutes ?? null }
+  return { count: darkSites.length, nearestDistanceKm: darkSites[0] ? Math.round(darkSites[0].distanceKm) : null }
 }

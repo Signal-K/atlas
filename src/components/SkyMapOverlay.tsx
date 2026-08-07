@@ -7,7 +7,7 @@ import type { HorizontalPosition } from '../lib/skyPosition'
 
 interface SkyMapOverlayProps {
   cityName: string
-  clarity: number
+  clarity?: number | null
   lat: number
   lon: number
   targetLabel?: string
@@ -94,6 +94,9 @@ export function SkyMapOverlay({
   onEnableCompass,
   onClose,
 }: SkyMapOverlayProps) {
+  // Unknown weather should not be presented as a measured percentage. Keep
+  // the map legible with a neutral rendering value, but label it unavailable.
+  const renderedClarity = clarity ?? 70
   const activePointing = compassStatus === 'active' ? pointing : null
   const [timeMinutes, setTimeMinutes] = useState(() => minutesSinceMidnight(new Date()))
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null)
@@ -195,7 +198,7 @@ export function SkyMapOverlay({
           <small>{pointedObject ? `${pointedObject.compassLabel} · ${Math.round(pointedObject.altitudeDeg)}° alt` : pointingDetail}</small>
         </div>
         <SkyMapCanvas
-          clarity={clarity}
+          clarity={renderedClarity}
           date={mapDate}
           lat={lat}
           lon={lon}
@@ -308,7 +311,7 @@ export function SkyMapOverlay({
 
       <div className="mobile-map-overlay-foot">
         <span>{cityName}</span>
-        <span>{Math.round(clarity)}% clear</span>
+        <span>{clarity == null ? 'Cloud forecast unavailable' : `${Math.round(clarity)}% clear`}</span>
         <span>{compassStatus === 'active' ? 'Compass live' : 'Compass off'}</span>
       </div>
     </div>

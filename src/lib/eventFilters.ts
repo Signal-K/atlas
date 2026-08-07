@@ -9,14 +9,28 @@ import type { SkyEvent } from './db'
 const LOCAL_EVENT_RADIUS_KM = 200
 const MAX_ISS_PASSES = 1
 
+// PocketBase's NumberField has no nullable option, so any ingest plugin that
+// omits latitude/longitude (every globally-visible kind: eclipses, meteor
+// showers, aurora, comets, conjunctions, moon phases) gets stored as (0, 0)
+// rather than null. Treating that as a real coordinate silently confines
+// those events to a 200km radius around Null Island (Gulf of Guinea) and
+// hides them from every real user location, so it's treated as "unset" too.
+function hasNoRealLocation(event: SkyEvent): boolean {
+  return (
+    event.latitude == null ||
+    event.longitude == null ||
+    (event.latitude === 0 && event.longitude === 0)
+  )
+}
+
 export function isLocalEvent(event: SkyEvent, lat: number, lon: number): boolean {
-  if (event.latitude == null || event.longitude == null) return true
-  return haversineKm({ lat, lon }, { lat: event.latitude, lon: event.longitude }) <= LOCAL_EVENT_RADIUS_KM
+  if (hasNoRealLocation(event)) return true
+  return haversineKm({ lat, lon }, { lat: event.latitude!, lon: event.longitude! }) <= LOCAL_EVENT_RADIUS_KM
 }
 
 export function localEventDistanceKm(event: SkyEvent, lat: number, lon: number): number | null {
-  if (event.latitude == null || event.longitude == null) return null
-  return haversineKm({ lat, lon }, { lat: event.latitude, lon: event.longitude })
+  if (hasNoRealLocation(event)) return null
+  return haversineKm({ lat, lon }, { lat: event.latitude!, lon: event.longitude! })
 }
 
 export function diversifyEvents(events: SkyEvent[], limit = 6): SkyEvent[] {

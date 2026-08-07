@@ -19,7 +19,9 @@ async function mockCloudyTonight(page: Page) {
         daily: {
           time,
           cloud_cover_mean: [82, 18, 40, 45, 50, 55, 60],
-          precipitation_probability_mean: [12, 3, 8, 10, 10, 12, 14],
+          // Tomorrow is clearer but rain-soaked; the recommendation should
+          // choose the genuinely better following night instead.
+          precipitation_probability_mean: [12, 90, 8, 10, 10, 12, 14],
         },
       }),
     })
@@ -97,7 +99,7 @@ test('expanded first plan has time, direction, camera, and weather sections', as
   await expect(plan.getByRole('button', { name: 'Copy settings' })).toBeVisible()
 
   await expect(plan.getByText('82% cloud · 12% rain chance for the viewing window.')).toBeVisible()
-  await expect(plan.getByText(/Clouded out tonight .* looks better \(18% cloud · 3% rain chance\)\./)).toBeVisible()
+  await expect(plan.getByText(/Clouded out tonight .* looks better \(40% cloud · 8% rain chance\)\./)).toBeVisible()
 })
 
 test('camera preset copy action writes the setup summary', async ({ page }) => {

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { tonightWindowForTimeZone } from '../src/lib/timeZone'
 import { getDarknessWindow } from '../src/lib/darknessWindow'
+import { findNextClearWindow, localDateKey, type DailyViewingAdvisory } from '../src/lib/weather'
 
 test('tonight ends at six in the selected location rather than the browser timezone', () => {
   const now = new Date('2026-07-21T20:00:00.000Z')
@@ -35,4 +36,27 @@ test('sunset is the real horizon crossing, well before civil dusk', () => {
   expect(at(window.sunsetAt)).toBe('20:54')
   expect(at(window.civilDuskAt)).toBe('21:36')
   expect(at(window.astronomicalDuskAt)).toBe('23:56')
+})
+
+test('event dates follow the observing location rather than UTC', () => {
+  const nearUtcMidnight = '2026-08-03T23:30:00.000Z'
+
+  expect(localDateKey(nearUtcMidnight, 'Australia/Perth')).toBe('2026-08-04')
+  expect(localDateKey(nearUtcMidnight, 'America/Los_Angeles')).toBe('2026-08-03')
+})
+
+test('better-night selection rejects a clear but rain-soaked forecast', () => {
+  const day = (date: string, cloudCoverPct: number, precipitationChancePct: number): DailyViewingAdvisory => ({
+    date,
+    cloudCoverPct,
+    precipitationChancePct,
+    quality: cloudCoverPct < 30 ? 'clear' : cloudCoverPct < 70 ? 'partly-cloudy' : 'cloudy',
+  })
+  const forecast = [
+    day('2026-08-03', 90, 10),
+    day('2026-08-04', 5, 100),
+    day('2026-08-05', 40, 5),
+  ]
+
+  expect(findNextClearWindow(forecast)?.date).toBe('2026-08-05')
 })

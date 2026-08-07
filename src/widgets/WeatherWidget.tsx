@@ -71,7 +71,7 @@ function WeatherWidget() {
           return (
             <li key={day.date} className={`weather-day weather-day--${day.quality}`}>
               <span className="weather-day-date">
-                {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}
+                {new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}
               </span>
               <span className="weather-day-quality">{QUALITY_LABEL[day.quality]}</span>
               <span className="weather-day-cover">{Math.round(day.cloudCoverPct)}% cloud</span>

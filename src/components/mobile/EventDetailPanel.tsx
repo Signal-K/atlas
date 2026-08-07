@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { KIND_LABELS } from '../../widgets/EventRow'
 import { CameraRecipe } from '../CameraRecipe'
 import { categoryForKind, GUIDE_KIND_IDS } from '../../lib/eventCategories'
 import type { RecipeKey } from '../../lib/cameraRecipes'
 import type { SkyEvent } from '../../lib/db'
+import { buildEventGuide } from '../../lib/eventGuide'
+import { searchNasaImages, type NasaImage } from '../../lib/nasaImages'
 import { MobileIcon } from './MobileIcon'
 interface ConditionSummary {
   moonPct: number
@@ -13,6 +15,15 @@ interface ConditionSummary {
 
 interface PointAction {
   onPoint: () => void
+}
+
+// Extra gallery images are only worth the network call for the highest-
+// profile event kinds -- most kinds already have a single fitting hero image
+// and don't need more.
+const GALLERY_KINDS = new Set(['eclipse', 'meteor_shower'])
+
+function gallerySearchQuery(event: SkyEvent): string {
+  return event.kind === 'eclipse' ? `${event.title} solar corona` : event.title
 }
 
 // Shared event-detail bottom sheet for both Plan and Events -- pulls up
@@ -34,6 +45,7 @@ export function EventDetailPanel({
   point,
   onLogAttempt,
   recipeKey,
+  location,
 }: {
   event: SkyEvent
   onClose: () => void
@@ -48,6 +60,7 @@ export function EventDetailPanel({
   point?: PointAction
   onLogAttempt: () => void
   recipeKey: RecipeKey | null
+  location: { lat: number; lon: number; name: string; timeZone?: string }
 }) {
   const [setupOpen, setSetupOpen] = useState(false)
   const [dragY, setDragY] = useState(0)
@@ -55,10 +68,24 @@ export function EventDetailPanel({
   const [imageFailed, setImageFailed] = useState(false)
   const dragStartY = useRef(0)
   const category = categoryForKind(event.kind)
+  const guideSteps = useMemo(() => buildEventGuide(event, location), [event, location])
+  const [gallery, setGallery] = useState<NasaImage[]>([])
 
   useEffect(() => {
     setImageFailed(false)
   }, [event.id])
+
+  useEffect(() => {
+    setGallery([])
+    if (!GALLERY_KINDS.has(event.kind)) return
+    let cancelled = false
+    searchNasaImages(gallerySearchQuery(event)).then((images) => {
+      if (!cancelled) setGallery(images)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [event])
 
   function onHandleDown(e: React.PointerEvent) {
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -103,6 +130,16 @@ export function EventDetailPanel({
             </span>
           )}
         </div>
+
+        {gallery.length > 0 && (
+          <div className="mobile-sheet-gallery">
+            {gallery.map((image) => (
+              <a key={image.url} href={image.url} target="_blank" rel="noreferrer" title={`${image.title} — ${image.credit}`}>
+                <img src={image.url} alt={image.title} loading="lazy" />
+              </a>
+            ))}
+          </div>
+        )}
 
         <div className="mobile-sheet-head">
           <div>
@@ -194,6 +231,20 @@ export function EventDetailPanel({
             <span>Log</span>
           </button>
         </div>
+
+        {guideSteps && (
+          <div className="mobile-event-guide">
+            <h3>How to see it</h3>
+            <ol>
+              {guideSteps.map((step, index) => (
+                <li key={index}>
+                  <strong>{step.label}</strong>
+                  <span>{step.detail}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         {recipeKey ? (
           <>
