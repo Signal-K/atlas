@@ -108,7 +108,16 @@ function App() {
   // attempt from Tonight, where it should open straight to Scrapbook --
   // see logAttempt below, and TabbedSection's defaultActiveId/key contract.
   const [historyDefaultTab, setHistoryDefaultTab] = useState<'archive' | 'scrapbook'>('archive')
-  const [onboardingFlowDismissed, setOnboardingFlowDismissed] = useState(() => hasCompletedOnboardingFlow())
+  // Onboarding completion used to live only in this browser's localStorage,
+  // so a signed-in user on a new device/browser (or with storage cleared)
+  // got sent through it again despite the app clearly knowing who they are.
+  // `user.onboarded` (synced server-side by OnboardingFlow's finish(), see
+  // lib/auth.ts's markOnboardingComplete) is now the source of truth for
+  // signed-in accounts; the local flag remains as a same-session fallback
+  // (guests with no account, or before a just-finished flow's server write
+  // lands) and stays OR'd in rather than replaced.
+  const [onboardingFlowJustFinished, setOnboardingFlowJustFinished] = useState(false)
+  const onboardingFlowDismissed = onboardingFlowJustFinished || Boolean(user?.onboarded) || hasCompletedOnboardingFlow()
   // Deferred until onboarding is out of the way: a first-time visitor who
   // just clicked "Get started" on the landing page shouldn't immediately
   // get an OS geolocation permission popup before they've even seen
@@ -301,7 +310,7 @@ function App() {
             user={user}
             setManualLocation={setManualLocation}
             requestLocation={() => location.requestLocation(true)}
-            onDone={() => setOnboardingFlowDismissed(true)}
+            onDone={() => setOnboardingFlowJustFinished(true)}
           />
         )}
       </>
@@ -318,7 +327,7 @@ function App() {
           user={user}
           setManualLocation={setManualLocation}
           requestLocation={() => location.requestLocation(true)}
-          onDone={() => setOnboardingFlowDismissed(true)}
+          onDone={() => setOnboardingFlowJustFinished(true)}
         />
       )}
       <div className="app-shell">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDisplayName, saveDisplayName } from '../lib/displayName'
+import { markOnboardingComplete } from '../lib/auth'
 import { InterestsPicker } from './InterestsPicker'
 import { getPreferredEventTypes, savePreferredEventTypes } from '../lib/eventPreferences'
 import { LocationSearchInput } from './LocationSearchInput'
@@ -74,6 +75,10 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
 
   function finish() {
     localStorage.setItem(ONBOARDING_FLOW_KEY, '1')
+    // Signed-in accounts also get this persisted server-side (auth.ts) so a
+    // new device/browser doesn't get sent through onboarding again just
+    // because this browser's localStorage is empty.
+    if (user) void markOnboardingComplete()
     trackEvent('Completed onboarding flow')
     onDone()
   }

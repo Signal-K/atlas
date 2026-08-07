@@ -18,6 +18,7 @@ export interface AuthUser {
   id: string
   email: string
   entitled: boolean
+  onboarded: boolean
 }
 
 // An expired token (the users collection issues 5-day tokens) is dead: every
@@ -31,7 +32,12 @@ export interface AuthUser {
 function currentUser(): AuthUser | null {
   const model = pb.authStore.record
   if (!model || !pb.authStore.isValid) return null
-  return { id: model.id as string, email: model.email as string, entitled: Boolean(model.entitled) }
+  return {
+    id: model.id as string,
+    email: model.email as string,
+    entitled: Boolean(model.entitled),
+    onboarded: Boolean(model.onboarded),
+  }
 }
 
 // Whether the stored token is still usable. Lets callers tell "the server is
@@ -171,6 +177,25 @@ export async function refreshEntitlementAfterCheckout(): Promise<void> {
     if (delay) await new Promise((resolve) => window.setTimeout(resolve, delay))
     const user = await refreshEntitlement()
     if (!user || user.entitled) return
+  }
+}
+
+// Persists onboarding completion on the account itself, not just this
+// browser's localStorage -- otherwise a signed-in user on a new device or
+// with storage cleared gets sent through onboarding again despite the app
+// clearly knowing who they are. Best-effort: if this fails (offline, etc.)
+// the local flag OnboardingFlow also sets still prevents a re-prompt on the
+// same browser, and the next successful sign-in/refresh retries the sync.
+export async function markOnboardingComplete(): Promise<void> {
+  const id = pb.authStore.record?.id as string | undefined
+  if (!id) return
+  try {
+    await pb.collection('users').update(id, { onboarded: true })
+    if (pb.authStore.record) {
+      pb.authStore.save(pb.authStore.token, { ...pb.authStore.record, onboarded: true })
+    }
+  } catch {
+    // Best-effort, see comment above.
   }
 }
 
