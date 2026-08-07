@@ -53,7 +53,7 @@ export function AppShell({ user, entitlementRefreshing, onOpenSettings, settings
       <Routes>
         <Route path="/app/dashboard" element={<DashboardPage />} />
         <Route path="/app/events" element={<EventsPage city={currentLocation} />} />
-        <Route path="/app/plan" element={<PlanPage />} />
+        <Route path="/app/plan" element={<PlanPage currentLocation={currentLocation} />} />
         <Route path="/app/journal" element={<JournalPage />} />
         <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
         <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
