@@ -46,14 +46,21 @@
 }
 
 .ui-card {
-  background: var(--color-surface);
+  /* Translucent + blurred, not a flat fill -- lets the page's ambient wash
+     (and Starfield, on routes that mount it) read as texture behind the
+     card rather than being blocked by an opaque rectangle. */
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
 }
 
 .ui-card-raised {
-  background: var(--color-surface-raised);
+  background: color-mix(in srgb, var(--color-surface-raised) 85%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow-sm);
 }
 
@@ -119,7 +126,9 @@
   gap: var(--space-1);
   padding: var(--space-4) var(--space-3);
   border-right: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .nav-shell-item {
@@ -208,6 +217,11 @@
 
 .page-header p {
   color: var(--color-text-muted);
+}
+
+.settings-section-title {
+  font-size: var(--text-md);
+  margin-bottom: var(--space-3);
 }
 
 @media (max-width: 900px) {

@@ -34,7 +34,7 @@ function App() {
     handleSignedUp,
     dismissOnboardingFlow,
   } = useOnboardingGate({ user, isAppRoute })
-  const { location, currentLocation, setManualLocation } = useAppLocation({
+  const { location, currentLocation, manualCity, setManualLocation } = useAppLocation({
     isAppRoute,
     hasClickedIntoApp,
     onboardingFlowDismissed,
@@ -113,7 +113,21 @@ function App() {
           onDone={dismissOnboardingFlow}
         />
       )}
-      <AppShell user={user} entitlementRefreshing={entitlementRefreshing} onOpenSettings={() => navigate('/app/settings')} />
+      <AppShell
+        user={user}
+        entitlementRefreshing={entitlementRefreshing}
+        onOpenSettings={() => navigate('/app/settings')}
+        settingsProps={{
+          locationStatus: location.status,
+          requestLocation: location.requestLocation,
+          currentLocation,
+          manualCity,
+          setManualLocation,
+          needsMotionPermission: motion.needsMotionPermission,
+          requestMotionPermission: motion.requestMotionPermission,
+          accountDefaultMode,
+        }}
+      />
       {!showOnboardingFlow && (
         <>
           <FeedbackDock />

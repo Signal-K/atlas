@@ -5,7 +5,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { EventsPage } from './pages/EventsPage'
 import { PlanPage } from './pages/PlanPage'
 import { JournalPage } from './pages/JournalPage'
-import { SettingsPage } from './pages/SettingsPage'
+import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { AuthUser } from './lib/auth'
 import './ui/ui.css'
 
@@ -21,6 +21,7 @@ interface AppShellProps {
   user: AuthUser
   entitlementRefreshing: boolean
   onOpenSettings: () => void
+  settingsProps: SettingsPageProps
 }
 
 /**
@@ -29,7 +30,7 @@ interface AppShellProps {
  * CSS themes. Each area is still a placeholder page here (see KES-131
  * phases 4-8) -- this phase only wires up the shell and real routes.
  */
-export function AppShell({ user, entitlementRefreshing, onOpenSettings }: AppShellProps) {
+export function AppShell({ user, entitlementRefreshing, onOpenSettings, settingsProps }: AppShellProps) {
   const passLabel = user.entitled ? 'Sky Pass active' : entitlementRefreshing ? 'Checking access…' : 'Free'
 
   return (
@@ -52,7 +53,7 @@ export function AppShell({ user, entitlementRefreshing, onOpenSettings }: AppShe
         <Route path="/app/events" element={<EventsPage />} />
         <Route path="/app/plan" element={<PlanPage />} />
         <Route path="/app/journal" element={<JournalPage />} />
-        <Route path="/app/settings" element={<SettingsPage />} />
+        <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
         <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
       </Routes>
     </NavShell>

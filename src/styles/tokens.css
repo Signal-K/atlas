@@ -25,9 +25,9 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
   --radius-pill: 999px;
 
   --nav-width: 220px;
@@ -48,6 +48,8 @@
   --color-bad: #c23b3b;
   --shadow-sm: 0 1px 2px rgba(16, 16, 24, 0.06);
   --shadow-md: 0 8px 24px rgba(16, 16, 24, 0.1);
+  --ambient-glow-1: rgba(124, 58, 237, 0.07);
+  --ambient-glow-2: rgba(20, 130, 200, 0.05);
 }
 
 :root[data-theme='dark'] {
@@ -65,6 +67,8 @@
   --color-bad: #f0685b;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --ambient-glow-1: rgba(167, 139, 250, 0.14);
+  --ambient-glow-2: rgba(56, 130, 246, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -83,6 +87,8 @@
     --color-bad: #f0685b;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --ambient-glow-1: rgba(167, 139, 250, 0.14);
+    --ambient-glow-2: rgba(56, 130, 246, 0.08);
   }
 }
 
@@ -93,7 +99,15 @@
 html,
 body {
   margin: 0;
-  background: var(--color-bg);
+  /* Starfield (see components/Starfield.tsx) sits fixed behind everything
+     at z-index -1 -- this wash is a cheap fallback so the page still has
+     some depth on routes that don't mount it (share pages) or before its
+     canvas paints, rather than a flat block of --color-bg. */
+  background:
+    radial-gradient(ellipse 900px 600px at 15% -10%, var(--ambient-glow-1), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 20%, var(--ambient-glow-2), transparent 55%),
+    var(--color-bg);
+  background-attachment: fixed;
   color: var(--color-text);
   font: var(--text-base) / 1.5 var(--font-sans);
   -webkit-font-smoothing: antialiased;
