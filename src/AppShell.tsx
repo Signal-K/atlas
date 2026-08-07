@@ -1,10 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
 import { DashboardIcon, EventsIcon, JournalIcon, PlanIcon, SettingsIcon } from './ui/icons'
-import { DashboardPage } from './pages/DashboardPage'
+import { DashboardPage, type DashboardPageProps } from './pages/DashboardPage'
 import { EventsPage } from './pages/EventsPage'
 import { PlanPage } from './pages/PlanPage'
-import { JournalPage } from './pages/JournalPage'
+import { JournalPage, type JournalPageProps } from './pages/JournalPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { AuthUser } from './lib/auth'
 import type { CurrentLocation } from './lib/currentLocation'
@@ -23,6 +23,8 @@ interface AppShellProps {
   entitlementRefreshing: boolean
   onOpenSettings: () => void
   settingsProps: SettingsPageProps
+  dashboardProps: Omit<DashboardPageProps, 'currentLocation'>
+  journalProps: JournalPageProps
   currentLocation: CurrentLocation
 }
 
@@ -32,7 +34,15 @@ interface AppShellProps {
  * CSS themes. Each area is still a placeholder page here (see KES-131
  * phases 4-8) -- this phase only wires up the shell and real routes.
  */
-export function AppShell({ user, entitlementRefreshing, onOpenSettings, settingsProps, currentLocation }: AppShellProps) {
+export function AppShell({
+  user,
+  entitlementRefreshing,
+  onOpenSettings,
+  settingsProps,
+  dashboardProps,
+  journalProps,
+  currentLocation,
+}: AppShellProps) {
   const passLabel = user.entitled ? 'Sky Pass active' : entitlementRefreshing ? 'Checking access…' : 'Free'
 
   return (
@@ -51,10 +61,10 @@ export function AppShell({ user, entitlementRefreshing, onOpenSettings, settings
       }
     >
       <Routes>
-        <Route path="/app/dashboard" element={<DashboardPage />} />
+        <Route path="/app/dashboard" element={<DashboardPage currentLocation={currentLocation} {...dashboardProps} />} />
         <Route path="/app/events" element={<EventsPage city={currentLocation} />} />
         <Route path="/app/plan" element={<PlanPage currentLocation={currentLocation} />} />
-        <Route path="/app/journal" element={<JournalPage />} />
+        <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
         <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
         <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
       </Routes>

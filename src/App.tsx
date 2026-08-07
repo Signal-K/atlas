@@ -15,6 +15,7 @@ import { useThemeBootstrap } from './providers/useThemeBootstrap'
 import { useEntitlementSync } from './providers/useEntitlementSync'
 import { useOnboardingGate } from './providers/useOnboardingGate'
 import { useAppLocation } from './providers/useAppLocation'
+import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
 const APP_HOME = '/app/dashboard'
@@ -41,6 +42,12 @@ function App() {
   })
   const motion = useParallax()
   const isMobile = useIsMobile()
+  const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
+
+  function logAttempt(draft: ObservationDraft) {
+    setObservationDraft(draft)
+    navigate('/app/journal')
+  }
 
   useThemeBootstrap()
   useEntitlementSync()
@@ -118,6 +125,8 @@ function App() {
         entitlementRefreshing={entitlementRefreshing}
         onOpenSettings={() => navigate('/app/settings')}
         currentLocation={currentLocation}
+        dashboardProps={{ onLogAttempt: logAttempt }}
+        journalProps={{ draft: observationDraft, onDraftConsumed: () => setObservationDraft(null) }}
         settingsProps={{
           locationStatus: location.status,
           requestLocation: location.requestLocation,
