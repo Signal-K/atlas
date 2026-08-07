@@ -3,7 +3,7 @@ import '../../mobile.css'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { isLocalEvent } from '../../lib/eventFilters'
 import { addGetReadyReminder, ensureNotificationPermission, listGetReadyReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
-import { getUpcomingEvents, pullSkyEvents } from '../../lib/sync'
+import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
 import { addToWatchlist, getWatchlist, isWatching, removeFromWatchlist, type WatchlistItem } from '../../lib/watchlist'
 import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '../../lib/weather'
 import { moonIlluminationPctAt } from '../../lib/moonPhase'
@@ -57,7 +57,9 @@ export function EventsView({
 
   async function refresh() {
     await pullSkyEvents()
-    const [upcoming, watched] = await Promise.all([getUpcomingEvents(lookaheadDays), getWatchlist()])
+    const now = new Date()
+    const lookaheadEnd = new Date(now.getTime() + lookaheadDays * 86_400_000)
+    const [upcoming, watched] = await Promise.all([getEventsInRange(now, lookaheadEnd), getWatchlist()])
     const localUpcoming = upcoming.filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon))
     const daysWithEvents = new Set(localUpcoming.map((event) => localDateKey(event.startsAt, viewLocation.timeZone)))
     const guides = buildDailySkyGuideEvents(
