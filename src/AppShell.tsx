@@ -7,6 +7,7 @@ import { PlanPage } from './pages/PlanPage'
 import { JournalPage } from './pages/JournalPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { AuthUser } from './lib/auth'
+import type { CurrentLocation } from './lib/currentLocation'
 import './ui/ui.css'
 
 const NAV_ITEMS: NavItem[] = [
@@ -22,6 +23,7 @@ interface AppShellProps {
   entitlementRefreshing: boolean
   onOpenSettings: () => void
   settingsProps: SettingsPageProps
+  currentLocation: CurrentLocation
 }
 
 /**
@@ -30,7 +32,7 @@ interface AppShellProps {
  * CSS themes. Each area is still a placeholder page here (see KES-131
  * phases 4-8) -- this phase only wires up the shell and real routes.
  */
-export function AppShell({ user, entitlementRefreshing, onOpenSettings, settingsProps }: AppShellProps) {
+export function AppShell({ user, entitlementRefreshing, onOpenSettings, settingsProps, currentLocation }: AppShellProps) {
   const passLabel = user.entitled ? 'Sky Pass active' : entitlementRefreshing ? 'Checking access…' : 'Free'
 
   return (
@@ -50,7 +52,7 @@ export function AppShell({ user, entitlementRefreshing, onOpenSettings, settings
     >
       <Routes>
         <Route path="/app/dashboard" element={<DashboardPage />} />
-        <Route path="/app/events" element={<EventsPage />} />
+        <Route path="/app/events" element={<EventsPage city={currentLocation} />} />
         <Route path="/app/plan" element={<PlanPage />} />
         <Route path="/app/journal" element={<JournalPage />} />
         <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />

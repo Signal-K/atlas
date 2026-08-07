@@ -117,6 +117,7 @@ function App() {
         user={user}
         entitlementRefreshing={entitlementRefreshing}
         onOpenSettings={() => navigate('/app/settings')}
+        currentLocation={currentLocation}
         settingsProps={{
           locationStatus: location.status,
           requestLocation: location.requestLocation,
