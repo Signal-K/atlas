@@ -1,7 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Starfield } from './components/Starfield'
-import { applyTheme, getStoredTheme, getSystemTheme } from './lib/theme'
 import { Sidebar, type View } from './components/Sidebar'
 import { useIsMobile } from './lib/useIsMobile'
 import { TabbedSection } from './components/TabbedSection'
@@ -30,24 +29,18 @@ const PlanView = lazy(() => import('./views/mobile/PlanView').then((m) => ({ def
 const HubView = lazy(() => import('./views/mobile/HubView').then((m) => ({ default: m.HubView })))
 const EntryDetailView = lazy(() => import('./views/mobile/EntryDetailView').then((m) => ({ default: m.EntryDetailView })))
 const VisibleTonightView = lazy(() => import('./views/mobile/VisibleTonightView').then((m) => ({ default: m.VisibleTonightView })))
-import { useLocationSeed } from './lib/geo'
 import { useParallax } from './lib/motion'
-import { MANUAL_LOCATION_KEY, useCurrentLocation } from './lib/currentLocation'
-import { refreshEntitlement, refreshEntitlementAfterCheckout, useAuth } from './lib/auth'
-import { identifyAnalyticsUser } from './lib/analytics'
-import { captureDemoAccessCodeFromUrl } from './lib/demoAccess'
+import { useAuth } from './lib/auth'
 import { PaywallGate } from './components/PaywallGate'
 import { FeedbackDock } from './components/FeedbackDock'
 import { InstallPrompt } from './components/InstallPrompt'
-import {
-  OnboardingFlow,
-  hasCompletedOnboardingFlow,
-  markOnboardingComplete,
-  markOnboardingRequired,
-  requiresOnboardingFlow,
-} from './components/OnboardingFlow'
+import { OnboardingFlow } from './components/OnboardingFlow'
 import { OfflineBanner } from './components/OfflineBanner'
 import { AuthGate } from './components/AuthGate'
+import { useThemeBootstrap } from './providers/useThemeBootstrap'
+import { useEntitlementSync } from './providers/useEntitlementSync'
+import { useOnboardingGate } from './providers/useOnboardingGate'
+import { useAppLocation } from './providers/useAppLocation'
 import type { ObservationDraft } from './lib/observationDraft'
 import type { EntryDetailSubject } from './lib/entryDetail'
 import type { EntryDetailActions } from './views/mobile/EntryDetailView'
@@ -91,112 +84,37 @@ const VIEW_SUBTITLE: Record<View, string> = {
   settings: 'Appearance, location, motion, and local diagnostics.',
 }
 
-// Set once a visitor enters the product from the landing page. The public
-// index remains the landing page on every visit; the product lives at /app.
-const ENTERED_KEY = 'atlas-entered'
-
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
   const isAppRoute = routerLocation.pathname.startsWith('/app')
   const view = PATH_VIEW[routerLocation.pathname] ?? 'tonight'
   const { user, entitlementRefreshing } = useAuth()
-  // Whether *this session* has clicked past the landing page at all --
-  // keeps the app shell/onboarding flow visible immediately after
-  // enterApp() navigates away from "/", the same as before. Kept
-  // separate from hasPartiallyOnboarded below: right when someone clicks
-  // "Get started," they haven't given a location or finished onboarding
-  // yet, so gating onboarding's own visibility on that stricter signal
-  // would hide onboarding the instant it's supposed to appear.
-  const hasClickedIntoApp = Boolean(user) || localStorage.getItem(ENTERED_KEY) === '1'
-  const hasManualLocation = localStorage.getItem(MANUAL_LOCATION_KEY) != null
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
   // "History" defaults to the Archive tab, except right after logging an
   // attempt from Tonight, where it should open straight to Scrapbook --
   // see logAttempt below, and TabbedSection's defaultActiveId/key contract.
   const [historyDefaultTab, setHistoryDefaultTab] = useState<'archive' | 'scrapbook'>('archive')
-  // A returning authenticated account should not be treated like a brand-new
-  // signup just because this browser has no local onboarding-complete flag.
-  // New signups set a separate persisted requirement below so an interrupted
-  // onboarding still resumes after reload. `user.onboarded` (synced
-  // server-side by OnboardingFlow's finish(), see lib/auth.ts's
-  // syncOnboardingToAccount) is OR'd in on top of that local heuristic: it's
-  // what actually makes this correct across devices/browsers, rather than
-  // just within a session that happens to remember signing in vs up.
-  const [onboardingFlowDismissed, setOnboardingFlowDismissed] = useState(
-    () => hasCompletedOnboardingFlow() || Boolean(user?.onboarded) || (Boolean(user) && !requiresOnboardingFlow()),
-  )
-  // Deferred until onboarding is out of the way: a first-time visitor who
-  // just clicked "Get started" on the landing page shouldn't immediately
-  // get an OS geolocation permission popup before they've even seen
-  // OnboardingFlow's own "location" step (which offers the same "use my
-  // current location" option, deliberately). Once onboarding is done
-  // (finished or skipped) this reverts to the original behavior for anyone
-  // who still hasn't set a location.
-  const location = useLocationSeed({
-    autoRequest: isAppRoute && hasClickedIntoApp && !hasManualLocation && onboardingFlowDismissed,
+  const {
+    hasClickedIntoApp,
+    onboardingFlowDismissed,
+    showOnboardingFlow,
+    markEntered,
+    handleSignedIn,
+    handleSignedUp,
+    dismissOnboardingFlow,
+  } = useOnboardingGate({ user, isAppRoute })
+  const { location, currentLocation, manualCity, setManualLocation, locationKey } = useAppLocation({
+    isAppRoute,
+    hasClickedIntoApp,
+    onboardingFlowDismissed,
   })
   const motion = useParallax()
-  const { current: currentLocation, manualCity, setManualLocation } = useCurrentLocation(location)
   const isMobile = useIsMobile()
 
-  // Applied here (not just from SettingsView's own effect) so a stored
-  // manual theme choice -- or just the system preference -- takes effect
-  // from first paint instead of only after the user visits Settings once.
-  useEffect(() => {
-    applyTheme(getStoredTheme() ?? getSystemTheme())
-  }, [])
-
-  useEffect(() => {
-    captureDemoAccessCodeFromUrl()
-  }, [])
-
-  // Polar redirects back to `/?checkout={CHECKOUT_ID}` after a purchase, but
-  // the `entitled` flag on the cached authStore record is only as fresh as
-  // the last sign-in/refresh -- without this, users who complete checkout
-  // and land anywhere but Settings (which independently refreshes on mount)
-  // see the paywall as if nothing was purchased until they happen to open
-  // Settings themselves. Strip the param after refreshing so it doesn't
-  // re-trigger on every subsequent render/navigation.
-  useEffect(() => {
-    const params = new URLSearchParams(routerLocation.search)
-    if (!params.has('checkout')) return
-    params.delete('checkout')
-    const search = params.toString()
-    navigate({ pathname: routerLocation.pathname, search: search ? `?${search}` : '' }, { replace: true })
-    void refreshEntitlementAfterCheckout()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the checkout param appearing
-  }, [routerLocation.search])
-
-  // Pick up server-side entitlement changes when a user returns to this tab
-  // after completing checkout or an administrator reconciles a missed order.
-  useEffect(() => {
-    if (!user) return
-    // Reconcile immediately on app load, not only after a later focus event.
-    // A user who paid while an older Atlas build was active can otherwise
-    // arrive directly on a gated route with a stale cached `entitled:false`
-    // record and remain paywalled until they manually press "Check purchase".
-    void refreshEntitlement()
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') void refreshEntitlement()
-    }
-    window.addEventListener('focus', refreshWhenVisible)
-    document.addEventListener('visibilitychange', refreshWhenVisible)
-    return () => {
-      window.removeEventListener('focus', refreshWhenVisible)
-      document.removeEventListener('visibilitychange', refreshWhenVisible)
-    }
-    // `user` is a new object on every authStore change, including the
-    // refreshEntitlement() call this effect itself triggers -- depending on
-    // it re-fires the effect on every refresh, looping refreshEntitlement()
-    // forever. Depend on the id so this only reruns on an actual sign-in/out.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id])
-
-  useEffect(() => {
-    identifyAnalyticsUser(user)
-  }, [user])
+  useThemeBootstrap()
+  useEntitlementSync()
 
   // Bare "/app" has no view of its own -- redirect to whichever view/tab
   // this shell actually shows by default, same target enterApp() below
@@ -213,12 +131,6 @@ function App() {
       navigate('/landing', { replace: true })
     }
   }, [routerLocation.pathname, isAppRoute, navigate])
-
-  // Remounts location-dependent views once per real location change (a
-  // GPS fix arriving, or a manual pick) without thrashing on every minor
-  // GPS jitter -- rounded coordinates match the ~11km stability window
-  // useLocationSeed already uses.
-  const locationKey = `${currentLocation.source}:${currentLocation.lat.toFixed(1)},${currentLocation.lon.toFixed(1)}`
 
   // Every top-level view that's ever been opened stays mounted (hidden via
   // CSS) afterward instead of unmounting -- rendering only the active
@@ -288,22 +200,11 @@ function App() {
   // session identified here, but are only sent into the product when they
   // choose to open it. "/landing" remains a permanent alias.
   const showLanding = routerLocation.pathname === '/' || routerLocation.pathname === '/landing'
-  const showOnboardingFlow = hasClickedIntoApp && isAppRoute && !onboardingFlowDismissed
 
   function enterApp() {
-    localStorage.setItem(ENTERED_KEY, '1')
+    markEntered()
     setAccountDefaultMode('sign-up')
     navigate(isMobile ? '/app/today' : VIEW_PATH.tonight, { replace: true })
-  }
-
-  function handleSignedIn() {
-    markOnboardingComplete()
-    setOnboardingFlowDismissed(true)
-  }
-
-  function handleSignedUp() {
-    markOnboardingRequired()
-    setOnboardingFlowDismissed(false)
   }
 
   if (showLanding) {
@@ -360,7 +261,7 @@ function App() {
             user={user}
             setManualLocation={setManualLocation}
             requestLocation={() => location.requestLocation(true)}
-            onDone={() => setOnboardingFlowDismissed(true)}
+            onDone={dismissOnboardingFlow}
           />
         )}
       </>
@@ -377,7 +278,7 @@ function App() {
           user={user}
           setManualLocation={setManualLocation}
           requestLocation={() => location.requestLocation(true)}
-          onDone={() => setOnboardingFlowDismissed(true)}
+          onDone={dismissOnboardingFlow}
         />
       )}
       <div className="app-shell">
