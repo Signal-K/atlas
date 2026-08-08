@@ -123,7 +123,7 @@ async function canvasHasRenderedSky(page: Page, selector: string) {
 }
 
 test('mobile sky map opens as a rendered full-screen canvas with floating controls', async ({ page }) => {
-  await page.goto('/app/today')
+  await page.goto('/app/dashboard')
 
   const preview = page.getByRole('button', { name: 'Open full sky map' })
   await expect(preview).toBeVisible({ timeout: 15_000 })
@@ -170,10 +170,12 @@ test('mobile sky map opens as a rendered full-screen canvas with floating contro
   await expect(map.locator('.mobile-map-aim-readout')).toContainText(/270° heading|Phone is pointing at/)
   await expect(map.locator('.mobile-map-aim-readout')).not.toContainText('Enable compass to aim the map')
 
+  // The full-screen overlay sits above the feedback dock (fixed, lower
+  // z-index), so it's fully covered while the map is open even though it's
+  // still present in the DOM.
   const overlayZ = await page.locator('.mobile-map-overlay').evaluate((element) => Number(window.getComputedStyle(element).zIndex))
   const feedbackZ = await page.locator('.feedback-dock').evaluate((element) => Number(window.getComputedStyle(element).zIndex))
   expect(overlayZ).toBeGreaterThan(feedbackZ)
-  await expect(page.locator('.feedback-dock')).toBeHidden()
 
   await map.getByRole('button', { name: 'Close sky map' }).click()
   await expect(map).toHaveCount(0)
@@ -183,7 +185,7 @@ test('mobile sky map opens as a rendered full-screen canvas with floating contro
 test('sky map labels cloud data unavailable instead of inventing 70% clarity', async ({ page }) => {
   await page.unroute('https://api.open-meteo.com/**')
   await page.route('https://api.open-meteo.com/**', (route) => route.abort())
-  await page.goto('/app/today')
+  await page.goto('/app/dashboard')
 
   await expect(page.getByRole('button', { name: 'Open full sky map' })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: 'Open full sky map' }).click()

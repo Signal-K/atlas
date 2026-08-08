@@ -60,6 +60,15 @@ async function mockSkyEvents(page: Page) {
   })
 }
 
+async function openFullMoonEntry(page: Page) {
+  await page.getByRole('button', { name: 'Full Moon' }).click()
+  const equipmentPrompt = page.locator('.dt-equipment-prompt')
+  if (await equipmentPrompt.isVisible().catch(() => false)) {
+    await equipmentPrompt.locator('.dt-equipment-skip').click()
+  }
+  await expect(page.getByRole('heading', { name: 'Full Moon' })).toBeVisible()
+}
+
 test.beforeEach(async ({ page }) => {
   await mockCloudyTonight(page)
   await mockSkyEvents(page)
@@ -73,68 +82,60 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
   })
-  await page.goto('/app/tonight')
-  await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
+  await page.goto('/app/dashboard')
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
 })
 
-test('expanded first plan has time, direction, camera, and weather sections', async ({ page }) => {
-  await page.locator('.tonight-target-main').first().click()
+test('opened entry detail has facts, best-time timeline, and weather sections', async ({ page }) => {
+  await openFullMoonEntry(page)
 
-  const plan = page.locator('.tonight-target-plan').first()
-  await expect(plan).toBeVisible()
-  await expect(plan.locator('h4')).toHaveText(['Best time', 'Where to look', 'Camera preset', 'Weather check'])
+  await expect(page.getByText('Camera suitability')).toBeVisible()
+  await expect(page.getByText('Why look tonight')).toBeVisible()
 
-  await expect(plan.locator('.best-time-timeline')).toBeVisible()
-  await expect(plan.getByText(/is the best time to look tonight/)).toBeVisible()
+  await expect(page.getByText('Best time tonight')).toBeVisible()
+  await expect(page.locator('.dt-entry-timeline')).toBeVisible()
+  await expect(page.getByText(/^Dusk /)).toBeVisible()
+  await expect(page.getByText(/^Dawn /)).toBeVisible()
 
-  await expect(plan.locator('.sky-direction-compass')).toBeVisible()
-  await expect(plan.getByText(/above the horizon/)).toBeVisible()
+  await expect(page.getByText('Weather check')).toBeVisible()
+  await expect(page.getByText('82% cloud cover forecast · 12% rain chance for the viewing window.')).toBeVisible()
 
-  await expect(plan.locator('.camera-preset-card')).toBeVisible()
-  await expect(plan.locator('.camera-preset-card-facts dt').filter({ hasText: /^Mode$/ })).toBeVisible()
-  await expect(plan.locator('.camera-preset-card-facts dt').filter({ hasText: /^Zoom$/ })).toBeVisible()
-  await expect(plan.locator('.camera-preset-card-facts dt').filter({ hasText: /^Exposure$/ })).toBeVisible()
-  await expect(plan.locator('.camera-preset-card-facts dt').filter({ hasText: /^Focus$/ })).toBeVisible()
-  await expect(plan.getByText(/Tripod/)).toBeVisible()
-  await expect(plan.getByRole('button', { name: 'Copy settings' })).toBeVisible()
-
-  await expect(plan.getByText('82% cloud · 12% rain chance for the viewing window.')).toBeVisible()
-  await expect(plan.getByText(/Clouded out tonight .* looks better \(40% cloud · 8% rain chance\)\./)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Camera recipe' })).toBeVisible()
+  // Scoped to the entry detail's own button -- HubView's "After observing"
+  // section renders a same-named button underneath.
+  await expect(page.locator('.dt-entry').getByRole('button', { name: 'Log attempt' })).toBeVisible()
 })
 
-test('camera preset copy action writes the setup summary', async ({ page }) => {
-  await page.evaluate(() => {
-    let copiedText = ''
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        writeText: async (value: string) => {
-          copiedText = value
-        },
-        readText: async () => copiedText,
-      },
-    })
-  })
+test('camera recipe is gated behind Sky Pass for a free account', async ({ page }) => {
+  await openFullMoonEntry(page)
 
-  await page.locator('.tonight-target-main').first().click()
-  const plan = page.locator('.tonight-target-plan').first()
-  await plan.getByRole('button', { name: 'Copy settings' }).click()
+  await page.getByRole('button', { name: 'Camera recipe' }).click()
 
-  await expect(plan.getByRole('button', { name: 'Copied!' })).toBeVisible()
-  await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toContain('Mode:')
-  await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toContain('Exposure:')
-  await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toContain('Focus:')
-  await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toContain('Stabilization:')
+  await expect(page.getByRole('heading', { name: 'Unlock Deep camera setup with Sky Pass' })).toBeVisible()
+  await expect(page.getByText('Your first walkthrough still includes the essential camera settings for free.')).toBeVisible()
+  await expect(page.locator('.camera-recipe-facts')).toHaveCount(0)
 })
 
-test('deep camera setup is premium while first-plan camera summary is free', async ({ page }) => {
-  await page.locator('.tonight-target-main').first().click()
-  const target = page.locator('.row-list > .tonight-target').first()
+test('camera recipe reveals device setup and a downloadable preset for an entitled account', async ({ page }) => {
+  // Overrides the beforeEach's free (unentitled) seed -- addInitScript
+  // stacks in call order, so re-navigating after this second call leaves
+  // pocketbase_auth with entitled: true.
+  await seedSignedInUser(page, { entitled: true })
+  await page.goto('/app/dashboard')
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
 
-  await expect(target.locator('.camera-preset-card')).toBeVisible()
-  await expect(target.getByText('Unlock Deep camera setup with Sky Pass')).toHaveCount(0)
+  await openFullMoonEntry(page)
+  await page.getByRole('button', { name: 'Camera recipe' }).click()
 
-  await target.getByRole('button', { name: 'Camera recipe' }).click()
-  await expect(target.getByRole('heading', { name: 'Unlock Deep camera setup with Sky Pass' })).toBeVisible()
-  await expect(target.getByText('Your first walkthrough still includes the essential camera settings for free.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Unlock Deep camera setup with Sky Pass' })).toHaveCount(0)
+  await expect(page.locator('.camera-recipe-facts').getByText('Mode', { exact: true })).toBeVisible()
+  await expect(page.locator('.camera-recipe-facts').getByText('Lens', { exact: true })).toBeVisible()
+  await expect(page.locator('.camera-recipe-facts').getByText('Exposure', { exact: true })).toBeVisible()
+  await expect(page.locator('.camera-recipe-facts').getByText('Focus', { exact: true })).toBeVisible()
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download Atlas preset' }).click(),
+  ])
+  expect(download.suggestedFilename()).toMatch(/^atlas-moon-.*\.atlas-preset\.json$/)
 })

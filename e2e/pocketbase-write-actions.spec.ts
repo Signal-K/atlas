@@ -22,8 +22,8 @@ test.describe('PocketBase-backed write actions', () => {
     await page.getByRole('button', { name: 'Create account' }).click()
     await expect(page.getByText(email)).toBeVisible({ timeout: 10_000 })
 
-    await page.goto('/app/history')
-    await page.getByRole('tab', { name: 'Scrapbook' }).click()
+    await page.goto('/app/journal')
+    await page.getByRole('tab', { name: 'Private' }).click()
     await page.locator('textarea').fill(note)
     await page.getByRole('button', { name: 'Save observation' }).click()
     await expect(page.getByText(note)).toBeVisible({ timeout: 10_000 })

@@ -62,8 +62,14 @@ export function AppShell({
     >
       <Routes>
         <Route path="/app/dashboard" element={<DashboardPage currentLocation={currentLocation} {...dashboardProps} />} />
+        {/* HubView's own full-screen sky map (opened from the Dashboard's map
+            preview) reads this path directly via useLocation to decide
+            whether to render its overlay -- it needs to be a real route, not
+            just a client-side navigate() target, or the catch-all below
+            bounces it straight back to /app/dashboard before it can render. */}
+        <Route path="/app/sky-map" element={<DashboardPage currentLocation={currentLocation} {...dashboardProps} />} />
         <Route path="/app/events" element={<EventsPage city={currentLocation} />} />
-        <Route path="/app/plan" element={<PlanPage currentLocation={currentLocation} />} />
+        <Route path="/app/plan" element={<PlanPage currentLocation={currentLocation} onLogAttempt={dashboardProps.onLogAttempt} />} />
         <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
         <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
         <Route path="*" element={<Navigate to="/app/dashboard" replace />} />

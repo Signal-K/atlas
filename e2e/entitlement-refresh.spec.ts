@@ -91,7 +91,7 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
   await page.goto('/app/settings')
 
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible({ timeout: 10_000 })
-  await page.getByRole('button', { name: 'Plan a trip' }).click()
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan' }).click()
   await expect(page.getByRole('tab', { name: 'Plan workspace' })).toBeVisible()
   const planSections = page.getByLabel('Plan sections')
   await expect(planSections.getByRole('button', { name: /Explore/ })).toBeVisible()
@@ -132,10 +132,10 @@ test('trusts a paid reconciliation result when auth-refresh returns a stale enti
 
   await expect(page.getByRole('tab', { name: 'Plan workspace' })).toBeVisible({ timeout: 10_000 })
   await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Sky Pass active — open account settings' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sky Pass active', exact: true })).toBeVisible()
 })
 
-test('desktop settings uses grouped account layout without duplicate headings', async ({ page }) => {
+test('desktop settings shows one page heading and grouped account status', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await seedSignedInUser(page, true)
 
@@ -156,9 +156,9 @@ test('desktop settings uses grouped account layout without duplicate headings', 
 
   await page.goto('/app/settings')
 
-  await expect(page.locator('.settings-group[data-group="account"]')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toHaveCount(1)
+  await expect(page.locator('.settings-section').filter({ has: page.getByRole('heading', { name: 'Account', exact: true }) })).toBeVisible()
   await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com')
-  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toHaveCount(0)
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toHaveClass(/settings-status--pill/)
 })
 

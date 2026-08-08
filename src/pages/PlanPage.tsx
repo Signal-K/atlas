@@ -5,7 +5,9 @@ import { DarkSkyView } from '../views/DarkSkyView'
 import { DeepSkyPlannerView } from '../views/DeepSkyPlannerView'
 import type { EntryDetailActions } from '../views/mobile/EntryDetailView'
 import type { EntryDetailSubject } from '../lib/entryDetail'
+import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
+import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
 import { Tabs } from '../ui/Tabs'
 import './dt-shared.css'
 
@@ -18,12 +20,28 @@ const EntryDetailView = lazy(() => import('../views/mobile/EntryDetailView').the
 
 export interface PlanPageProps {
   currentLocation: CurrentLocation
+  onLogAttempt: (draft: ObservationDraft) => void
 }
 
-export function PlanPage({ currentLocation }: PlanPageProps) {
+export function PlanPage({ currentLocation, onLogAttempt }: PlanPageProps) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'workspace' | 'darksky' | 'planner'>('workspace')
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions?: EntryDetailActions } | null>(null)
+
+  function logEntryDetailAttempt() {
+    if (!entryDetail) return
+    const { subject } = entryDetail
+    onLogAttempt({
+      eventId: subject.id,
+      targetName: subject.title,
+      deviceUsed: CAMERA_PROFILES[getDefaultDevice()].name,
+      cameraRecipeUsed: subject.recipeKey ?? undefined,
+      locationLabel: currentLocation.name,
+      moonIlluminationPct: subject.moonPct ?? undefined,
+      directionLabel: subject.direction?.compassLabel,
+    })
+    setEntryDetail(null)
+  }
 
   return (
     <div className="page">
@@ -61,7 +79,7 @@ export function PlanPage({ currentLocation }: PlanPageProps) {
               subject={entryDetail.subject}
               actions={entryDetail.actions}
               onClose={() => setEntryDetail(null)}
-              onLogAttempt={() => setEntryDetail(null)}
+              onLogAttempt={logEntryDetailAttempt}
             />
           </Suspense>
         </div>

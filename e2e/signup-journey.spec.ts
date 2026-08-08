@@ -129,13 +129,17 @@ test('signup happens via the auth gate before onboarding, then observations save
   await page.getByRole('button', { name: 'Looks good' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
+  await expect(page).toHaveURL('/app/dashboard')
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
 
-  await page.locator('.tonight-target-main').first().click()
-  await page.locator('.equipment-prompt').getByRole('button', { name: 'My phone' }).click()
-  await page.getByRole('button', { name: 'Log attempt' }).first().click()
+  await page.getByRole('button', { name: 'Full Moon' }).click()
+  await page.locator('.dt-equipment-prompt').getByRole('button', { name: 'My phone' }).click()
+  // Scoped to the entry detail's own button -- HubView's "After observing"
+  // section renders a same-named button underneath, hidden by the entry
+  // overlay once it's open.
+  await page.locator('.dt-entry').getByRole('button', { name: 'Log attempt' }).click()
 
-  await expect(page).toHaveURL('/app/history')
+  await expect(page).toHaveURL('/app/journal')
   await expect(page.getByText('Logging attempt for')).toBeVisible()
   await page.getByPlaceholder(/What did you see tonight|How did/).fill('Saw the Moon through thin cloud.')
   await page.getByRole('button', { name: 'Good' }).click()
@@ -157,6 +161,7 @@ test('an existing account signs in without being sent through onboarding again',
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
+  await expect(page).toHaveURL('/app/dashboard')
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
   await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete'))).toBe('1')
 })

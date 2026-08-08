@@ -239,6 +239,12 @@
     padding: 0;
     border-right: none;
     border-top: 1px solid var(--color-border);
+    /* flex `order` only changes visual position, not paint order -- this
+       element comes before the page content in the DOM (for the `order: 2`
+       above to place it last), so later-painted content (e.g. the reused
+       .mobile-shell surfaces, which carry their own z-index) would
+       otherwise sit visually on top of it and swallow taps. */
+    z-index: 10;
     position: sticky;
     bottom: 0;
   }

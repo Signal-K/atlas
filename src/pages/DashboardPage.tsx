@@ -5,6 +5,7 @@ import type { EntryDetailActions } from '../views/mobile/EntryDetailView'
 import type { EntryDetailSubject } from '../lib/entryDetail'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
+import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
 import './dt-shared.css'
 
 const EntryDetailView = lazy(() => import('../views/mobile/EntryDetailView').then((m) => ({ default: m.EntryDetailView })))
@@ -32,6 +33,21 @@ export function DashboardPage({ currentLocation, onLogAttempt }: DashboardPagePr
     else if (tab === 'journal') navigate('/app/journal')
   }
 
+  function logEntryDetailAttempt() {
+    if (!entryDetail) return
+    const { subject } = entryDetail
+    onLogAttempt({
+      eventId: subject.id,
+      targetName: subject.title,
+      deviceUsed: CAMERA_PROFILES[getDefaultDevice()].name,
+      cameraRecipeUsed: subject.recipeKey ?? undefined,
+      locationLabel: currentLocation.name,
+      moonIlluminationPct: subject.moonPct ?? undefined,
+      directionLabel: subject.direction?.compassLabel,
+    })
+    setEntryDetail(null)
+  }
+
   return (
     <div className="page">
       <header className="page-header">
@@ -56,7 +72,7 @@ export function DashboardPage({ currentLocation, onLogAttempt }: DashboardPagePr
               subject={entryDetail.subject}
               actions={entryDetail.actions}
               onClose={() => setEntryDetail(null)}
-              onLogAttempt={() => setEntryDetail(null)}
+              onLogAttempt={logEntryDetailAttempt}
             />
           </Suspense>
         </div>

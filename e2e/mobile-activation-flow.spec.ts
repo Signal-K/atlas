@@ -94,7 +94,7 @@ test('mobile signed-in user lands on visible-tonight feed', async ({ page }) => 
     }
   })
   await seedSignedInUser(page)
-  await page.goto('/app/today')
+  await page.goto('/app/dashboard')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
@@ -142,7 +142,7 @@ test('mobile signed-in user lands on visible-tonight feed', async ({ page }) => 
 
 test('mobile equipment prompt waits for first target tap and saves gear choice', async ({ page }) => {
   await seedSignedInUser(page)
-  await page.goto('/app/today')
+  await page.goto('/app/dashboard')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
@@ -171,19 +171,19 @@ test('mobile equipment prompt waits for first target tap and saves gear choice',
 })
 
 test('mobile signed-out visitor is blocked by the auth gate before reaching the feed', async ({ page }) => {
-  await page.goto('/app/today')
+  await page.goto('/app/dashboard')
 
   await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Plan', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0)
 })
 
 test('mobile signed-in free user must checkout before using Plan', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
-  await page.goto('/app/today')
+  await page.goto('/app/dashboard')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: 'Plan', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Get the Sky Pass' })).toBeVisible()
@@ -192,10 +192,10 @@ test('mobile signed-in free user must checkout before using Plan', async ({ page
 
 test('mobile entitled user can compare lower light pollution sites and routes', async ({ page }) => {
   await seedSignedInUser(page, { entitled: true })
-  await page.goto('/app/today')
+  await page.goto('/app/dashboard')
 
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: 'Plan', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan', exact: true }).click()
   await page.getByRole('button', { name: /Dark sites/i }).click()
 
   await expect(page.getByText(/Sky near .*:/)).toBeVisible()
