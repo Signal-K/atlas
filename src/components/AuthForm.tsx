@@ -1,24 +1,18 @@
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { authErrorMessage, requestPasswordReset, signIn, signUp } from '../lib/auth'
 import { trackEvent } from '../lib/analytics'
-import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
-import { pb } from '../lib/pocketbase'
-import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
+import { Input } from '../ui/Input'
+import { Button } from '../ui/Button'
 
 export interface AuthFormProps {
   defaultMode?: 'sign-in' | 'sign-up'
   source: string
   intro?: ReactNode
-  // Only relevant on sign-up: how many locally-saved records (from before
-  // this account existed) got merged in. Settings uses this to show
-  // SignupWelcomeBeat; other callers can ignore it.
-  onSignedUp?: (mergedCount: number) => void
+  onSignedUp?: () => void
   onSignedIn?: () => void
   onModeChange?: (mode: 'sign-in' | 'sign-up') => void
 }
 
-// Shared sign-in/sign-up form, used both embedded in Settings (signed-out
-// state) and as the full-screen AuthGate shown before onboarding.
 export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp, onSignedIn, onModeChange }: AuthFormProps) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>(defaultMode)
   const [email, setEmail] = useState('')
@@ -60,29 +54,12 @@ export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp, o
     try {
       if (mode === 'sign-in') {
         await signIn(email, password)
-        const demoAccess = await redeemStoredDemoAccessCode()
-        trackEvent('Sign in completed', { source, demoAccess })
+        trackEvent('Sign in completed', { source })
         onSignedIn?.()
       } else {
         await signUp(email, password)
-        const demoAccess = await redeemStoredDemoAccessCode()
-        const userId = pb.authStore.record?.id as string | undefined
-        const result = userId
-          ? await mergeLocalDataIntoAccount(userId)
-          : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, targetTaps: 0, equipmentChoice: 0, total: 0 }
-        trackEvent('Sign up completed', { source, mergedCount: result.total, demoAccess })
-        trackEvent('Merge result', {
-          source,
-          favourites: result.favourites,
-          watchlist: result.watchlist,
-          observations: result.observations,
-          cameraPresets: result.cameraPresets,
-          targetTaps: result.targetTaps,
-          equipmentChoice: result.equipmentChoice,
-          total: result.total,
-          demoAccess,
-        })
-        onSignedUp?.(result.total)
+        trackEvent('Sign up completed', { source })
+        onSignedUp?.()
       }
     } catch (err) {
       const fallback = mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed.'
@@ -94,22 +71,31 @@ export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp, o
   }
 
   return (
-    <div className="settings-row settings-row--account">
+    <div className="auth-form-wrap">
       {intro}
       <form className="account-form" onSubmit={handleSubmit} onFocus={trackFormStarted}>
-        <input type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-        <input
+        <Input
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+        />
+        <Input
+          label="Password"
           type="password"
-          placeholder="Password"
+          placeholder={mode === 'sign-up' ? 'At least 8 characters' : 'Your password'}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           minLength={8}
           required
         />
+        {error && <p className="account-form-error">{error}</p>}
+        <Button type="submit" variant="primary" disabled={busy}>
+          {busy ? 'Please wait…' : mode === 'sign-in' ? 'Sign in' : 'Create account'}
+        </Button>
         <div className="account-form-actions">
-          <button type="submit" disabled={busy}>
-            {mode === 'sign-in' ? 'Sign in' : 'Create account'}
-          </button>
           <button
             type="button"
             className="account-form-switch"
@@ -127,7 +113,6 @@ export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp, o
             </button>
           )}
         </div>
-        {error && <p className="account-form-error">{error}</p>}
         {resetSent && <p className="settings-help settings-status--positive">Password reset link sent to {email}.</p>}
         {resetError && <p className="account-form-error">{resetError}</p>}
       </form>

@@ -1,86 +1,11 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-  --status-good: #1a8f5e;
-  --status-warn: #b8790a;
-  --status-bad: #c23b3b;
-
+  /* LandingPage.css reads this directly; tokens.css owns color/spacing/radius. */
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --serif: 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
-  --mono: ui-monospace, Consolas, monospace;
-  /* Scrapbook is a private journal and should read as handwritten, not
-     app-UI text -- system cursive/handwriting fonts only, no webfont fetch
-     (keeps the app fully offline-capable with no network font dependency). */
-  --scrawl: 'Bradley Hand', 'Segoe Print', 'Chalkboard SE', 'Comic Sans MS', cursive;
-
-  font: 16px/145% var(--sans);
   letter-spacing: 0.1px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #0b0d14;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-    --status-good: #3ddc97;
-    --status-warn: #f0b429;
-    --status-bad: #f0685b;
-  }
-}
-
-/* Manual toggle (src/lib/theme.ts) always wins over the system preference. */
-:root[data-theme='dark'] {
-  --text: #9ca3af;
-  --text-h: #f3f4f6;
-  --bg: #0b0d14;
-  --border: #2e303a;
-  --code-bg: #1f2028;
-  --accent: #c084fc;
-  --accent-bg: rgba(192, 132, 252, 0.15);
-  --accent-border: rgba(192, 132, 252, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  --status-good: #3ddc97;
-  --status-warn: #f0b429;
-  --status-bad: #f0685b;
-}
-
-:root[data-theme='light'] {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-  --status-good: #1a8f5e;
-  --status-warn: #b8790a;
-  --status-bad: #c23b3b;
 }
 
 body {
@@ -90,37 +15,4 @@ body {
 #root {
   min-height: 100svh;
   position: relative;
-}
-
-.app-boot-status {
-  min-height: 100svh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: #10151d;
-  color: #c9c9c1;
-  font: 600 13px/1 var(--sans);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-h1,
-h2 {
-  font-family: var(--sans);
-  color: var(--text-h);
-}
-
-p {
-  margin: 0;
-}
-
-code {
-  font-family: var(--mono);
-  font-size: 14px;
-  line-height: 135%;
-  display: inline-flex;
-  border-radius: 4px;
-  padding: 4px 8px;
-  color: var(--text-h);
-  background: var(--code-bg);
 }

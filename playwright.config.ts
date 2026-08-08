@@ -25,7 +25,6 @@ export default defineConfig({
     reuseExistingServer: false,
     env: {
       VITE_PB_URL: process.env.VITE_PB_URL || 'http://localhost:8094',
-      VITE_POLAR_CHECKOUT_URL: process.env.VITE_POLAR_CHECKOUT_URL || `${e2eBaseURL}/fallback-checkout`,
     },
     timeout: 30_000,
   },
