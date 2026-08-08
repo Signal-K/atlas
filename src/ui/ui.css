@@ -197,6 +197,36 @@
   color: var(--color-good);
 }
 
+.app-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ui-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.ui-theme-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.ui-theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
 .page {
   display: flex;
   flex-direction: column;
@@ -302,6 +332,63 @@
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--color-text);
+}
+
+.ui-feed-description {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Category filter chips, above the day-grouped events list. */
+
+.ui-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ui-chip {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.ui-chip:hover {
+  color: var(--color-text);
+}
+
+.ui-chip-active {
+  background: var(--color-accent-bg);
+  border-color: transparent;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* Day-grouped events list -- Today / Tomorrow / weekday headers. */
+
+.ui-day-group + .ui-day-group {
+  margin-top: var(--space-5);
+}
+
+.ui-day-group-label {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2);
+}
+
+.ui-empty-state {
+  color: var(--color-text-muted);
+  padding: var(--space-4) 0;
 }
 
 .subscription-card-actions {

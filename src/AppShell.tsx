@@ -1,6 +1,7 @@
 import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
 import { AccountIcon, EventsIcon } from './ui/icons'
+import { ThemeToggle } from './ui/ThemeToggle'
 import { EventsPage } from './pages/EventsPage'
 import { AccountPage } from './pages/AccountPage'
 import type { AuthUser } from './lib/auth'
@@ -27,9 +28,12 @@ export function AppShell({ user, entitlementRefreshing }: AppShellProps) {
             <img src="/atlas-icon.png" alt="" width={24} height={24} />
             <span>Atlas</span>
           </div>
-          <Link to="/app/account" className={`app-pass-status${user.entitled ? ' is-active' : ''}`}>
-            {user.entitled ? 'Sky Pass active' : 'Free'}
-          </Link>
+          <div className="app-topbar-actions">
+            <ThemeToggle />
+            <Link to="/app/account" className={`app-pass-status${user.entitled ? ' is-active' : ''}`}>
+              {user.entitled ? 'Sky Pass active' : 'Free'}
+            </Link>
+          </div>
         </div>
       }
     >
