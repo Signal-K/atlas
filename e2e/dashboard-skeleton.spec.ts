@@ -21,7 +21,10 @@ test('signed-in user lands on Events with nav to Account', async ({ page }) => {
   await page.goto('/app')
   await expect(page).toHaveURL(/\/app\/events$/)
   await expect(page.getByRole('heading', { name: /^events$/i })).toBeVisible()
-  await expect(page.getByText('Full Moon')).toBeVisible()
+  // Events now renders real/mock data async rather than a fixed placeholder
+  // list, so assert structurally (at least one event rendered) instead of
+  // pinning to a specific title, which would be time-window-dependent.
+  await expect(page.locator('.ui-list-item').first()).toBeVisible()
 
   await page.getByRole('link', { name: /account/i }).click()
   await expect(page).toHaveURL(/\/app\/account$/)
