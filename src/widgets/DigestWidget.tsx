@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { registerWidget } from './registry'
 import { listDiscoveries, type Discovery } from '../lib/discoveries'
 
 const WEEK_MS = 7 * 86_400_000
@@ -45,10 +44,3 @@ export function DigestWidget() {
     </ul>
   )
 }
-
-registerWidget({
-  id: 'digest',
-  title: "This week's top discoveries",
-  Component: DigestWidget,
-  defaultEnabled: true,
-})

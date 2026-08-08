@@ -1,0 +1,271 @@
+/* Shared primitive styles — imported once alongside styles/tokens.css. */
+
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+
+.ui-button:hover {
+  background: var(--color-surface-raised);
+}
+
+.ui-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-button-primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.ui-button-primary:hover {
+  filter: brightness(1.05);
+}
+
+.ui-button-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.ui-button-ghost:hover {
+  background: var(--color-surface);
+}
+
+.ui-card {
+  /* Translucent + blurred, not a flat fill -- lets the page's ambient wash
+     (and Starfield, on routes that mount it) read as texture behind the
+     card rather than being blocked by an opaque rectangle. */
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.ui-card-raised {
+  background: color-mix(in srgb, var(--color-surface-raised) 85%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ui-field-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ui-input {
+  height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.ui-input:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.ui-tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.ui-tab-active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+
+/* NavShell: side nav on wide viewports, bottom tab bar on narrow ones. */
+
+.nav-shell {
+  display: flex;
+  min-height: 100svh;
+}
+
+.nav-shell-nav {
+  width: var(--nav-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-3);
+  border-right: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.nav-shell-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: var(--text-base);
+}
+
+.nav-shell-item:hover {
+  background: var(--color-surface-raised);
+}
+
+.nav-shell-item-active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.nav-shell-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nav-shell-topbar {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav-shell-main {
+  flex: 1;
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.app-brand img {
+  border-radius: var(--radius-sm);
+}
+
+.app-pass-status {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.app-pass-status.is-active {
+  border-color: var(--color-good);
+  color: var(--color-good);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 960px;
+}
+
+.page-header h1 {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-1);
+}
+
+.page-header p {
+  color: var(--color-text-muted);
+}
+
+.settings-section-title {
+  font-size: var(--text-md);
+  margin-bottom: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .nav-shell {
+    flex-direction: column;
+  }
+
+  .nav-shell-nav {
+    order: 2;
+    width: 100%;
+    height: var(--tab-bar-height);
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0;
+    border-right: none;
+    border-top: 1px solid var(--color-border);
+    /* flex `order` only changes visual position, not paint order -- this
+       element comes before the page content in the DOM (for the `order: 2`
+       above to place it last), so later-painted content (e.g. the reused
+       .mobile-shell surfaces, which carry their own z-index) would
+       otherwise sit visually on top of it and swallow taps. */
+    z-index: 10;
+    position: sticky;
+    bottom: 0;
+  }
+
+  .nav-shell-item {
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+    border-radius: 0;
+  }
+
+  .nav-shell-label {
+    font-size: var(--text-xs);
+  }
+
+  .nav-shell-body {
+    order: 1;
+  }
+
+  .nav-shell-main {
+    padding: var(--space-4);
+  }
+}

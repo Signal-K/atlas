@@ -1,0 +1,490 @@
+/*
+  Compatibility skin for the reused "Daily Transit" event-browsing
+  components (SkyEventBrowser, EventsView, and PlanView's Explore mode --
+  see KES-131). These components' logic/markup is kept as-is; this
+  stylesheet replaces mobile.css's own --dt- and --mobile- prefixed rules
+  (Turret Road/Oxanium fonts, a separate dark palette) with the app's single
+  design-token system, so reusing them doesn't reintroduce a second theme.
+*/
+
+.dt-entry-overlay {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  z-index: 200;
+  overflow-y: auto;
+}
+
+.dt-page {
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.dt-seam {
+  height: 1px;
+  margin: 18px 0;
+  background-image: repeating-linear-gradient(90deg, var(--color-border) 0 5px, transparent 5px 10px);
+}
+
+.dt-masthead {
+  margin-bottom: 4px;
+}
+
+.dt-kicker {
+  font: 700 var(--text-xs) / 1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dt-kicker-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dt-h2 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: var(--text-xl);
+  letter-spacing: -0.01em;
+  margin: 4px 0 0;
+  color: var(--color-text);
+}
+
+.dt-masthead-readout {
+  font: 600 var(--text-sm) / 1.3 var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.dt-browse-location {
+  margin: var(--space-3) 0;
+}
+
+.dt-browse-location-picker {
+  position: relative;
+  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 700 var(--text-xs) / 1.1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.dt-browse-location-picker input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: 7px var(--space-3);
+  font: 500 var(--text-sm) / 1.2 var(--font-sans);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.dt-browse-location-results {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  display: grid;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+}
+
+.dt-browse-location-results button {
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  font: 500 var(--text-sm) / 1.2 var(--font-sans);
+  cursor: pointer;
+}
+
+.dt-browse-location-results button:hover,
+.dt-browse-location-results button:focus-visible {
+  background: var(--color-accent-bg);
+}
+
+.dt-browse-location-locked {
+  font: 400 var(--text-sm) / 1.4 var(--font-sans);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.dt-empty-hint {
+  font: 400 var(--text-base) / 1.55 var(--font-sans);
+  color: var(--color-text-muted);
+}
+
+.dt-empty-reasons {
+  margin: 0;
+  padding: 0 0 0 18px;
+}
+
+.dt-filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.dt-chip-row {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.dt-chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.dt-chip-row--secondary {
+  margin-bottom: var(--space-4);
+}
+
+.dt-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: 600 var(--text-xs) / 1.1 var(--font-sans);
+  letter-spacing: 0.02em;
+}
+
+.dt-chip span {
+  opacity: 0.75;
+}
+
+.dt-chip.is-active {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.dt-view-toggle {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.dt-view-toggle button {
+  min-height: 30px;
+  border: 0;
+  padding: 0 var(--space-3);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: 600 var(--text-xs) / 1.1 var(--font-sans);
+}
+
+.dt-view-toggle button + button {
+  border-left: 1px solid var(--color-border);
+}
+
+.dt-view-toggle button.is-active {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.dt-day-strip {
+  display: flex;
+  gap: 6px;
+  margin: var(--space-3) 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.dt-day-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.dt-day-chip {
+  flex: 0 0 auto;
+  min-width: 38px;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 7px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.dt-day-chip span:first-child {
+  font: 700 0.62rem/1 var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.dt-day-chip strong {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.dt-day-chip.is-active {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.dt-day-chip.is-active strong {
+  color: var(--color-accent-text);
+}
+
+.dt-day-chip-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.dt-day-chip-dot.has-events {
+  background: var(--color-accent);
+}
+
+.dt-day-chip.is-active .dt-day-chip-dot.has-events {
+  background: var(--color-accent-text);
+}
+
+.dt-today-rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--color-text-muted);
+  font: 700 var(--text-xs) / 1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dt-today-rule span:first-child,
+.dt-today-rule span:last-child {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.dt-feed-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+}
+
+.dt-feed-row-wrap {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dt-feed-row-wrap:last-child {
+  border-bottom: 0;
+}
+
+.dt-feed-row-wrap .dt-feed-row {
+  border-bottom: 0;
+}
+
+.dt-feed-row:last-child {
+  border-bottom: 0;
+}
+
+.dt-feed-row.dt-feed-row--listing {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dt-feed-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.dt-feed-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 var(--text-xs) / 1 var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+
+.dt-feed-kicker .dt-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dt-feed-time {
+  font: 500 var(--text-sm) / 1.4 var(--font-mono);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.dt-feed-headline-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dt-feed-headline {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text);
+}
+
+.dt-feed-chevron {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.dt-feed-chevron svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.dt-feed-meta {
+  font: 400 var(--text-sm) / 1.4 var(--font-sans);
+  color: var(--color-text-muted);
+}
+
+.dt-feed-swatch {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+}
+
+.dt-feed-swatch svg {
+  width: 15px;
+  height: 15px;
+}
+
+.dt-feed-swatch img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.dt-feed-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dt-feed-body .dt-feed-kind {
+  font: 700 0.66rem/1.2 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.dt-feed-body .dt-feed-headline {
+  font-size: var(--text-base);
+}
+
+.dt-feed-guide-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--color-text-muted);
+  font: 700 0.6rem/1.4 var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  vertical-align: middle;
+}
+
+.dt-show-more {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: 600 var(--text-sm) / 1.2 var(--font-sans);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.dt-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.dt-status-dot--go {
+  background: var(--color-good);
+}
+
+.dt-status-dot--marginal {
+  background: var(--color-warn);
+}
+
+.dt-status-dot--poor {
+  background: var(--color-bad);
+}
+
+.planner-reminder-status {
+  font: 500 var(--text-sm) / 1.4 var(--font-sans);
+  color: var(--color-accent);
+  margin: var(--space-2) 0 0;
+}

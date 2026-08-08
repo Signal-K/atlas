@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { registerWidget } from './registry'
 import { listLeaderboard, type LeaderboardEntry } from '../lib/leaderboard'
 
 export function LeaderboardWidget() {
@@ -26,10 +25,3 @@ export function LeaderboardWidget() {
     </ol>
   )
 }
-
-registerWidget({
-  id: 'leaderboard',
-  title: 'Streak leaderboard',
-  Component: LeaderboardWidget,
-  defaultEnabled: false,
-})
