@@ -1,43 +1,46 @@
+import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LandingPage } from './views/LandingPage'
+import { AppShell } from './AppShell'
 import { AuthForm } from './components/AuthForm'
-import { useAuth, signOut } from './lib/auth'
+import { useAuth } from './lib/auth'
 import { useIsMobile } from './lib/useIsMobile'
+import { useEntitlementSync } from './providers/useEntitlementSync'
 import './App.css'
 
-// Everything past sign-in was torn out for a full rebuild (KES-131) -- this
-// placeholder is deliberately minimal, not a stand-in for a real app shell.
+const APP_HOME = '/app/events'
+
 function App() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, entitlementRefreshing } = useAuth()
   const isMobile = useIsMobile()
-  const showLanding = location.pathname !== '/app'
+  const isAppRoute = location.pathname.startsWith('/app')
+  const showLanding = !isAppRoute
+
+  useEntitlementSync()
+
+  // Bare "/app" has no view of its own -- send it to the default tab.
+  useEffect(() => {
+    if (location.pathname === '/app') navigate(APP_HOME, { replace: true })
+  }, [location.pathname, navigate])
 
   if (showLanding) {
-    return <LandingPage authenticatedEmail={user?.email} isMobile={isMobile} onEnter={() => navigate('/app')} />
+    return <LandingPage authenticatedEmail={user?.email} isMobile={isMobile} onEnter={() => navigate(APP_HOME)} />
   }
 
-  return (
-    <div className="app-placeholder">
-      <div className="app-placeholder-card">
-        {user ? (
-          <>
-            <h1>You're signed in</h1>
-            <p>{user.email}</p>
-            <button type="button" className="ui-button" onClick={() => signOut()}>
-              Sign out
-            </button>
-          </>
-        ) : (
-          <>
-            <h1>Sign in to Atlas</h1>
-            <AuthForm source="app-gate" />
-          </>
-        )}
+  if (!user) {
+    return (
+      <div className="app-placeholder">
+        <div className="app-placeholder-card">
+          <h1>Sign in to Atlas</h1>
+          <AuthForm source="app-gate" />
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  return <AppShell user={user} entitlementRefreshing={entitlementRefreshing} />
 }
 
 export default App
