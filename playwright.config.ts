@@ -10,6 +10,10 @@ const e2eBaseURL = `http://localhost:${e2ePort}`
 // not here, so this config stays about wiring, not fixtures.
 export default defineConfig({
   testDir: './e2e',
+  // The account journey intentionally talks to a disposable PocketBase
+  // instance and is run by the dedicated CI write job. Keep it out of the
+  // ordinary build/preview smoke suite, which has no backend.
+  testIgnore: process.env.E2E_WRITE_TESTS ? [] : ['**/atlas-account-journey.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

@@ -10,7 +10,7 @@
     "test": "npm run lint && npm run build && npm run test:e2e",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "test:e2e:writes": "playwright test e2e/atlas-account-journey.spec.ts",
+    "test:e2e:writes": "E2E_WRITE_TESTS=1 playwright test e2e/atlas-account-journey.spec.ts",
     "e2e:purge": "node scripts/purge-atlas-e2e.mjs",
     "cy:open": "cypress open",
     "cy:run": "cypress run",
