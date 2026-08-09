@@ -2,6 +2,7 @@ import type { AuthUser } from '../lib/auth'
 import { signOut } from '../lib/auth'
 import { AccountManagement } from '../components/AccountManagement'
 import { SubscriptionCard } from '../components/SubscriptionCard'
+import { PreviewFreeToggle } from '../components/PreviewFreeToggle'
 
 export interface AccountPageProps {
   user: AuthUser
@@ -22,6 +23,8 @@ export function AccountPage({ user, entitlementRefreshing }: AccountPageProps) {
         <h2 className="ui-section-title">Account settings</h2>
         <AccountManagement email={user.email} />
       </section>
+
+      <PreviewFreeToggle />
 
       <section className="ui-section">
         <button type="button" className="ui-button" onClick={() => signOut()}>

@@ -154,6 +154,10 @@
 .nav-shell-topbar {
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-bg);
 }
 
 .nav-shell-main {
@@ -389,6 +393,51 @@
 .ui-empty-state {
   color: var(--color-text-muted);
   padding: var(--space-4) 0;
+}
+
+/* Conditions list -- one row per day, cloud/moon/best-time metrics + rating. */
+
+.ui-conditions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.ui-conditions-day {
+  font-weight: 600;
+  min-width: 9ch;
+}
+
+.ui-conditions-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  flex: 1;
+}
+
+.ui-conditions-locked {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.ui-badge-rating-great,
+.ui-badge-rating-good {
+  color: var(--color-good);
+  border-color: color-mix(in srgb, var(--color-good) 40%, transparent);
+}
+
+.ui-badge-rating-maybe {
+  color: var(--color-text-muted);
+}
+
+.ui-badge-rating-poor,
+.ui-badge-rating-skip {
+  color: var(--color-bad);
+  border-color: color-mix(in srgb, var(--color-bad) 40%, transparent);
 }
 
 .subscription-card-actions {

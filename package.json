@@ -22,6 +22,7 @@
     "render:video": "node scripts/mux-demo-video.mjs"
   },
   "dependencies": {
+    "astronomy-engine": "^2.1.19",
     "pocketbase": "^0.27.0",
     "posthog-js": "^1.399.1",
     "react": "^19.2.7",
