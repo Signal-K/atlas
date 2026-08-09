@@ -131,6 +131,15 @@ npx playwright test
 Playwright is fully headless by default. Network-dependent astronomy, weather,
 geocoding, compass, and account scenarios use deterministic test fixtures.
 
+The write journey runs against a disposable instance of the shared backend,
+not the configured production URL. CI checks out the parent `tickets-please`
+repository, builds its PocketBase backend, creates a unique account in the
+reserved `@atlas-e2e.test` namespace, and exercises the authenticated Atlas
+shell. The final `npm run e2e:purge` execution deletes that namespace and
+records owned by those users. It never uses a broad table wipe or a production
+URL; local runs can invoke it with `ATLAS_E2E_PB_URL` and the isolated admin
+credentials explicitly set.
+
 ## GitHub Actions
 
 CI and deploys (`.github/workflows/ci.yml`, `deploy.yml`, `preview-deploy.yml`)

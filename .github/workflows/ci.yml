@@ -3,9 +3,7 @@ name: CI
 on:
   pull_request: {}
   push:
-    branches:
-      - master
-      - 'sprint/**'
+    branches: ['**']
   workflow_dispatch: {}
 
 concurrency:
@@ -36,36 +34,43 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      POCKETBASE_VERSION: 0.39.7
     steps:
       - uses: actions/checkout@v7
+      - name: Check out the shared PocketBase backend
+        uses: actions/checkout@v7
+        with:
+          repository: Signal-K/tickets-please
+          path: navigation-parent
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Download PocketBase
-        run: |
-          curl -fsSL \
-            -o /tmp/pocketbase.zip \
-            "https://github.com/pocketbase/pocketbase/releases/download/v${POCKETBASE_VERSION}/pocketbase_${POCKETBASE_VERSION}_linux_amd64.zip"
-          unzip -q /tmp/pocketbase.zip -d /tmp/pocketbase
-          chmod +x /tmp/pocketbase/pocketbase
-      - name: Start local PocketBase
+      - name: Build the shared PocketBase backend
+        run: docker build -t atlas-e2e-backend ./navigation-parent/backend
+      - name: Create the isolated PocketBase admin
         run: |
           rm -rf /tmp/atlas-pocketbase
-          mkdir -p /tmp/atlas-pocketbase/pb_data
-          /tmp/pocketbase/pocketbase serve \
-            --http=127.0.0.1:8094 \
-            --dir=/tmp/atlas-pocketbase/pb_data \
-            --migrationsDir="${GITHUB_WORKSPACE}/pocketbase/migrations" \
-            --hooksDir="${GITHUB_WORKSPACE}/pocketbase/pb_hooks" \
-            > /tmp/pocketbase.log 2>&1 &
-          echo "$!" > /tmp/pocketbase.pid
+          mkdir -p /tmp/atlas-pocketbase
+          docker run --rm \
+            -v /tmp/atlas-pocketbase:/pb/pb_data \
+            atlas-e2e-backend \
+            ./starsailors-backend superuser create "$ATLAS_E2E_ADMIN_EMAIL" "$ATLAS_E2E_ADMIN_PASSWORD" --dir=/pb/pb_data
         env:
-          POLAR_WEBHOOK_SECRET: whsec_test_secret_not_used_by_write_e2e
+          ATLAS_E2E_ADMIN_EMAIL: atlas-e2e-admin@example.test
+          ATLAS_E2E_ADMIN_PASSWORD: Atlas-e2e-admin-123!
+      - name: Start isolated shared PocketBase
+        run: |
+          docker run -d --name atlas-e2e-backend \
+            -p 8094:8090 \
+            -v /tmp/atlas-pocketbase:/pb/pb_data \
+            -e PB_ENCRYPTION_KEY= \
+            atlas-e2e-backend \
+            ./starsailors-backend serve \
+            --http=0.0.0.0:8090 \
+            --dir=/pb/pb_data
       - name: Wait for PocketBase health
         run: |
           for i in {1..60}; do
@@ -74,18 +79,26 @@ jobs:
             fi
             sleep 2
           done
-          cat /tmp/pocketbase.log
+          docker logs atlas-e2e-backend
           exit 1
       - name: Run write-action E2E against local PocketBase
         run: npm run test:e2e:writes
         env:
           VITE_PB_URL: http://127.0.0.1:8094
+          ATLAS_E2E_PB_URL: http://127.0.0.1:8094
+          ATLAS_E2E_ADMIN_EMAIL: atlas-e2e-admin@example.test
+          ATLAS_E2E_ADMIN_PASSWORD: Atlas-e2e-admin-123!
+      - name: Purge all Atlas E2E data
+        if: always()
+        run: npm run e2e:purge
+        env:
+          ATLAS_E2E_PB_URL: http://127.0.0.1:8094
+          ATLAS_E2E_ADMIN_EMAIL: atlas-e2e-admin@example.test
+          ATLAS_E2E_ADMIN_PASSWORD: Atlas-e2e-admin-123!
       - name: Show PocketBase logs on failure
         if: failure()
-        run: cat /tmp/pocketbase.log
+        run: docker logs atlas-e2e-backend
       - name: Stop local PocketBase
         if: always()
         run: |
-          if [ -f /tmp/pocketbase.pid ]; then
-            kill "$(cat /tmp/pocketbase.pid)" || true
-          fi
+          docker rm -f atlas-e2e-backend || true
