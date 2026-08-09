@@ -7,11 +7,16 @@ import { MOCK_EVENTS } from './mockEvents'
 export interface AtlasEvent {
   id: string
   kind: string
+  target: string
   title: string
   description?: string
+  content?: string
   starts_at: string
+  ends_at?: string
   latitude?: number
   longitude?: number
+  image_url?: string
+  image_credit?: string
 }
 
 // Real events come from the scheduled ingest (scripts/ingest.mjs, run via
@@ -39,6 +44,43 @@ export async function fetchUpcomingEvents(windowDays: number): Promise<AtlasEven
   })
 }
 
+// Single-event lookup for the detail subpage. Tries PocketBase first (the
+// real record, in case its content/image fields were backfilled since the
+// list fetch ran); falls back to the mock set by id so deep links still
+// work offline/in demo mode.
+export async function fetchEvent(id: string): Promise<AtlasEvent | null> {
+  try {
+    const record = await pb.collection('sky_events').getOne<AtlasEvent>(id)
+    return record
+  } catch {
+    // Not found, offline, or a mock id -- fall through.
+  }
+  return MOCK_EVENTS.find((event) => event.id === id) ?? null
+}
+
+// Events that have already started, most recent first -- backs the "past
+// events" archive view. windowDays bounds how far back to look so the
+// query/mock-filter stays cheap.
+export async function fetchPastEvents(windowDays: number): Promise<AtlasEvent[]> {
+  const now = new Date()
+  const start = new Date(now.getTime() - windowDays * 86_400_000)
+
+  try {
+    const records = await pb.collection('sky_events').getFullList<AtlasEvent>({
+      filter: `starts_at >= "${start.toISOString().replace('T', ' ')}" && starts_at < "${now.toISOString().replace('T', ' ')}"`,
+      sort: '-starts_at',
+    })
+    if (records.length > 0) return records
+  } catch {
+    // PocketBase unreachable -- fall through to the mock set below.
+  }
+
+  return MOCK_EVENTS.filter((event) => {
+    const t = new Date(event.starts_at).getTime()
+    return t >= start.getTime() && t < now.getTime()
+  }).sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime())
+}
+
 export interface EventDayGroup {
   key: string
   label: string
@@ -57,6 +99,7 @@ function dayLabel(date: Date, today: Date): string {
   const diffDays = Math.round((startOfDay(date).getTime() - today.getTime()) / DAY_MS)
   if (diffDays === 0) return 'Today'
   if (diffDays === 1) return 'Tomorrow'
+  if (diffDays === -1) return 'Yesterday'
   return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 }
 

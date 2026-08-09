@@ -1,0 +1,50 @@
+name: Cypress E2E (staging)
+
+# Runs the Cypress suite against a real, already-deployed Cloudflare Pages
+# staging URL rather than a local dev server -- triggered by the
+# deployment_status event that cloudflare/pages-action (preview-deploy.yml)
+# emits once a preview deployment goes live, so this always exercises the
+# actual built+deployed site, not `npm run build` output on the runner.
+# Excludes the production deployment (deploy.yml, environment "production")
+# on purpose: this suite is for staging/preview traffic only.
+on:
+  deployment_status: {}
+
+jobs:
+  cypress:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'production' && github.event.deployment_status.environment_url != ''
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport:
+          - { name: mobile, width: 375, height: 812 }
+          - { name: tablet, width: 768, height: 1024 }
+          - { name: desktop, width: 1440, height: 900 }
+    concurrency:
+      group: cypress-e2e-${{ github.event.deployment.id }}-${{ matrix.viewport.name }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Run Cypress against ${{ github.event.deployment_status.environment_url }} (${{ matrix.viewport.name }})
+        uses: cypress-io/github-action@v6
+        with:
+          install-command: npm ci
+          browser: chrome
+          config: baseUrl=${{ github.event.deployment_status.environment_url }},viewportWidth=${{ matrix.viewport.width }},viewportHeight=${{ matrix.viewport.height }}
+        env:
+          CYPRESS_BASE_URL: ${{ github.event.deployment_status.environment_url }}
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots-${{ matrix.viewport.name }}
+          path: cypress/screenshots
+          retention-days: 7

@@ -24,6 +24,11 @@ blob-report
 playwright/.cache
 public/app-video/*_chunks/
 
+# Cypress
+cypress/screenshots
+cypress/videos
+cypress/downloads
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,15 +1,19 @@
 import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
-import { AccountIcon, EventsIcon, MoonIcon } from './ui/icons'
+import { AccountIcon, CalendarIcon, EventsIcon, MoonIcon } from './ui/icons'
 import { ThemeToggle } from './ui/ThemeToggle'
 import { EventsPage } from './pages/EventsPage'
+import { EventDetailPage } from './pages/EventDetailPage'
+import { EventArchivePage } from './pages/EventArchivePage'
 import { ConditionsPage } from './pages/ConditionsPage'
+import { CalendarPage } from './pages/CalendarPage'
 import { AccountPage } from './pages/AccountPage'
 import type { AuthUser } from './lib/auth'
 import { effectiveEntitled, useFreeOverride } from './lib/previewMode'
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/app/events', label: 'Events', icon: <EventsIcon /> },
+  { path: '/app/calendar', label: 'Calendar', icon: <CalendarIcon /> },
   { path: '/app/conditions', label: 'Conditions', icon: <MoonIcon /> },
   { path: '/app/account', label: 'Account', icon: <AccountIcon /> },
 ]
@@ -50,7 +54,10 @@ export function AppShell({ user, entitlementRefreshing }: AppShellProps) {
     >
       <Routes>
         <Route path="/app/events" element={<EventsPage entitled={entitled} />} />
+        <Route path="/app/events/archive" element={<EventArchivePage />} />
+        <Route path="/app/events/:id" element={<EventDetailPage user={effectiveUser} entitled={entitled} />} />
         <Route path="/app/conditions" element={<ConditionsPage entitled={entitled} />} />
+        <Route path="/app/calendar" element={<CalendarPage user={effectiveUser} entitled={entitled} />} />
         <Route path="/app/account" element={<AccountPage user={effectiveUser} entitlementRefreshing={entitlementRefreshing} />} />
         <Route path="*" element={<Navigate to="/app/events" replace />} />
       </Routes>

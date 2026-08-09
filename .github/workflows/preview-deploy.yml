@@ -42,3 +42,23 @@ jobs:
           # Same pin as deploy.yml -- v2 (the action's default) is EOL and
           # crashes under the Node 24 runners GitHub Actions now uses.
           wranglerVersion: '3'
+
+      # Cloudflare Pages aliases each preview deployment as
+      # <branch>.<pages-subdomain>.pages.dev, keyed off whatever branch name
+      # is passed in -- not the actual git branch. This project's
+      # pages.dev subdomain root is atlas-4xz (see README.md), NOT
+      # atlas.pages.dev -- that name was already taken by an unrelated third
+      # party (FieldMaps) when the project was created. So this always
+      # serves at https://staging.atlas-4xz.pages.dev. Re-deploying the same
+      # already-built `dist` under the fixed name "staging" (rather than the
+      # real git branch, used above) gives one stable URL that always shows
+      # whichever branch was pushed most recently, instead of a different
+      # per-branch link every time.
+      - uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: atlas
+          directory: dist
+          branch: staging
+          wranglerVersion: '3'

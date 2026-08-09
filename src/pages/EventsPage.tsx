@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { categoryFor, CATEGORY_GROUPS } from '../lib/eventCategories'
 import { fetchUpcomingEvents, groupEventsByDay, type AtlasEvent } from '../lib/events'
 import { eventLookaheadDays } from '../lib/entitlementLimits'
@@ -60,6 +61,9 @@ export function EventsPage({ entitled }: EventsPageProps) {
       <div className="page-header">
         <h1>Events</h1>
         <p>What's coming up in the sky, grouped by day.</p>
+        <Link to="/app/events/archive" className="ui-back-link">
+          View past events
+        </Link>
       </div>
 
       {presentGroups.length > 0 && (
@@ -97,14 +101,14 @@ export function EventsPage({ entitled }: EventsPageProps) {
                   const category = categoryFor(event.kind)
                   return (
                     <li key={event.id} className="ui-list-item">
-                      <div className="ui-feed-row">
+                      <Link to={`/app/events/${event.id}`} state={{ event }} className="ui-feed-row">
                         <div className="ui-feed-top">
                           <span className="ui-feed-kicker">{category.label}</span>
                           <span className="ui-feed-time">{formatTime(event.starts_at)}</span>
                         </div>
                         <span className="ui-feed-headline">{event.title}</span>
                         {event.description && <span className="ui-feed-description">{event.description}</span>}
-                      </div>
+                      </Link>
                     </li>
                   )
                 })}

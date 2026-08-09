@@ -22,12 +22,24 @@ interface MockSeed {
   title: string
   kind: string
   description: string
+  content?: string
+  image_url?: string
+  image_credit?: string
 }
 
+// A handful of already-elapsed events so the archive view (Events that have
+// finished/occurred) has something to show in mock/offline mode too.
+const PAST_SEEDS: MockSeed[] = [
+  { day: -1, hour: 21, title: 'ISS Pass over Melbourne', kind: 'iss_pass', description: 'A visible pass reaching 55° above the horizon.' },
+  { day: -2, hour: 20, title: 'Full Moon', kind: 'moon_phase', description: 'Fully illuminated and visible all night.' },
+  { day: -5, hour: 1, title: 'Perseid meteor shower peak', kind: 'meteor_shower', description: 'Up to 60 meteors/hour from a dark sky, radiant in Perseus.' },
+  { day: -9, hour: 22, title: 'Whirlpool Galaxy (M51) well placed', kind: 'galaxy', description: 'A classic spiral galaxy pairing, good target for a mid-size telescope.' },
+]
+
 const SEEDS: MockSeed[] = [
-  { day: 0, hour: 23, minute: 12, title: 'ISS Pass over Melbourne', kind: 'iss_pass', description: 'A visible pass reaching 62° above the horizon -- no telescope needed.' },
-  { day: 0, hour: 20, title: 'New Moon', kind: 'moon_phase', description: 'No moonlight to wash out the sky -- the best night this month for faint deep-sky targets.' },
-  { day: 1, hour: 21, title: 'Saturn at opposition', kind: 'planet_event', description: 'Saturn is at its closest and brightest for the year, visible all night.' },
+  { day: 0, hour: 23, minute: 12, title: 'ISS Pass over Melbourne', kind: 'iss_pass', description: 'A visible pass reaching 62° above the horizon -- no telescope needed.', content: 'The ISS will be visible as a bright, fast-moving point of light (no telescope needed) reaching a peak elevation of about 62° above the horizon. Look for it moving steadily across the sky -- unlike aircraft, it won\'t blink and won\'t change direction.', image_url: 'https://upload.wikimedia.org/wikipedia/commons/c/c9/STS-134_International_Space_Station_after_undocking.jpg', image_credit: 'NASA, Wikimedia Commons' },
+  { day: 0, hour: 20, title: 'New Moon', kind: 'moon_phase', description: 'No moonlight to wash out the sky -- the best night this month for faint deep-sky targets.', content: 'The Moon is between the Earth and Sun and its near side is fully unlit, so it won\'t rise or be visible tonight. No equipment needed -- just take advantage of the dark sky for anything faint.' },
+  { day: 1, hour: 21, title: 'Saturn at opposition', kind: 'planet_event', description: 'Saturn is at its closest and brightest for the year, visible all night.', content: 'Saturn rises at sunset and is visible all night, at its closest approach to Earth for the year. A small telescope will show its rings; binoculars will show it as a bright, steady, non-twinkling point.' },
   { day: 1, hour: 4, minute: 30, title: 'Iridium-style satellite flare', kind: 'satellite_flare', description: 'A brief, bright flash as sunlight glints off a satellite panel.' },
   { day: 2, hour: 22, title: 'M31 Andromeda Galaxy well placed', kind: 'galaxy', description: 'High in the sky after dark -- a good night for a long-exposure galaxy target.' },
   { day: 3, hour: 1, title: 'Perseid meteor shower peak', kind: 'meteor_shower', description: 'Up to 60 meteors/hour from a dark sky, radiant in Perseus.' },
@@ -52,12 +64,16 @@ const SEEDS: MockSeed[] = [
   { day: 20, hour: 20, title: 'New Moon', kind: 'moon_phase', description: 'Dark skies return -- the best few nights of the month for faint targets.' },
 ]
 
-export const MOCK_EVENTS: AtlasEvent[] = SEEDS.map((seed, index) => ({
+export const MOCK_EVENTS: AtlasEvent[] = [...PAST_SEEDS, ...SEEDS].map((seed, index) => ({
   id: `mock-${index}`,
   kind: seed.kind,
+  target: `mock_${seed.kind}_${index}`,
   title: seed.title,
   description: seed.description,
+  content: seed.content,
   starts_at: at(seed.day, seed.hour, seed.minute),
+  image_url: seed.image_url,
+  image_credit: seed.image_credit,
 }))
 
 export const MOCK_EVENTS_WINDOW_MS = 21 * 24 * HOURS
