@@ -25,7 +25,7 @@ test('creates an isolated account and exercises the complete signed-in shell', a
 
   await page.getByRole('button', { name: /change password/i }).click()
   await page.getByPlaceholder('Current password').fill(initialPassword)
-  await page.getByPlaceholder('New password').fill(changedPassword)
+  await page.getByPlaceholder('New password', { exact: true }).fill(changedPassword)
   await page.getByPlaceholder('Confirm new password').fill(changedPassword)
   await page.getByRole('button', { name: /update password/i }).click()
   await expect(page.getByText('Password updated.')).toBeVisible()
@@ -35,7 +35,10 @@ test('creates an isolated account and exercises the complete signed-in shell', a
   await page.getByLabel('Email').fill(testEmail)
   await page.getByLabel('Password').fill(changedPassword)
   await page.getByRole('button', { name: /^sign in$/i }).click()
-  await expect(page).toHaveURL(/\/app\/events$/)
+  // The app doesn't force a redirect on sign-in -- it stays on whatever
+  // route was current when the session dropped (here, /app/account, since
+  // that's where "Sign out" was clicked from).
+  await expect(page).toHaveURL(/\/app\/account$/)
 
   // The app's account deletion UI is deliberately left for the cleanup
   // execution. That lets the migration/execution prove it removes data after

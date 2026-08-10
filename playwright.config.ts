@@ -1,7 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const e2ePort = process.env.PLAYWRIGHT_PORT || '5173'
-const e2eBaseURL = `http://localhost:${e2ePort}`
+const e2eBaseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${e2ePort}`
+
+// The containerized staging workflow (staging-container-e2e.yml) already has
+// a real docker-compose atlas+PocketBase stack running before Playwright
+// starts, so it points PLAYWRIGHT_BASE_URL at that container and sets this
+// to skip spawning a redundant local `npm run dev`.
+const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === '1'
 
 // STS-333: end-to-end coverage for the anonymous first-plan journey. Runs
 // against a real Vite dev server talking to whatever PocketBase VITE_PB_URL
@@ -23,13 +29,15 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: `npm run dev -- --port ${e2ePort}`,
-    url: e2eBaseURL,
-    reuseExistingServer: false,
-    env: {
-      VITE_PB_URL: process.env.VITE_PB_URL || 'http://localhost:8094',
-    },
-    timeout: 30_000,
-  },
+  webServer: skipWebServer
+    ? undefined
+    : {
+        command: `npm run dev -- --port ${e2ePort}`,
+        url: e2eBaseURL,
+        reuseExistingServer: false,
+        env: {
+          VITE_PB_URL: process.env.VITE_PB_URL || 'http://localhost:8094',
+        },
+        timeout: 30_000,
+      },
 })
