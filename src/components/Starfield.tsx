@@ -27,6 +27,7 @@ interface Smudge {
   ry: number
   rotation: number
   alpha: number
+  color: [number, number, number]
 }
 
 const LAYERS: StarLayer[] = [
@@ -92,15 +93,38 @@ function createLayerStars(width: number, height: number, layer: StarLayer, rand:
   }))
 }
 
-function createSmudges(width: number, height: number, rand: () => number): Smudge[] {
-  const count = Math.max(2, Math.floor((width * height) / 900_000))
+// Loosely inspired by real nebula imagery (emission/reflection nebulae
+// photographed in narrowband): magenta/rose H-alpha, teal/cyan O-III, warm
+// amber dust glow, plus the original pale blue-white for variety. Light mode
+// gets more saturated versions of the same hues so the field stays visible
+// against a white background.
+const DARK_SMUDGE_PALETTE: Array<[number, number, number]> = [
+  [220, 225, 255], // pale blue-white
+  [255, 130, 190], // magenta/rose (H-alpha)
+  [110, 220, 210], // teal/cyan (O-III)
+  [255, 190, 120], // warm amber dust
+  [170, 140, 255], // violet
+]
+
+const LIGHT_SMUDGE_PALETTE: Array<[number, number, number]> = [
+  [124, 58, 237], // violet
+  [219, 39, 119], // rose
+  [13, 148, 136], // teal
+  [217, 119, 6], // amber
+  [67, 56, 202], // indigo
+]
+
+function createSmudges(width: number, height: number, rand: () => number, isDark: boolean): Smudge[] {
+  const count = Math.max(3, Math.floor((width * height) / 650_000))
+  const palette = isDark ? DARK_SMUDGE_PALETTE : LIGHT_SMUDGE_PALETTE
   return Array.from({ length: count }, () => ({
     x: rand() * width,
     y: rand() * height,
-    rx: 40 + rand() * 90,
-    ry: 20 + rand() * 50,
+    rx: 50 + rand() * 110,
+    ry: 25 + rand() * 60,
     rotation: rand() * Math.PI,
-    alpha: 0.02 + rand() * 0.03,
+    alpha: 0.04 + rand() * 0.07,
+    color: palette[Math.floor(rand() * palette.length)],
   }))
 }
 
@@ -109,11 +133,8 @@ function drawSmudge(ctx: CanvasRenderingContext2D, smudge: Smudge, isDark: boole
   ctx.translate(smudge.x, smudge.y)
   ctx.rotate(smudge.rotation)
   ctx.scale(smudge.rx, smudge.ry)
-  // Same pale-blue glow reads fine on a near-black background but washes
-  // out to nothing on white, so light mode uses a deeper violet at higher
-  // alpha for the same "nebula smudge" effect.
-  const [r, g, b] = isDark ? [220, 225, 255] : [124, 58, 237]
-  const alpha = isDark ? smudge.alpha : smudge.alpha * 3
+  const [r, g, b] = smudge.color
+  const alpha = isDark ? smudge.alpha : smudge.alpha * 2.4
   const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
   gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha})`)
   gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`)
@@ -153,7 +174,7 @@ export function Starfield({ locationSeed, targetRef }: StarfieldProps) {
       height = canvas.height = canvas.offsetHeight * window.devicePixelRatio
       const rand = mulberry32(locationSeed)
       layerStars = LAYERS.map((layer) => createLayerStars(width, height, layer, rand, isDark))
-      smudges = createSmudges(width, height, rand)
+      smudges = createSmudges(width, height, rand, isDark)
     }
 
     generate()

@@ -763,6 +763,68 @@
   background: var(--code-bg);
 }
 
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-devices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0;
+}
+
+.settings-device-instructions {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-device-instructions-title {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.settings-device-instructions ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+  opacity: 0.85;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ask-atlas-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ask-atlas-form input {
+  flex: 1;
+  min-width: 220px;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.ask-atlas-answer {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-h);
+  white-space: pre-wrap;
+}
+
 .paywall-card-badge {
   display: inline-block;
   margin-bottom: 10px;

@@ -119,23 +119,26 @@
 }
 
 .nav-shell-nav {
-  width: var(--nav-width);
+  /* Icon-only rail, not a labeled sidebar -- seamless with the page (no
+     distinct panel fill), matching the reference design. */
+  width: 72px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4) var(--space-3);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) 0;
   border-right: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: transparent;
 }
 
 .nav-shell-item {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border-radius: var(--radius-md);
   color: var(--color-text-muted);
   text-decoration: none;
@@ -147,8 +150,22 @@
 }
 
 .nav-shell-item-active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent);
+  background: var(--color-rail-highlight-bg);
+  color: var(--color-rail-highlight-fg);
+}
+
+.nav-shell-label {
+  /* Icon-only rail on desktop -- the label reappears under the icon in the
+     narrow bottom-tab-bar layout below. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .nav-shell-body {
@@ -252,12 +269,20 @@
   .nav-shell-item {
     flex-direction: column;
     gap: 2px;
+    width: auto;
+    height: auto;
     padding: var(--space-2);
     font-size: var(--text-xs);
     border-radius: 0;
   }
 
   .nav-shell-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
     font-size: var(--text-xs);
   }
 
