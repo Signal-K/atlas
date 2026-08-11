@@ -73,7 +73,11 @@
             maintenance.push(
               navigator.serviceWorker
                 .getRegistrations()
-                .then((registrations) => Promise.allSettled(registrations.map((registration) => registration.update())))
+                .then((registrations) =>
+                  Promise.allSettled(
+                    registrations.map((registration) => (clearPrecache ? registration.unregister() : registration.update())),
+                  ),
+                )
                 .catch(() => undefined),
             )
           }
@@ -121,7 +125,11 @@
             return
           }
           sessionStorage.setItem(retryKey, String(Date.now()))
-          void reloadLatest(false)
+          // An asset error can be a stale Workbox response as well as a
+          // deleted Vite chunk. Clear and unregister the old cache on the
+          // first retry: Chromium otherwise keeps accepting the broken
+          // worker and can render the React markup with no stylesheet.
+          void reloadLatest(true)
         }
 
         window.__atlasRecover = (clearPrecache = false) => {
@@ -159,6 +167,18 @@
           },
           true,
         )
+
+        // The browser normally emits an error for a missing stylesheet. A
+        // few Chromium service-worker failure modes do not, however: the
+        // response is silently discarded and the page paints as unstyled
+        // HTML. The final Atlas stylesheet exposes this marker, so detect
+        // that exact state and use the same one-time clean recovery.
+        window.addEventListener('load', () => {
+          window.setTimeout(() => {
+            const revision = getComputedStyle(document.documentElement).getPropertyValue('--atlas-style-revision').trim()
+            if (revision !== 'atlas-2026-08-11') recoverFromChunkFailure()
+          }, 1_500)
+        })
 
         // Keep the retry timestamp long enough to stop a reload loop, but
         // remove the cache-busting query from the user's address bar once

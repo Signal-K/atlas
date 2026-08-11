@@ -29,3 +29,16 @@ test('recovers once from a stale Vite chunk and never leaves a blank screen', as
   await expect(page.getByRole('heading', { name: 'Atlas needs a fresh copy' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reload latest version' })).toBeVisible()
 })
+
+test('recovers when Chromium accepts an empty stylesheet response without emitting an asset error', async ({ page }) => {
+  // This mirrors the production symptom: JavaScript runs, but the stylesheet
+  // is silently missing and the page paints as native browser HTML. A 200
+  // response keeps the link's error event from firing, so the revision marker
+  // is the only reliable way to detect it.
+  await page.goto('/')
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty('--atlas-style-revision', 'missing')
+    window.dispatchEvent(new Event('load'))
+  })
+  await page.waitForURL(/_atlas_recovery=/)
+})

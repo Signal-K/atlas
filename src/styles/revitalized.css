@@ -1,0 +1,147 @@
+/*
+ * Atlas visual foundation, August 2026.
+ *
+ * Legacy screens use a mixture of `--text`/`--accent` variables and the
+ * newer shell uses `--color-*`.  This final layer deliberately joins those
+ * vocabularies, so routes can be improved together without a flash between
+ * two unrelated applications.
+ */
+:root {
+  --atlas-style-revision: atlas-2026-08-11;
+  --atlas-ink: #15202b;
+  --atlas-ink-soft: #526170;
+  --atlas-paper: #f6f4ee;
+  --atlas-card: rgba(255, 255, 255, .78);
+  --atlas-line: rgba(26, 53, 74, .14);
+  --atlas-sky: #176e9c;
+  --atlas-sky-deep: #104f72;
+  --atlas-gold: #d89a35;
+  --atlas-mint: #2e8b73;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: "Iowan Old Style", "Source Serif 4", Georgia, serif;
+  --color-bg: var(--atlas-paper);
+  --color-surface: #eef1ee;
+  --color-surface-raised: #fffefa;
+  --color-border: var(--atlas-line);
+  --color-text: var(--atlas-ink);
+  --color-text-muted: var(--atlas-ink-soft);
+  --color-accent: var(--atlas-sky);
+  --color-accent-text: #fff;
+  --color-accent-bg: rgba(23, 110, 156, .1);
+  --color-good: var(--atlas-mint);
+  --text: var(--atlas-ink-soft);
+  --text-h: var(--atlas-ink);
+  --bg: var(--atlas-paper);
+  --border: var(--atlas-line);
+  --code-bg: #e8eee9;
+  --accent: var(--atlas-sky);
+  --accent-bg: rgba(23, 110, 156, .1);
+  --accent-border: rgba(23, 110, 156, .36);
+  --sans: var(--font-sans);
+  --serif: var(--font-serif);
+  --shadow: 0 18px 50px rgba(25, 47, 64, .10);
+}
+
+:root[data-theme='dark'] {
+  --atlas-ink: #edf3f1;
+  --atlas-ink-soft: #afc0c5;
+  --atlas-paper: #0d1820;
+  --atlas-card: rgba(22, 37, 47, .84);
+  --atlas-line: rgba(201, 224, 226, .16);
+  --atlas-sky: #82c7e5;
+  --atlas-sky-deep: #a9dcf0;
+  --atlas-gold: #e5b55c;
+  --atlas-mint: #6cd2ad;
+  --color-surface: #14232d;
+  --color-surface-raised: #192b36;
+  --code-bg: #172832;
+}
+
+body {
+  background:
+    radial-gradient(80rem 44rem at 100% -12%, rgba(65, 150, 188, .16), transparent 62%),
+    radial-gradient(50rem 34rem at -10% 20%, rgba(219, 177, 92, .13), transparent 62%),
+    var(--atlas-paper);
+  color: var(--atlas-ink);
+  font-family: var(--font-sans);
+}
+
+::selection { background: rgba(23, 110, 156, .22); }
+button, input, select, textarea { font-family: inherit; }
+button { transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+button:not(:disabled):hover { transform: translateY(-1px); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(23, 110, 156, .38); outline-offset: 3px;
+}
+
+/* App chrome */
+.nav-shell { min-height: 100svh; }
+.nav-shell-nav {
+  width: 88px; padding: 22px 0; gap: 14px; border-right-color: var(--atlas-line);
+  background: color-mix(in srgb, var(--atlas-paper) 84%, transparent); backdrop-filter: blur(18px);
+}
+.nav-shell-item { width: 48px; height: 48px; border-radius: 16px; color: var(--atlas-ink-soft); }
+.nav-shell-item:hover { background: rgba(23, 110, 156, .09); color: var(--atlas-sky-deep); }
+.nav-shell-item-active { background: var(--atlas-ink); color: var(--atlas-paper); box-shadow: 0 8px 20px rgba(13, 35, 51, .18); }
+.nav-shell-topbar { padding: 17px clamp(20px, 4vw, 48px); border-bottom-color: var(--atlas-line); background: color-mix(in srgb, var(--atlas-paper) 72%, transparent); backdrop-filter: blur(16px); }
+.nav-shell-main { padding: clamp(24px, 4vw, 54px); max-width: 1480px; width: 100%; margin: 0 auto; }
+.app-brand { gap: 10px; font: 700 21px/1 var(--font-serif); letter-spacing: -.035em; }
+.app-brand img { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 5px 14px rgba(13, 35, 51, .16); }
+.app-pass-status { padding: 7px 12px; border-color: var(--atlas-line); background: var(--atlas-card); color: var(--atlas-ink-soft); font-weight: 700; }
+.app-pass-status.is-active { border-color: rgba(46, 139, 115, .45); color: var(--atlas-mint); }
+.page { max-width: 1180px; gap: 26px; }
+.page-header { display: grid; gap: 6px; padding-bottom: 21px; border-bottom: 1px solid var(--atlas-line); }
+.page-header h1 { font: 700 clamp(32px, 4vw, 52px)/.98 var(--font-serif); letter-spacing: -.055em; }
+.page-header p { max-width: 60ch; color: var(--atlas-ink-soft); font-size: 15px; }
+
+/* Shared cards, controls, forms and account/paywall surfaces */
+.ui-card, .settings-panel, .settings-group, .paywall-card, .ask-atlas, .dark-sky-view, .deep-sky-planner,
+.mobile-shell .mobile-card, .mobile-shell .dt-major-event-card, .mobile-shell .dt-widget-cell {
+  border: 1px solid var(--atlas-line); border-radius: 20px; background: var(--atlas-card); box-shadow: 0 12px 34px rgba(25, 47, 64, .06);
+}
+.ui-button, .paywall-card-cta, .dt-primary-btn, .settings-account-actions button, .account-form button {
+  min-height: 42px; border-radius: 12px; font-weight: 700;
+}
+.ui-button-primary, .paywall-card-cta, .dt-primary-btn {
+  border-color: var(--atlas-sky); background: var(--atlas-sky); color: #fff;
+  box-shadow: 0 8px 18px rgba(23, 110, 156, .2);
+}
+.ui-button-primary:hover, .paywall-card-cta:hover, .dt-primary-btn:hover { background: var(--atlas-sky-deep); }
+.ui-input, input, select, textarea { border-color: var(--atlas-line); background: color-mix(in srgb, var(--atlas-card) 90%, var(--atlas-paper)); color: var(--atlas-ink); border-radius: 10px; }
+.settings-account, .settings-account-summary, .settings-account-actions { gap: 14px; }
+.settings-account-summary { padding: 20px; border: 1px solid var(--atlas-line); border-radius: 18px; background: var(--atlas-card); }
+.settings-account-email { color: var(--atlas-ink); font-weight: 750; }
+.settings-pass-explainer, .settings-help, .paywall-card-note { color: var(--atlas-ink-soft); }
+.settings-status--pill, .paywall-card-badge { border-radius: 999px; font-weight: 750; }
+.paywall-card { overflow: hidden; padding: clamp(22px, 4vw, 38px); border-color: rgba(23, 110, 156, .28); background: linear-gradient(135deg, rgba(23, 110, 156, .12), var(--atlas-card) 42%); }
+.paywall-card h2 { font: 700 clamp(28px, 3vw, 40px)/1 var(--font-serif); letter-spacing: -.045em; }
+.paywall-card-breakdown > div { border-color: var(--atlas-line); background: color-mix(in srgb, var(--atlas-paper) 54%, transparent); }
+.paywall-card-secondary { border-color: var(--atlas-line); color: var(--atlas-sky-deep); background: transparent; border-radius: 12px; font-weight: 700; }
+
+/* Daily Transit and reused mobile feature surfaces */
+.mobile-shell { height: auto; min-height: 0; color: var(--atlas-ink); background: transparent; --dt-bg-page: transparent; --dt-ink: var(--atlas-ink); --dt-ink-soft: var(--atlas-ink-soft); --dt-rule: var(--atlas-line); --dt-primary: var(--atlas-sky); }
+.mobile-shell .dt-hub, .mobile-shell .dt-page { max-width: 1120px; margin: 0 auto; }
+.mobile-shell .dt-stitch, .mobile-shell .dt-starfield-bg { display: none; }
+.mobile-shell .dt-briefing-head, .mobile-shell .dt-section-head { border-color: var(--atlas-line); }
+.mobile-shell .dt-h2, .mobile-shell .mobile-sheet-title { color: var(--atlas-ink); font-family: var(--font-serif); letter-spacing: -.035em; }
+.mobile-shell .dt-kicker, .mobile-shell .dt-section-eyebrow { color: var(--atlas-sky); }
+.mobile-shell .dt-map-preview { border-radius: 22px; overflow: hidden; border: 1px solid var(--atlas-line); box-shadow: 0 18px 40px rgba(25, 47, 64, .12); }
+.mobile-shell .dt-widget-cell { padding: 16px; }
+.mobile-shell .dt-major-event-card { overflow: hidden; }
+.mobile-shell .dt-chip, .mobile-shell .dt-day-chip, .mobile-shell .dt-view-toggle { border-color: var(--atlas-line); background: var(--atlas-card); color: var(--atlas-ink-soft); }
+.mobile-shell .dt-chip.is-active, .mobile-shell .dt-day-chip.is-active, .mobile-shell .dt-view-toggle button.is-active { background: var(--atlas-ink); color: var(--atlas-paper); }
+.mobile-shell .dt-feed-row { border-color: var(--atlas-line); }
+.mobile-shell .dt-feed-headline, .mobile-shell .dt-major-event-body h3 { color: var(--atlas-ink); }
+
+@media (max-width: 900px) {
+  .nav-shell { padding-bottom: var(--tab-bar-height); }
+  .nav-shell-nav { position: fixed; inset: auto 0 0; width: 100%; height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom)); padding: 0 8px env(safe-area-inset-bottom); background: color-mix(in srgb, var(--atlas-paper) 92%, transparent); backdrop-filter: blur(18px); }
+  .nav-shell-item { height: 52px; border-radius: 13px; }
+  .nav-shell-item-active { background: rgba(23, 110, 156, .13); color: var(--atlas-sky-deep); box-shadow: none; }
+  .nav-shell-main { padding: 24px 16px; }
+  .nav-shell-topbar { padding: 14px 16px; }
+  .page-header h1 { font-size: 36px; }
+  .mobile-shell .dt-hub, .mobile-shell .dt-page { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }

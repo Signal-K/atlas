@@ -4,6 +4,7 @@ import { pb } from './pocketbase'
 
 const entitlementListeners = new Set<() => void>()
 let entitlementRefreshCount = 0
+let entitlementRefreshPromise: Promise<AuthUser | null> | null = null
 
 function notifyEntitlementListeners() {
   entitlementListeners.forEach((listener) => listener())
@@ -147,11 +148,17 @@ export async function deleteAccount(): Promise<void> {
 // Re-fetches the signed-in user's record (e.g. `entitled`, flipped
 // server-side by the Polar webhook after a purchase) since the cached
 // authStore snapshot only otherwise updates on the next sign-in.
-export async function refreshEntitlement(): Promise<AuthUser | null> {
-  if (!pb.authStore.isValid) return null
+export function refreshEntitlement(): Promise<AuthUser | null> {
+  if (!pb.authStore.isValid) return Promise.resolve(null)
+  // App boot, Settings, focus and the post-checkout return can all request a
+  // reconciliation at the same time. Safari in particular is prone to
+  // suspending/reordering those duplicate requests. One shared in-flight
+  // request means the auth store gets one authoritative result, rather than
+  // a late stale auth-refresh racing a successful Polar reconciliation.
+  if (entitlementRefreshPromise) return entitlementRefreshPromise
   entitlementRefreshCount += 1
   notifyEntitlementListeners()
-  try {
+  const refresh = (async (): Promise<AuthUser | null> => {
     let reconciledAsEntitled = false
     try {
       // Webhooks are the fast path, but reconciliation makes paid access
@@ -176,17 +183,24 @@ export async function refreshEntitlement(): Promise<AuthUser | null> {
       pb.authStore.save(pb.authStore.token, { ...pb.authStore.record, entitled: true })
     }
     return currentUser()
-  } finally {
+  })()
+  entitlementRefreshPromise = refresh.finally(() => {
     entitlementRefreshCount = Math.max(0, entitlementRefreshCount - 1)
+    entitlementRefreshPromise = null
     notifyEntitlementListeners()
-  }
+  })
+  return entitlementRefreshPromise
 }
 
 // Polar can redirect back a fraction before its order.paid webhook has
 // finished. Refresh a few times in the background so a successful purchase
 // unlocks without requiring a manual reload or a trip through Settings.
 export async function refreshEntitlementAfterCheckout(): Promise<void> {
-  const delays = [0, 750, 2_000, 4_000]
+  // A direct Polar reconciliation normally grants the pass on attempt zero.
+  // Keep checking for about 40 seconds as a fallback for a slow webhook or a
+  // temporarily unavailable Polar API; this runs in the background, while
+  // the UI stays explicit that access is still being checked.
+  const delays = [0, 1_000, 2_000, 4_000, 8_000, 16_000]
   for (const delay of delays) {
     if (delay) await new Promise((resolve) => window.setTimeout(resolve, delay))
     const user = await refreshEntitlement()
