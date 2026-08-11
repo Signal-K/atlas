@@ -30,6 +30,22 @@ function angularDiff(body1, body2, date) {
   return lon > 180 ? 360 - lon : lon
 }
 
+// The daily grid is intentionally only used to find a candidate minimum.
+// Refine that point deterministically so the published time means closest
+// approach, rather than an arbitrary midnight that happens to be nearby.
+function refineMinimum(body1, body2, center) {
+  let lo = center.getTime() - STEP_DAYS * 86_400_000
+  let hi = center.getTime() + STEP_DAYS * 86_400_000
+  for (let i = 0; i < 36; i += 1) {
+    const left = lo + (hi - lo) / 3
+    const right = hi - (hi - lo) / 3
+    if (angularDiff(body1, body2, new Date(left)) <= angularDiff(body1, body2, new Date(right))) hi = right
+    else lo = left
+  }
+  const date = new Date((lo + hi) / 2)
+  return { date, separation: angularDiff(body1, body2, date) }
+}
+
 function findConjunctions(body1, body2, now, end) {
   // Stepped from a fixed UTC-midnight grid, not from `now` itself: anchoring
   // to the wall-clock time the ingest happens to run at means each run
@@ -49,7 +65,7 @@ function findConjunctions(body1, body2, now, end) {
   for (let i = 1; i < points.length - 1; i += 1) {
     const { date, diff } = points[i]
     if (diff < CONJUNCTION_THRESHOLD_DEG && diff <= points[i - 1].diff && diff <= points[i + 1].diff) {
-      conjunctions.push({ date, separation: diff })
+      conjunctions.push(refineMinimum(body1, body2, date))
     }
   }
   return conjunctions

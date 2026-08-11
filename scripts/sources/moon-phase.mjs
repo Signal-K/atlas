@@ -7,16 +7,21 @@ import * as Astronomy from 'astronomy-engine'
 function toEvent(title, date) {
   const startsAt = date.toISOString()
   const isFullMoon = title === 'Full Moon'
+  const isQuarterMoon = title === 'First Quarter' || title === 'Last Quarter'
   return {
     kind: 'moon_phase',
     target: 'moon',
     title,
     description: isFullMoon
       ? 'The Moon is fully illuminated and visible all night — best conditions for lunar observation and imaging.'
-      : 'The Moon is between Earth and the Sun and not visible — best conditions for viewing faint deep-sky objects.',
+      : isQuarterMoon
+        ? 'Half of the Moon is illuminated, making its shadowed crater edges especially striking through binoculars or a small telescope.'
+        : 'The Moon is between Earth and the Sun and not visible — best conditions for viewing faint deep-sky objects.',
     content: isFullMoon
       ? 'A full moon rises at sunset and is visible all night. Great for lunar photography and naked-eye observation of maria and craters near the terminator in the days before/after peak fullness, though the bright sky washes out fainter deep-sky targets.'
-      : 'A new moon is not visible at all, since it rises and sets with the Sun. With no moonlight to wash out the sky, this is the best few nights of the month for viewing faint deep-sky objects like galaxies and nebulae.',
+      : isQuarterMoon
+        ? 'A quarter moon is high in a dark sky for part of the night. Point binoculars or a small telescope along the day-night boundary (the terminator): long shadows make craters and mountain ranges much easier to see than at full moon.'
+        : 'A new moon is not visible at all, since it rises and sets with the Sun. With no moonlight to wash out the sky, this is the best few nights of the month for viewing faint deep-sky objects like galaxies and nebulae.',
     starts_at: startsAt,
     ends_at: startsAt,
     ...(isFullMoon
@@ -28,8 +33,9 @@ function toEvent(title, date) {
 }
 
 // quarter: 0 = new moon, 1 = first quarter, 2 = full moon, 3 = third quarter.
-// Only new (0) and full (2) are worth surfacing as sky events here.
-const QUARTER_TITLE = { 0: 'New Moon', 2: 'Full Moon' }
+// Quarter phases are excellent lunar observing opportunities, so all four
+// phases belong in the curated feed.
+const QUARTER_TITLE = { 0: 'New Moon', 1: 'First Quarter', 2: 'Full Moon', 3: 'Last Quarter' }
 
 export async function fetchEvents({ now = new Date(), windowDays = 90 } = {}) {
   const end = now.getTime() + windowDays * 86_400_000

@@ -182,7 +182,11 @@ const DEFAULT_META: KindMeta = {
 
 // Kinds bright enough that moon glare barely matters, used to decide
 // whether TonightScore should penalise a bright moon.
-const BRIGHT_KINDS = new Set(['moon_phase', 'iss_pass', 'satellite_flare', 'planet_event', 'conjunction', 'eclipse'])
+const BRIGHT_KINDS = new Set(['moon_phase', 'planet_event', 'conjunction', 'eclipse'])
+
+// Satellite predictions are useful when someone explicitly seeks them, but
+// are frequent enough to overwhelm the primary astronomy plan.
+const OPT_IN_ORBITAL_KINDS = new Set(['iss_pass', 'satellite_flare'])
 
 // Kinds whose event.startsAt is an annual/multi-day marker rather than a
 // precise "look now" moment (e.g. a planet's opposition date), so tonight's
@@ -306,6 +310,7 @@ function rankTargets(
   if (rating === 'skip') return []
 
   return events
+    .filter((event) => !OPT_IN_ORBITAL_KINDS.has(event.kind))
     .filter((event) => isAuroraRelevant(event, lat))
     .map((event) => {
       const bestTime = resolveBestTime(event, lat, lon, start, end)
@@ -352,7 +357,7 @@ export async function getTonightPlan(lat: number, lon: number, now = new Date(),
   const advisory = forecast.days
   const { start, end } = tonightWindowForTimeZone(now, locationTimeZone ?? forecast.timeZone)
   const allEvents = await getEventsInRange(start, end)
-  const events = allEvents.filter((event) => isLocationRelevant(event, lat, lon))
+  const events = allEvents.filter((event) => isLocationRelevant(event, lat, lon) && !OPT_IN_ORBITAL_KINDS.has(event.kind))
 
   const today = advisory[0]
   const weatherAvailable = today != null

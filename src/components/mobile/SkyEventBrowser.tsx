@@ -11,6 +11,7 @@ type EventStatus = 'go' | 'marginal' | 'poor'
 type ViewMode = 'list' | 'calendar'
 
 const ALL_CATEGORY_ID = 'all'
+const SATELLITE_CATEGORY_ID = 'satellites'
 
 // A single chronological feed of every upcoming event, newest-first by
 // date. Category is an optional filter chip (defaults to "All"), not a
@@ -31,6 +32,7 @@ export function SkyEventBrowser({
   timeZone?: string
 }) {
   const [categoryId, setCategoryId] = useState<string>(ALL_CATEGORY_ID)
+  const [showSatellitePasses, setShowSatellitePasses] = useState(false)
   // Wikimedia hotlinks occasionally fail to load -- fall back to the
   // category icon instead of leaving a blank swatch.
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set())
@@ -38,17 +40,22 @@ export function SkyEventBrowser({
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
   const categories = useMemo(
-    () => EVENT_CATEGORIES.map((category) => ({ ...category, count: (events ?? []).filter((event) => category.kinds.includes(event.kind)).length })),
-    [events],
+    () => EVENT_CATEGORIES
+      .filter((category) => category.id !== SATELLITE_CATEGORY_ID || showSatellitePasses)
+      .map((category) => ({ ...category, count: (events ?? []).filter((event) => category.kinds.includes(event.kind)).length })),
+    [events, showSatellitePasses],
   )
 
   const activeCategory = categories.find((category) => category.id === categoryId) ?? null
   const scopedEvents = useMemo(
     () =>
       (events ?? [])
-        .filter((event) => !activeCategory || activeCategory.kinds.includes(event.kind))
+        .filter((event) => {
+          if (activeCategory) return activeCategory.kinds.includes(event.kind)
+          return showSatellitePasses || (event.kind !== 'iss_pass' && event.kind !== 'satellite_flare')
+        })
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
-    [events, activeCategory],
+    [events, activeCategory, showSatellitePasses],
   )
 
   const days = useMemo(() => {
@@ -104,7 +111,7 @@ export function SkyEventBrowser({
         <div className="dt-chip-row" role="tablist" aria-label="Event categories">
           <button type="button" className={`dt-chip${categoryId === ALL_CATEGORY_ID ? ' is-active' : ''}`} onClick={() => selectCategory(ALL_CATEGORY_ID)}>
             All
-            <span>{events?.length ?? 0}</span>
+            <span>{scopedEvents.length}</span>
           </button>
           {categories.map((category) => (
             <button
@@ -135,6 +142,19 @@ export function SkyEventBrowser({
           </button>
         </div>
       </div>
+
+      <button
+        type="button"
+        className={`dt-chip dt-satellite-toggle${showSatellitePasses ? ' is-active' : ''}`}
+        aria-pressed={showSatellitePasses}
+        onClick={() => {
+          setShowSatellitePasses((current) => !current)
+          setCategoryId(ALL_CATEGORY_ID)
+          setSelectedDay(null)
+        }}
+      >
+        Satellite passes {showSatellitePasses ? 'on' : 'off'}
+      </button>
 
       {viewMode === 'calendar' && (
         <div className="dt-day-strip">

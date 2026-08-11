@@ -192,6 +192,10 @@
   color: var(--color-accent-text);
 }
 
+.dt-satellite-toggle {
+  margin: -4px 0 var(--space-4);
+}
+
 .dt-view-toggle {
   display: flex;
   flex-shrink: 0;

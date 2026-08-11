@@ -3708,6 +3708,10 @@
   color: var(--dt-bg-page);
 }
 
+.dt-satellite-toggle {
+  margin: -4px 0 14px;
+}
+
 .dt-view-toggle {
   display: flex;
   flex-shrink: 0;

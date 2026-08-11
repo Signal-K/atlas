@@ -1,11 +1,8 @@
-name: Ingest sky events
+name: Seed curated sky-event window
 
-# Runs all registered event-source plugins (scripts/sources/*.mjs) on a
-# schedule and upserts the results into the shared PocketBase sky_events
-# collection. See scripts/ingest.mjs.
+# A deliberate operator action only: the seed is a reviewed, canonical
+# two-week snapshot, not a live API mirror. See scripts/seed-curated-window.mjs.
 on:
-  schedule:
-    - cron: '17 4 * * *' # once a day, off the hour to avoid GitHub's scheduling pileup
   workflow_dispatch: {}
 
 jobs:
