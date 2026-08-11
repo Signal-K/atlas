@@ -14,13 +14,13 @@ export function AccountManagement({ email }: { email: string }) {
   return (
     <div className="settings-account-management">
       <div className="settings-account-actions">
-        <button type="button" onClick={() => toggle('password')}>
+        <button type="button" className="ui-button" onClick={() => toggle('password')}>
           Change password
         </button>
-        <button type="button" onClick={() => toggle('email')}>
+        <button type="button" className="ui-button" onClick={() => toggle('email')}>
           Change email
         </button>
-        <button type="button" className="settings-status--negative" onClick={() => toggle('delete')}>
+        <button type="button" className="ui-button ui-button-danger" onClick={() => toggle('delete')}>
           Delete account
         </button>
       </div>
@@ -64,6 +64,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
   return (
     <form className="account-form" onSubmit={handleSubmit}>
       <input
+        className="ui-input"
         type="password"
         placeholder="Current password"
         value={oldPassword}
@@ -71,6 +72,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
         required
       />
       <input
+        className="ui-input"
         type="password"
         placeholder="New password"
         value={newPassword}
@@ -79,6 +81,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
         required
       />
       <input
+        className="ui-input"
         type="password"
         placeholder="Confirm new password"
         value={confirm}
@@ -87,7 +90,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
         required
       />
       <div className="account-form-actions">
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="ui-button ui-button-primary" disabled={busy}>
           {busy ? 'Updating…' : 'Update password'}
         </button>
       </div>
@@ -121,7 +124,7 @@ function ChangeEmailForm({ onDone }: { onDone: () => void }) {
     return (
       <p className="settings-help settings-status--positive">
         Confirmation link sent to {newEmail}. Your email stays the same until you open it.{' '}
-        <button type="button" onClick={onDone}>
+        <button type="button" className="ui-button ui-button-ghost" onClick={onDone}>
           Done
         </button>
       </p>
@@ -131,6 +134,7 @@ function ChangeEmailForm({ onDone }: { onDone: () => void }) {
   return (
     <form className="account-form" onSubmit={handleSubmit}>
       <input
+        className="ui-input"
         type="email"
         placeholder="New email address"
         value={newEmail}
@@ -138,7 +142,7 @@ function ChangeEmailForm({ onDone }: { onDone: () => void }) {
         required
       />
       <div className="account-form-actions">
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="ui-button ui-button-primary" disabled={busy}>
           {busy ? 'Sending…' : 'Send confirmation link'}
         </button>
       </div>
@@ -174,18 +178,19 @@ function DeleteAccountForm({ email, onCancel }: { email: string; onCancel: () =>
         <strong>{email}</strong>) to confirm.
       </p>
       <input
+        className="ui-input"
         type="email"
         placeholder={email}
         value={confirmText}
         onChange={(event) => setConfirmText(event.target.value)}
       />
       <div className="account-form-actions">
-        <button type="button" onClick={onCancel} disabled={busy}>
+        <button type="button" className="ui-button ui-button-ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </button>
         <button
           type="button"
-          className="settings-status--negative"
+          className="ui-button ui-button-danger"
           onClick={handleDelete}
           disabled={busy || confirmText.trim().toLowerCase() !== email.trim().toLowerCase()}
         >

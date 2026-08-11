@@ -19,6 +19,7 @@ export interface AuthUser {
   email: string
   entitled: boolean
   onboarded: boolean
+  deviceModels: string[]
 }
 
 // An expired token (the users collection issues 5-day tokens) is dead: every
@@ -37,6 +38,7 @@ function currentUser(): AuthUser | null {
     email: model.email as string,
     entitled: Boolean(model.entitled),
     onboarded: Boolean(model.onboarded),
+    deviceModels: Array.isArray(model.device_models) ? (model.device_models as string[]) : [],
   }
 }
 
@@ -118,6 +120,18 @@ export async function changePassword(oldPassword: string, newPassword: string): 
 // owner out.
 export async function requestEmailChange(newEmail: string): Promise<void> {
   await pb.collection('users').requestEmailChange(newEmail)
+}
+
+// Persists the user's selected phone model(s) (Account settings' Device &
+// camera setup section) and updates the cached auth record so the UI
+// reflects the change without a full re-fetch.
+export async function updateDeviceModels(deviceModels: string[]): Promise<void> {
+  const id = pb.authStore.record?.id as string | undefined
+  if (!id) throw new Error('Not signed in')
+  await pb.collection('users').update(id, { device_models: deviceModels })
+  if (pb.authStore.record) {
+    pb.authStore.save(pb.authStore.token, { ...pb.authStore.record, device_models: deviceModels })
+  }
 }
 
 // Permanent. Whatever the users collection's delete API rule allows is what

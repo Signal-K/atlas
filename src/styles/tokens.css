@@ -7,6 +7,7 @@
 
 :root {
   --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, Consolas, monospace;
 
   --text-xs: 12px;
@@ -50,6 +51,10 @@
   --shadow-md: 0 8px 24px rgba(16, 16, 24, 0.1);
   --ambient-glow-1: rgba(124, 58, 237, 0.07);
   --ambient-glow-2: rgba(20, 130, 200, 0.05);
+  /* Warm neutral highlight for the nav rail's active/toggle state --
+     deliberately monochrome (not --color-accent) for higher contrast. */
+  --color-rail-highlight-bg: #f2ede1;
+  --color-rail-highlight-fg: #1a1a1f;
 }
 
 :root[data-theme='dark'] {
@@ -69,6 +74,8 @@
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
   --ambient-glow-1: rgba(167, 139, 250, 0.14);
   --ambient-glow-2: rgba(56, 130, 246, 0.08);
+  --color-rail-highlight-bg: #22232c;
+  --color-rail-highlight-fg: #f1f1f3;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -89,6 +96,8 @@
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
     --ambient-glow-1: rgba(167, 139, 250, 0.14);
     --ambient-glow-2: rgba(56, 130, 246, 0.08);
+    --color-rail-highlight-bg: #2a2620;
+    --color-rail-highlight-fg: #f1f1f3;
   }
 }
 
@@ -104,6 +113,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color-scheme: light dark;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 700;
 }
 
 /* Starfield (see components/Starfield.tsx) sits fixed behind everything at

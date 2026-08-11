@@ -45,6 +45,15 @@
   background: var(--color-surface);
 }
 
+.ui-button-danger {
+  border-color: var(--color-bad);
+  color: var(--color-bad);
+}
+
+.ui-button-danger:hover {
+  background: color-mix(in srgb, var(--color-bad) 12%, transparent);
+}
+
 .ui-card {
   background: color-mix(in srgb, var(--color-surface) 78%, transparent);
   border: 1px solid var(--color-border);
@@ -93,22 +102,43 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-4) var(--space-2);
+  gap: var(--space-4);
+  padding: var(--space-5) 0;
   border-right: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  /* Seamless with the page -- no distinct panel background, just the
+     starfield showing through, matching the old rail's bare look. */
+  background: transparent;
   position: sticky;
   top: 0;
   height: 100svh;
   overflow-y: auto;
 }
 
+.nav-shell-rail-top {
+  display: flex;
+}
+
+.nav-shell-rail-top .ui-theme-toggle {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-rail-highlight-bg);
+  color: var(--color-rail-highlight-fg);
+}
+
+.nav-shell-divider {
+  width: 28px;
+  height: 1px;
+  background: var(--color-border);
+}
+
 .nav-shell-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border-radius: var(--radius-md);
   color: var(--color-text-muted);
@@ -117,8 +147,8 @@
 }
 
 .nav-shell-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 21px;
 }
 
 .nav-shell-label {
@@ -140,8 +170,8 @@
 }
 
 .nav-shell-item-active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent);
+  background: var(--color-rail-highlight-bg);
+  color: var(--color-rail-highlight-fg);
 }
 
 .nav-shell-body {
@@ -152,12 +182,12 @@
 }
 
 .nav-shell-topbar {
-  padding: var(--space-3) var(--space-5);
+  /* Not sticky, not a filled bar -- the reference design has no persistent
+     app-chrome strip at all, just a plain masthead that scrolls away with
+     the page, with a single hairline rule underneath it. A sticky bar with
+     its own background is a UI-chrome pattern the reference doesn't use. */
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--color-bg);
 }
 
 .nav-shell-main {
@@ -176,8 +206,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-lg);
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .app-brand img {
@@ -205,6 +237,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* The rail-top slot (see .nav-shell-rail-top) carries the theme toggle on
+   the wide, vertical-rail layout; only the narrow bottom-tab-bar layout
+   needs it back in the top bar. */
+.app-topbar-theme-toggle {
+  display: none;
 }
 
 .ui-theme-toggle {
@@ -235,7 +274,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  max-width: 720px;
+  max-width: 960px;
+  width: 100%;
 }
 
 .page-header h1 {
@@ -247,11 +287,22 @@
   color: var(--color-text-muted);
 }
 
+.ui-section {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.ui-section:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
 .ui-section + .ui-section {
   margin-top: var(--space-2);
 }
 
 .ui-section-title {
+  font-family: var(--font-serif);
   font-size: var(--text-lg);
   font-weight: 700;
   margin: 0 0 var(--space-3);
@@ -323,9 +374,37 @@
   color: var(--color-text);
 }
 
-.ui-event-detail-image {
+.ui-event-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.ui-event-detail-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ui-event-detail-header-text h1 {
   margin: 0;
-  border-radius: var(--radius-lg);
+}
+
+.ui-event-detail-header-text p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* A compact thumbnail alongside the title, not a full-bleed hero banner --
+   this is an app detail panel, not a blog post. */
+.ui-event-detail-image {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--color-border);
 }
@@ -333,25 +412,37 @@
 .ui-event-detail-image img {
   display: block;
   width: 100%;
-  max-height: 320px;
+  height: 100%;
   object-fit: cover;
 }
 
 .ui-event-detail-image figcaption {
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-}
-
-.ui-event-detail-description {
-  color: var(--color-text);
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 2px var(--space-1);
+  font-size: 10px;
+  line-height: 1.3;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .ui-event-detail-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.ui-event-detail-row {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ui-event-detail-row .ui-calendar-substat {
+  text-align: left;
+  font-size: var(--text-base);
 }
 
 .ui-feed-top {
@@ -509,6 +600,7 @@
 }
 
 .ui-calendar-heading {
+  font-family: var(--font-serif);
   font-size: var(--text-lg);
   font-weight: 700;
   text-align: center;
@@ -532,14 +624,30 @@
   color: var(--color-text-muted);
 }
 
-.ui-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
+.ui-calendar-stats {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
 }
 
-.ui-calendar-tile {
+.ui-calendar-stat-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-calendar-stat-row .ui-section-title {
+  flex: 0 0 auto;
+}
+
+.ui-calendar-stat-row-value {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-1);
+  text-align: right;
 }
 
 .ui-calendar-stat {
@@ -555,8 +663,11 @@
 }
 
 .ui-calendar-standout {
+  display: block;
   text-decoration: none;
   color: inherit;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
 .ui-calendar-standout h3 {
@@ -569,9 +680,15 @@
 }
 
 .ui-calendar-cluster {
+  display: flex;
   flex-direction: row;
   gap: var(--space-4);
-  padding: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.ui-calendar-cluster-image {
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -592,7 +709,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-4) var(--space-4) var(--space-4) 0;
 }
 
 .ui-calendar-cluster-body h3 {
@@ -604,8 +720,13 @@
 }
 
 @media (max-width: 640px) {
-  .ui-calendar-grid {
-    grid-template-columns: 1fr;
+  .ui-calendar-stat-row {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .ui-calendar-stat-row-value {
+    text-align: left;
   }
 
   .ui-calendar-cluster {
@@ -614,10 +735,6 @@
 
   .ui-calendar-cluster-image {
     flex: 0 0 160px;
-  }
-
-  .ui-calendar-cluster-body {
-    padding: 0 var(--space-4) var(--space-4);
   }
 }
 
@@ -639,6 +756,17 @@
     position: sticky;
     bottom: 0;
     z-index: 10;
+  }
+
+  /* The theme toggle moves back into the top bar on the bottom-tab-bar
+     layout -- the rail-top slot only makes sense on the vertical rail. */
+  .nav-shell-rail-top,
+  .nav-shell-divider {
+    display: none;
+  }
+
+  .app-topbar-theme-toggle {
+    display: inline-flex;
   }
 
   .nav-shell-item {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLocation } from '../lib/geo'
 import { forecastLookaheadDays } from '../lib/entitlementLimits'
@@ -43,6 +43,10 @@ export function CalendarPage({ user, entitled }: CalendarPageProps) {
   const [day, setDay] = useState<CalendarDay | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Keyed by location + day, so flipping between days already visited this
+  // session shows the cached result immediately (no blank "Loading tonight…"
+  // flash) while a fresh copy is still fetched quietly in the background.
+  const cacheRef = useRef(new Map<string, CalendarDay>())
 
   const maxAheadDays = forecastLookaheadDays(entitled) - 1
   const dayOffset = Math.round((selectedDate.getTime() - startOfDay(new Date()).getTime()) / 86_400_000)
@@ -51,16 +55,26 @@ export function CalendarPage({ user, entitled }: CalendarPageProps) {
 
   useEffect(() => {
     if (!coordinates) return
+    const cacheKey = `${coordinates.lat.toFixed(3)},${coordinates.lon.toFixed(3)}|${startOfDay(selectedDate).toISOString()}`
+    const cached = cacheRef.current.get(cacheKey)
+
     let cancelled = false
-    setLoading(true)
     setError('')
+    if (cached) {
+      setDay(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     fetchObservedTargetNames(user.id)
       .then((observed) => getCalendarDay(coordinates.lat, coordinates.lon, selectedDate, observed))
       .then((result) => {
-        if (!cancelled) setDay(result)
+        if (cancelled) return
+        cacheRef.current.set(cacheKey, result)
+        setDay(result)
       })
       .catch(() => {
-        if (!cancelled) setError('Could not load conditions for this day. Try again shortly.')
+        if (!cancelled && !cached) setError('Could not load conditions for this day. Try again shortly.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -123,50 +137,54 @@ export function CalendarPage({ user, entitled }: CalendarPageProps) {
                 </div>
               )}
 
-              <div className="ui-calendar-grid">
-                <div className="ui-card ui-calendar-tile">
+              <div className="ui-calendar-stats">
+                <div className="ui-calendar-stat-row">
                   <span className="ui-section-title">Weather</span>
                   {day.weather ? (
-                    <>
+                    <div className="ui-calendar-stat-row-value">
                       <p className="ui-calendar-stat">{Math.round(day.weather.cloudCoverPct)}% cloud cover</p>
                       <p className="ui-calendar-substat">{Math.round(day.weather.precipitationChancePct)}% chance of rain overnight</p>
-                    </>
+                    </div>
                   ) : (
                     <p className="ui-calendar-substat">Forecast not available for this night yet.</p>
                   )}
                 </div>
 
-                <div className="ui-card ui-calendar-tile">
+                <div className="ui-calendar-stat-row">
                   <span className="ui-section-title">Light pollution</span>
                   {day.lightPollution ? (
-                    <>
+                    <div className="ui-calendar-stat-row-value">
                       <p className="ui-calendar-stat">
                         Bortle {day.lightPollution.bortleClass} — {day.lightPollution.description}
                       </p>
                       <p className="ui-calendar-substat">{day.lightPollution.whatYouCanSee}</p>
-                    </>
+                    </div>
                   ) : (
                     <p className="ui-calendar-substat">This location hasn't been sky-brightness mapped yet.</p>
                   )}
                 </div>
 
-                <div className="ui-card ui-calendar-tile">
+                <div className="ui-calendar-stat-row">
                   <span className="ui-section-title">Optimal window</span>
-                  <p className="ui-calendar-stat">
-                    {formatClockTime(day.optimalWindow.startIso)} – {formatClockTime(day.optimalWindow.endIso)}
-                  </p>
-                  <p className="ui-calendar-substat">Astronomical darkness, when the sky is at its darkest</p>
+                  <div className="ui-calendar-stat-row-value">
+                    <p className="ui-calendar-stat">
+                      {formatClockTime(day.optimalWindow.startIso)} – {formatClockTime(day.optimalWindow.endIso)}
+                    </p>
+                    <p className="ui-calendar-substat">Astronomical darkness, when the sky is at its darkest</p>
+                  </div>
                 </div>
 
-                <div className="ui-card ui-calendar-tile">
+                <div className="ui-calendar-stat-row">
                   <span className="ui-section-title">Moon</span>
-                  <p className="ui-calendar-stat">{Math.round(day.moonIlluminationPct)}% illuminated</p>
-                  <p className="ui-calendar-substat">{day.moonIlluminationPct >= 70 ? 'Bright — faint targets will wash out' : day.moonIlluminationPct <= 20 ? 'Dark sky — great for faint targets' : 'Moderate moonlight'}</p>
+                  <div className="ui-calendar-stat-row-value">
+                    <p className="ui-calendar-stat">{Math.round(day.moonIlluminationPct)}% illuminated</p>
+                    <p className="ui-calendar-substat">{day.moonIlluminationPct >= 70 ? 'Bright — faint targets will wash out' : day.moonIlluminationPct <= 20 ? 'Dark sky — great for faint targets' : 'Moderate moonlight'}</p>
+                  </div>
                 </div>
               </div>
 
               {day.standoutEvent && (
-                <Link to={`/app/events/${day.standoutEvent.id}`} className="ui-card ui-calendar-standout">
+                <Link to={`/app/events/${day.standoutEvent.id}`} className="ui-calendar-standout">
                   <span className="ui-badge ui-badge-accent">{categoryFor(day.standoutEvent.kind).label} · Tonight's standout</span>
                   <h3>{day.standoutEvent.title}</h3>
                   {day.standoutEvent.description && <p>{day.standoutEvent.description}</p>}
@@ -174,7 +192,7 @@ export function CalendarPage({ user, entitled }: CalendarPageProps) {
               )}
 
               {day.cluster && (
-                <div className="ui-card ui-calendar-cluster">
+                <div className="ui-calendar-cluster">
                   <div className="ui-calendar-cluster-image">
                     <img src={day.cluster.imageUrl} alt="" />
                   </div>

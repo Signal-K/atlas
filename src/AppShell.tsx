@@ -37,6 +37,7 @@ export function AppShell({ user, entitlementRefreshing }: AppShellProps) {
   return (
     <NavShell
       items={NAV_ITEMS}
+      railTopAction={<ThemeToggle />}
       topBar={
         <div className="app-topbar">
           <div className="app-brand">
@@ -44,7 +45,9 @@ export function AppShell({ user, entitlementRefreshing }: AppShellProps) {
             <span>Atlas</span>
           </div>
           <div className="app-topbar-actions">
-            <ThemeToggle />
+            <span className="app-topbar-theme-toggle">
+              <ThemeToggle />
+            </span>
             <Link to="/app/account" className={`app-pass-status${entitled ? ' is-active' : ''}`}>
               {entitled ? 'Sky Pass active' : 'Free'}
             </Link>

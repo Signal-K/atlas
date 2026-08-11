@@ -5,6 +5,7 @@ services:
     environment:
       PB_ENCRYPTION_KEY: ${PB_ENCRYPTION_KEY:-}
       EXOFOP_BASE_URL: ${EXOFOP_BASE_URL:-https://exofop.ipac.caltech.edu/tess}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8094:8090"
     volumes:

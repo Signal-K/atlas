@@ -11,16 +11,23 @@ interface NavShellProps {
   items: NavItem[]
   children: ReactNode
   topBar?: ReactNode
+  railTopAction?: ReactNode
 }
 
 /**
  * One responsive shell: a side nav on wide viewports, a bottom tab bar on
  * narrow ones. Same markup, same CSS.
  */
-export function NavShell({ items, children, topBar }: NavShellProps) {
+export function NavShell({ items, children, topBar, railTopAction }: NavShellProps) {
   return (
     <div className="nav-shell">
       <nav className="nav-shell-nav" aria-label="Primary">
+        {railTopAction && (
+          <>
+            <div className="nav-shell-rail-top">{railTopAction}</div>
+            <div className="nav-shell-divider" aria-hidden="true" />
+          </>
+        )}
         {items.map((item) => (
           <NavLink
             key={item.path}

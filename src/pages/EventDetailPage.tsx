@@ -5,6 +5,8 @@ import { fetchEvent, type AtlasEvent } from '../lib/events'
 import { addToPlan, getPlanState, removeFromPlan } from '../lib/plans'
 import { hasLoggedObservation, logObservation } from '../lib/observations'
 import type { AuthUser } from '../lib/auth'
+import { devicePresetFor } from '../lib/devicePresets'
+import { AskAtlas } from '../components/AskAtlas'
 
 export interface EventDetailPageProps {
   user: AuthUser
@@ -123,27 +125,20 @@ export function EventDetailPage({ user, entitled }: EventDetailPageProps) {
         ← Events
       </Link>
 
-      {event.image_url && (
-        <figure className="ui-event-detail-image">
-          <img src={event.image_url} alt="" />
-          {event.image_credit && <figcaption>{event.image_credit}</figcaption>}
-        </figure>
-      )}
+      <div className="ui-event-detail-header">
+        <div className="ui-event-detail-header-text">
+          <span className="ui-feed-kicker">{category.label}</span>
+          <h1>{event.title}</h1>
+          <p>{formatDateTime(event.starts_at)}</p>
+        </div>
 
-      <div className="page-header">
-        <span className="ui-feed-kicker">{category.label}</span>
-        <h1>{event.title}</h1>
-        <p>{formatDateTime(event.starts_at)}</p>
+        {event.image_url && (
+          <figure className="ui-event-detail-image">
+            <img src={event.image_url} alt="" />
+            {event.image_credit && <figcaption>{event.image_credit}</figcaption>}
+          </figure>
+        )}
       </div>
-
-      {event.description && <p className="ui-event-detail-description">{event.description}</p>}
-
-      {event.content && (
-        <section className="ui-section">
-          <h2 className="ui-section-title">How to view it</h2>
-          <p>{event.content}</p>
-        </section>
-      )}
 
       <div className="ui-event-detail-actions">
         {entitled ? (
@@ -162,6 +157,56 @@ export function EventDetailPage({ user, entitled }: EventDetailPageProps) {
           </button>
         )}
       </div>
+
+      {(event.description || event.content) && (
+        <div className="ui-calendar-stats">
+          {event.description && (
+            <div className="ui-calendar-stat-row ui-event-detail-row">
+              <span className="ui-section-title">What it is</span>
+              <p className="ui-calendar-substat">{event.description}</p>
+            </div>
+          )}
+
+          {event.content && (
+            <div className="ui-calendar-stat-row ui-event-detail-row">
+              <span className="ui-section-title">How to view it</span>
+              <p className="ui-calendar-substat">{event.content}</p>
+            </div>
+          )}
+
+          {entitled && user.deviceModels.length > 0 ? (
+            user.deviceModels.map((value) => {
+              const preset = devicePresetFor(value)
+              if (!preset) return null
+              return (
+                <div key={value} className="ui-calendar-stat-row ui-event-detail-row">
+                  <span className="ui-section-title">{preset.label} setup</span>
+                  <ul className="ui-device-instructions">
+                    {preset.instructions.map((step, index) => (
+                      <li key={index}>{step}</li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })
+          ) : (
+            <div className="ui-calendar-stat-row ui-event-detail-row">
+              <span className="ui-section-title">Camera setup</span>
+              {entitled ? (
+                <p className="ui-calendar-substat">
+                  <Link to="/app/account">Add your phone in Account settings</Link> to see setup steps for this event.
+                </p>
+              ) : (
+                <p className="ui-calendar-substat">
+                  <Link to="/app/account">Get the Sky Pass</Link> to see camera setup steps for your phone.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <AskAtlas entitled={entitled} context={`${event.title}: ${event.description ?? ''} ${event.content ?? ''}`.trim()} />
     </div>
   )
 }

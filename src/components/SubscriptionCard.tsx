@@ -11,7 +11,7 @@ export function SubscriptionCard({ user, entitlementRefreshing }: { user: AuthUs
 
   if (entitlementRefreshing) {
     return (
-      <div className="ui-card subscription-card" role="status">
+      <div id="sky-pass" className="ui-card subscription-card" role="status">
         <span className="ui-badge">Sky Pass</span>
         <h2>Checking your access…</h2>
         <p>Atlas is confirming your purchase. This usually takes a moment.</p>
@@ -21,7 +21,7 @@ export function SubscriptionCard({ user, entitlementRefreshing }: { user: AuthUs
 
   if (user.entitled) {
     return (
-      <div className="ui-card subscription-card">
+      <div id="sky-pass" className="ui-card subscription-card">
         <span className="ui-badge ui-badge-good">Sky Pass active</span>
         <h2>You have the Sky Pass</h2>
         <p>Thanks for supporting Atlas — this unlocks everything as it ships.</p>
@@ -65,7 +65,7 @@ export function SubscriptionCard({ user, entitlementRefreshing }: { user: AuthUs
   }
 
   return (
-    <div className="ui-card subscription-card">
+    <div id="sky-pass" className="ui-card subscription-card">
       <span className="ui-badge ui-badge-accent">One-time Sky Pass</span>
       <h2>Upgrade to Sky Pass</h2>
       <p>One purchase, works everywhere you sign in with this email.</p>
