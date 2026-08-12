@@ -4396,6 +4396,14 @@
 .dt-entry {
   position: fixed;
   inset: 0;
+  /* inset:0 alone leaves a gap at the bottom in mobile Safari when its
+     address bar is showing -- fixed elements there size against the
+     layout viewport, not the actually-visible one, so the sticky "Log
+     attempt" footer below can end up rendered behind Safari's own chrome
+     and the app's nav bar. Dynamic viewport height tracks the real
+     visible area; 100vh stays as a fallback for browsers without dvh. */
+  height: 100vh;
+  height: 100dvh;
   z-index: 90;
   display: flex;
   flex-direction: column;
@@ -4406,6 +4414,8 @@
 .dt-entry-missing {
   position: fixed;
   inset: 0;
+  height: 100vh;
+  height: 100dvh;
   z-index: 90;
   display: flex;
   flex-direction: column;

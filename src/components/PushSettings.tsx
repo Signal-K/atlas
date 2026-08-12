@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
-import { getPushSubscription, isPushSupported, subscribeToPush, unsubscribeFromPush } from '../lib/push'
+import { getPushSubscription, isIOSSafariNotStandalone, isPushSupported, subscribeToPush, unsubscribeFromPush } from '../lib/push'
 
 export function PushSettings() {
   const { user } = useAuth()
@@ -27,10 +27,25 @@ export function PushSettings() {
   }
 
   if (!isPushSupported()) {
+    // iOS Safari only grants the Push API to a page opened from its Home
+    // Screen icon -- a plain browser tab (even after "Add to Home Screen"
+    // was used, if you're still viewing it in Safari rather than the
+    // installed icon) will never see PushManager, on any iOS version.
+    if (isIOSSafariNotStandalone()) {
+      return (
+        <div className="settings-row">
+          <span className="settings-label">Watchlist push notifications</span>
+          <span className="settings-status">
+            Add Atlas to your Home Screen first: tap Share, then "Add to Home Screen," then open Atlas from that icon
+            (not from Safari) to enable notifications.
+          </span>
+        </div>
+      )
+    }
     return (
       <div className="settings-row">
         <span className="settings-label">Watchlist push notifications</span>
-        <span className="settings-status">Not supported on this device/deployment</span>
+        <span className="settings-status">Not supported on this browser</span>
       </div>
     )
   }

@@ -13,6 +13,21 @@ export function isPushSupported(): boolean {
   return 'serviceWorker' in navigator && 'PushManager' in window && Boolean(VAPID_PUBLIC_KEY)
 }
 
+// iOS Safari never exposes PushManager to a page running in a plain browser
+// tab, on any iOS version -- Apple only grants Web Push to a page launched
+// from a Home Screen icon (display-mode: standalone), and only from iOS
+// 16.4+. isPushSupported() alone can't tell "will never work here" (desktop
+// Safari, an unsupported browser) apart from "would work if installed and
+// opened from its icon" -- this distinguishes the second case so the UI can
+// point someone at the fix instead of a dead-end "not supported."
+export function isIOSSafariNotStandalone(): boolean {
+  const isIOSDevice = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent))
+  if (!isIOSDevice) return false
+  const isStandalone =
+    window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
+  return !isStandalone
+}
+
 export async function getPushSubscription(): Promise<PushSubscription | null> {
   if (!isPushSupported()) return null
   const registration = await navigator.serviceWorker.ready

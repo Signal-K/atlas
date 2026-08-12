@@ -109,16 +109,22 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
           <p className="dt-entry-body">{subject.why}</p>
         </section>
 
-        <section className="dt-entry-section">
-          <div className="dt-section-eyebrow">Best time tonight</div>
-          <div className="dt-entry-timeline">
-            <span className="dt-entry-timeline-marker" style={{ left: `${subject.markerPct}%`, background: subject.accent }} />
-          </div>
-          <div className="dt-entry-timeline-labels">
-            <span>Dusk {duskLabel}</span>
-            <span>Dawn {dawnLabel}</span>
-          </div>
-        </section>
+        {/* The dusk/dawn night-sky window is meaningless (and actively
+            misleading -- see a daytime solar eclipse showing "dusk 11pm")
+            for anything with its own real timeline below; skip straight to
+            that instead of showing both. */}
+        {(!subject.guideSteps || subject.guideSteps.length === 0) && (
+          <section className="dt-entry-section">
+            <div className="dt-section-eyebrow">Best time tonight</div>
+            <div className="dt-entry-timeline">
+              <span className="dt-entry-timeline-marker" style={{ left: `${subject.markerPct}%`, background: subject.accent }} />
+            </div>
+            <div className="dt-entry-timeline-labels">
+              <span>Dusk {duskLabel}</span>
+              <span>Dawn {dawnLabel}</span>
+            </div>
+          </section>
+        )}
 
         <section className="dt-entry-section dt-entry-weather">
           <div className="dt-section-eyebrow">Weather check</div>
