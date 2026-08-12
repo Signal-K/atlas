@@ -63,8 +63,17 @@ const SHOWERS = [
 
 function eventForYear(shower, year) {
   const peak = new Date(Date.UTC(year, shower.month - 1, shower.day, 4, 0, 0))
-  const startsAt = new Date(peak.getTime() - 6 * 3_600_000).toISOString() // night before, evening start
-  const endsAt = new Date(peak.getTime() + 4 * 3_600_000).toISOString() // into dawn
+  // A +-6h window around one UTC "peak" instant only lines up with evening
+  // for observers near UTC -- for anyone else (Europe, Australia, etc.) it
+  // had already ended hours before their local night even started, so the
+  // shower silently vanished from "tonight" for most of the world. Showers
+  // are genuinely visible for several nights around the peak date anyway,
+  // so widen this to comfortably cover every timezone's "tonight near the
+  // peak" (-18h/+42h keeps the same start-of-day date as before, so this
+  // still matches/updates the existing record on reseed rather than
+  // orphaning a duplicate -- see seed-curated-window.mjs's upsert key).
+  const startsAt = new Date(peak.getTime() - 18 * 3_600_000).toISOString()
+  const endsAt = new Date(peak.getTime() + 42 * 3_600_000).toISOString()
   return {
     kind: 'meteor_shower',
     target: shower.name.toLowerCase().replace(/\s+/g, '_'),

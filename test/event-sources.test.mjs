@@ -22,7 +22,12 @@ test('August 12 2026 includes the real total solar eclipse', async () => {
   const eclipse = events.find((event) => event.target === 'sun' && event.title === 'Total Solar Eclipse')
 
   assert.ok(eclipse, 'expected the Astronomy Engine total solar eclipse prediction')
-  assert.equal(eclipse.starts_at, '2026-08-12T17:45:46.794Z')
+  // starts_at/ends_at are padded +-90min around the real peak instant
+  // (2026-08-12T17:45:46.794Z) rather than that exact zero-duration
+  // moment, so the event doesn't vanish from "still happening" checks the
+  // instant it passes -- see eclipses.mjs.
+  assert.equal(eclipse.starts_at, '2026-08-12T16:15:46.794Z')
+  assert.equal(eclipse.ends_at, '2026-08-12T19:15:46.794Z')
   assert.equal(isInCuratedWindow(eclipse, { now: TODAY, windowDays: 1 }), true)
 })
 
