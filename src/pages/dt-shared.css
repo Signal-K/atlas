@@ -7,19 +7,23 @@
   design-token system, so reusing them doesn't reintroduce a second theme.
 */
 
-.dt-entry-overlay {
+/* Compound selector (not just .dt-entry-overlay) is required, not
+   decorative: .mobile-shell itself sets position:relative; z-index:1 at
+   the same specificity, and mobile.css loads lazily (EntryDetailView is
+   a separate chunk) -- whichever rule's stylesheet lands in the DOM last
+   wins a same-specificity tie. .mobile-shell landing after this one
+   silently dropped the overlay to z-index:1, letting lower-stakes fixed
+   UI (the install prompt, at z-index:50) render on top of it. The two
+   classes together always outrank the single-class .mobile-shell rule
+   regardless of load order. */
+.mobile-shell.dt-entry-overlay {
   position: fixed;
   inset: 0;
   height: 100dvh;
   z-index: 200;
   overflow-y: auto;
-}
-
-/* .mobile-shell alone sets --dt-bg-page: transparent for the hub/plan
-   layouts; the entry overlay needs its own opaque paper background, so
-   restore it here with a compound selector that outranks that rule
-   regardless of stylesheet load order. */
-.mobile-shell.dt-entry-overlay {
+  /* .mobile-shell alone sets --dt-bg-page: transparent for the hub/plan
+     layouts; the entry overlay needs its own opaque paper background. */
   --dt-bg-page: var(--atlas-paper);
 }
 
