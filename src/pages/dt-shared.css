@@ -171,6 +171,11 @@
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: none;
+  /* The row scrolls, but a chip hard-clipped mid-word at the container edge
+     with no cue reads as overlap/breakage next to the view toggle. Fade the
+     last ~20px out so a cut-off chip looks like a scroll hint, not a bug. */
+  mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
 }
 
 .dt-chip-row::-webkit-scrollbar {

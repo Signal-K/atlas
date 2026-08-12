@@ -124,8 +124,16 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
       content: record.content,
       imageUrl: record.image_url,
       imageCredit: record.image_credit,
-      startsAt: record.starts_at,
-      endsAt: record.ends_at,
+      // Canonicalize to ISO ("T" separator) here, once, rather than storing
+      // PocketBase's raw "YYYY-MM-DD HH:MM:SS.sssZ" strings verbatim. Every
+      // downstream comparison (getUpcomingEvents/getEventsInRange/getPastEvents
+      // below, and the "HAPPENING NOW" check in EventsView/HubView) compares
+      // these against `new Date().toISOString()`, which is "T"-separated --
+      // mixing the two formats hits the same space-vs-"T" ASCII ordering bug
+      // as the PocketBase filter above, but here it silently breaks every
+      // "is this still happening" check for the rest of the app.
+      startsAt: new Date(record.starts_at).toISOString(),
+      endsAt: new Date(record.ends_at).toISOString(),
       // PocketBase's `latitude`/`longitude` are non-required number fields,
       // but a non-required *number* field still defaults to 0 (not null)
       // when a plugin doesn't set it for a genuinely global event (moon
