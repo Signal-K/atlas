@@ -19,7 +19,6 @@ export function AskAtlas({ entitled, context }: AskAtlasProps) {
   if (!entitled) {
     return (
       <Card className="settings-section">
-        <h2 className="settings-section-title">Ask Atlas</h2>
         <p className="settings-help">Get the Sky Pass to ask Atlas questions about tonight's sky, an event, or your camera setup.</p>
       </Card>
     )
@@ -44,7 +43,6 @@ export function AskAtlas({ entitled, context }: AskAtlasProps) {
 
   return (
     <Card className="settings-section">
-      <h2 className="settings-section-title">Ask Atlas</h2>
       <form onSubmit={handleSubmit} className="ask-atlas-form">
         <input
           type="text"

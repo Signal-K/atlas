@@ -133,10 +133,6 @@ test('signup happens via the auth gate before onboarding, then observations save
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
 
   await page.getByRole('button', { name: 'Full Moon' }).click()
-  await page.locator('.dt-equipment-prompt').getByRole('button', { name: 'My phone' }).click()
-  // Scoped to the entry detail's own button -- HubView's "After observing"
-  // section renders a same-named button underneath, hidden by the entry
-  // overlay once it's open.
   await page.locator('.dt-entry').getByRole('button', { name: 'Log attempt' }).click()
 
   await expect(page).toHaveURL('/app/journal')
