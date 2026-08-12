@@ -88,7 +88,15 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
 
   const now = new Date()
   const end = new Date(now.getTime() + windowDays * 86400_000)
-  const filter = `starts_at >= "${now.toISOString()}" && starts_at <= "${end.toISOString()}"`
+  // Overlap, not "starts_at >= now" -- a multi-day event (a meteor shower's
+  // widened window, a padded eclipse) that's already in progress has a
+  // starts_at in the past even while it's still genuinely happening. The
+  // strict lower bound silently excluded it from ever being pulled into the
+  // local cache at all, for the entire remainder of the event -- the same
+  // overlap-vs-strict-start bug already fixed for the local Dexie queries
+  // in getUpcomingEvents/getEventsInRange below, but one layer upstream, in
+  // the actual PocketBase fetch filter.
+  const filter = `starts_at <= "${end.toISOString()}" && ends_at >= "${now.toISOString()}"`
 
   try {
     // Bounded so an unreachable/slow PocketBase can't hang this call (and
