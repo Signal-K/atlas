@@ -187,10 +187,23 @@ export async function getEventsInRange(start: Date, end: Date): Promise<SkyEvent
   return all.filter((event) => event.startsAt < end.toISOString() && event.endsAt >= start.toISOString())
 }
 
+// Same "flagship" definition EventsView uses for the featured cards above
+// the fold -- eclipses and meteor showers are rare enough to be worth
+// surfacing, unlike the high-frequency filler kinds (local night-sky
+// guides, asteroid passes) that otherwise dominate purely by recency.
+const FLAGSHIP_KINDS = new Set(['eclipse', 'meteor_shower'])
+
 export async function getPastEvents(limit = 20): Promise<SkyEvent[]> {
   const now = new Date().toISOString()
   const all = await db.skyEvents.orderBy('startsAt').reverse().toArray()
-  return all.filter((event) => event.endsAt < now).slice(0, limit)
+  const past = all.filter((event) => event.endsAt < now)
+  // Guarantee flagship events a slot instead of letting them get crowded out
+  // of a plain "most recent N" slice by same-day/more-recent filler -- then
+  // backfill the rest and re-sort, since ArchiveView's groupByDay depends on
+  // the array staying date-descending for its adjacency-based grouping.
+  const flagship = past.filter((event) => FLAGSHIP_KINDS.has(event.kind)).slice(0, limit)
+  const other = past.filter((event) => !FLAGSHIP_KINDS.has(event.kind)).slice(0, limit - flagship.length)
+  return [...flagship, ...other].sort((a, b) => b.startsAt.localeCompare(a.startsAt))
 }
 
 // Write path: best-effort immediate push when signed in and online. The
