@@ -312,7 +312,10 @@
   text-transform: uppercase;
 }
 
-.dt-today-rule span:first-child,
+.dt-today-rule span:first-child {
+  white-space: nowrap;
+}
+
 .dt-today-rule span:last-child {
   flex: 1;
   height: 1px;
