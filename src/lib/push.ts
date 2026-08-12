@@ -26,6 +26,16 @@ export async function subscribeToPush(): Promise<void> {
   if (!VAPID_PUBLIC_KEY) throw new Error('Push notifications are not configured on this deployment.')
   if (!pb.authStore.isValid) throw new Error('Sign in to enable push notifications.')
 
+  // Chrome implicitly prompts for Notification permission inside
+  // pushManager.subscribe() itself, but Safari (iOS/macOS) does not -- it
+  // rejects subscribe() with a NotAllowedError unless permission was
+  // already granted via an explicit Notification.requestPermission() call
+  // first. This is why "Enable" silently failed for installed Safari PWAs.
+  if ('Notification' in window && Notification.permission !== 'granted') {
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') throw new Error('Notification permission was not granted.')
+  }
+
   const registration = await navigator.serviceWorker.ready
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { db, type AttemptRating, type ObservationLogEntry } from '../lib/db'
-import { pushObservation } from '../lib/sync'
+import { db, type AttemptRating, type ObservationLogEntry, type SkyEvent } from '../lib/db'
+import { pullSkyEvents, pushObservation } from '../lib/sync'
 import { recordWeeklyActivity } from '../lib/streaks'
 import { createDiscovery } from '../lib/discoveries'
 import { shareObservation } from '../lib/sharing'
@@ -45,6 +45,12 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [shareStatus, setShareStatus] = useState<{ entryId: string; message: string } | null>(null)
   const [stampShareStatus, setStampShareStatus] = useState<{ cityName: string; message: string } | null>(null)
   const [captionIsSuggested, setCaptionIsSuggested] = useState(false)
+  // Freeform entries (no draft handed off from Events/Plan) still need a
+  // way to link a specific sky event -- searches the local event mirror
+  // rather than requiring the user to open that event's detail page first.
+  const [eventQuery, setEventQuery] = useState('')
+  const [eventResults, setEventResults] = useState<SkyEvent[]>([])
+  const [mentionedEvent, setMentionedEvent] = useState<SkyEvent | null>(null)
 
   async function refresh(nextScopeId = scopeId) {
     const all = await db.observations.where('userId').equals(nextScopeId).reverse().sortBy('observedAt')
@@ -57,6 +63,13 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
 
   useEffect(() => {
     getScrapbookPrompt().then(setPrompt)
+  }, [])
+
+  // Ensures the local event mirror is populated for the "mention an event"
+  // search below even when Journal is opened without visiting Events/Plan
+  // first this session (pullSkyEvents dedupes concurrent/redundant calls).
+  useEffect(() => {
+    pullSkyEvents()
   }, [])
 
   // Metadata-driven starting caption -- no AI/network call, just what
@@ -73,7 +86,46 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     setRating(null)
     setPhoto(null)
     setCaptionIsSuggested(false)
+    setMentionedEvent(null)
+    setEventQuery('')
+    setEventResults([])
     onDraftConsumed()
+  }
+
+  // A draft handed off from Events/Plan already names its event; a
+  // freeform entry only has one if the user searched and picked one below.
+  useEffect(() => {
+    if (draft) {
+      setMentionedEvent(null)
+      setEventQuery('')
+      setEventResults([])
+    }
+  }, [draft])
+
+  useEffect(() => {
+    if (draft) return
+    const trimmed = eventQuery.trim().toLowerCase()
+    if (!trimmed) {
+      setEventResults([])
+      return
+    }
+    let cancelled = false
+    db.skyEvents
+      .filter((event) => event.title.toLowerCase().includes(trimmed) || event.target.toLowerCase().includes(trimmed))
+      .limit(8)
+      .toArray()
+      .then((results) => {
+        if (!cancelled) setEventResults(results)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [eventQuery, draft])
+
+  function mentionEvent(event: SkyEvent) {
+    setMentionedEvent(event)
+    setEventQuery('')
+    setEventResults([])
   }
 
   async function handleSave(event: React.FormEvent) {
@@ -94,12 +146,18 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
             cameraRecipeUsed: draft.cameraRecipeUsed,
             locationLabel: draft.locationLabel,
           }
-        : {}),
+        : mentionedEvent
+          ? { eventId: mentionedEvent.id, targetName: mentionedEvent.title }
+          : {}),
       ...(rating ? { attemptRating: rating } : {}),
       ...(photo ? { photo } : {}),
     }
     await db.observations.add(entry)
-    trackEvent('Logged observation', { hasTarget: draft != null, rating: rating ?? undefined, hasPhoto: photo != null })
+    trackEvent('Logged observation', {
+      hasTarget: draft != null || mentionedEvent != null,
+      rating: rating ?? undefined,
+      hasPhoto: photo != null,
+    })
     setNote('')
     clearDraft()
     await refresh()
@@ -187,6 +245,41 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
         </div>
       )}
       <form className="scrapbook-form" onSubmit={handleSave}>
+        {!draft && (
+          <div className="scrapbook-event-mention">
+            {mentionedEvent ? (
+              <div className="scrapbook-draft-banner">
+                <span>
+                  Mentioning <strong>{mentionedEvent.title}</strong>
+                </span>
+                <button type="button" onClick={() => setMentionedEvent(null)}>
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="scrapbook-event-search">
+                <input
+                  type="search"
+                  value={eventQuery}
+                  onChange={(event) => setEventQuery(event.target.value)}
+                  placeholder="Mention an event (optional)"
+                  aria-label="Mention an event"
+                />
+                {eventResults.length > 0 && (
+                  <ul className="scrapbook-event-results" role="listbox">
+                    {eventResults.map((result) => (
+                      <li key={result.id}>
+                        <button type="button" onClick={() => mentionEvent(result)}>
+                          {result.title}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {captionIsSuggested && note.trim() && <p className="scrapbook-caption-hint">Suggested — edit as needed</p>}
         <textarea
           value={note}

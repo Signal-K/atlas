@@ -1094,6 +1094,58 @@
   cursor: pointer;
 }
 
+.scrapbook-event-mention {
+  margin-bottom: 4px;
+}
+
+.scrapbook-event-search {
+  position: relative;
+}
+
+.scrapbook-event-search input {
+  width: 100%;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-h);
+}
+
+.scrapbook-event-results {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.scrapbook-event-results button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.scrapbook-event-results button:hover {
+  background: var(--accent-bg);
+}
+
 .scrapbook-rating-picker {
   display: flex;
   gap: 6px;
