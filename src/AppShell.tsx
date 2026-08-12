@@ -62,7 +62,7 @@ export function AppShell({
       }
     >
       <Routes>
-        <Route path="/app/events" element={<EventsPage city={currentLocation} />} />
+        <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={dashboardProps.onLogAttempt} />} />
         <Route path="/app/plan" element={<PlanPage currentLocation={currentLocation} onLogAttempt={dashboardProps.onLogAttempt} />} />
         <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
         <Route path="/app/ask" element={<AskAtlasPage />} />
