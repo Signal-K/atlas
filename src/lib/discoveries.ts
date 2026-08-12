@@ -1,6 +1,7 @@
 import type { RecordModel } from 'pocketbase'
 import { pb } from './pocketbase'
 import { isDemoMode } from './demoMode'
+import { parsePbDate } from './pocketbaseDate'
 
 // Small fixed reaction set (mirrors the atlas_discovery_reactions "emoji"
 // enum) rather than free-form emoji picking -- lower friction than typing a
@@ -119,7 +120,11 @@ export async function listDiscoveries(): Promise<Discovery[]> {
     camera: record.camera || undefined,
     telescope: record.telescope || undefined,
     filters: record.filters || undefined,
-    created: record.created,
+    // Normalized here, once, rather than as raw PocketBase's space-
+    // separated format -- every downstream `new Date(discovery.created)`
+    // (CommunityDigestSection, FeedView, DigestWidget) would otherwise get
+    // Invalid Date in real Safari. See pocketbaseDate.ts.
+    created: parsePbDate(record.created).toISOString(),
     voteCount: countByDiscovery.get(record.id) ?? 0,
     hasVoted: votedByCurrentUser.has(record.id),
     reactionCounts: reactionCountsByDiscovery.get(record.id) ?? {},
@@ -176,7 +181,7 @@ export async function listComments(discoveryId: string): Promise<DiscoveryCommen
       id: record.id,
       authorName: record.author_name,
       text: record.text,
-      created: record.created,
+      created: parsePbDate(record.created).toISOString(),
     }))
   } catch {
     return []

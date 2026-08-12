@@ -1,5 +1,6 @@
 import type { ObservationLogEntry } from './db'
 import { pb } from './pocketbase'
+import { parsePbDate } from './pocketbaseDate'
 
 export interface CityStamp {
   cityName: string
@@ -131,8 +132,11 @@ export async function getPublicCityStamp(slug: string): Promise<PublicCityStamp 
     return {
       cityName: record.city_name as string,
       checkinCount: Number(record.checkin_count ?? 0),
-      firstCheckedInAt: record.first_checked_in_at as string,
-      lastCheckedInAt: record.last_checked_in_at as string,
+      // parsePbDate -- CityStampSharePage.tsx calls new Date(...) on these
+      // directly, which is Invalid Date in real Safari on PocketBase's raw
+      // space-separated format. See pocketbaseDate.ts.
+      firstCheckedInAt: parsePbDate(record.first_checked_in_at as string).toISOString(),
+      lastCheckedInAt: parsePbDate(record.last_checked_in_at as string).toISOString(),
     }
   } catch {
     return null

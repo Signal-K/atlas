@@ -1,5 +1,6 @@
 import { pb } from './pocketbase'
 import { db, type ObservationLogEntry, type SkyEvent } from './db'
+import { parsePbDate } from './pocketbaseDate'
 
 const MELBOURNE = { lat: -37.8136, lon: 144.9631 }
 
@@ -132,8 +133,15 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
       // mixing the two formats hits the same space-vs-"T" ASCII ordering bug
       // as the PocketBase filter above, but here it silently breaks every
       // "is this still happening" check for the rest of the app.
-      startsAt: new Date(record.starts_at).toISOString(),
-      endsAt: new Date(record.ends_at).toISOString(),
+      // parsePbDate, not new Date() directly -- record.starts_at/ends_at
+      // are PocketBase's raw space-separated format, which real Safari
+      // (unlike the Chrome/Node this was tested in) parses as Invalid
+      // Date, throwing on .toISOString() below and taking down this
+      // entire records.map() -- see the catch below, which was silently
+      // replacing every real event with just the 4 hardcoded local
+      // fallback targets whenever that happened.
+      startsAt: parsePbDate(record.starts_at).toISOString(),
+      endsAt: parsePbDate(record.ends_at).toISOString(),
       // PocketBase's `latitude`/`longitude` are non-required number fields,
       // but a non-required *number* field still defaults to 0 (not null)
       // when a plugin doesn't set it for a genuinely global event (moon

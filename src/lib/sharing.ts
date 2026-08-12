@@ -8,6 +8,7 @@
 // card has no local Dexie mirror of that stranger's data to read from.
 import { pb } from './pocketbase'
 import { db, type AttemptRating, type ObservationLogEntry } from './db'
+import { parsePbDate } from './pocketbaseDate'
 
 export interface PublicObservationCard {
   targetName?: string
@@ -32,7 +33,10 @@ export async function getPublicObservation(remoteId: string): Promise<PublicObse
       cameraRecipeUsed: record.camera_recipe_used || undefined,
       note: record.note || undefined,
       attemptRating: record.attempt_rating || undefined,
-      observedAt: record.observed_at,
+      // parsePbDate, not the raw field -- ShareCard.tsx calls
+      // new Date(data.observedAt) directly, which is Invalid Date in real
+      // Safari on PocketBase's raw space-separated format. See pocketbaseDate.ts.
+      observedAt: parsePbDate(record.observed_at).toISOString(),
       photoUrl: record.photo ? pb.files.getURL(record, record.photo) : undefined,
     }
   } catch {

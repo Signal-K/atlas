@@ -1,6 +1,7 @@
 import type { RecordModel } from 'pocketbase'
 import { pb } from './pocketbase'
 import type { SkyEvent } from './db'
+import { parsePbDate } from './pocketbaseDate'
 
 export interface PhotoChallenge {
   id: string
@@ -86,7 +87,7 @@ function mapSubmission(record: RecordModel): PhotoChallengeSubmission {
     caption: record.caption ?? '',
     imageUrl: record.image ? pb.files.getURL(record, record.image) : '',
     approved: Boolean(record.approved),
-    created: record.created,
+    created: parsePbDate(record.created).toISOString(),
     isMine: currentUserId === record.user,
   }
 }
