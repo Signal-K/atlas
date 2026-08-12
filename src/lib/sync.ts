@@ -96,7 +96,18 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
   // overlap-vs-strict-start bug already fixed for the local Dexie queries
   // in getUpcomingEvents/getEventsInRange below, but one layer upstream, in
   // the actual PocketBase fetch filter.
-  const filter = `starts_at <= "${end.toISOString()}" && ends_at >= "${now.toISOString()}"`
+  //
+  // PocketBase stores/compares datetimes as "YYYY-MM-DD HH:MM:SS.sssZ" (space
+  // separator), not ISO 8601's "T" separator, and its filter engine compares
+  // the two strings directly rather than parsing them as dates first. "T"
+  // (0x54) sorts after a space (0x20), so any comparison where the event and
+  // "now"/"end" fall on the *same calendar date* silently inverts (e.g.
+  // "2026-08-12T13:05" is judged *greater* than "2026-08-12 19:15"). That's
+  // exactly the case for something happening today -- toISOString() must be
+  // converted to PocketBase's own format or same-day comparisons come out
+  // backwards.
+  const toPbDate = (date: Date) => date.toISOString().replace('T', ' ')
+  const filter = `starts_at <= "${toPbDate(end)}" && ends_at >= "${toPbDate(now)}"`
 
   try {
     // Bounded so an unreachable/slow PocketBase can't hang this call (and
