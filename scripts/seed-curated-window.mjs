@@ -30,6 +30,17 @@ export function canonicalKey(event) {
   return `${event.kind}:${event.target}:${dateKey(event.starts_at)}`
 }
 
+export function isInCuratedWindow(event, { now = new Date(), windowDays = CURATED_WINDOW_DAYS } = {}) {
+  const start = now.getTime()
+  const end = start + windowDays * 86_400_000
+  const startsAt = new Date(event.starts_at).getTime()
+  const endsAt = new Date(event.ends_at ?? event.starts_at).getTime()
+  // A peak event can start the previous evening and still be happening on
+  // the calendar day people expect to find it. Keep all events that overlap
+  // the window, not only ones whose start timestamp falls inside it.
+  return startsAt <= end && endsAt >= start
+}
+
 function escapeFilter(value) {
   return String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')
 }
@@ -40,7 +51,6 @@ function withProvenance(event, source) {
 }
 
 export async function buildCuratedWindow({ now = new Date(), windowDays = CURATED_WINDOW_DAYS } = {}) {
-  const end = now.getTime() + windowDays * 86_400_000
   const candidates = []
   const sourceFailures = []
 
@@ -48,8 +58,7 @@ export async function buildCuratedWindow({ now = new Date(), windowDays = CURATE
     try {
       const events = await source.fetch({ now, windowDays })
       for (const event of events) {
-        const startsAt = new Date(event.starts_at).getTime()
-        if (startsAt >= now.getTime() && startsAt <= end) candidates.push(withProvenance(event, source))
+        if (isInCuratedWindow(event, { now, windowDays })) candidates.push(withProvenance(event, source))
       }
     } catch (error) {
       sourceFailures.push({ source: source.id, error: error instanceof Error ? error.message : String(error) })

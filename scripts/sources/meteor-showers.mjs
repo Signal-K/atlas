@@ -85,8 +85,9 @@ export async function fetchEvents({ now = new Date(), windowDays = 90 } = {}) {
   for (const shower of SHOWERS) {
     for (const year of [now.getUTCFullYear(), now.getUTCFullYear() + 1]) {
       const event = eventForYear(shower, year)
-      const eventMs = new Date(event.starts_at).getTime()
-      if (eventMs >= start && eventMs <= end) events.push(event)
+      const startsAt = new Date(event.starts_at).getTime()
+      const endsAt = new Date(event.ends_at).getTime()
+      if (startsAt <= end && endsAt >= start) events.push(event)
     }
   }
 
