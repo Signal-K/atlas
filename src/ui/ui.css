@@ -130,6 +130,13 @@
   padding: var(--space-5) 0;
   border-right: 1px solid var(--color-border);
   background: transparent;
+  /* .nav-shell-nav is a plain flex item next to .nav-shell-body, so on any
+     page taller than the viewport it scrolled away with the page content
+     instead of staying put like a real sidebar. Pin it to the viewport. */
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow-y: auto;
 }
 
 .nav-shell-item {
@@ -264,6 +271,8 @@
     z-index: 10;
     position: sticky;
     bottom: 0;
+    top: auto;
+    overflow-y: visible;
   }
 
   .nav-shell-item {
