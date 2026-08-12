@@ -31,6 +31,8 @@ import { useAuth } from '../../lib/auth'
 import { eventLookaheadDays, forecastLookaheadDays } from '../../lib/entitlementLimits'
 import { buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import { buildEventDetail, detailInputFromEvent, type EntryDetailSubject } from '../../lib/entryDetail'
+import type { EntryDetailActions } from './EntryDetailView'
+import { requestEclipseRoadmap } from '../../lib/eclipseRoadmap'
 import { getDarknessWindow } from '../../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../../lib/timeZone'
 import type { CurrentLocation } from '../../lib/currentLocation'
@@ -55,7 +57,7 @@ export function PlanView({
   city: CurrentLocation
   onOpenEvents: () => void
   onSavedForLater?: () => void
-  onOpenEntry: (subject: EntryDetailSubject, actions?: { watching?: boolean; onToggleWatch?: () => void; reminderActive?: boolean; onRemind?: () => void; onPoint?: () => void }) => void
+  onOpenEntry: (subject: EntryDetailSubject, actions?: EntryDetailActions) => void
 }) {
   const [mode, setMode] = useState<PlanMode>('browse')
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
@@ -218,7 +220,7 @@ export function PlanView({
   function selectEvent(event: SkyEvent) {
     const { start, end } = tonightWindowForTimeZone(new Date(event.startsAt), city.timeZone)
     const darknessWindow = getDarknessWindow(city.lat, city.lon, start, end)
-    const subject = buildEventDetail(detailInputFromEvent(event, city.lat, city.lon, darknessWindow), advisoryFor(event))
+    const subject = buildEventDetail(detailInputFromEvent(event, city, darknessWindow), advisoryFor(event))
     const reminder = reminders.find((candidate) => candidate.eventId === event.id)
     onOpenEntry(subject, {
       watching: isWatching(watchlist, 'target', event.target),
@@ -226,6 +228,23 @@ export function PlanView({
       reminderActive: !!reminder,
       onRemind: () => addReminder(event),
       onPoint: pointActionFor(event)?.onPoint,
+      roadmap:
+        event.kind === 'eclipse'
+          ? {
+              locked: !hasPremium,
+              generate: hasPremium
+                ? () =>
+                    requestEclipseRoadmap({
+                      title: subject.title,
+                      locationName: city.name,
+                      lat: city.lat,
+                      lon: city.lon,
+                      timeZone: city.timeZone,
+                      guideSteps: subject.guideSteps ?? [],
+                    })
+                : undefined,
+            }
+          : undefined,
     })
   }
 

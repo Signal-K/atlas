@@ -4776,6 +4776,67 @@
   background: #fff;
 }
 
+.dt-entry-guide-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dt-entry-guide-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 14px;
+  border-left: 2px solid var(--dt-ink-soft);
+}
+
+.dt-entry-guide-label {
+  font: 700 10px/1 var(--dt-font-data);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dt-ink);
+}
+
+.dt-entry-guide-detail {
+  font: 400 13px/1.5 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+}
+
+.dt-entry-roadmap-generate {
+  margin-top: 8px;
+  font: 700 11px/1 var(--dt-font-data);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 12px;
+  width: 100%;
+  border-radius: 3px;
+  border: 1px solid var(--dt-ink);
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+  cursor: pointer;
+}
+
+.dt-entry-roadmap-generate:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.dt-entry-roadmap-error {
+  color: #b3261e;
+}
+
+.dt-entry-roadmap-text {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--dt-rule);
+  border-radius: 4px;
+  background: #fff;
+  white-space: pre-wrap;
+}
+
 .dt-entry-quick-actions {
   display: flex;
   gap: 10px;

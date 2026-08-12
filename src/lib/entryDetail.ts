@@ -13,8 +13,16 @@ import { getPrimarySkyMapObjectForEvent } from './skyMapLayers'
 import { moonIlluminationPctAt } from './moonPhase'
 import { categoryForKind, GUIDE_KIND_IDS } from './eventCategories'
 import { recipeKeyForEventKind, type RecipeKey } from './cameraRecipes'
+import { buildEventGuide, type GuideStep } from './eventGuide'
 import { KIND_LABELS } from '../widgets/EventRow'
 import type { BrightStar } from '../data/brightStars'
+
+export interface EntryDetailLocation {
+  lat: number
+  lon: number
+  name: string
+  timeZone?: string
+}
 
 export interface SuitabilityPill {
   label: string
@@ -41,6 +49,10 @@ export interface EntryDetailSubject {
   darknessWindow: DarknessWindow
   markerPct: number
   sourceEvent?: SkyEvent
+  // Per-observer step-by-step "how to see it" (eclipse phase times, meteor
+  // shower peak/moon note, etc.) -- null for kinds buildEventGuide doesn't
+  // cover, or when no location was available to compute it against.
+  guideSteps: GuideStep[] | null
 }
 
 const DIFFICULTY_LABEL: Record<TargetDifficulty, string> = {
@@ -110,11 +122,13 @@ interface EventDetailInput {
   moonPct: number
   darknessWindow: DarknessWindow
   sourceEvent?: SkyEvent
+  location?: EntryDetailLocation
 }
 
 export function buildEventDetail(input: EventDetailInput, advisory: DailyViewingAdvisory | null): EntryDetailSubject {
   const accent = categoryForKind(input.kind)?.accent ?? '#0a82b3'
   const suitability = eventSuitability(input.kind, input.phoneFriendly, input.nakedEyeVisible)
+  const guideSteps = input.sourceEvent && input.location ? buildEventGuide(input.sourceEvent, input.location) : null
   return {
     kind: 'event',
     id: input.id,
@@ -137,6 +151,7 @@ export function buildEventDetail(input: EventDetailInput, advisory: DailyViewing
     darknessWindow: input.darknessWindow,
     markerPct: markerPctFor(input.bestTimeIso, input.darknessWindow),
     sourceEvent: input.sourceEvent,
+    guideSteps,
   }
 }
 
@@ -148,6 +163,7 @@ export function detailInputFromTonightTarget(
   moonIlluminationPct: number,
   darknessWindow: DarknessWindow,
   sourceEvent?: SkyEvent,
+  location?: EntryDetailLocation,
 ): EventDetailInput {
   return {
     id: target.eventId,
@@ -162,16 +178,17 @@ export function detailInputFromTonightTarget(
     moonPct: moonIlluminationPct,
     darknessWindow,
     sourceEvent,
+    location,
   }
 }
 
 // Fallback for events outside tonight's window (a future date browsed from
 // Events/Plan) -- reuses the same kind metadata tonight's ranker uses, just
 // anchored to the event's own start time instead of a transit search.
-export function detailInputFromEvent(event: SkyEvent, lat: number, lon: number, darknessWindow: DarknessWindow): EventDetailInput {
+export function detailInputFromEvent(event: SkyEvent, location: EntryDetailLocation, darknessWindow: DarknessWindow): EventDetailInput {
   const meta = metaFor(event.kind)
   const bestTime = new Date(event.startsAt)
-  const primary = getPrimarySkyMapObjectForEvent(event, bestTime, lat, lon)
+  const primary = getPrimarySkyMapObjectForEvent(event, bestTime, location.lat, location.lon)
   return {
     id: event.id,
     kind: event.kind,
@@ -185,6 +202,7 @@ export function detailInputFromEvent(event: SkyEvent, lat: number, lon: number, 
     moonPct: moonIlluminationPctAt(bestTime),
     darknessWindow,
     sourceEvent: event,
+    location,
   }
 }
 
@@ -288,5 +306,6 @@ export function buildStarDetail(
     recipeKey: null,
     darknessWindow,
     markerPct: markerPctFor(bestTime.toISOString(), darknessWindow),
+    guideSteps: null,
   }
 }

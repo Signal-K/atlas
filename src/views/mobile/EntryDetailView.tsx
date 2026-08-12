@@ -4,12 +4,23 @@ import { CameraRecipe } from '../../components/CameraRecipe'
 import { BackIcon, MobileIcon } from '../../components/mobile/MobileIcon'
 import { formatTimeLabel, type EntryDetailSubject } from '../../lib/entryDetail'
 
+export interface EntryDetailRoadmap {
+  // true when this is a Sky Pass-only feature and the viewer isn't entitled
+  // -- rendered as an upsell hint instead of the generate button.
+  locked: boolean
+  // Present only when unlocked; builds a personalized viewing plan for this
+  // event at the viewer's current location/time via the Claude-backed
+  // pocketbase/pb_hooks/eclipse-roadmap.pb.js endpoint.
+  generate?: () => Promise<string>
+}
+
 export interface EntryDetailActions {
   watching?: boolean
   onToggleWatch?: () => void
   reminderActive?: boolean
   onRemind?: () => void
   onPoint?: () => void
+  roadmap?: EntryDetailRoadmap
 }
 
 interface EntryDetailViewProps {
@@ -26,8 +37,25 @@ interface EntryDetailViewProps {
 // detail screens again.
 export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: EntryDetailViewProps) {
   const [recipeOpen, setRecipeOpen] = useState(false)
+  const [roadmapLoading, setRoadmapLoading] = useState(false)
+  const [roadmapText, setRoadmapText] = useState<string | null>(null)
+  const [roadmapError, setRoadmapError] = useState<string | null>(null)
   const duskLabel = formatTimeLabel(subject.darknessWindow.astronomicalDuskAt ?? subject.darknessWindow.civilDuskAt)
   const dawnLabel = formatTimeLabel(subject.darknessWindow.astronomicalDawnAt ?? subject.darknessWindow.civilDawnAt)
+
+  async function handleGenerateRoadmap() {
+    if (!actions?.roadmap?.generate) return
+    setRoadmapLoading(true)
+    setRoadmapError(null)
+    try {
+      const roadmap = await actions.roadmap.generate()
+      setRoadmapText(roadmap)
+    } catch (err) {
+      setRoadmapError(err instanceof Error ? err.message : 'Could not generate a viewing plan.')
+    } finally {
+      setRoadmapLoading(false)
+    }
+  }
 
   return (
     <div className="dt-entry">
@@ -96,6 +124,39 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
           <div className="dt-section-eyebrow">Weather check</div>
           <p className="dt-entry-body">{subject.cloudNote}</p>
         </section>
+
+        {subject.guideSteps && subject.guideSteps.length > 0 && (
+          <section className="dt-entry-section dt-entry-guide">
+            <div className="dt-section-eyebrow">Full timeline</div>
+            <ol className="dt-entry-guide-list">
+              {subject.guideSteps.map((step, index) => (
+                <li key={`${step.label}-${index}`}>
+                  <span className="dt-entry-guide-label">{step.label}</span>
+                  <span className="dt-entry-guide-detail">{step.detail}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {actions?.roadmap && (
+          <section className="dt-entry-section dt-entry-roadmap">
+            <div className="dt-section-eyebrow">Personalized viewing plan</div>
+            {actions.roadmap.locked ? (
+              <p className="dt-entry-note">
+                Sky Pass unlocks a step-by-step plan built from your exact location and this eclipse's local timing.
+              </p>
+            ) : (
+              <>
+                <button type="button" className="dt-entry-roadmap-generate" onClick={handleGenerateRoadmap} disabled={roadmapLoading}>
+                  {roadmapLoading ? 'Generating…' : roadmapText ? 'Regenerate plan' : 'Generate my viewing plan'}
+                </button>
+                {roadmapError && <p className="dt-entry-note dt-entry-roadmap-error">{roadmapError}</p>}
+                {roadmapText && <p className="dt-entry-body dt-entry-roadmap-text">{roadmapText}</p>}
+              </>
+            )}
+          </section>
+        )}
 
         {recipeOpen && (
           <section className="dt-entry-recipe">
