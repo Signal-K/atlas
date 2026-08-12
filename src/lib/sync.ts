@@ -143,18 +143,27 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
 export async function getUpcomingEvents(limit = 10): Promise<SkyEvent[]> {
   const now = new Date().toISOString()
   const all = await db.skyEvents.orderBy('startsAt').toArray()
-  return all.filter((event) => event.startsAt >= now).slice(0, limit)
+  // "Upcoming" means not yet over, not "not yet started" -- a multi-hour
+  // event like a meteor shower (evening-to-dawn window) or an eclipse has a
+  // startsAt in the past for most of the time it's actually happening
+  // (e.g. Perseids: startsAt is the evening before peak). Filtering on
+  // startsAt alone made an event you should see *tonight* vanish from every
+  // "upcoming" list the moment its window opened, well before it ended.
+  return all.filter((event) => event.endsAt >= now).slice(0, limit)
 }
 
 export async function getEventsInRange(start: Date, end: Date): Promise<SkyEvent[]> {
   const all = await db.skyEvents.orderBy('startsAt').toArray()
-  return all.filter((event) => event.startsAt >= start.toISOString() && event.startsAt < end.toISOString())
+  // Overlap, not strict containment -- an event that started before `start`
+  // but hasn't ended yet (e.g. a shower already in progress at the top of
+  // the range) should still count as "in range", same reasoning as above.
+  return all.filter((event) => event.startsAt < end.toISOString() && event.endsAt >= start.toISOString())
 }
 
 export async function getPastEvents(limit = 20): Promise<SkyEvent[]> {
   const now = new Date().toISOString()
   const all = await db.skyEvents.orderBy('startsAt').reverse().toArray()
-  return all.filter((event) => event.startsAt < now).slice(0, limit)
+  return all.filter((event) => event.endsAt < now).slice(0, limit)
 }
 
 // Write path: best-effort immediate push when signed in and online. The

@@ -125,7 +125,10 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
       const preferred = await getPreferredEventTypes()
       setPreferredKinds(preferred)
       const upcoming = await getUpcomingEvents(80)
-      const majorEventWindowMs = Date.now() + 7 * 86_400_000
+      // Matches the curated event catalogue's own two-week window -- a
+      // 7-day cutoff was clipping showers/eclipses that are worth flagging
+      // as "coming up" a bit before they're imminent.
+      const majorEventWindowMs = Date.now() + 14 * 86_400_000
       setMajorEvents(
         upcoming
           .filter(
@@ -283,16 +286,21 @@ export function HubView({ city, onOpenTab, onLogAttempt, onOpenEntry, onOpenToni
 
       {majorEvents.length > 0 && (
         <section className="dt-major-events">
-          {majorEvents.map((event) => (
-            <button type="button" className="dt-major-event-card" key={event.id} onClick={() => onOpenTab('events')}>
-              {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" />}
-              <div className="dt-major-event-body">
-                <span className="dt-major-event-badge">{event.kind === 'eclipse' ? 'ECLIPSE' : 'METEOR SHOWER'} · {daysUntil(event.startsAt)}</span>
-                <strong>{event.title}</strong>
-                <span className="dt-major-event-desc">{event.description}</span>
-              </div>
-            </button>
-          ))}
+          {majorEvents.map((event) => {
+            const inProgress = event.startsAt <= new Date().toISOString() && event.endsAt >= new Date().toISOString()
+            return (
+              <button type="button" className="dt-major-event-card is-featured" key={event.id} onClick={() => onOpenTab('events')}>
+                {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" />}
+                <div className="dt-major-event-body">
+                  <span className="dt-major-event-badge">
+                    {event.kind === 'eclipse' ? 'ECLIPSE' : 'METEOR SHOWER'} · {inProgress ? 'HAPPENING NOW' : daysUntil(event.startsAt)}
+                  </span>
+                  <strong>{event.title}</strong>
+                  <span className="dt-major-event-desc">{event.description}</span>
+                </div>
+              </button>
+            )
+          })}
         </section>
       )}
 

@@ -11,6 +11,7 @@ import { InstallPrompt } from './components/InstallPrompt'
 import { OnboardingFlow } from './components/OnboardingFlow'
 import { OfflineBanner } from './components/OfflineBanner'
 import { AuthGate } from './components/AuthGate'
+import { DevPreviewPanel } from './components/DevPreviewPanel'
 import { useThemeBootstrap } from './providers/useThemeBootstrap'
 import { useEntitlementSync } from './providers/useEntitlementSync'
 import { useOnboardingGate } from './providers/useOnboardingGate'
@@ -18,7 +19,7 @@ import { useAppLocation } from './providers/useAppLocation'
 import type { ObservationDraft } from './lib/observationDraft'
 import './App.css'
 
-const APP_HOME = '/app/dashboard'
+const APP_HOME = '/app/events'
 
 function App() {
   const routerLocation = useLocation()
@@ -100,6 +101,7 @@ function App() {
       <>
         <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
         <AuthGate defaultMode={accountDefaultMode} onSignedIn={handleSignedIn} onSignedUp={handleSignedUp} />
+        <DevPreviewPanel />
       </>
     )
   }
@@ -144,6 +146,7 @@ function App() {
           <InstallPrompt />
         </>
       )}
+      <DevPreviewPanel />
     </>
   )
 }

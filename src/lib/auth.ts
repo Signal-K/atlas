@@ -6,6 +6,26 @@ const entitlementListeners = new Set<() => void>()
 let entitlementRefreshCount = 0
 let entitlementRefreshPromise: Promise<AuthUser | null> | null = null
 
+// Dev-only local preview: lets a local session skip real sign-in and flip
+// Sky Pass on/off to visually check both paywall states, without creating
+// an account or touching pb.authStore. `import.meta.env.DEV` is replaced
+// with a literal `false` in production builds, so this whole branch (and
+// the DevPreviewPanel that drives it) is dead-code-eliminated -- it cannot
+// reach a real build.
+const DEV = import.meta.env.DEV
+let devPreviewUser: AuthUser | null = null
+const devPreviewListeners = new Set<() => void>()
+
+export function getDevPreviewUser(): AuthUser | null {
+  return DEV ? devPreviewUser : null
+}
+
+export function setDevPreviewUser(user: AuthUser | null): void {
+  if (!DEV) return
+  devPreviewUser = user
+  devPreviewListeners.forEach((listener) => listener())
+}
+
 function notifyEntitlementListeners() {
   entitlementListeners.forEach((listener) => listener())
 }
@@ -32,6 +52,7 @@ export interface AuthUser {
 // the UI never suggested. Treat an expired session as signed out so the
 // paywall offers "Sign in / create account", which restores entitlement.
 function currentUser(): AuthUser | null {
+  if (DEV && devPreviewUser) return devPreviewUser
   const model = pb.authStore.record
   if (!model || !pb.authStore.isValid) return null
   return {
@@ -64,9 +85,16 @@ export function useAuth() {
       setUser(currentUser())
     })
     const unsubscribeEntitlement = subscribeToEntitlementRefresh(() => setEntitlementRefreshing(entitlementRefreshCount > 0))
+    let unsubscribeDevPreview = () => {}
+    if (DEV) {
+      const onDevPreviewChange = () => setUser(currentUser())
+      devPreviewListeners.add(onDevPreviewChange)
+      unsubscribeDevPreview = () => devPreviewListeners.delete(onDevPreviewChange)
+    }
     return () => {
       unsubscribeAuth()
       unsubscribeEntitlement()
+      unsubscribeDevPreview()
     }
   }, [])
 

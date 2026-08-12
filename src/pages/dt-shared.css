@@ -15,6 +15,14 @@
   overflow-y: auto;
 }
 
+/* .mobile-shell alone sets --dt-bg-page: transparent for the hub/plan
+   layouts; the entry overlay needs its own opaque paper background, so
+   restore it here with a compound selector that outranks that rule
+   regardless of stylesheet load order. */
+.mobile-shell.dt-entry-overlay {
+  --dt-bg-page: var(--atlas-paper);
+}
+
 .dt-page {
   color: var(--color-text);
   font-family: var(--font-sans);
@@ -96,11 +104,18 @@
 }
 
 .dt-browse-location-results {
-  position: absolute;
-  z-index: 4;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
+  /* In-flow, not absolutely positioned -- an absolute dropdown here floated
+     over whatever came next in the page (the category chip row), covering
+     part of it whenever the result list had more than a couple of rows,
+     with nothing making room for it. Letting it push following content
+     down instead removes that class of overlap entirely; the list is
+     capped at 8 results (see EventsView.tsx), so it never grows unbounded.
+     flex-basis: 100% forces it onto its own full-width row inside the
+     wrapping flex container (.dt-browse-location-picker) -- as a plain flex
+     item it would otherwise shrink to content width and sit beside the
+     input instead of spanning underneath it. */
+  flex-basis: 100%;
+  margin-top: 4px;
   display: grid;
   padding: 4px;
   border: 1px solid var(--color-border);

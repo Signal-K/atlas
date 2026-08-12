@@ -9,10 +9,10 @@ import { seedSignedInUser } from './support/auth'
 // the old mobile.css palette.
 
 const AREAS = [
-  { path: '/app/dashboard', heading: 'Dashboard' },
   { path: '/app/events', heading: 'Events' },
   { path: '/app/plan', heading: 'Plan' },
   { path: '/app/journal', heading: 'Journal' },
+  { path: '/app/ask', heading: 'Ask Atlas' },
   { path: '/app/settings', heading: 'Settings' },
 ]
 
@@ -30,8 +30,8 @@ for (const area of AREAS) {
 }
 
 test('nav links switch between areas without a full reload', async ({ page }) => {
-  await page.goto('/app/dashboard')
-  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+  await page.goto('/app/events')
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Journal' }).click()
   await expect(page).toHaveURL('/app/journal')
@@ -42,19 +42,19 @@ test('nav links switch between areas without a full reload', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible()
 })
 
-test('bare /app redirects into the dashboard area', async ({ page }) => {
+test('bare /app redirects into the events area', async ({ page }) => {
   await page.goto('/app')
-  await expect(page).toHaveURL('/app/dashboard')
+  await expect(page).toHaveURL('/app/events')
 })
 
-test('unknown /app/* path falls back to the dashboard area', async ({ page }) => {
+test('unknown /app/* path falls back to the events area', async ({ page }) => {
   await page.goto('/app/does-not-exist')
-  await expect(page).toHaveURL('/app/dashboard')
+  await expect(page).toHaveURL('/app/events')
 })
 
 test('narrow viewport renders the nav as a bottom tab bar, not a side nav', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/app/dashboard')
+  await page.goto('/app/events')
   const nav = page.getByRole('navigation', { name: 'Primary' })
   await expect(nav).toBeVisible()
   const box = await nav.boundingBox()
@@ -65,7 +65,7 @@ test('narrow viewport renders the nav as a bottom tab bar, not a side nav', asyn
 
 test('wide viewport renders the nav as a side nav, not a bottom tab bar', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
-  await page.goto('/app/dashboard')
+  await page.goto('/app/events')
   const nav = page.getByRole('navigation', { name: 'Primary' })
   await expect(nav).toBeVisible()
   const box = await nav.boundingBox()

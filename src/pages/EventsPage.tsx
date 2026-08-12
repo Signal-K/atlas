@@ -3,8 +3,6 @@ import { EventsView } from '../views/mobile/EventsView'
 import type { EntryDetailActions } from '../views/mobile/EntryDetailView'
 import type { EntryDetailSubject } from '../lib/entryDetail'
 import type { CurrentLocation } from '../lib/currentLocation'
-import { AskAtlas } from '../components/AskAtlas'
-import { useAuth } from '../lib/auth'
 
 // EntryDetailView still carries its own (mobile.css-based) styling -- kept
 // isolated to this one secondary overlay for now rather than blocking the
@@ -17,7 +15,6 @@ export interface EventsPageProps {
 
 export function EventsPage({ city }: EventsPageProps) {
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions?: EntryDetailActions } | null>(null)
-  const { user } = useAuth()
 
   return (
     <div className="page">
@@ -26,12 +23,12 @@ export function EventsPage({ city }: EventsPageProps) {
         <p>Sky events, calendar, and archive.</p>
       </header>
 
-      <EventsView
-        city={city}
-        onOpenEntry={(subject, actions) => setEntryDetail({ subject, actions })}
-      />
-
-      {user && <AskAtlas entitled={user.entitled} />}
+      <div className="mobile-shell">
+        <EventsView
+          city={city}
+          onOpenEntry={(subject, actions) => setEntryDetail({ subject, actions })}
+        />
+      </div>
 
       {entryDetail && (
         <div className="mobile-shell dt-entry-overlay">

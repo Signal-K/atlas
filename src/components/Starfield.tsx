@@ -31,9 +31,9 @@ interface Smudge {
 }
 
 const LAYERS: StarLayer[] = [
-  { depth: 0.15, areaPerStar: 4500, sizeRange: [0.3, 0.8], alphaRange: [0.2, 0.45] },
-  { depth: 0.4, areaPerStar: 9000, sizeRange: [0.6, 1.3], alphaRange: [0.35, 0.7] },
-  { depth: 0.85, areaPerStar: 30000, sizeRange: [1.1, 2.4], alphaRange: [0.55, 1] },
+  { depth: 0.15, areaPerStar: 2200, sizeRange: [0.3, 0.9], alphaRange: [0.25, 0.5] },
+  { depth: 0.4, areaPerStar: 4200, sizeRange: [0.7, 1.5], alphaRange: [0.4, 0.75] },
+  { depth: 0.85, areaPerStar: 13000, sizeRange: [1.2, 2.7], alphaRange: [0.6, 1] },
 ]
 
 // Loosely inspired by the star colors visible in Hubble Deep Field imagery:
@@ -115,15 +115,15 @@ const LIGHT_SMUDGE_PALETTE: Array<[number, number, number]> = [
 ]
 
 function createSmudges(width: number, height: number, rand: () => number, isDark: boolean): Smudge[] {
-  const count = Math.max(3, Math.floor((width * height) / 650_000))
+  const count = Math.max(4, Math.floor((width * height) / 550_000))
   const palette = isDark ? DARK_SMUDGE_PALETTE : LIGHT_SMUDGE_PALETTE
   return Array.from({ length: count }, () => ({
     x: rand() * width,
     y: rand() * height,
-    rx: 50 + rand() * 110,
-    ry: 25 + rand() * 60,
+    rx: 55 + rand() * 120,
+    ry: 28 + rand() * 65,
     rotation: rand() * Math.PI,
-    alpha: 0.04 + rand() * 0.07,
+    alpha: 0.045 + rand() * 0.075,
     color: palette[Math.floor(rand() * palette.length)],
   }))
 }

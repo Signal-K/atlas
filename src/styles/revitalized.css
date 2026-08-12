@@ -120,14 +120,95 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Daily Transit and reused mobile feature surfaces */
 .mobile-shell { height: auto; min-height: 0; color: var(--atlas-ink); background: transparent; --dt-bg-page: transparent; --dt-ink: var(--atlas-ink); --dt-ink-soft: var(--atlas-ink-soft); --dt-rule: var(--atlas-line); --dt-primary: var(--atlas-sky); }
+
+/* mobile.css defines its own self-contained "Daily Transit" theme directly
+   on `.mobile-shell` (dark, ~line 57) and on `:root[data-theme='light']
+   .mobile-shell` (~line 1838, 0,2,0 specificity) -- Turret Road/Oxanium
+   fonts, its own blue accent, its own --mobile-* surface tokens. Those beat
+   the plain `.mobile-shell` rule above on specificity, which is why
+   PlanView (and anything else styled purely through the --mobile- prefix,
+   --accent, or --mono rather than the --dt- aliases already covered above)
+   still shows the old theme's monospace labels and mismatched blue. Using
+   two classes here reaches 0,3,0 specificity to win outright rather than
+   depend on stylesheet load order.  */
+:root .nav-shell-main .mobile-shell {
+  --dt-font-display: var(--font-serif);
+  --dt-font-serif: var(--font-serif);
+  --dt-font-data: var(--font-sans);
+  --dt-ink-muted: var(--atlas-ink-soft);
+  --dt-ink-faded: color-mix(in srgb, var(--atlas-ink-soft) 65%, transparent);
+
+  --font-display: var(--font-serif);
+  --font-data: var(--font-sans);
+  --mono: var(--font-sans);
+  --text: var(--atlas-ink-soft);
+  --text-h: var(--atlas-ink);
+  --bg: var(--atlas-paper);
+  --border: var(--atlas-line);
+  --mobile-ink: var(--atlas-paper);
+  --mobile-surface: var(--atlas-card);
+  --mobile-surface-strong: var(--atlas-card);
+  --mobile-line: var(--atlas-line);
+  --mobile-line-strong: var(--atlas-line);
+  --mobile-muted: var(--atlas-ink-soft);
+  --mobile-header-bg: color-mix(in srgb, var(--atlas-paper) 88%, transparent);
+  --mobile-panel-bg: var(--atlas-card);
+  --mobile-active-bg: color-mix(in srgb, var(--atlas-sky) 14%, transparent);
+  --mobile-card-bg: var(--atlas-card);
+  --mobile-control-bg: color-mix(in srgb, var(--atlas-card) 90%, var(--atlas-paper));
+  --mobile-primary-text: var(--atlas-sky-deep);
+  --accent: var(--atlas-sky);
+  --accent-bg: color-mix(in srgb, var(--atlas-sky) 10%, transparent);
+  --accent-border: color-mix(in srgb, var(--atlas-sky) 36%, transparent);
+
+  /* dt-shared.css (EventsView/PlanView's Explore mode) reads --color-accent
+     directly -- tokens.css defines it as a leftover violet (#7c3aed) from
+     the source "Daily Transit" design, distinct from the app's own
+     --atlas-sky blue used everywhere else. Remapping it here (rather than
+     patching every individual --color-accent consumer in dt-shared.css)
+     covers dt-chip/dt-day-chip active states, hover washes, and status text
+     in one place. */
+  --color-accent: var(--atlas-sky);
+  --color-accent-text: #fff;
+  --color-accent-bg: color-mix(in srgb, var(--atlas-sky) 10%, transparent);
+  --color-text: var(--atlas-ink);
+  --color-text-muted: var(--atlas-ink-soft);
+  --color-border: var(--atlas-line);
+}
+/* Hardcoded (not variable-driven) violet accent on PlanView/Journal's
+   Explore/Ready/Watch/Calendar-style tab bar -- doesn't pick up any of the
+   remapping above since it's not expressed as a var. */
+:root .nav-shell-main .mobile-shell .mobile-community-tabs button.is-active {
+  background: color-mix(in srgb, var(--atlas-sky) 16%, transparent);
+  color: var(--atlas-sky-deep);
+}
 .mobile-shell .dt-hub, .mobile-shell .dt-page { max-width: 1120px; margin: 0 auto; }
-.mobile-shell .dt-stitch, .mobile-shell .dt-starfield-bg { display: none; }
+.mobile-shell .dt-stitch { display: none; }
+/* .dt-starfield-bg is a decorative background-image, not a standalone
+   element -- HubView applies it as a second class directly on the main
+   `.dt-hub` content container (see HubView.tsx), not on a separate overlay.
+   `display: none` here previously hid the entire Dashboard/Hub whenever
+   that class was present -- only the dotted background pattern itself
+   should be suppressed. */
+.mobile-shell .dt-starfield-bg { background-image: none; }
 .mobile-shell .dt-briefing-head, .mobile-shell .dt-section-head { border-color: var(--atlas-line); }
 .mobile-shell .dt-h2, .mobile-shell .mobile-sheet-title { color: var(--atlas-ink); font-family: var(--font-serif); letter-spacing: -.035em; }
 .mobile-shell .dt-kicker, .mobile-shell .dt-section-eyebrow { color: var(--atlas-sky); }
 .mobile-shell .dt-map-preview { border-radius: 22px; overflow: hidden; border: 1px solid var(--atlas-line); box-shadow: 0 18px 40px rgba(25, 47, 64, .12); }
 .mobile-shell .dt-widget-cell { padding: 16px; }
 .mobile-shell .dt-major-event-card { overflow: hidden; }
+/* Major/featured events (Perseids-peak-tonight, an eclipse this week) get
+   the gold accent reserved for highlights elsewhere, plus a heavier border
+   and lift, so this reads as the focal point at the top of the feed rather
+   than blending into the regular event rows below it. */
+.mobile-shell .dt-major-event-card.is-featured {
+  border: 1.5px solid var(--atlas-gold);
+  border-radius: 16px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--atlas-gold) 12%, transparent), var(--atlas-card) 55%);
+  box-shadow: 0 14px 32px rgba(216, 154, 53, .16);
+}
+.mobile-shell .dt-major-event-card.is-featured .dt-major-event-badge { color: var(--atlas-gold); }
+.mobile-shell .dt-major-event-card.is-featured strong { color: var(--atlas-ink); font-family: var(--font-serif); }
 .mobile-shell .dt-chip, .mobile-shell .dt-day-chip, .mobile-shell .dt-view-toggle { border-color: var(--atlas-line); background: var(--atlas-card); color: var(--atlas-ink-soft); }
 .mobile-shell .dt-chip.is-active, .mobile-shell .dt-day-chip.is-active, .mobile-shell .dt-view-toggle button.is-active { background: var(--atlas-ink); color: var(--atlas-paper); }
 .mobile-shell .dt-feed-row { border-color: var(--atlas-line); }
@@ -142,6 +223,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .nav-shell-topbar { padding: 14px 16px; }
   .page-header h1 { font-size: 36px; }
   .mobile-shell .dt-hub, .mobile-shell .dt-page { width: 100%; }
+  /* .dt-hub carries a negative bottom margin tuned for the old in-flow/sticky
+     nav bar; now that the nav is `position: fixed` above, that margin no
+     longer just closes a flow gap -- it lets trailing content (the sky map
+     widget) sit under the fixed bar. Pad the box back out so real content
+     clears it. */
+  .mobile-shell .dt-hub { padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 20px); }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }

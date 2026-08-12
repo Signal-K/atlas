@@ -26,7 +26,7 @@ declare global {
 // all; FeedbackDock uses the account's own email (src/components/FeedbackDock.tsx).
 test('signed-in desktop user submits a feature request without leaving the app', async ({ page }) => {
   await seedSignedInUser(page, { email: 'observer@example.com' })
-  await page.goto('/app/dashboard')
+  await page.goto('/app/events')
   await captureAnalytics(page)
 
   await page.getByRole('button', { name: 'Request feature' }).click()
@@ -36,7 +36,7 @@ test('signed-in desktop user submits a feature request without leaving the app',
   await page.getByRole('button', { name: 'Send request' }).click()
 
   await expect(page.getByRole('dialog', { name: 'Request a feature' })).toHaveCount(0)
-  await expect(page).toHaveURL('/app/dashboard')
+  await expect(page).toHaveURL('/app/events')
 
   const event = await latestFeatureRequest(page)
   expect(event?.properties).toMatchObject({
@@ -45,8 +45,8 @@ test('signed-in desktop user submits a feature request without leaving the app',
     email: 'observer@example.com',
     signedIn: true,
     source: 'feedback_dock',
-    path: '/app/dashboard',
-    route: '/app/dashboard',
+    path: '/app/events',
+    route: '/app/events',
   })
   expect(event?.properties?.$set).toMatchObject({ email: 'observer@example.com', signedIn: true })
 })
@@ -54,7 +54,7 @@ test('signed-in desktop user submits a feature request without leaving the app',
 test('signed-in mobile user submits a feature request without leaving the app', async ({ page }) => {
   await seedSignedInUser(page, { email: 'mobile@example.com' })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/app/dashboard')
+  await page.goto('/app/events')
   await captureAnalytics(page)
 
   await page.getByRole('button', { name: 'Request feature' }).click()
@@ -64,7 +64,7 @@ test('signed-in mobile user submits a feature request without leaving the app', 
   await page.getByRole('button', { name: 'Send request' }).click()
 
   await expect(page.getByRole('dialog', { name: 'Request a feature' })).toHaveCount(0)
-  await expect(page).toHaveURL('/app/dashboard')
+  await expect(page).toHaveURL('/app/events')
 
   const event = await latestFeatureRequest(page)
   expect(event?.properties).toMatchObject({
@@ -73,8 +73,8 @@ test('signed-in mobile user submits a feature request without leaving the app', 
     email: 'mobile@example.com',
     signedIn: true,
     source: 'feedback_dock',
-    path: '/app/dashboard',
-    route: '/app/dashboard',
+    path: '/app/events',
+    route: '/app/events',
   })
   expect(event?.properties?.$set).toMatchObject({ email: 'mobile@example.com', signedIn: true })
 })

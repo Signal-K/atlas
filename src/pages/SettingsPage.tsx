@@ -4,7 +4,6 @@ import { LocationSettings } from '../components/LocationSettings'
 import { PushSettings } from '../components/PushSettings'
 import { LeaderboardSettings } from '../components/LeaderboardSettings'
 import { DeviceSettings } from '../components/DeviceSettings'
-import { AskAtlas } from '../components/AskAtlas'
 import { Card } from '../ui/Card'
 import { useAuth } from '../lib/auth'
 import type { LocationStatus } from '../lib/geo'
@@ -74,8 +73,6 @@ export function SettingsPage({
           </Card>
         )
       })}
-
-      {user && <AskAtlas entitled={user.entitled} />}
     </div>
   )
 }

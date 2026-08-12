@@ -82,8 +82,8 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
   })
-  await page.goto('/app/dashboard')
-  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
+  await page.goto('/app/events')
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
 })
 
 test('opened entry detail has facts, best-time timeline, and weather sections', async ({ page }) => {
@@ -101,8 +101,6 @@ test('opened entry detail has facts, best-time timeline, and weather sections', 
   await expect(page.getByText('82% cloud cover forecast · 12% rain chance for the viewing window.')).toBeVisible()
 
   await expect(page.getByRole('button', { name: 'Camera recipe' })).toBeVisible()
-  // Scoped to the entry detail's own button -- HubView's "After observing"
-  // section renders a same-named button underneath.
   await expect(page.locator('.dt-entry').getByRole('button', { name: 'Log attempt' })).toBeVisible()
 })
 
@@ -121,8 +119,8 @@ test('camera recipe reveals device setup and a downloadable preset for an entitl
   // stacks in call order, so re-navigating after this second call leaves
   // pocketbase_auth with entitled: true.
   await seedSignedInUser(page, { entitled: true })
-  await page.goto('/app/dashboard')
-  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
+  await page.goto('/app/events')
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
 
   await openFullMoonEntry(page)
   await page.getByRole('button', { name: 'Camera recipe' }).click()

@@ -148,9 +148,9 @@ test('manual city entry reaches tonight feed with selected city', async ({ page 
   await page.getByRole('button', { name: 'Use this location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/app/dashboard')
-  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.dt-widget-caption', { hasText: 'Zurich' })).toBeVisible()
+  await expect(page).toHaveURL('/app/events')
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Zurich')).toBeVisible()
 })
 
 test('browser geolocation entry reaches tonight feed', async ({ page, context }) => {
@@ -175,9 +175,9 @@ test('browser geolocation entry reaches tonight feed', async ({ page, context })
   await page.getByRole('button', { name: 'Use my current location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/app/dashboard')
-  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.dt-widget-caption', { hasText: 'Zurich' })).toBeVisible()
+  await expect(page).toHaveURL('/app/events')
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Zurich')).toBeVisible()
 })
 
 test('location search disambiguates cities by region and country', async ({ page }) => {
@@ -217,9 +217,9 @@ test('location search disambiguates cities by region and country', async ({ page
   await page.getByRole('button', { name: 'Use this location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/app/dashboard')
-  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.dt-widget-caption', { hasText: 'London, Ontario, Canada' })).toBeVisible()
+  await expect(page).toHaveURL('/app/events')
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('London, Ontario, Canada')).toBeVisible()
 })
 
 test('location switching stays reachable via Settings after onboarding', async ({ page }) => {
@@ -237,12 +237,12 @@ test('location switching stays reachable via Settings after onboarding', async (
   // Old route, unmatched post-rebuild -- AppShell's catch-all sends it to
   // the new home area instead of erroring.
   await page.goto('/app/today')
-  await expect(page).toHaveURL('/app/dashboard')
+  await expect(page).toHaveURL('/app/events')
 
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Settings' }).click()
   await expect(page).toHaveURL('/app/settings')
   await expect(page.getByPlaceholder('Search city, region, or country')).toHaveValue('London, England, United Kingdom')
 
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Dashboard' }).click()
-  await expect(page).toHaveURL('/app/dashboard')
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Events' }).click()
+  await expect(page).toHaveURL('/app/events')
 })

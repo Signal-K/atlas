@@ -86,92 +86,8 @@ test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
 })
 
-test('mobile signed-in user lands on visible-tonight feed', async ({ page }) => {
-  const requestedForecastDays: string[] = []
-  page.on('request', (request) => {
-    if (request.url().startsWith('https://api.open-meteo.com/')) {
-      requestedForecastDays.push(new URL(request.url()).searchParams.get('forecast_days') ?? '')
-    }
-  })
-  await seedSignedInUser(page)
-  await page.goto('/app/dashboard')
-
-  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
-  await expect(page.getByText(/local darkness \d\/5/i)).toBeVisible()
-  await expect(page.getByText('Viewing conditions 1/5')).toBeVisible()
-  await expect
-    .poll(async () => new Set(await page.locator('.mobile-mini-row-name').filter({ hasText: 'Viewing conditions' }).allTextContents()).size)
-    .toBeGreaterThan(1)
-  await expect(page.getByText(/Sky quality \d\/5/)).toHaveCount(0)
-  expect(requestedForecastDays).toContain('2')
-
-  const target = page.locator('.dt-feed-row').first()
-  await expect(target).toBeVisible()
-  await expect(target).toContainText('Full Moon')
-  await expect(target).toContainText(/naked-eye|needs binoculars or a scope/)
-  await target.click()
-
-  // First-ever tap also surfaces the equipment prompt; it takes the full
-  // screen ahead of the entry detail page, so answer it before the entry is
-  // reachable.
-  const prompt = page.locator('.dt-equipment-prompt')
-  await expect(prompt).toBeVisible()
-  await prompt.getByRole('button', { name: 'Skip for now' }).click()
-  await expect(prompt).toHaveCount(0)
-
-  const entry = page.locator('.dt-entry')
-  await expect(entry).toBeVisible()
-  await expect(entry.getByRole('heading', { name: 'Full Moon' })).toBeVisible()
-  await expect(entry.getByText('Bright and easy to frame with any phone camera.')).toBeVisible()
-  await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const taps = JSON.parse(window.localStorage.getItem('atlas-first-plan-target-taps') ?? '[]')
-        return taps[0]
-      }),
-    )
-    .toMatchObject({
-      targetId: 'e2e-mobile-activation-moon',
-      title: 'Full Moon',
-      kind: 'moon_phase',
-      source: 'mobile_hub',
-      locationLabel: 'Melbourne',
-    })
-})
-
-test('mobile equipment prompt waits for first target tap and saves gear choice', async ({ page }) => {
-  await seedSignedInUser(page)
-  await page.goto('/app/dashboard')
-
-  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
-
-  await page.locator('.dt-feed-row').first().click()
-  const prompt = page.locator('.dt-equipment-prompt')
-  await expect(prompt).toBeVisible()
-  await prompt.getByRole('button', { name: 'My phone' }).click()
-
-  await expect(prompt).toHaveCount(0)
-  await expect(page.evaluate(() => window.localStorage.getItem('atlas-first-plan-equipment'))).resolves.toBe('phone')
-  await expect(page.evaluate(() => window.localStorage.getItem('atlas-first-plan-equipment-dismissed'))).resolves.toBe('1')
-
-  // Answering the prompt opens the entry it was blocking for the tapped target.
-  const entry = page.locator('.dt-entry')
-  await expect(entry).toBeVisible()
-  await expect(entry.getByRole('heading', { name: 'Full Moon' })).toBeVisible()
-  await entry.getByRole('button', { name: 'Back' }).click()
-  await expect(entry).toHaveCount(0)
-
-  await page.reload()
-  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await page.locator('.dt-feed-row').first().click()
-  await expect(page.locator('.dt-equipment-prompt')).toHaveCount(0)
-  await expect(page.locator('.dt-entry').getByRole('heading', { name: 'Full Moon' })).toBeVisible()
-})
-
 test('mobile signed-out visitor is blocked by the auth gate before reaching the feed', async ({ page }) => {
-  await page.goto('/app/dashboard')
+  await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toHaveCount(0)
@@ -180,9 +96,9 @@ test('mobile signed-out visitor is blocked by the auth gate before reaching the 
 
 test('mobile signed-in free user must checkout before using Plan', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
-  await page.goto('/app/dashboard')
+  await page.goto('/app/events')
 
-  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
@@ -192,9 +108,9 @@ test('mobile signed-in free user must checkout before using Plan', async ({ page
 
 test('mobile entitled user can compare lower light pollution sites and routes', async ({ page }) => {
   await seedSignedInUser(page, { entitled: true })
-  await page.goto('/app/dashboard')
+  await page.goto('/app/events')
 
-  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan', exact: true }).click()
   await page.getByRole('button', { name: /Dark sites/i }).click()
 

@@ -17,8 +17,13 @@ import { CITIES, cityLabel, type City } from '../../lib/cities'
 import { buildEventDetail, detailInputFromEvent, type EntryDetailSubject } from '../../lib/entryDetail'
 import { getDarknessWindow } from '../../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../../lib/timeZone'
+import { daysUntil } from '../../lib/eventFormat'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
+
+// Matches HubView's window -- how far out an eclipse/meteor shower still
+// counts as "coming up" rather than just another list entry.
+const MAJOR_EVENT_WINDOW_DAYS = 14
 
 export function EventsView({
   city,
@@ -150,6 +155,14 @@ export function EventsView({
   const moonPct = Math.round(moonIlluminationPctAt(new Date()))
   const isBrowsingElsewhere = browseCity != null
 
+  const majorEvents = useMemo(() => {
+    const windowEnd = Date.now() + MAJOR_EVENT_WINDOW_DAYS * 86_400_000
+    return (events ?? [])
+      .filter((event) => (event.kind === 'eclipse' || event.kind === 'meteor_shower') && new Date(event.startsAt).getTime() <= windowEnd)
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+      .slice(0, 2)
+  }, [events])
+
   function selectEvent(event: SkyEvent) {
     const { start, end } = tonightWindowForTimeZone(new Date(event.startsAt), viewLocation.timeZone)
     const darknessWindow = getDarknessWindow(viewLocation.lat, viewLocation.lon, start, end)
@@ -176,6 +189,27 @@ export function EventsView({
           {events ? events.length : 0} UPCOMING &middot; NEXT {lookaheadDays >= 365 ? 'ALL' : lookaheadDays} DAYS &middot; MOON {moonPct}%
         </div>
       </div>
+
+      {majorEvents.length > 0 && (
+        <section className="dt-major-events">
+          {majorEvents.map((event) => {
+            const nowIso = new Date().toISOString()
+            const inProgress = event.startsAt <= nowIso && event.endsAt >= nowIso
+            return (
+              <button type="button" className="dt-major-event-card is-featured" key={event.id} onClick={() => selectEvent(event)}>
+                {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" />}
+                <div className="dt-major-event-body">
+                  <span className="dt-major-event-badge">
+                    {event.kind === 'eclipse' ? 'ECLIPSE' : 'METEOR SHOWER'} · {inProgress ? 'HAPPENING NOW' : daysUntil(event.startsAt)}
+                  </span>
+                  <strong>{event.title}</strong>
+                  <span className="dt-major-event-desc">{event.description}</span>
+                </div>
+              </button>
+            )
+          })}
+        </section>
+      )}
 
       <div className="dt-browse-location">
         {hasPremium ? (

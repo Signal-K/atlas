@@ -21,10 +21,9 @@ export function EventPreferencePrompt({ onSaved }: { onSaved: (kinds: string[]) 
   }
 
   async function save() {
-    if (selected.length === 0) return
     setBusy(true)
     await savePreferredEventTypes(selected)
-    trackEvent('Set event preferences', { kinds: selected })
+    if (selected.length > 0) trackEvent('Set event preferences', { kinds: selected })
     onSaved(selected)
     setBusy(false)
   }
@@ -53,8 +52,8 @@ export function EventPreferencePrompt({ onSaved }: { onSaved: (kinds: string[]) 
           )
         })}
       </div>
-      <button type="button" className="dt-primary-btn" onClick={save} disabled={busy || selected.length === 0}>
-        {busy ? 'Saving…' : 'Show my feed'}
+      <button type="button" className="dt-primary-btn" onClick={save} disabled={busy}>
+        {busy ? 'Saving…' : selected.length === 0 ? 'Skip for now' : 'Show my feed'}
       </button>
     </section>
   )

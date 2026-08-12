@@ -116,10 +116,11 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
   }
 
   async function handleInterestsContinue() {
-    if (interests.length > 0) {
-      await savePreferredEventTypes(interests)
-      trackEvent('Set event preferences', { kinds: interests, source: 'onboarding' })
-    }
+    // Always persist, even with zero interests picked -- otherwise skipping
+    // this step leaves the completion flag unset and EventPreferencePrompt
+    // re-shows on every dashboard visit.
+    await savePreferredEventTypes(interests)
+    if (interests.length > 0) trackEvent('Set event preferences', { kinds: interests, source: 'onboarding' })
     advance()
   }
 

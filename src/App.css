@@ -3,7 +3,14 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: -1;
+  /* A negative z-index sinks this below the <html>/<body> canvas background
+     paint itself (confirmed live: html has an opaque white background), not
+     just behind normal content -- making the whole star/nebula field
+     invisible everywhere, not just on one page. z-index: 0 keeps it behind
+     all real page content (it's first in DOM order, before <AppShell>) while
+     still painting above the root background. pointer-events: none already
+     keeps it non-interactive regardless of stacking. */
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -4057,8 +4064,14 @@
 
 @media (max-width: 640px) {
   .feedback-dock {
+    /* Clear the fixed bottom tab bar (var(--tab-bar-height), 64px, plus
+       safe-area) with real margin -- mobile.css has a matching override
+       intended for this, but it's scoped to a `.mobile-shell ~` sibling
+       selector that never matches here (FeedbackDock isn't a DOM sibling
+       of .mobile-shell), so it silently never applied. */
     right: 12px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 106px);
+    z-index: 35;
   }
 
   .feedback-dock-trigger {
