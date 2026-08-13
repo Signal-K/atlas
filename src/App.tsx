@@ -12,6 +12,7 @@ import { OnboardingFlow } from './components/OnboardingFlow'
 import { OfflineBanner } from './components/OfflineBanner'
 import { AuthGate } from './components/AuthGate'
 import { DevPreviewPanel } from './components/DevPreviewPanel'
+import { ClerkPoCPanel } from './components/ClerkPoCPanel'
 import { useThemeBootstrap } from './providers/useThemeBootstrap'
 import { useEntitlementSync } from './providers/useEntitlementSync'
 import { useOnboardingGate } from './providers/useOnboardingGate'
@@ -102,6 +103,7 @@ function App() {
         <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
         <AuthGate defaultMode={accountDefaultMode} onSignedIn={handleSignedIn} onSignedUp={handleSignedUp} />
         <DevPreviewPanel />
+        <ClerkPoCPanel />
       </>
     )
   }
@@ -147,6 +149,7 @@ function App() {
         </>
       )}
       <DevPreviewPanel />
+      <ClerkPoCPanel />
     </>
   )
 }
