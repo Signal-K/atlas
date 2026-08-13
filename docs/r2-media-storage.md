@@ -29,7 +29,22 @@ file.
 
 ## Capacity policy
 
-The R2 free allowance is useful for launch, but it is not a library quota:
+The R2 free allowance is useful for launch, but it is not a library quota.
+Before every R2 `put`, `atlas-media` reserves capacity in an account-wide
+Durable Object ledger. On first use it totals the existing bucket, then it
+keeps an exact running total for later uploads. A rejected reservation means
+the image is never sent to R2. A Worker/R2 uncertainty is counted
+conservatively rather than risking an under-count.
+
+The committed defaults deliberately stop uploads at 80% of the Standard free
+allowance: **8 GiB** of stored images and **800,000** monthly upload attempts.
+They leave headroom for storage/accounting differences and normal R2 bucket
+operations. Change `R2_STORAGE_SOFT_LIMIT_BYTES` and
+`R2_MONTHLY_UPLOAD_SOFT_LIMIT` in `workers/atlas-media/wrangler.jsonc` only
+after intentionally choosing a paid storage budget; the Worker fails closed
+if either value is invalid or its initial capacity check cannot complete.
+
+The display-quality web master remains the default:
 
 | Typical stored image | Approx. photos in 10GB |
 | --- | ---: |

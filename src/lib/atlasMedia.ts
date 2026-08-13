@@ -29,7 +29,16 @@ export async function uploadObservationPhoto(observationId: string, photo: Blob)
     body: photo,
     signal: AbortSignal.timeout(30_000),
   })
-  if (!response.ok) throw new Error('Photo upload failed.')
+  if (!response.ok) {
+    let message = 'Photo upload failed.'
+    try {
+      const body = await response.json() as { error?: unknown }
+      if (typeof body.error === 'string' && body.error.trim()) message = body.error
+    } catch {
+      // The Worker may be unavailable or return a non-JSON edge error.
+    }
+    throw new Error(message)
+  }
   return response.json() as Promise<R2PhotoUpload>
 }
 

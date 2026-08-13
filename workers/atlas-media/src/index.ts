@@ -1,7 +1,12 @@
+import { DurableObject } from 'cloudflare:workers'
+
 interface Env {
   ATLAS_MEDIA: R2Bucket
+  ATLAS_MEDIA_QUOTA: DurableObjectNamespace<AtlasMediaQuota>
   POCKETBASE_URL: string
   ALLOWED_ORIGINS: string
+  R2_STORAGE_SOFT_LIMIT_BYTES: string
+  R2_MONTHLY_UPLOAD_SOFT_LIMIT: string
 }
 
 interface PocketBaseRecord {
@@ -11,10 +16,139 @@ interface PocketBaseRecord {
 }
 
 const MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+const BOOTSTRAP_STALE_AFTER_MS = 5 * 60 * 1000
 const IMAGE_EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+}
+
+interface QuotaState {
+  usedBytes: number
+  month: string
+  monthlyUploadAttempts: number
+}
+
+type QuotaDecision =
+  | { accepted: true; reservationId: string; remainingBytes: number }
+  | { accepted: false; reason: 'storage' | 'uploads'; message: string }
+
+function utcMonth(now = new Date()): string {
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function configuredPositiveInteger(value: string): number | null {
+  const number = Number(value)
+  return Number.isSafeInteger(number) && number > 0 ? number : null
+}
+
+async function bucketUsage(bucket: R2Bucket): Promise<{ usedBytes: number; objectCount: number }> {
+  let usedBytes = 0
+  let objectCount = 0
+  let cursor: string | undefined
+  do {
+    const page = await bucket.list({ cursor, limit: 1_000 })
+    usedBytes += page.objects.reduce((sum, object) => sum + object.size, 0)
+    objectCount += page.objects.length
+    cursor = page.truncated ? page.cursor : undefined
+  } while (cursor)
+  return { usedBytes, objectCount }
+}
+
+// A single ledger is the correct coordination point for the account-wide R2
+// allowance. It reserves quota before the Worker writes bytes to R2, so a
+// concurrent upload cannot push Atlas past its deliberate safety buffer.
+export class AtlasMediaQuota extends DurableObject<Env> {
+  private async loadState(): Promise<QuotaState> {
+    const existing = await this.ctx.storage.get<QuotaState>('quota')
+    if (existing) return existing
+
+    const bootstrappingSince = await this.ctx.storage.get<number>('bootstrappingSince')
+    if (bootstrappingSince && Date.now() - bootstrappingSince < BOOTSTRAP_STALE_AFTER_MS) {
+      throw new Error('Atlas media capacity is being checked. Please try again in a moment.')
+    }
+
+    // Persist this marker before the R2 list. R2 I/O may interleave DO
+    // requests, so later uploads fail closed rather than race the bootstrap.
+    await this.ctx.storage.put('bootstrappingSince', Date.now())
+    try {
+      const usage = await bucketUsage(this.env.ATLAS_MEDIA)
+      const state: QuotaState = {
+        usedBytes: usage.usedBytes,
+        month: utcMonth(),
+        // Existing objects may have been written before this guard was
+        // introduced. Treat all of them as this month's attempts on the
+        // first check: that can only reject too early, never bill too much.
+        monthlyUploadAttempts: usage.objectCount,
+      }
+      await this.ctx.storage.put('quota', state)
+      await this.ctx.storage.delete('bootstrappingSince')
+      return state
+    } catch (error) {
+      await this.ctx.storage.delete('bootstrappingSince')
+      throw error
+    }
+  }
+
+  async reserve(uploadBytes: number): Promise<QuotaDecision> {
+    if (!Number.isSafeInteger(uploadBytes) || uploadBytes <= 0) {
+      throw new Error('Invalid media size.')
+    }
+
+    const storageLimit = configuredPositiveInteger(this.env.R2_STORAGE_SOFT_LIMIT_BYTES)
+    const monthlyUploadLimit = configuredPositiveInteger(this.env.R2_MONTHLY_UPLOAD_SOFT_LIMIT)
+    if (!storageLimit || !monthlyUploadLimit) {
+      throw new Error('Atlas media capacity is not configured safely.')
+    }
+
+    const previous = await this.loadState()
+    const month = utcMonth()
+    const state: QuotaState = previous.month === month
+      ? previous
+      : { ...previous, month, monthlyUploadAttempts: 0 }
+
+    if (state.usedBytes + uploadBytes > storageLimit) {
+      return {
+        accepted: false,
+        reason: 'storage',
+        message: 'Atlas photo storage is at its safety limit. This upload was not sent to Cloudflare.',
+      }
+    }
+    if (state.monthlyUploadAttempts + 1 > monthlyUploadLimit) {
+      return {
+        accepted: false,
+        reason: 'uploads',
+        message: 'Atlas has reached its monthly upload safety limit. This upload was not sent to Cloudflare.',
+      }
+    }
+
+    const reservationId = crypto.randomUUID()
+    await this.ctx.storage.put({
+      quota: {
+        ...state,
+        usedBytes: state.usedBytes + uploadBytes,
+        monthlyUploadAttempts: state.monthlyUploadAttempts + 1,
+      },
+      [`reservation:${reservationId}`]: uploadBytes,
+    })
+    return { accepted: true, reservationId, remainingBytes: storageLimit - state.usedBytes - uploadBytes }
+  }
+
+  async commit(reservationId: string): Promise<void> {
+    await this.ctx.storage.delete(`reservation:${reservationId}`)
+  }
+
+  async releaseWithoutUpload(reservationId: string): Promise<void> {
+    const reservedBytes = await this.ctx.storage.get<number>(`reservation:${reservationId}`)
+    if (!reservedBytes) return
+    const state = await this.ctx.storage.get<QuotaState>('quota')
+    if (state) {
+      await this.ctx.storage.put('quota', { ...state, usedBytes: Math.max(0, state.usedBytes - reservedBytes) })
+    }
+    // Keep the attempt count: an uncertain/failed R2 request may still count
+    // as a Class A operation, and conservative accounting avoids an overage.
+    await this.ctx.storage.delete(`reservation:${reservationId}`)
+  }
 }
 
 function corsHeaders(request: Request, env: Env): Headers {
@@ -85,6 +219,7 @@ async function putPhoto(request: Request, env: Env, observationId: string): Prom
 
   const observation = await observationForOwner(observationId, token, env)
   if (!observation) return responseError(request, env, 404, 'Observation not found.')
+  if (observation.photo_r2_key) return responseError(request, env, 409, 'This observation already has a photo.')
 
   const contentType = request.headers.get('Content-Type')?.split(';')[0].toLowerCase() ?? ''
   const extension = IMAGE_EXTENSIONS[contentType]
@@ -95,12 +230,40 @@ async function putPhoto(request: Request, env: Env, observationId: string): Prom
     return responseError(request, env, 413, 'The optimised image must be no larger than 12 MB.')
   }
 
+  let reservation: Extract<QuotaDecision, { accepted: true }>
+  try {
+    const decision = await env.ATLAS_MEDIA_QUOTA.getByName('account-wide-r2-budget').reserve(data.byteLength)
+    if (!decision.accepted) return responseError(request, env, 507, decision.message)
+    reservation = decision
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Atlas media capacity could not be checked.'
+    return responseError(request, env, 503, message)
+  }
+
   const key = `observations/${user.id}/${observationId}/${crypto.randomUUID()}.${extension}`
-  const object = await env.ATLAS_MEDIA.put(key, data, {
-    httpMetadata: { contentType, cacheControl: 'private, no-store' },
-    customMetadata: { owner: user.id, observation: observationId },
-  })
-  if (!object) return responseError(request, env, 500, 'Photo storage failed.')
+  let object: R2Object | null
+  try {
+    object = await env.ATLAS_MEDIA.put(key, data, {
+      httpMetadata: { contentType, cacheControl: 'private, no-store' },
+      customMetadata: { owner: user.id, observation: observationId },
+    })
+  } catch {
+    // Keep the reservation: a timed-out write can still have reached R2.
+    // Under-counting here would make the account cap bypassable on retries.
+    return responseError(request, env, 500, 'Photo storage could not be confirmed. The capacity reservation was kept for safety.')
+  }
+  if (!object) {
+    await env.ATLAS_MEDIA_QUOTA.getByName('account-wide-r2-budget').releaseWithoutUpload(reservation.reservationId)
+    return responseError(request, env, 500, 'Photo storage failed.')
+  }
+  // An uncommitted reservation remains safely counted if this cleanup call
+  // fails, so it can never turn a storage error into an overage.
+  try {
+    await env.ATLAS_MEDIA_QUOTA.getByName('account-wide-r2-budget').commit(reservation.reservationId)
+  } catch {
+    // The object has been stored; keeping the reservation is safe and avoids
+    // turning a successful write into a client retry/duplicate upload.
+  }
   return responseJson(request, env, { key: object.key, size: object.size, contentType })
 }
 
