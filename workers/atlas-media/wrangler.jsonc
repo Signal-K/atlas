@@ -27,7 +27,7 @@
   "vars": {
     "POCKETBASE_URL": "https://signal-k-starsailors.fly.dev",
     "ALLOWED_ORIGINS": "https://youratlas.cc,https://atlas-4xz.pages.dev,http://localhost:5173,http://127.0.0.1:5173",
-    "R2_STORAGE_SOFT_LIMIT_BYTES": "8589934592",
+    "R2_STORAGE_SOFT_LIMIT_BYTES": "8000000000",
     "R2_MONTHLY_UPLOAD_SOFT_LIMIT": "800000"
   }
 }

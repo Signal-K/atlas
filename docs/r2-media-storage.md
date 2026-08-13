@@ -37,7 +37,7 @@ the image is never sent to R2. A Worker/R2 uncertainty is counted
 conservatively rather than risking an under-count.
 
 The committed defaults deliberately stop uploads at 80% of the Standard free
-allowance: **8 GiB** of stored images and **800,000** monthly upload attempts.
+allowance: **8.0 GB** of stored images and **800,000** monthly upload attempts.
 They leave headroom for storage/accounting differences and normal R2 bucket
 operations. Change `R2_STORAGE_SOFT_LIMIT_BYTES` and
 `R2_MONTHLY_UPLOAD_SOFT_LIMIT` in `workers/atlas-media/wrangler.jsonc` only
