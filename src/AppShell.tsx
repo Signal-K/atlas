@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
 import { AskAtlasIcon, EventsIcon, JournalIcon, PlanIcon, SettingsIcon } from './ui/icons'
-import type { DashboardPageProps } from './pages/DashboardPage'
 import { EventsPage } from './pages/EventsPage'
 import { PlanPage } from './pages/PlanPage'
 import { JournalPage, type JournalPageProps } from './pages/JournalPage'
@@ -9,6 +8,7 @@ import { AskAtlasPage } from './pages/AskAtlasPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { AuthUser } from './lib/auth'
 import type { CurrentLocation } from './lib/currentLocation'
+import type { ObservationDraft } from './lib/observationDraft'
 import './ui/ui.css'
 
 const NAV_ITEMS: NavItem[] = [
@@ -23,8 +23,8 @@ interface AppShellProps {
   user: AuthUser
   entitlementRefreshing: boolean
   onOpenSettings: () => void
+  onLogAttempt: (draft: ObservationDraft) => void
   settingsProps: SettingsPageProps
-  dashboardProps: Omit<DashboardPageProps, 'currentLocation'>
   journalProps: JournalPageProps
   currentLocation: CurrentLocation
 }
@@ -39,8 +39,8 @@ export function AppShell({
   user,
   entitlementRefreshing,
   onOpenSettings,
+  onLogAttempt,
   settingsProps,
-  dashboardProps,
   journalProps,
   currentLocation,
 }: AppShellProps) {
@@ -62,13 +62,13 @@ export function AppShell({
       }
     >
       <Routes>
-        <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={dashboardProps.onLogAttempt} />} />
-        <Route path="/app/plan" element={<PlanPage currentLocation={currentLocation} onLogAttempt={dashboardProps.onLogAttempt} />} />
+        <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
+        <Route path="/app/plan" element={<PlanPage currentLocation={currentLocation} onLogAttempt={onLogAttempt} />} />
         <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
         <Route path="/app/ask" element={<AskAtlasPage />} />
         <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
-        {/* Old Dashboard/sky-map links redirect to the new home instead of
-            404ing or leaving a dead route mounted. */}
+        <Route path="/app/dashboard" element={<Navigate to="/app/events" replace />} />
+        {/* Legacy sky-map links redirect to Events, the merged app home. */}
         <Route path="*" element={<Navigate to="/app/events" replace />} />
       </Routes>
     </NavShell>

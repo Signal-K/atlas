@@ -78,6 +78,27 @@ function localNightSkyFallbackEvents(now = new Date()): SkyEvent[] {
 let inFlightPull: Promise<void> | null = null
 let inFlightObservationPull: Promise<void> | null = null
 
+function skyEventFromRecord(record: Record<string, any>): SkyEvent {
+  return {
+    id: record.id,
+    kind: record.kind,
+    target: record.target,
+    title: record.title,
+    description: record.description,
+    content: record.content,
+    imageUrl: record.image_url,
+    imageCredit: record.image_credit,
+    // PocketBase returns its date fields with a space separator. Keep that
+    // browser-safe format conversion at this boundary, for every event read
+    // path (including a Sky Pass backdated check-in).
+    startsAt: parsePbDate(record.starts_at).toISOString(),
+    endsAt: parsePbDate(record.ends_at).toISOString(),
+    latitude: record.latitude === 0 && record.longitude === 0 ? undefined : record.latitude,
+    longitude: record.latitude === 0 && record.longitude === 0 ? undefined : record.longitude,
+    updatedAt: record.updated,
+  }
+}
+
 export function pullSkyEvents(windowDays = 270): Promise<void> {
   if (inFlightPull) return inFlightPull
   inFlightPull = pullSkyEventsNow(windowDays).finally(() => {
@@ -118,44 +139,7 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
     // catch below already falls back to cached/local data, but only once
     // this actually rejects instead of sitting pending indefinitely.
     const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', signal: AbortSignal.timeout(8000) })
-    const events: SkyEvent[] = records.map((record) => ({
-      id: record.id,
-      kind: record.kind,
-      target: record.target,
-      title: record.title,
-      description: record.description,
-      content: record.content,
-      imageUrl: record.image_url,
-      imageCredit: record.image_credit,
-      // Canonicalize to ISO ("T" separator) here, once, rather than storing
-      // PocketBase's raw "YYYY-MM-DD HH:MM:SS.sssZ" strings verbatim. Every
-      // downstream comparison (getUpcomingEvents/getEventsInRange/getPastEvents
-      // below, and the "HAPPENING NOW" check in EventsView/HubView) compares
-      // these against `new Date().toISOString()`, which is "T"-separated --
-      // mixing the two formats hits the same space-vs-"T" ASCII ordering bug
-      // as the PocketBase filter above, but here it silently breaks every
-      // "is this still happening" check for the rest of the app.
-      // parsePbDate, not new Date() directly -- record.starts_at/ends_at
-      // are PocketBase's raw space-separated format, which real Safari
-      // (unlike the Chrome/Node this was tested in) parses as Invalid
-      // Date, throwing on .toISOString() below and taking down this
-      // entire records.map() -- see the catch below, which was silently
-      // replacing every real event with just the 4 hardcoded local
-      // fallback targets whenever that happened.
-      startsAt: parsePbDate(record.starts_at).toISOString(),
-      endsAt: parsePbDate(record.ends_at).toISOString(),
-      // PocketBase's `latitude`/`longitude` are non-required number fields,
-      // but a non-required *number* field still defaults to 0 (not null)
-      // when a plugin doesn't set it for a genuinely global event (moon
-      // phase, meteor showers, aurora, ...). (0, 0) isn't a real seeded
-      // city, so treat that pair as "no location" rather than literally
-      // the Gulf of Guinea -- otherwise every global event would get
-      // wrongly treated as location-specific when filtering "tonight near
-      // me" (see getTonightPlan in tonightTargets.ts).
-      latitude: record.latitude === 0 && record.longitude === 0 ? undefined : record.latitude,
-      longitude: record.latitude === 0 && record.longitude === 0 ? undefined : record.longitude,
-      updatedAt: record.updated,
-    }))
+    const events = records.map(skyEventFromRecord)
     const mergedEvents = [...events, ...localNightSkyFallbackEvents(now)]
     const freshIds = new Set(mergedEvents.map((event) => event.id))
     // Reconcile, not just merge: drop cached events inside this window that
@@ -211,7 +195,12 @@ async function pullObservationPhoto(record: Parameters<typeof pb.files.getURL>[0
       headers: { Authorization: pb.authStore.token },
       signal: AbortSignal.timeout(20_000),
     })
-    return response.ok ? await response.blob() : undefined
+    // A successful HTTP status alone is not enough: an upstream error page
+    // can be returned with 200 and was getting cached as a Blob. Object URLs
+    // for those error pages produce the broken-image icon seen in Journal.
+    const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
+    if (!response.ok || !contentType.startsWith('image/')) return undefined
+    return await response.blob()
   } catch {
     // Metadata still belongs in the journal even if a large file is slow or
     // temporarily unavailable. A later Journal visit retries this pull.
@@ -235,7 +224,11 @@ async function pullObservationsNow(): Promise<void> {
 
     for (const record of records) {
       const local = existingByRemoteId.get(record.id)
-      const downloadedPhoto = local?.photo ? undefined : await pullObservationPhoto(record)
+      // Re-fetch cached non-images from earlier versions. Do not let a bad
+      // response become permanent just because IndexedDB happens to contain
+      // a Blob already.
+      const cachedPhoto = local?.photo?.type.startsWith('image/') ? local.photo : undefined
+      const downloadedPhoto = cachedPhoto ? undefined : await pullObservationPhoto(record)
       const fields: Omit<ObservationLogEntry, 'id' | 'userId'> = {
         observedAt: parsePbDate(record.observed_at).toISOString(),
         remoteId: record.id,
@@ -249,7 +242,7 @@ async function pullObservationsNow(): Promise<void> {
         ...(attemptRating(record.attempt_rating) ? { attemptRating: attemptRating(record.attempt_rating) } : {}),
         ...(optionalText(record.ai_caption) ? { aiCaption: record.ai_caption } : {}),
         ...(record.public === true ? { isPublic: true } : {}),
-        ...(downloadedPhoto ? { photo: downloadedPhoto } : local?.photo ? { photo: local.photo } : {}),
+        ...(downloadedPhoto ? { photo: downloadedPhoto } : cachedPhoto ? { photo: cachedPhoto } : {}),
       }
 
       if (local) {
@@ -294,6 +287,29 @@ export async function getEventsInRange(start: Date, end: Date): Promise<SkyEvent
   // but hasn't ended yet (e.g. a shower already in progress at the top of
   // the range) should still count as "in range", same reasoning as above.
   return all.filter((event) => event.startsAt < end.toISOString() && event.endsAt >= start.toISOString())
+}
+
+// Sky Pass backdated check-ins need an event chooser for dates outside the
+// normal upcoming mirror. This stays read-only and also adds the result to
+// the local cache, so the chosen event remains legible offline afterwards.
+export async function getEventsForDate(date: string): Promise<SkyEvent[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
+
+  const start = new Date(`${date}T00:00:00.000Z`)
+  const end = new Date(start.getTime() + 86_400_000)
+  const cached = await getEventsInRange(start, end)
+  if (!navigator.onLine) return cached
+
+  const toPbDate = (value: Date) => value.toISOString().replace('T', ' ')
+  const filter = `starts_at < "${toPbDate(end)}" && ends_at >= "${toPbDate(start)}"`
+  try {
+    const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', signal: AbortSignal.timeout(8000) })
+    const events = records.map(skyEventFromRecord)
+    if (events.length > 0) await db.skyEvents.bulkPut(events)
+    return events
+  } catch {
+    return cached
+  }
 }
 
 // Same "flagship" definition EventsView uses for the featured cards above

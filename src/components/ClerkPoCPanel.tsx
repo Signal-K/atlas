@@ -14,7 +14,9 @@ const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | un
 // favor of reading session state directly.
 function ClerkPoCContent() {
   const { isSignedIn } = useAuth()
-  return isSignedIn ? <UserButton /> : <SignIn routing="virtual" />
+  // Core 3 no longer accepts the old virtual router mode. Hash routing keeps
+  // this deliberately self-contained, dev-only proof-of-connectivity panel.
+  return isSignedIn ? <UserButton /> : <SignIn routing="hash" />
 }
 
 export function ClerkPoCPanel() {

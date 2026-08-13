@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { db, type AttemptRating, type ObservationLogEntry, type SkyEvent } from '../lib/db'
-import { pullObservations, pullSkyEvents, pushObservation } from '../lib/sync'
+import { getEventsForDate, pullObservations, pullSkyEvents, pushObservation } from '../lib/sync'
 import { recordWeeklyActivity } from '../lib/streaks'
 import { createDiscovery } from '../lib/discoveries'
 import { shareObservation } from '../lib/sharing'
@@ -8,12 +8,17 @@ import { getScrapbookPrompt } from '../lib/scrapbookPrompt'
 import { useAuth } from '../lib/auth'
 import { ObservationCard } from '../components/ObservationCard'
 import { EventObservationThread } from '../components/EventObservationThread'
+import { PostShareDialog } from '../components/PostShareDialog'
+import { LocationSearchInput } from '../components/LocationSearchInput'
 import { trackEvent } from '../lib/analytics'
 import type { ObservationDraft } from '../lib/observationDraft'
 import { downloadObservationsCsv } from '../lib/observationExport'
 import { cityStampsFromObservations, pushCityStampFromObservation, shareCityStamp } from '../lib/cityStamps'
 import { requestPhotoCaption } from '../lib/photoCaption'
 import { suggestObservationCaption } from '../lib/observationCaptionSuggestion'
+import { cityLabel, type City } from '../lib/cities'
+import { isLocalEvent } from '../lib/eventFilters'
+import type { CurrentLocation } from '../lib/currentLocation'
 
 // Entries made while signed out are scoped to this fixed local id so the
 // Scrapbook still works fully offline-first with no account. Once signed
@@ -33,9 +38,21 @@ const RATING_LABEL: Record<AttemptRating, string> = {
 interface ScrapbookViewProps {
   draft: ObservationDraft | null
   onDraftConsumed: () => void
+  currentLocation: CurrentLocation
 }
 
-export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
+function localDateInputValue(date = new Date()): string {
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
+}
+
+function observedAtForDate(date: string): string {
+  const [year, month, day] = date.split('-').map(Number)
+  const now = new Date()
+  return new Date(year, month - 1, day, now.getHours(), now.getMinutes()).toISOString()
+}
+
+export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: ScrapbookViewProps) {
   const { user } = useAuth()
   const scopeId = user?.id ?? LOCAL_USER_ID
   const [entries, setEntries] = useState<ObservationLogEntry[]>([])
@@ -43,7 +60,6 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [prompt, setPrompt] = useState('What did you see tonight?')
   const [rating, setRating] = useState<AttemptRating | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
-  const [shareStatus, setShareStatus] = useState<{ entryId: string; message: string } | null>(null)
   const [stampShareStatus, setStampShareStatus] = useState<{ cityName: string; message: string } | null>(null)
   const [captionIsSuggested, setCaptionIsSuggested] = useState(false)
   // Freeform entries (no draft handed off from Events/Plan) still need a
@@ -52,6 +68,17 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   const [eventQuery, setEventQuery] = useState('')
   const [eventResults, setEventResults] = useState<SkyEvent[]>([])
   const [mentionedEvent, setMentionedEvent] = useState<SkyEvent | null>(null)
+  const [backdating, setBackdating] = useState(false)
+  const [checkinDate, setCheckinDate] = useState(localDateInputValue)
+  const [checkinLocation, setCheckinLocation] = useState<City>(() => ({
+    name: currentLocation.name,
+    lat: currentLocation.lat,
+    lon: currentLocation.lon,
+    timeZone: currentLocation.timeZone,
+  }))
+  const [locationQuery, setLocationQuery] = useState(currentLocation.name)
+  const [dateEvents, setDateEvents] = useState<SkyEvent[]>([])
+  const [dateEventsLoading, setDateEventsLoading] = useState(false)
 
   async function refresh(nextScopeId = scopeId) {
     const all = await db.observations.where('userId').equals(nextScopeId).reverse().sortBy('observedAt')
@@ -80,6 +107,14 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     getScrapbookPrompt().then(setPrompt)
   }, [])
 
+  // A past check-in starts at the current app location, but an explicit
+  // location choice inside the Sky Pass panel must not be overwritten.
+  useEffect(() => {
+    if (backdating) return
+    setCheckinLocation({ name: currentLocation.name, lat: currentLocation.lat, lon: currentLocation.lon, timeZone: currentLocation.timeZone })
+    setLocationQuery(currentLocation.name)
+  }, [backdating, currentLocation])
+
   // Ensures the local event mirror is populated for the "mention an event"
   // search below even when Journal is opened without visiting Events/Plan
   // first this session (pullSkyEvents dedupes concurrent/redundant calls).
@@ -104,6 +139,9 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     setMentionedEvent(null)
     setEventQuery('')
     setEventResults([])
+    setBackdating(false)
+    setCheckinDate(localDateInputValue())
+    setDateEvents([])
     onDraftConsumed()
   }
 
@@ -137,6 +175,22 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     }
   }, [eventQuery, draft])
 
+  useEffect(() => {
+    if (!backdating || !user?.entitled) return
+    let cancelled = false
+    setDateEventsLoading(true)
+    getEventsForDate(checkinDate)
+      .then((events) => {
+        if (!cancelled) setDateEvents(events.filter((event) => isLocalEvent(event, checkinLocation.lat, checkinLocation.lon)))
+      })
+      .finally(() => {
+        if (!cancelled) setDateEventsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [backdating, checkinDate, checkinLocation.lat, checkinLocation.lon, user?.entitled])
+
   function mentionEvent(event: SkyEvent) {
     setMentionedEvent(event)
     setEventQuery('')
@@ -151,7 +205,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     const entry: ObservationLogEntry = {
       id: crypto.randomUUID(),
       userId: scopeId,
-      observedAt: new Date().toISOString(),
+      observedAt: backdating ? observedAtForDate(checkinDate) : new Date().toISOString(),
       note: trimmed,
       ...(draft
         ? {
@@ -164,6 +218,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
         : mentionedEvent
           ? { eventId: mentionedEvent.id, targetName: mentionedEvent.title }
           : {}),
+      ...(backdating ? { locationLabel: cityLabel(checkinLocation) } : {}),
       ...(rating ? { attemptRating: rating } : {}),
       ...(photo ? { photo } : {}),
     }
@@ -172,6 +227,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
       hasTarget: draft != null || mentionedEvent != null,
       rating: rating ?? undefined,
       hasPhoto: photo != null,
+      backdated: backdating,
     })
     setNote('')
     clearDraft()
@@ -206,19 +262,13 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
     await refresh()
   }
 
-  // Distinct from handleShare above: this generates a public, single-entry
-  // card URL (STS-175), rather than forwarding a caption-only post to the
-  // Feed.
-  async function handleShareCard(entry: ObservationLogEntry) {
-    try {
-      const url = await shareObservation(entry)
-      await navigator.clipboard.writeText(url)
-      setShareStatus({ entryId: entry.id, message: 'Link copied!' })
-      trackEvent('Shared public card')
-    } catch {
-      setShareStatus({ entryId: entry.id, message: 'Sign in to share a public card.' })
-    }
+  // Called after the explicit confirmation in PostShareDialog. A journal
+  // post remains private until that point.
+  async function createShareLink(entry: ObservationLogEntry): Promise<string> {
+    const url = await shareObservation(entry)
+    trackEvent('Shared public card')
     await refresh()
+    return url
   }
 
   function handleExport() {
@@ -310,6 +360,44 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
             )}
           </div>
         )}
+        {!draft && user?.entitled && (
+          <details className="scrapbook-backdate" open={backdating} onToggle={(event) => setBackdating(event.currentTarget.open)}>
+            <summary>Check in for a past date <span>Sky Pass</span></summary>
+            <div className="scrapbook-backdate-fields">
+              <label>
+                Date
+                <input type="date" value={checkinDate} max={localDateInputValue()} onChange={(event) => setCheckinDate(event.target.value)} />
+              </label>
+              <label>
+                Location
+                <LocationSearchInput
+                  id="scrapbook-checkin-location"
+                  value={locationQuery}
+                  onChange={setLocationQuery}
+                  onSelect={(city) => {
+                    setCheckinLocation(city)
+                    setLocationQuery(cityLabel(city))
+                  }}
+                  placeholder="Where were you?"
+                />
+              </label>
+            </div>
+            <div className="scrapbook-date-events" aria-live="polite">
+              <p>Tag an event if you like — or save this as a date-only check-in.</p>
+              {dateEventsLoading && <span>Finding events for this date…</span>}
+              {!dateEventsLoading && dateEvents.length > 0 && (
+                <div className="scrapbook-date-event-list">
+                  {dateEvents.map((result) => (
+                    <button key={result.id} type="button" className={mentionedEvent?.id === result.id ? 'is-selected' : ''} onClick={() => mentionEvent(result)}>
+                      {result.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!dateEventsLoading && dateEvents.length === 0 && <span>No named Atlas event here — this can still be a date-only check-in.</span>}
+            </div>
+          </details>
+        )}
         {captionIsSuggested && note.trim() && <p className="scrapbook-caption-hint">Suggested — edit as needed</p>}
         <textarea
           value={note}
@@ -372,9 +460,8 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
               title={thread.title}
               entries={thread.entries}
               canShare={Boolean(user)}
-              shareStatus={shareStatus}
               onShareToFeed={handleShare}
-              onShareCard={handleShareCard}
+              onCreateShareLink={createShareLink}
             />
           ))}
           {standaloneEntries.map((entry, index) => (
@@ -395,12 +482,7 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
                     {entry.sharedToFeed ? 'Shared to Feed' : 'Share to Feed'}
                   </button>
                 )}
-                {user && (
-                  <button type="button" className="scrapbook-share-card" onClick={() => handleShareCard(entry)}>
-                    {entry.isPublic ? 'Copy public link' : 'Get public link'}
-                  </button>
-                )}
-                {shareStatus?.entryId === entry.id && <span className="scrapbook-share-status">{shareStatus.message}</span>}
+                {user && <PostShareDialog onCreateLink={() => createShareLink(entry)} />}
               </div>
             </li>
           ))}

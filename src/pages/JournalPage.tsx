@@ -4,6 +4,7 @@ import { ArchiveView } from '../views/ArchiveView'
 import { CommunityView } from '../views/mobile/CommunityView'
 import { Tabs } from '../ui/Tabs'
 import type { ObservationDraft } from '../lib/observationDraft'
+import type { CurrentLocation } from '../lib/currentLocation'
 import './dt-shared.css'
 
 // Journal merges private capture (Scrapbook), objective history (Archive),
@@ -20,9 +21,10 @@ type JournalMode = 'private' | 'archive' | 'public'
 export interface JournalPageProps {
   draft?: ObservationDraft | null
   onDraftConsumed?: () => void
+  currentLocation: CurrentLocation
 }
 
-export function JournalPage({ draft = null, onDraftConsumed = () => {} }: JournalPageProps) {
+export function JournalPage({ draft = null, onDraftConsumed = () => {}, currentLocation }: JournalPageProps) {
   const [mode, setMode] = useState<JournalMode>('private')
 
   return (
@@ -42,7 +44,7 @@ export function JournalPage({ draft = null, onDraftConsumed = () => {} }: Journa
         onChange={(key) => setMode(key as JournalMode)}
       />
 
-      {mode === 'private' && <ScrapbookView draft={draft} onDraftConsumed={onDraftConsumed} />}
+      {mode === 'private' && <ScrapbookView draft={draft} onDraftConsumed={onDraftConsumed} currentLocation={currentLocation} />}
       {mode === 'archive' && <ArchiveView />}
       {mode === 'public' && (
         <div className="mobile-shell">

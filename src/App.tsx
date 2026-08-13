@@ -129,8 +129,8 @@ function App() {
         entitlementRefreshing={entitlementRefreshing}
         onOpenSettings={() => navigate('/app/settings')}
         currentLocation={currentLocation}
-        dashboardProps={{ onLogAttempt: logAttempt }}
-        journalProps={{ draft: observationDraft, onDraftConsumed: () => setObservationDraft(null) }}
+        onLogAttempt={logAttempt}
+        journalProps={{ draft: observationDraft, onDraftConsumed: () => setObservationDraft(null), currentLocation }}
         settingsProps={{
           locationStatus: location.status,
           requestLocation: location.requestLocation,

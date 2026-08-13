@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { ObservationLogEntry } from '../lib/db'
 import { ObservationCard } from './ObservationCard'
+import { PostShareDialog } from './PostShareDialog'
 import './EventObservationThread.css'
 
 export interface EventObservationThreadProps {
@@ -8,22 +9,29 @@ export interface EventObservationThreadProps {
   title: string
   entries: ObservationLogEntry[]
   canShare: boolean
-  shareStatus: { entryId: string; message: string } | null
   onShareToFeed: (entry: ObservationLogEntry) => void
-  onShareCard: (entry: ObservationLogEntry) => void
+  onCreateShareLink: (entry: ObservationLogEntry) => Promise<string>
 }
 
 function ThreadPreview({ entry }: { entry: ObservationLogEntry }) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (!entry.photo) return
+    if (!entry.photo || !entry.photo.type.startsWith('image/')) {
+      setPhotoUrl(null)
+      setFailed(false)
+      return
+    }
     const nextUrl = URL.createObjectURL(entry.photo)
     setPhotoUrl(nextUrl)
-    return () => URL.revokeObjectURL(nextUrl)
+    setFailed(false)
+    return () => {
+      URL.revokeObjectURL(nextUrl)
+    }
   }, [entry.photo])
 
-  if (photoUrl) return <img src={photoUrl} alt="" />
+  if (photoUrl && !failed) return <img src={photoUrl} alt="" onError={() => setFailed(true)} />
   return <span className="event-thread-note-preview" aria-label="Written observation">✦</span>
 }
 
@@ -39,9 +47,8 @@ export function EventObservationThread({
   title,
   entries,
   canShare,
-  shareStatus,
   onShareToFeed,
-  onShareCard,
+  onCreateShareLink,
 }: EventObservationThreadProps) {
   const [expanded, setExpanded] = useState(false)
   const contentId = useId()
@@ -83,10 +90,7 @@ export function EventObservationThread({
                   <button type="button" className="scrapbook-share" onClick={() => onShareToFeed(entry)} disabled={entry.sharedToFeed}>
                     {entry.sharedToFeed ? 'Shared to Feed' : 'Share to Feed'}
                   </button>
-                  <button type="button" className="scrapbook-share-card" onClick={() => onShareCard(entry)}>
-                    {entry.isPublic ? 'Copy public link' : 'Get public link'}
-                  </button>
-                  {shareStatus?.entryId === entry.id && <span className="scrapbook-share-status">{shareStatus.message}</span>}
+                  <PostShareDialog onCreateLink={() => onCreateShareLink(entry)} />
                 </div>
               )}
             </li>

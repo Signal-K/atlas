@@ -13,22 +13,27 @@ const RATING_LABEL: Record<AttemptRating, string> = {
 // scope -- no public profile surface consumes this yet.
 export function ObservationCard({ entry }: { entry: ObservationLogEntry }) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoFailed, setPhotoFailed] = useState(false)
 
   useEffect(() => {
-    if (!entry.photo) {
+    if (!entry.photo || !entry.photo.type.startsWith('image/')) {
       setPhotoUrl(null)
+      setPhotoFailed(false)
       return
     }
     const url = URL.createObjectURL(entry.photo)
     setPhotoUrl(url)
-    return () => URL.revokeObjectURL(url)
+    setPhotoFailed(false)
+    return () => {
+      URL.revokeObjectURL(url)
+    }
   }, [entry.photo])
 
   return (
     <div className="observation-card">
-      {photoUrl && (
+      {photoUrl && !photoFailed && (
         <div className="observation-card-photo">
-          <img src={photoUrl} alt={entry.targetName ?? 'Observation'} loading="lazy" />
+          <img src={photoUrl} alt={entry.targetName ?? 'Observation'} loading="lazy" onError={() => setPhotoFailed(true)} />
         </div>
       )}
       <div className="observation-card-body">

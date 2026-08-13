@@ -53,6 +53,17 @@ export function JournalIcon() {
   )
 }
 
+export function ShareIcon() {
+  return (
+    <svg {...common} aria-hidden="true">
+      <circle cx="18" cy="5" r="2.2" />
+      <circle cx="6" cy="12" r="2.2" />
+      <circle cx="18" cy="19" r="2.2" />
+      <path d="m8 11 7.8-4.8M8 13l7.8 4.8" />
+    </svg>
+  )
+}
+
 export function AskAtlasIcon() {
   return (
     <svg {...common}>
