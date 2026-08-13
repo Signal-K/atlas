@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { KIND_LABELS } from '../widgets/EventRow'
-import { getPastEvents } from '../lib/sync'
+import { FLAGSHIP_KINDS, getPastEvents, getSimilarUpcomingEvents } from '../lib/sync'
 import type { SkyEvent } from '../lib/db'
 
 interface DayGroup {
@@ -39,6 +39,46 @@ function ArchiveEntry({ event }: { event: SkyEvent }) {
   )
 }
 
+// KES-178: revisit prominent past events and jump to similar upcoming ones,
+// rather than having to scroll the whole day-grouped list looking for them.
+function RecapCard({ event }: { event: SkyEvent }) {
+  const [similar, setSimilar] = useState<SkyEvent[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getSimilarUpcomingEvents(event.kind).then((events) => {
+      if (!cancelled) setSimilar(events)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [event.kind])
+
+  return (
+    <article className="archive-recap-card">
+      {event.imageUrl && <img className="archive-recap-image" src={event.imageUrl} alt={event.title} loading="lazy" />}
+      <div className="archive-recap-body">
+        <span className="archive-entry-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>
+        <h4 className="archive-entry-title">{event.title}</h4>
+        <p className="archive-entry-desc">{event.description}</p>
+        <span className="archive-entry-time">{new Date(event.startsAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
+        {similar && similar.length > 0 && (
+          <div className="archive-recap-similar">
+            <span className="chip-row-label">Similar events coming up</span>
+            <div className="chip-row">
+              {similar.map((s) => (
+                <span key={s.id} className="chip" title={new Date(s.startsAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}>
+                  {s.title}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </article>
+  )
+}
+
 export function ArchiveView() {
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
 
@@ -53,6 +93,7 @@ export function ArchiveView() {
   }, [])
 
   const groups = useMemo(() => groupByDay(events ?? []), [events])
+  const prominent = useMemo(() => (events ?? []).filter((event) => FLAGSHIP_KINDS.has(event.kind)), [events])
 
   return (
     <section className="widget-section archive-section">
@@ -60,6 +101,16 @@ export function ArchiveView() {
       {events === null && <p>Loading&hellip;</p>}
       {events !== null && events.length === 0 && (
         <p>No past events yet — events move here once they&apos;ve happened.</p>
+      )}
+      {prominent.length > 0 && (
+        <div className="archive-recap">
+          <h3 className="dt-panel-heading">Recap: prominent events</h3>
+          <div className="archive-recap-list">
+            {prominent.map((event) => (
+              <RecapCard key={event.id} event={event} />
+            ))}
+          </div>
+        </div>
       )}
       {groups.map((group) => {
         const date = new Date(group.dateKey)

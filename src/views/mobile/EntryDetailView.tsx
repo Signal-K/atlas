@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import '../../mobile.css'
 import { CameraRecipe } from '../../components/CameraRecipe'
 import { BackIcon, MobileIcon } from '../../components/mobile/MobileIcon'
@@ -14,11 +14,23 @@ export interface EntryDetailRoadmap {
   generate?: () => Promise<string>
 }
 
+// What a quick-action click resolved to, so this overlay can show its own
+// confirmation/paywall feedback instead of relying on a status line that
+// lives in the underlying EventsView/PlanView -- that line is rendered
+// behind this full-screen overlay (z-index 200 vs the overlay's own stack),
+// so a click here previously produced zero visible feedback either way,
+// success or Sky Pass block (KES-179).
+export interface QuickActionOutcome {
+  message?: string
+  watching?: boolean
+  reminderActive?: boolean
+}
+
 export interface EntryDetailActions {
   watching?: boolean
-  onToggleWatch?: () => void
+  onToggleWatch?: () => Promise<QuickActionOutcome | void>
   reminderActive?: boolean
-  onRemind?: () => void
+  onRemind?: () => Promise<QuickActionOutcome | void>
   onPoint?: () => void
   roadmap?: EntryDetailRoadmap
 }
@@ -40,8 +52,35 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
   const [roadmapLoading, setRoadmapLoading] = useState(false)
   const [roadmapText, setRoadmapText] = useState<string | null>(null)
   const [roadmapError, setRoadmapError] = useState<string | null>(null)
+  // Local, optimistic mirrors of actions.watching/reminderActive -- the
+  // props are a snapshot taken when this event was opened, so they go
+  // stale the moment the underlying toggle succeeds (KES-179). Re-seed from
+  // props whenever a different event is opened.
+  const [watching, setWatching] = useState(actions?.watching ?? false)
+  const [reminderActive, setReminderActive] = useState(actions?.reminderActive ?? false)
+  const [quickActionMessage, setQuickActionMessage] = useState<string | null>(null)
+  useEffect(() => {
+    setWatching(actions?.watching ?? false)
+    setReminderActive(actions?.reminderActive ?? false)
+    setQuickActionMessage(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject.id])
   const duskLabel = formatTimeLabel(subject.darknessWindow.astronomicalDuskAt ?? subject.darknessWindow.civilDuskAt)
   const dawnLabel = formatTimeLabel(subject.darknessWindow.astronomicalDawnAt ?? subject.darknessWindow.civilDawnAt)
+
+  async function handleToggleWatch() {
+    if (!actions?.onToggleWatch) return
+    const outcome = await actions.onToggleWatch()
+    if (outcome?.watching !== undefined) setWatching(outcome.watching)
+    setQuickActionMessage(outcome?.message ?? null)
+  }
+
+  async function handleRemind() {
+    if (!actions?.onRemind) return
+    const outcome = await actions.onRemind()
+    if (outcome?.reminderActive !== undefined) setReminderActive(outcome.reminderActive)
+    setQuickActionMessage(outcome?.message ?? null)
+  }
 
   async function handleGenerateRoadmap() {
     if (!actions?.roadmap?.generate) return
@@ -176,32 +215,35 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
         )}
 
         {actions && (actions.onToggleWatch || actions.onRemind || actions.onPoint) && (
-          <div className="dt-entry-quick-actions">
-            {actions.onToggleWatch && (
-              <button type="button" className={`dt-entry-quick-action${actions.watching ? ' is-active' : ''}`} onClick={actions.onToggleWatch}>
-                <MobileIcon name="pin" />
-                <span>{actions.watching ? 'Watching' : 'Watch'}</span>
-              </button>
-            )}
-            {actions.onRemind && (
-              <button type="button" className={`dt-entry-quick-action${actions.reminderActive ? ' is-active' : ''}`} onClick={actions.onRemind}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                <span>Remind</span>
-              </button>
-            )}
-            {actions.onPoint && (
-              <button type="button" className="dt-entry-quick-action" onClick={actions.onPoint}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="m16 8-5 3-1 5 5-3Z" />
-                </svg>
-                <span>Point</span>
-              </button>
-            )}
-          </div>
+          <>
+            <div className="dt-entry-quick-actions">
+              {actions.onToggleWatch && (
+                <button type="button" className={`dt-entry-quick-action${watching ? ' is-active' : ''}`} onClick={handleToggleWatch}>
+                  <MobileIcon name="pin" />
+                  <span>{watching ? 'Watching' : 'Watch'}</span>
+                </button>
+              )}
+              {actions.onRemind && (
+                <button type="button" className={`dt-entry-quick-action${reminderActive ? ' is-active' : ''}`} onClick={handleRemind}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  <span>Remind</span>
+                </button>
+              )}
+              {actions.onPoint && (
+                <button type="button" className="dt-entry-quick-action" onClick={actions.onPoint}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="m16 8-5 3-1 5 5-3Z" />
+                  </svg>
+                  <span>Point</span>
+                </button>
+              )}
+            </div>
+            {quickActionMessage && <p className="dt-entry-quick-status">{quickActionMessage}</p>}
+          </>
         )}
       </div>
 

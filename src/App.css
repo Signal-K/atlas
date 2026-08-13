@@ -2316,6 +2316,50 @@
   opacity: 0.6;
 }
 
+.archive-recap {
+  margin-bottom: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.archive-recap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.archive-recap-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--code-bg);
+}
+
+.archive-recap-image {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--code-bg);
+}
+
+.archive-recap-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.archive-recap-similar {
+  margin-top: 12px;
+}
+
+.archive-recap-similar .chip {
+  cursor: default;
+}
+
 .calendar-header {
   display: flex;
   align-items: center;

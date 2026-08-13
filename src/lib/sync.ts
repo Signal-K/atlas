@@ -1,6 +1,7 @@
 import { pb } from './pocketbase'
 import { db, type ObservationLogEntry, type SkyEvent } from './db'
 import { parsePbDate } from './pocketbaseDate'
+import { categoryForKind } from './eventCategories'
 
 const MELBOURNE = { lat: -37.8136, lon: 144.9631 }
 
@@ -263,6 +264,18 @@ async function pullObservationsNow(): Promise<void> {
   }
 }
 
+// For a past prominent event, find upcoming events a user would recognize
+// as "the same kind of thing" (KES-178) -- grouped by EVENT_CATEGORIES
+// bucket rather than exact `kind`, so e.g. a past eclipse also surfaces
+// upcoming moon-phase events, not just other eclipses.
+export async function getSimilarUpcomingEvents(kind: string, limit = 3): Promise<SkyEvent[]> {
+  const category = categoryForKind(kind)
+  if (!category) return []
+  const now = new Date().toISOString()
+  const all = await db.skyEvents.orderBy('startsAt').toArray()
+  return all.filter((event) => event.endsAt >= now && category.kinds.includes(event.kind)).slice(0, limit)
+}
+
 export async function getUpcomingEvents(limit = 10): Promise<SkyEvent[]> {
   const now = new Date().toISOString()
   const all = await db.skyEvents.orderBy('startsAt').toArray()
@@ -287,7 +300,9 @@ export async function getEventsInRange(start: Date, end: Date): Promise<SkyEvent
 // the fold -- eclipses and meteor showers are rare enough to be worth
 // surfacing, unlike the high-frequency filler kinds (local night-sky
 // guides, asteroid passes) that otherwise dominate purely by recency.
-const FLAGSHIP_KINDS = new Set(['eclipse', 'meteor_shower'])
+// Exported so ArchiveView's recap section (KES-178) uses the same
+// definition of "prominent" rather than redefining it.
+export const FLAGSHIP_KINDS = new Set(['eclipse', 'meteor_shower'])
 
 export async function getPastEvents(limit = 20): Promise<SkyEvent[]> {
   const now = new Date().toISOString()

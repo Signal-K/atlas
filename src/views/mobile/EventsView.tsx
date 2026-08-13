@@ -15,7 +15,7 @@ import { eventLookaheadDays, forecastLookaheadDays } from '../../lib/entitlement
 import { buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import { CITIES, cityLabel, type City } from '../../lib/cities'
 import { buildEventDetail, detailInputFromEvent, type EntryDetailSubject } from '../../lib/entryDetail'
-import type { EntryDetailActions } from './EntryDetailView'
+import type { EntryDetailActions, QuickActionOutcome } from './EntryDetailView'
 import { requestEclipseRoadmap } from '../../lib/eclipseRoadmap'
 import { getDarknessWindow } from '../../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../../lib/timeZone'
@@ -41,7 +41,6 @@ export function EventsView({
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
   const [advisoryTimeZone, setAdvisoryTimeZone] = useState<string | undefined>(city.timeZone)
-  const [status, setStatus] = useState('')
   const [browseCity, setBrowseCity] = useState<City | null>(null)
   const [browseQuery, setBrowseQuery] = useState('')
   const { user } = useAuth()
@@ -100,22 +99,28 @@ export function EventsView({
     return advisory.find((day) => day.date === localDateKey(event.startsAt, advisoryTimeZone)) ?? null
   }
 
-  async function toggleWatch(event: SkyEvent) {
+  // Returns the outcome so the caller -- the EntryDetailView overlay -- can
+  // show its own confirmation/paywall feedback (KES-179). toggleWatch and
+  // addReminder are only ever invoked through that overlay, so the message
+  // lives solely in its quickActionMessage state, not duplicated here.
+  async function toggleWatch(event: SkyEvent): Promise<QuickActionOutcome> {
     if (!hasPremium) {
-      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+      const message = 'Sky Pass is required to add events to a plan. Browsing and check-ins stay free.'
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_events' })
-      return
+      return { watching: false, message }
     }
-    if (isWatching(watchlist, 'target', event.target)) {
-      await removeFromWatchlist('target', event.target)
-    } else {
+    const nowWatching = !isWatching(watchlist, 'target', event.target)
+    if (nowWatching) {
       await addToWatchlist('target', event.target)
       onSavedForLater?.()
+    } else {
+      await removeFromWatchlist('target', event.target)
     }
     setWatchlist(await getWatchlist())
+    return { watching: nowWatching, message: nowWatching ? 'Added to your watchlist.' : 'Removed from your watchlist.' }
   }
 
-  async function addReminder(event: SkyEvent) {
+  async function addReminder(event: SkyEvent): Promise<QuickActionOutcome> {
     const hasPermission = await ensureNotificationPermission()
     await addGetReadyReminder({
       eventId: event.id,
@@ -131,8 +136,9 @@ export function EventsView({
       precipitationChancePct: advisoryFor(event)?.precipitationChancePct,
     })
     setReminders(listGetReadyReminders())
-    setStatus(hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.')
+    const message = hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.'
     trackEvent('Added get ready reminder', { target: event.title, hasPermission, source: 'mobile_events' })
+    return { reminderActive: true, message }
   }
 
   function selectBrowseCity(cityName: string) {
@@ -263,7 +269,6 @@ export function EventsView({
         )}
       </div>
 
-      {status && <p className="planner-reminder-status">{status}</p>}
       <div className="dt-seam" />
       <SkyEventBrowser events={events} onSelect={selectEvent} />
       {pointingOverlay}

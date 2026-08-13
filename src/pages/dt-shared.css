@@ -27,6 +27,19 @@
   --dt-bg-page: var(--atlas-paper);
 }
 
+/* The underlying Events/Plan list keeps its own status line live (KES-179)
+   so a quick action taken inside the entry-detail overlay still shows a
+   confirmation once the overlay closes. While the overlay is open it sits
+   on top at z-index:200, but z-index stacking alone doesn't make the
+   underlying line invisible to assistive tech or `:visible` checks -- both
+   copies of e.g. "Reminder armed." are technically on-screen at once.
+   `visibility:hidden` (not `display:none`, to avoid a reflow) actually
+   removes the underlying one from the accessibility tree and visibility
+   queries while the overlay covers it. */
+.page:has(.dt-entry-overlay) > .mobile-shell:not(.dt-entry-overlay) {
+  visibility: hidden;
+}
+
 .dt-page {
   color: var(--color-text);
   font-family: var(--font-sans);

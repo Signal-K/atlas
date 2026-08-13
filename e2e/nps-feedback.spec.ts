@@ -38,8 +38,12 @@ test('NPS prompt appears only after meaningful activity threshold and submits st
   await expect(page.getByRole('dialog', { name: 'Quick score' })).toHaveCount(0)
 
   await dispatchMeaningfulActivity(page, 1)
-  await expect(page.getByRole('dialog', { name: 'Quick score' })).toBeVisible()
-  await page.getByRole('button', { name: '9' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Quick score' })
+  await expect(dialog).toBeVisible()
+  // Scoped to the dialog -- the background events list can contain buttons
+  // whose accessible name includes a "9" from a event time (e.g. "9:00 PM"),
+  // which would otherwise collide with the score-9 button in strict mode.
+  await dialog.getByRole('button', { name: '9', exact: true }).click()
   await page.getByLabel('Reason').fill('The timing guidance is useful')
   await page.getByRole('button', { name: 'Send' }).click()
 
