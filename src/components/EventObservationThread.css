@@ -1,0 +1,110 @@
+.event-thread {
+  list-style: none;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--panel, var(--bg)) 92%, var(--accent-bg));
+}
+
+.event-thread-summary {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  padding: 15px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.event-thread-summary:hover {
+  background: color-mix(in srgb, var(--accent-bg) 55%, transparent);
+}
+
+.event-thread-kicker,
+.event-thread-toggle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.event-thread-title {
+  color: var(--text-h);
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.event-thread-meta {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.74;
+}
+
+.event-thread-portfolio {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  margin: 8px 0 4px;
+}
+
+.event-thread-preview,
+.event-thread-more {
+  aspect-ratio: 1;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  border-radius: 6px;
+  background: var(--code-bg, rgba(0, 0, 0, 0.06));
+}
+
+.event-thread-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.event-thread-note-preview,
+.event-thread-more {
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  opacity: 0.72;
+}
+
+.event-thread-more {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.event-thread-posts {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0 15px 15px;
+  list-style: none;
+}
+
+.event-thread-post {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--scrapbook-paper, #fbf6e9);
+}
+
+@media (prefers-color-scheme: dark) {
+  .event-thread-post { --scrapbook-paper: #23201b; }
+}
+
+:root[data-theme='dark'] .event-thread-post { --scrapbook-paper: #23201b; }
+
+@media (max-width: 460px) {
+  .event-thread-portfolio { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .event-thread-preview:nth-child(n + 5) { display: none; }
+}

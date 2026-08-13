@@ -7,6 +7,7 @@ import { shareObservation } from '../lib/sharing'
 import { getScrapbookPrompt } from '../lib/scrapbookPrompt'
 import { useAuth } from '../lib/auth'
 import { ObservationCard } from '../components/ObservationCard'
+import { EventObservationThread } from '../components/EventObservationThread'
 import { trackEvent } from '../lib/analytics'
 import type { ObservationDraft } from '../lib/observationDraft'
 import { downloadObservationsCsv } from '../lib/observationExport'
@@ -237,6 +238,21 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   }
 
   const cityStamps = cityStampsFromObservations(entries)
+  const eventThreads = new Map<string, { title: string; entries: ObservationLogEntry[] }>()
+  const standaloneEntries: ObservationLogEntry[] = []
+
+  for (const entry of entries) {
+    if (!entry.eventId) {
+      standaloneEntries.push(entry)
+      continue
+    }
+    const thread = eventThreads.get(entry.eventId)
+    if (thread) {
+      thread.entries.push(entry)
+    } else {
+      eventThreads.set(entry.eventId, { title: entry.targetName ?? 'Linked sky event', entries: [entry] })
+    }
+  }
 
   return (
     <section className="widget-section">
@@ -348,8 +364,20 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
       {entries.length === 0 ? (
         <p>Nothing logged yet — your sky-watching notes will show up here.</p>
       ) : (
-        <ul className="row-list">
-          {entries.map((entry, index) => (
+        <ul className="row-list scrapbook-observation-list">
+          {[...eventThreads.entries()].map(([eventId, thread]) => (
+            <EventObservationThread
+              key={eventId}
+              eventId={eventId}
+              title={thread.title}
+              entries={thread.entries}
+              canShare={Boolean(user)}
+              shareStatus={shareStatus}
+              onShareToFeed={handleShare}
+              onShareCard={handleShareCard}
+            />
+          ))}
+          {standaloneEntries.map((entry, index) => (
             <li
               key={entry.id}
               className="scrapbook-entry"

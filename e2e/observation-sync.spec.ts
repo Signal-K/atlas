@@ -12,7 +12,7 @@ test('Journal hydrates private PocketBase observations in a fresh browser', asyn
       body: JSON.stringify({
         page: 1,
         perPage: 500,
-        totalItems: 1,
+        totalItems: 2,
         totalPages: 1,
         items: [
           {
@@ -29,6 +29,19 @@ test('Journal hydrates private PocketBase observations in a fresh browser', asyn
             note: 'Imported eclipse observation from another device.',
             photo: '',
           },
+          {
+            id: 'remote-eclipse-observation-2',
+            collectionId: 'atlas_observations',
+            collectionName: 'atlas_observations',
+            user: 'remote-observation-user',
+            event: 'total-solar-eclipse',
+            observed_at: '2026-08-12 18:25:12.000Z',
+            target_name: 'Total Solar Eclipse',
+            device_used: 'Nothing Phone (3a)',
+            attempt_rating: 'great',
+            note: 'Second eclipse photo in the same event thread.',
+            photo: '',
+          },
         ],
       }),
     })
@@ -36,7 +49,14 @@ test('Journal hydrates private PocketBase observations in a fresh browser', asyn
 
   await page.goto('/app/journal')
 
-  await expect(page.getByText('Imported eclipse observation from another device.')).toBeVisible()
-  await expect(page.getByText('Apple iPhone 16')).toBeVisible()
-  await expect(page.getByText('Total Solar Eclipse')).toBeVisible()
+  const eclipseThread = page.locator('.event-thread', { hasText: 'Total Solar Eclipse' })
+  await expect(eclipseThread.getByText('Event thread')).toBeVisible()
+  await expect(eclipseThread.getByText('2 posts')).toBeVisible()
+  await expect(eclipseThread.getByRole('button', { name: /Open portfolio/ })).toBeVisible()
+
+  await eclipseThread.getByRole('button', { name: /Open portfolio/ }).click()
+  await expect(eclipseThread.getByText('Imported eclipse observation from another device.')).toBeVisible()
+  await expect(eclipseThread.getByText('Second eclipse photo in the same event thread.')).toBeVisible()
+  await expect(eclipseThread.getByText('Apple iPhone 16')).toBeVisible()
+  await expect(eclipseThread.locator('.event-thread-title')).toHaveText('Total Solar Eclipse')
 })
