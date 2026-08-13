@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { db, type AttemptRating, type ObservationLogEntry, type SkyEvent } from '../lib/db'
-import { pullSkyEvents, pushObservation } from '../lib/sync'
+import { pullObservations, pullSkyEvents, pushObservation } from '../lib/sync'
 import { recordWeeklyActivity } from '../lib/streaks'
 import { createDiscovery } from '../lib/discoveries'
 import { shareObservation } from '../lib/sharing'
@@ -58,7 +58,21 @@ export function ScrapbookView({ draft, onDraftConsumed }: ScrapbookViewProps) {
   }
 
   useEffect(() => {
-    refresh()
+    let cancelled = false
+
+    void (async () => {
+      // Render the browser cache immediately, then reconcile the signed-in
+      // account's private PocketBase history. This makes a fresh desktop
+      // install show existing check-ins instead of an empty journal.
+      await refresh()
+      if (scopeId === LOCAL_USER_ID) return
+      await pullObservations()
+      if (!cancelled) await refresh()
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [scopeId])
 
   useEffect(() => {

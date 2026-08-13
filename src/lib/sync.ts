@@ -75,6 +75,7 @@ function localNightSkyFallbackEvents(now = new Date()): SkyEvent[] {
 // fallback events) behind. Sharing one in-flight promise across callers
 // avoids that race entirely.
 let inFlightPull: Promise<void> | null = null
+let inFlightObservationPull: Promise<void> | null = null
 
 export function pullSkyEvents(windowDays = 270): Promise<void> {
   if (inFlightPull) return inFlightPull
@@ -172,6 +173,93 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
     })
   } catch {
     await db.skyEvents.bulkPut(localNightSkyFallbackEvents(now))
+  }
+}
+
+// Observations are local-first, but unlike sky events they are private to an
+// account and therefore cannot be seeded into a new browser's IndexedDB. The
+// original write path only ever pushed records; it never hydrated them again.
+// That meant a desktop browser with an empty cache truthfully had no local
+// entries even when the signed-in account had years of records in PocketBase.
+//
+// Keep this as a bounded, authenticated pull. We deliberately do not delete
+// local-only records that the server does not return: an interrupted/offline
+// write must remain recoverable in the browser that created it.
+export function pullObservations(): Promise<void> {
+  if (inFlightObservationPull) return inFlightObservationPull
+  inFlightObservationPull = pullObservationsNow().finally(() => {
+    inFlightObservationPull = null
+  })
+  return inFlightObservationPull
+}
+
+function optionalText(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined
+}
+
+function attemptRating(value: unknown): ObservationLogEntry['attemptRating'] {
+  return value === 'poor' || value === 'ok' || value === 'good' || value === 'great' ? value : undefined
+}
+
+async function pullObservationPhoto(record: Parameters<typeof pb.files.getURL>[0]): Promise<Blob | undefined> {
+  const filename = optionalText((record as { photo?: unknown }).photo)
+  if (!filename) return undefined
+
+  try {
+    const response = await fetch(pb.files.getURL(record, filename), {
+      headers: { Authorization: pb.authStore.token },
+      signal: AbortSignal.timeout(20_000),
+    })
+    return response.ok ? await response.blob() : undefined
+  } catch {
+    // Metadata still belongs in the journal even if a large file is slow or
+    // temporarily unavailable. A later Journal visit retries this pull.
+    return undefined
+  }
+}
+
+async function pullObservationsNow(): Promise<void> {
+  if (!pb.authStore.isValid || !navigator.onLine) return
+
+  try {
+    const userId = pb.authStore.record?.id as string | undefined
+    if (!userId) return
+
+    const records = await pb.collection('atlas_observations').getFullList({
+      sort: '-observed_at',
+      signal: AbortSignal.timeout(20_000),
+    })
+    const existing = await db.observations.where('userId').equals(userId).toArray()
+    const existingByRemoteId = new Map(existing.flatMap((entry) => (entry.remoteId ? [[entry.remoteId, entry] as const] : [])))
+
+    for (const record of records) {
+      const local = existingByRemoteId.get(record.id)
+      const downloadedPhoto = local?.photo ? undefined : await pullObservationPhoto(record)
+      const fields: Omit<ObservationLogEntry, 'id' | 'userId'> = {
+        observedAt: parsePbDate(record.observed_at).toISOString(),
+        remoteId: record.id,
+        ...(optionalText(record.event) ? { eventId: record.event } : {}),
+        ...(optionalText(record.note) ? { note: record.note } : {}),
+        ...(optionalText(record.target_name) ? { targetName: record.target_name } : {}),
+        ...(optionalText(record.device_used) ? { deviceUsed: record.device_used } : {}),
+        ...(optionalText(record.camera_recipe_used) ? { cameraRecipeUsed: record.camera_recipe_used } : {}),
+        ...(optionalText(record.location_label) ? { locationLabel: record.location_label } : {}),
+        ...(optionalText(record.condition_summary) ? { conditionSummary: record.condition_summary } : {}),
+        ...(attemptRating(record.attempt_rating) ? { attemptRating: attemptRating(record.attempt_rating) } : {}),
+        ...(optionalText(record.ai_caption) ? { aiCaption: record.ai_caption } : {}),
+        ...(record.public === true ? { isPublic: true } : {}),
+        ...(downloadedPhoto ? { photo: downloadedPhoto } : local?.photo ? { photo: local.photo } : {}),
+      }
+
+      if (local) {
+        await db.observations.update(local.id, fields)
+      } else {
+        await db.observations.add({ id: `remote-${record.id}`, userId, ...fields })
+      }
+    }
+  } catch {
+    // The Journal continues to show its local cache offline or when the
+    // private collection is temporarily unavailable.
   }
 }
 
