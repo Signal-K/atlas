@@ -16,8 +16,22 @@ const e2eBaseURL = `http://localhost:${e2ePort}`
 // e2e/support/clerk.ts. That's real network to Clerk's test API, so those
 // specs are slower and need CLERK_SECRET_KEY / VITE_CLERK_PUBLISHABLE_KEY
 // set (already in .env.local for local runs).
+//
+// KES-190: those same 4 specs also complete the loop through
+// POST /auth/clerk-exchange on whatever VITE_PB_URL points at. CI/deploy
+// default VITE_PB_URL to the production backend (vars.VITE_PB_URL) -- and
+// production now correctly only verifies tokens against the *live* Clerk
+// instance, not the test-mode instance these specs authenticate against
+// (no CI/preview backend is provisioned with the test secret key yet).
+// Excluded there until that exists; still run locally and against any
+// VITE_PB_URL that's actually wired to the test instance.
+const skipLiveClerkBackendSpecs = process.env.CLERK_BACKEND_UNAVAILABLE === '1'
+
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: skipLiveClerkBackendSpecs
+    ? ['**/demo-access.spec.ts', '**/signup-journey.spec.ts', '**/existing-account-signup.spec.ts']
+    : undefined,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

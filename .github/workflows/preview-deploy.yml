@@ -39,6 +39,11 @@ jobs:
           # (e2e/global.setup.ts) needs the test-mode pair to work at all.
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          # KES-190: VITE_PB_URL above is the production backend, which only
+          # verifies Clerk tokens against the live instance, not the
+          # test-mode instance these 4 specs authenticate against. See
+          # playwright.config.ts.
+          CLERK_BACKEND_UNAVAILABLE: '1'
       - uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

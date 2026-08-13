@@ -37,6 +37,11 @@ jobs:
           # test-mode pk_test_/sk_test_ pair, never the live deploy key.
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          # KES-190: VITE_PB_URL above resolves to the production backend
+          # (vars.VITE_PB_URL), which only verifies Clerk tokens against the
+          # live instance -- not the test-mode instance these 4 specs
+          # authenticate against. See playwright.config.ts.
+          CLERK_BACKEND_UNAVAILABLE: '1'
 
   pocketbase-write-e2e:
     runs-on: ubuntu-latest
