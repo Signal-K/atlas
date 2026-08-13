@@ -31,7 +31,7 @@ interface QuotaState {
 
 type QuotaDecision =
   | { accepted: true; reservationId: string; remainingBytes: number }
-  | { accepted: false; reason: 'storage' | 'uploads'; message: string }
+  | { accepted: false; reason: 'storage' | 'uploads' }
 
 function utcMonth(now = new Date()): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
@@ -40,6 +40,14 @@ function utcMonth(now = new Date()): string {
 function configuredPositiveInteger(value: string): number | null {
   const number = Number(value)
   return Number.isSafeInteger(number) && number > 0 ? number : null
+}
+
+function uploadSupportMessage(reference: string): string {
+  return `We couldn’t add this photo right now. Email liam@skinetics.tech with this error message: ${reference}.`
+}
+
+function uploadBlockedResponse(request: Request, env: Env, reference: string): Response {
+  return responseError(request, env, 503, uploadSupportMessage(reference))
 }
 
 async function bucketUsage(bucket: R2Bucket): Promise<{ usedBytes: number; objectCount: number }> {
@@ -108,18 +116,10 @@ export class AtlasMediaQuota extends DurableObject<Env> {
       : { ...previous, month, monthlyUploadAttempts: 0 }
 
     if (state.usedBytes + uploadBytes > storageLimit) {
-      return {
-        accepted: false,
-        reason: 'storage',
-        message: 'Atlas photo storage is at its safety limit. This upload was not sent to Cloudflare.',
-      }
+      return { accepted: false, reason: 'storage' }
     }
     if (state.monthlyUploadAttempts + 1 > monthlyUploadLimit) {
-      return {
-        accepted: false,
-        reason: 'uploads',
-        message: 'Atlas has reached its monthly upload safety limit. This upload was not sent to Cloudflare.',
-      }
+      return { accepted: false, reason: 'uploads' }
     }
 
     const reservationId = crypto.randomUUID()
@@ -233,11 +233,14 @@ async function putPhoto(request: Request, env: Env, observationId: string): Prom
   let reservation: Extract<QuotaDecision, { accepted: true }>
   try {
     const decision = await env.ATLAS_MEDIA_QUOTA.getByName('account-wide-r2-budget').reserve(data.byteLength)
-    if (!decision.accepted) return responseError(request, env, 507, decision.message)
+    if (!decision.accepted) {
+      console.warn('atlas_media_upload_blocked', { reason: decision.reason })
+      return uploadBlockedResponse(request, env, 'ATLAS-MEDIA-01')
+    }
     reservation = decision
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Atlas media capacity could not be checked.'
-    return responseError(request, env, 503, message)
+  } catch {
+    console.error('atlas_media_capacity_check_failed')
+    return uploadBlockedResponse(request, env, 'ATLAS-MEDIA-02')
   }
 
   const key = `observations/${user.id}/${observationId}/${crypto.randomUUID()}.${extension}`
@@ -250,11 +253,13 @@ async function putPhoto(request: Request, env: Env, observationId: string): Prom
   } catch {
     // Keep the reservation: a timed-out write can still have reached R2.
     // Under-counting here would make the account cap bypassable on retries.
-    return responseError(request, env, 500, 'Photo storage could not be confirmed. The capacity reservation was kept for safety.')
+    console.error('atlas_media_upload_unconfirmed')
+    return uploadBlockedResponse(request, env, 'ATLAS-MEDIA-03')
   }
   if (!object) {
     await env.ATLAS_MEDIA_QUOTA.getByName('account-wide-r2-budget').releaseWithoutUpload(reservation.reservationId)
-    return responseError(request, env, 500, 'Photo storage failed.')
+    console.error('atlas_media_upload_failed')
+    return uploadBlockedResponse(request, env, 'ATLAS-MEDIA-04')
   }
   // An uncommitted reservation remains safely counted if this cleanup call
   // fails, so it can never turn a storage error into an overage.

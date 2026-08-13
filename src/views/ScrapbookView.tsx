@@ -252,7 +252,12 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
     setNote('')
     clearDraft()
     await refresh()
-    const remoteId = await pushObservation(entry)
+    let remoteId: string | null = null
+    try {
+      remoteId = await pushObservation(entry)
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : 'We couldn’t add this photo right now.')
+    }
     await pushCityStampFromObservation(entry)
     await recordWeeklyActivity()
 

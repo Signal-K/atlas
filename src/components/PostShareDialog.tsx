@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ShareIcon } from '../ui/icons'
+import { isAtlasMediaUploadBlockedError } from '../lib/atlasMedia'
 
 interface PostShareDialogProps {
   onCreateLink: () => Promise<string>
@@ -31,8 +32,10 @@ export function PostShareDialog({ onCreateLink }: PostShareDialogProps) {
       } catch {
         setStatus('Link ready — copy it from the field below.')
       }
-    } catch {
-      setStatus('Could not create a link. Please sign in and try again.')
+    } catch (error) {
+      setStatus(isAtlasMediaUploadBlockedError(error)
+        ? error.message
+        : 'Could not create a link. Please sign in and try again.')
     } finally {
       setBusy(false)
     }

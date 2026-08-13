@@ -2,7 +2,7 @@ import { pb } from './pocketbase'
 import { db, type ObservationLogEntry, type SkyEvent } from './db'
 import { parsePbDate } from './pocketbaseDate'
 import { categoryForKind } from './eventCategories'
-import { fetchPrivateObservationPhoto, isAtlasMediaEnabled, uploadObservationPhoto } from './atlasMedia'
+import { fetchPrivateObservationPhoto, isAtlasMediaEnabled, isAtlasMediaUploadBlockedError, uploadObservationPhoto } from './atlasMedia'
 
 const MELBOURNE = { lat: -37.8136, lon: 144.9631 }
 
@@ -391,14 +391,18 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
           photo_r2_size: uploaded.size,
         })
         await db.observations.update(entry.id, { photoR2Key: uploaded.key, photoR2Size: uploaded.size })
-      } catch {
+      } catch (error) {
         // The journal entry and its offline photo are safe. pullObservations
         // will retry this R2 upload on a later signed-in Journal visit.
+        // A capacity block is actionable, though: let the visible Journal
+        // form show the opaque support reference instead of swallowing it.
+        if (isAtlasMediaUploadBlockedError(error)) throw error
       }
     }
     return record.id
-  } catch {
+  } catch (error) {
     // Stays local-only; the user still sees it in their Scrapbook.
+    if (isAtlasMediaUploadBlockedError(error)) throw error
     return null
   }
 }

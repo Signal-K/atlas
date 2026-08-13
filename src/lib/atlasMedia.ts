@@ -8,6 +8,12 @@ export interface R2PhotoUpload {
   contentType: string
 }
 
+const MEDIA_SUPPORT_EMAIL = 'liam@skinetics.tech'
+
+export function isAtlasMediaUploadBlockedError(error: unknown): error is Error {
+  return error instanceof Error && error.message.includes(`Email ${MEDIA_SUPPORT_EMAIL} with this error message:`)
+}
+
 export function isAtlasMediaEnabled(): boolean {
   return Boolean(mediaBaseUrl)
 }
