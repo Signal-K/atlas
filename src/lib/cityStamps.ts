@@ -67,6 +67,10 @@ export async function pushCityStampFromObservation(entry: ObservationLogEntry): 
   if (!cityName || !userId || !pb.authStore.isValid || !navigator.onLine) return
 
   const key = cityKey(cityName)
+  // Best-effort background sync, same as pushObservation -- a failure here
+  // (including the create() fallback below, which used to be unprotected
+  // and could surface as an unhandled rejection right after a successful
+  // local save) must never interrupt the caller's save flow.
   try {
     const existing = await pb.collection('atlas_city_stamps').getFirstListItem(`user = "${userId}" && city_key = "${key}"`)
     await pb.collection('atlas_city_stamps').update(existing.id, {
@@ -81,16 +85,23 @@ export async function pushCityStampFromObservation(entry: ObservationLogEntry): 
           : entry.observedAt,
     })
   } catch {
-    await pb.collection('atlas_city_stamps').create({
-      user: userId,
-      city_key: key,
-      city_name: cityName,
-      checkin_count: 1,
-      first_checked_in_at: entry.observedAt,
-      last_checked_in_at: entry.observedAt,
-      public: false,
-      share_slug: shareSlug(userId, cityName),
-    })
+    try {
+      await pb.collection('atlas_city_stamps').create({
+        user: userId,
+        city_key: key,
+        city_name: cityName,
+        checkin_count: 1,
+        first_checked_in_at: entry.observedAt,
+        last_checked_in_at: entry.observedAt,
+        public: false,
+        share_slug: shareSlug(userId, cityName),
+      })
+    } catch {
+      // Genuinely best-effort -- e.g. a duplicate-key race with another tab
+      // creating the same stamp between the getFirstListItem miss above and
+      // this create(). Nothing useful to do client-side; next observation
+      // in this city will update the record that won the race.
+    }
   }
 }
 

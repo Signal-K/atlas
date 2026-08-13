@@ -712,21 +712,118 @@
   gap: 8px;
 }
 
-.account-form {
+.account-form-shell {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
   width: min(360px, 100%);
 }
 
-.account-form input {
+/* Prominent, always-visible mode indicator -- the old design buried this
+   as a single small text link below the submit button, which is how
+   someone typing an existing email into what they thought was a sign-in
+   form ended up on "Create account" without noticing. */
+.account-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+}
+
+.account-mode-tabs button {
   font: inherit;
   font-size: 13px;
+  font-weight: 600;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  opacity: 0.7;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.account-mode-tabs button.is-active {
+  background: var(--bg);
+  color: var(--text-h);
+  opacity: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.account-form-field label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.account-form-field input {
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--code-bg);
   color: var(--text-h);
+  transition: border-color 0.15s ease;
+}
+
+.account-form-field input:focus-visible {
+  outline: none;
+  border-color: var(--text-h);
+}
+
+.account-form-password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.account-form-password input {
+  width: 100%;
+  padding-right: 38px;
+}
+
+.account-form-password-toggle {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.account-form-password-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.account-form-password-toggle:hover {
+  opacity: 1;
 }
 
 .account-form-actions {
@@ -734,16 +831,39 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-top: 2px;
 }
 
-.account-form-actions button[type='submit'] {
+.account-form-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
   font-size: 13px;
-  padding: 6px 14px;
+  font-weight: 600;
+  padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--text-h);
   color: var(--bg);
   cursor: pointer;
+}
+
+.account-form-submit:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.account-form-spinner {
+  width: 13px;
+  height: 13px;
+  animation: account-form-spin 0.7s linear infinite;
+}
+
+@keyframes account-form-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .account-form-switch {
@@ -2032,7 +2152,7 @@
   color: var(--text);
 }
 
-.onboarding-modal .account-form {
+.onboarding-modal .account-form-shell {
   width: auto;
 }
 

@@ -116,13 +116,21 @@ function isExistingAccountError(error: unknown): boolean {
   })
 }
 
-export async function signUp(email: string, password: string): Promise<void> {
+// Returns whether this actually created a new account, vs. falling back to
+// signing in to one that already existed for this email (shared across the
+// product family) -- the caller uses this to show "Welcome back" instead of
+// "Account created" when someone hits "Create account" for an identity that
+// was already registered.
+export async function signUp(email: string, password: string): Promise<{ created: boolean }> {
   try {
     await pb.collection('users').create({ email, password, passwordConfirm: password })
   } catch (error) {
     if (!isExistingAccountError(error)) throw error
+    await pb.collection('users').authWithPassword(email, password)
+    return { created: false }
   }
   await pb.collection('users').authWithPassword(email, password)
+  return { created: true }
 }
 
 export function signOut(): void {

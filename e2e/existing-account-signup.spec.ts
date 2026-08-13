@@ -47,9 +47,9 @@ test('signup with an existing ecosystem account logs in when the password matche
   })
 
   await page.goto('/app/settings')
-  await page.getByRole('button', { name: 'Need an account?' }).click()
-  await page.getByPlaceholder('Email').fill(record.email)
-  await page.getByPlaceholder('Password').fill('same-ecosystem-password')
+  await page.getByRole('tab', { name: 'Create account' }).click()
+  await page.getByLabel('Email').fill(record.email)
+  await page.getByLabel('Password', { exact: true }).fill('same-ecosystem-password')
   await page.getByRole('button', { name: 'Create account' }).click()
 
   await expect.poll(() => createAttempted).toBe(true)

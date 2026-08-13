@@ -107,8 +107,8 @@ test('signup happens via the auth gate before onboarding, then observations save
   await page.getByRole('button', { name: 'Get started' }).click()
 
   await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
-  await page.getByPlaceholder('Email').fill('observer@example.com')
-  await page.getByPlaceholder('Password').fill('correct-horse-battery')
+  await page.getByLabel('Email').fill('observer@example.com')
+  await page.getByLabel('Password', { exact: true }).fill('correct-horse-battery')
   await page.getByRole('button', { name: 'Create account' }).click()
 
   await expect
@@ -141,7 +141,13 @@ test('signup happens via the auth gate before onboarding, then observations save
   await page.getByRole('button', { name: 'Good' }).click()
   await page.getByRole('button', { name: 'Save observation' }).click()
 
-  await expect(page.getByText('Saw the Moon through thin cloud.')).toBeVisible()
+  // A logged attempt carries the event it was logged against, so it lands
+  // inside that event's collapsed thread (see EventObservationThread) --
+  // has to be opened before its note text is on screen.
+  const moonThread = page.locator('.event-thread', { hasText: 'Full Moon' })
+  await expect(moonThread.getByRole('button', { name: /Open portfolio/ })).toBeVisible()
+  await moonThread.getByRole('button', { name: /Open portfolio/ }).click()
+  await expect(moonThread.getByText('Saw the Moon through thin cloud.')).toBeVisible()
 })
 
 test('an existing account signs in without being sent through onboarding again', async ({ page }) => {
@@ -149,11 +155,11 @@ test('an existing account signs in without being sent through onboarding again',
 
   await page.getByRole('button', { name: 'Get started' }).click()
   await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
-  await page.getByRole('button', { name: 'Have an account?' }).click()
+  await page.getByRole('tab', { name: 'Sign in' }).click()
   await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
 
-  await page.getByPlaceholder('Email').fill('observer@example.com')
-  await page.getByPlaceholder('Password').fill('correct-horse-battery')
+  await page.getByLabel('Email').fill('observer@example.com')
+  await page.getByLabel('Password', { exact: true }).fill('correct-horse-battery')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)

@@ -16,7 +16,7 @@ test.describe('PocketBase-backed write actions', () => {
     await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
     await page.goto('/app/settings')
 
-    await page.getByRole('button', { name: 'Need an account?' }).click()
+    await page.getByRole('tab', { name: 'Create account' }).click()
     await page.locator('input[type="email"]').fill(email)
     await page.locator('input[type="password"]').fill(password)
     await page.getByRole('button', { name: 'Create account' }).click()
