@@ -27,6 +27,7 @@ const SOURCE_LABEL: Record<CurrentLocation['source'], string> = {
   geolocation: 'from your browser’s location',
   manual: 'set manually',
   default: 'default — no location set yet',
+  trip: 'set by an active trip',
 }
 
 export function LocationSettings({

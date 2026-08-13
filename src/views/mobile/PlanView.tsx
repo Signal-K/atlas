@@ -23,6 +23,7 @@ import { moonIlluminationPctAt } from '../../lib/moonPhase'
 import { formatEventDate, daysUntil } from '../../lib/eventFormat'
 import { DarkSitesPanel, darkSitesSummary } from '../../components/mobile/DarkSitesPanel'
 import { GearFitPanel, defaultGearFitSummary } from '../../components/mobile/GearFitPanel'
+import { TripsPanel, tripsSummary } from '../../components/mobile/TripsPanel'
 import { useEventPointing } from '../../components/mobile/EventPointing'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
 import { MobileIcon } from '../../components/mobile/MobileIcon'
@@ -31,7 +32,7 @@ import { useAuth } from '../../lib/auth'
 import { eventLookaheadDays, forecastLookaheadDays } from '../../lib/entitlementLimits'
 import { buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import { buildEventDetail, detailInputFromEvent, type EntryDetailSubject } from '../../lib/entryDetail'
-import type { EntryDetailActions } from './EntryDetailView'
+import type { EntryDetailActions, QuickActionOutcome } from './EntryDetailView'
 import { requestEclipseRoadmap } from '../../lib/eclipseRoadmap'
 import { getDarknessWindow } from '../../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../../lib/timeZone'
@@ -40,7 +41,7 @@ import type { SkyEvent } from '../../lib/db'
 import { WatchView } from './WatchView'
 
 type PlanMode = 'ready' | 'watchlist' | 'calendar' | 'browse'
-type ToolPanel = 'dark-sites' | 'gear-fit' | null
+type ToolPanel = 'dark-sites' | 'gear-fit' | 'trips' | null
 
 function ratingToStatus(rating: TonightRating): 'go' | 'marginal' | 'poor' {
   if (rating === 'great' || rating === 'good') return 'go'
@@ -159,12 +160,17 @@ export function PlanView({
     return ratingToStatus(rating)
   }
 
-  async function addReminder(event: SkyEvent) {
+  // Returns the outcome so the caller -- the EntryDetailView overlay -- can
+  // show its own confirmation/paywall feedback (KES-179). addReminder and
+  // toggleWatch are only ever invoked through that overlay, so the message
+  // lives solely in its quickActionMessage state, not duplicated via
+  // setStatus here.
+  async function addReminder(event: SkyEvent): Promise<QuickActionOutcome> {
     if (!hasPremium) {
       setBlockedPlanAdd(true)
-      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+      const message = 'Sky Pass is required to add events to a plan. Browsing and check-ins stay free.'
       trackEvent('Blocked free plan add', { action: 'reminder', source: 'mobile_plan' })
-      return
+      return { reminderActive: false, message }
     }
     const hasPermission = await ensureNotificationPermission()
     await addGetReadyReminder({
@@ -181,24 +187,27 @@ export function PlanView({
       precipitationChancePct: advisoryFor(event)?.precipitationChancePct,
     })
     setReminders(listGetReadyReminders())
-    setStatus(hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.')
+    const message = hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.'
     trackEvent('Added get ready reminder', { target: event.title, hasPermission, source: 'mobile_plan' })
+    return { reminderActive: true, message }
   }
 
-  async function toggleWatch(event: SkyEvent) {
+  async function toggleWatch(event: SkyEvent): Promise<QuickActionOutcome> {
     if (!hasPremium) {
       setBlockedPlanAdd(true)
-      setStatus('Sky Pass is required to add events to a plan. Browsing and check-ins stay free.')
+      const message = 'Sky Pass is required to add events to a plan. Browsing and check-ins stay free.'
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_plan' })
-      return
+      return { watching: false, message }
     }
-    if (isWatching(watchlist, 'target', event.target)) {
-      await removeFromWatchlist('target', event.target)
-    } else {
+    const nowWatching = !isWatching(watchlist, 'target', event.target)
+    if (nowWatching) {
       await addToWatchlist('target', event.target)
       onSavedForLater?.()
+    } else {
+      await removeFromWatchlist('target', event.target)
     }
     setWatchlist(await getWatchlist())
+    return { watching: nowWatching, message: nowWatching ? 'Added to your watchlist.' : 'Removed from your watchlist.' }
   }
 
   function submitFeedback(reminder: GetReadyReminder, outcome: ReminderFeedbackOutcome) {
@@ -250,6 +259,14 @@ export function PlanView({
 
   const darkSites = useMemo(() => darkSitesSummary(city.lat, city.lon), [city.lat, city.lon])
   const gearFit = useMemo(() => defaultGearFitSummary(), [])
+  const [trips, setTrips] = useState(() => tripsSummary())
+  useEffect(() => {
+    function refreshTrips() {
+      setTrips(tripsSummary())
+    }
+    window.addEventListener('atlas:trips-changed', refreshTrips)
+    return () => window.removeEventListener('atlas:trips-changed', refreshTrips)
+  }, [])
   const premiumPlanningGate = (
     <PaywallGate
       user={user}
@@ -262,6 +279,8 @@ export function PlanView({
     >
       {toolPanel === 'dark-sites' ? (
         <DarkSitesPanel lat={city.lat} lon={city.lon} cityName={city.name} onBack={() => setToolPanel(null)} />
+      ) : toolPanel === 'trips' ? (
+        <TripsPanel onBack={() => setToolPanel(null)} />
       ) : (
         <GearFitPanel onBack={() => setToolPanel(null)} />
       )}
@@ -273,6 +292,10 @@ export function PlanView({
   }
 
   if (toolPanel === 'gear-fit') {
+    return premiumPlanningGate
+  }
+
+  if (toolPanel === 'trips') {
     return premiumPlanningGate
   }
 
@@ -299,6 +322,12 @@ export function PlanView({
   return (
     <div className="mobile-plan">
       <section className="mobile-card mobile-plan-index">
+        {city.source === 'trip' && city.trip && (
+          <p className="mobile-empty-hint">
+            Showing the feed for your trip to <strong>{city.name}</strong>, through{' '}
+            {new Date(`${city.trip.endDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}.
+          </p>
+        )}
         <div className="mobile-plan-readout">
           <span className="mobile-plan-readout-count">
             <span className="mobile-plan-readout-dot" />
@@ -477,6 +506,17 @@ export function PlanView({
                   <span className="mobile-tool-card-meta">
                     {gearFit.focalLength} MM · {gearFit.sensorLabel}
                   </span>
+                </span>
+                <MobileIcon name="chevron" />
+              </button>
+              <button type="button" className="mobile-tool-card" onClick={() => setToolPanel('trips')}>
+                <span className="mobile-tool-card-icon mobile-tool-card-icon--teal">
+                  <MobileIcon name="plane" />
+                </span>
+                <span className="mobile-tool-card-body">
+                  <strong>Trips</strong>
+                  <span>{trips.active ? `On location: ${trips.active.name}` : 'Plan the feed around a holiday'}</span>
+                  <span className="mobile-tool-card-meta">{trips.count} PLANNED</span>
                 </span>
                 <MobileIcon name="chevron" />
               </button>

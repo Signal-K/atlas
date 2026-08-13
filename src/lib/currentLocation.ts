@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CITIES, cityLabel, type City } from './cities'
 import { reverseGeocodeCity } from './reverseGeocode'
 import type { useLocationSeed } from './geo'
+import { activeTripFor, type Trip } from './trips'
 
-export type LocationSource = 'geolocation' | 'manual' | 'default'
+export type LocationSource = 'geolocation' | 'manual' | 'default' | 'trip'
 
 export interface CurrentLocation {
   name: string
@@ -11,6 +12,8 @@ export interface CurrentLocation {
   lon: number
   source: LocationSource
   timeZone?: string
+  // Set when `source` is 'trip' -- lets UI say "back home on <date>" etc.
+  trip?: Trip
 }
 
 export const MANUAL_LOCATION_KEY = 'atlas-manual-location'
@@ -41,6 +44,11 @@ function getManualCity(): City | null {
 
 export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
   const [manualCity, setManualCityState] = useState<City | null>(() => getManualCity())
+  // An active trip wins over both manual and geolocation while it's live --
+  // the whole point is "treat me as if I'm there" for the trip window, not
+  // just a suggestion. Re-checked on trip list changes and roughly once a
+  // minute so a trip flips on/off without requiring a reload.
+  const [trip, setTrip] = useState<Trip | null>(() => activeTripFor())
   // Reverse-geocoded place name for the current geolocation fix (e.g.
   // "Riga") -- keyed by rounded coordinates so a stale name from a
   // previous fix never gets shown against new coordinates while the
@@ -71,10 +79,25 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
     }
   }, [manualCity, geo.coordinates])
 
+  useEffect(() => {
+    function refreshTrip() {
+      setTrip(activeTripFor())
+    }
+    refreshTrip()
+    window.addEventListener('atlas:trips-changed', refreshTrip)
+    const interval = window.setInterval(refreshTrip, 60_000)
+    return () => {
+      window.removeEventListener('atlas:trips-changed', refreshTrip)
+      window.clearInterval(interval)
+    }
+  }, [])
+
   // A manual pick always wins, even once geolocation later resolves --
   // otherwise an explicit correction gets silently reverted on next load
   // (same rationale as locationBrowseContext.tsx's manual-city priority).
+  // A live trip wins over everything else -- see the trip state comment above.
   const current = useMemo<CurrentLocation>(() => {
+    if (trip) return { name: trip.name, lat: trip.lat, lon: trip.lon, source: 'trip', timeZone: trip.timeZone, trip }
     if (manualCity) return { name: cityLabel(manualCity), lat: manualCity.lat, lon: manualCity.lon, source: 'manual', timeZone: manualCity.timeZone }
     if (geo.coordinates) {
       const key = `${geo.coordinates.lat},${geo.coordinates.lon}`
@@ -82,7 +105,7 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
       return { name, lat: geo.coordinates.lat, lon: geo.coordinates.lon, source: 'geolocation' }
     }
     return { name: DEFAULT_CITY.name, lat: DEFAULT_CITY.lat, lon: DEFAULT_CITY.lon, source: 'default' }
-  }, [manualCity, geo.coordinates, geoName])
+  }, [trip, manualCity, geo.coordinates, geoName])
 
   return { current, manualCity, setManualLocation }
 }

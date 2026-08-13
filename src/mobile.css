@@ -1453,6 +1453,11 @@
   border: 1px solid rgba(138, 78, 161, 0.4);
 }
 
+.mobile-tool-card-icon--teal {
+  color: #2f9e9e;
+  border: 1px solid rgba(47, 158, 158, 0.4);
+}
+
 .mobile-tool-card-body {
   min-width: 0;
   flex: 1;
@@ -1548,6 +1553,64 @@
 .mobile-tool-row-foot a {
   color: var(--accent);
   text-decoration: none;
+}
+
+.mobile-text-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font: 800 9.5px/1.2 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.mobile-tool-row--active {
+  border-color: color-mix(in srgb, #2f9e9e 55%, var(--mobile-line));
+  background: color-mix(in srgb, #2f9e9e 10%, transparent);
+}
+
+.mobile-trip-active-badge {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #2f9e9e 30%, transparent);
+  color: #7fd6d6;
+  font: 800 8.5px/1.4 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.mobile-plan-trip-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.mobile-plan-trip-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mobile-plan-trip-dates label {
+  display: grid;
+  gap: 4px;
+  font: 800 9.5px/1.2 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mobile-muted);
+}
+
+.mobile-plan-trip-dates input[type='date'] {
+  border: 1px solid var(--mobile-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mobile-ink) 24%, transparent);
+  color: var(--text-h);
+  padding: 8px;
+  font: 600 12px/1.2 var(--mono);
 }
 
 .native-route-picker {
@@ -4881,6 +4944,12 @@
   border-color: var(--dt-ink);
   color: var(--dt-ink);
   background: var(--dt-glacier-200);
+}
+
+.dt-entry-quick-status {
+  font: 500 12px/1.5 var(--dt-font-serif);
+  color: var(--dt-ink-muted);
+  margin: 10px 0 0;
 }
 
 .dt-entry-actions {
