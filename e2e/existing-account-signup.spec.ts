@@ -1,60 +1,42 @@
 import { expect, test } from '@playwright/test'
+import { setupClerkTestingToken } from '@clerk/testing/playwright'
+import { clerkTestEmail, deleteClerkTestUser, fillClerkSignUp } from './support/clerk'
 
 const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
 
-test('signup with an existing ecosystem account logs in when the password matches', async ({ page }) => {
-  const authToken = ['e2e', Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'sig'].join('.')
-  const record = {
-    id: 'e2e-shared-ecosystem-user',
-    email: 'shared-account@example.com',
-    entitled: true,
-    collectionId: 'users',
-    collectionName: 'users',
+// Covers the email-fallback matching in backend/clerk_exchange.go: an
+// account created before this person ever went through Clerk (no
+// clerk_user_id set yet) has to link to their first Clerk sign-in rather
+// than getting a second, duplicate `users` record with the same email.
+test('an existing PocketBase account links to Clerk on first sign-in instead of duplicating', async ({ page, request }) => {
+  const email = clerkTestEmail('existing-account')
+  const legacyPassword = `Legacy-e2e-${Date.now()}!`
+
+  const createResponse = await request.post(`${PB_URL}/api/collections/users/records`, {
+    data: { email, password: legacyPassword, passwordConfirm: legacyPassword },
+  })
+  expect(createResponse.ok(), await createResponse.text()).toBe(true)
+  const legacyRecord = (await createResponse.json()) as { id: string }
+
+  try {
+    await setupClerkTestingToken({ page })
+    await page.goto('/app/settings')
+    await page.getByRole('tab', { name: 'Create account' }).click()
+    await fillClerkSignUp(page, email, 'Different-clerk-password!1')
+
+    // Clerk's own "Verify your email" step also renders the email as plain
+    // text, so `getByText(email)` alone would pass before the exchange ever
+    // runs -- `.settings-account-email` is Settings' own post-exchange
+    // element, not present until AuthForm has actually handed off to it.
+    await expect(page.locator('.settings-account-email')).toHaveText(email, { timeout: 15_000 })
+    await expect(page.locator('.account-form-error')).toHaveCount(0)
+
+    const linkedId = await page.evaluate(() => {
+      const raw = window.localStorage.getItem('pocketbase_auth')
+      return raw ? (JSON.parse(raw) as { record: { id: string } }).record.id : null
+    })
+    expect(linkedId, 'exchange should attach to the pre-existing record by email, not create a new one').toBe(legacyRecord.id)
+  } finally {
+    await deleteClerkTestUser({ email })
   }
-  let createAttempted = false
-  let loginAttempted = false
-
-  await page.route(`${PB_URL}/api/collections/users/records`, async (route) => {
-    createAttempted = true
-    await route.fulfill({
-      status: 400,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        message: 'Failed to create record.',
-        data: {
-          email: {
-            code: 'validation_not_unique',
-            message: 'The email is invalid or already in use.',
-          },
-        },
-      }),
-    })
-  })
-  await page.route(`${PB_URL}/api/collections/users/auth-with-password`, async (route) => {
-    loginAttempted = true
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ token: authToken, record }),
-    })
-  })
-  await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ token: authToken, record }),
-    })
-  })
-
-  await page.goto('/app/settings')
-  await page.getByRole('tab', { name: 'Create account' }).click()
-  await page.getByLabel('Email').fill(record.email)
-  await page.getByLabel('Password', { exact: true }).fill('same-ecosystem-password')
-  await page.getByRole('button', { name: 'Create account' }).click()
-
-  await expect.poll(() => createAttempted).toBe(true)
-  await expect.poll(() => loginAttempted).toBe(true)
-  await expect(page.getByText(record.email)).toBeVisible({ timeout: 10_000 })
-  await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible()
-  await expect(page.locator('.account-form-error')).toHaveCount(0)
 })

@@ -105,24 +105,6 @@ export function signOut(): void {
   pb.authStore.clear()
 }
 
-export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
-  const id = pb.authStore.record?.id as string | undefined
-  if (!id) throw new Error('Not signed in')
-  await pb.collection('users').update(id, {
-    oldPassword,
-    password: newPassword,
-    passwordConfirm: newPassword,
-  })
-}
-
-// PocketBase never applies the new address directly -- it emails a
-// confirmation link to newEmail and the change only takes effect once that
-// link is opened, so a typo or someone else's address can't lock the real
-// owner out.
-export async function requestEmailChange(newEmail: string): Promise<void> {
-  await pb.collection('users').requestEmailChange(newEmail)
-}
-
 // Persists the user's selected phone model(s) (Settings' Device & camera
 // setup section) and updates the cached auth record so the UI reflects the
 // change without a full re-fetch.

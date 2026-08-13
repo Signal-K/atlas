@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
-import { makeAuthToken } from './support/auth'
+import { setupClerkTestingToken } from '@clerk/testing/playwright'
+import { clerkTestEmail, createClerkTestUser, deleteClerkTestUser, fillClerkSignIn, fillClerkSignUp, primeClerkPocketBaseLink } from './support/clerk'
+
+const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
 
 async function mockTonightData(page: Page) {
   await page.route('https://api.open-meteo.com/**', async (route) => {
@@ -54,28 +57,9 @@ async function mockTonightData(page: Page) {
       }),
     })
   })
-}
 
-async function mockAuth(page: Page) {
-  const record = {
-    id: 'e2e-signup-user',
-    email: 'observer@example.com',
-    entitled: false,
-    collectionId: 'users',
-    collectionName: 'users',
-  }
-
-  await page.route('**/api/collections/users/records', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(record) })
-  })
-  await page.route('**/api/collections/users/auth-with-password', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ token: makeAuthToken(), record }),
-    })
-  })
   await page.route('**/api/collections/atlas_observations/records', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -86,7 +70,6 @@ async function mockAuth(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
-  await mockAuth(page)
   // Location moved from the landing page into OnboardingFlow's own
   // "location" step -- seed it directly, same as setManualLocation() would.
   await page.addInitScript(() => {
@@ -100,70 +83,93 @@ test.beforeEach(async ({ page }) => {
 // SignupWallModal, was removed as dead code). This proves the new order:
 // landing -> auth gate -> account created -> onboarding -> the feature that
 // used to require a signup wall (logging an observation) just works.
+//
+// KES-189: AuthGate now renders Clerk's own <SignUp>, exchanged for a
+// PocketBase session via /auth/clerk-exchange -- both real, per Clerk's
+// Playwright testing guidance (see e2e/support/clerk.ts).
 test('signup happens via the auth gate before onboarding, then observations save directly', async ({ page }) => {
-  await page.goto('/')
+  const email = clerkTestEmail('signup-journey')
+  const password = 'Correct-horse-battery1!'
+  await setupClerkTestingToken({ page })
 
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Get started' }).click()
+  try {
+    await page.goto('/')
 
-  await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
-  await page.getByLabel('Email').fill('observer@example.com')
-  await page.getByLabel('Password', { exact: true }).fill('correct-horse-battery')
-  await page.getByRole('button', { name: 'Create account' }).click()
+    await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
+    await page.getByRole('button', { name: 'Get started' }).click()
 
-  await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const auth = JSON.parse(window.localStorage.getItem('pocketbase_auth') ?? '{}')
-        return auth.record?.email
-      }),
-    )
-    .toBe('observer@example.com')
+    await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
+    await fillClerkSignUp(page, email, password)
 
-  // Onboarding runs right after account creation, not before it.
-  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Looks good' }).click()
-  await page.getByRole('button', { name: 'Not now' }).click()
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const auth = JSON.parse(window.localStorage.getItem('pocketbase_auth') ?? '{}')
+          return auth.record?.email
+        }),
+      )
+      .toBe(email)
 
-  await expect(page).toHaveURL('/app/events')
-  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+    // Onboarding runs right after account creation, not before it.
+    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: 'Skip' }).click()
+    await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
+    await page.getByRole('button', { name: 'Skip' }).click()
+    await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
+    await page.getByRole('button', { name: 'Looks good' }).click()
+    await page.getByRole('button', { name: 'Not now' }).click()
 
-  await page.getByRole('button', { name: 'Full Moon' }).click()
-  await page.locator('.dt-entry').getByRole('button', { name: 'Log attempt' }).click()
+    await expect(page).toHaveURL('/app/events')
+    await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
 
-  await expect(page).toHaveURL('/app/journal')
-  await expect(page.getByText('Logging attempt for')).toBeVisible()
-  await page.getByPlaceholder(/What did you see tonight|How did/).fill('Saw the Moon through thin cloud.')
-  await page.getByRole('button', { name: 'Good' }).click()
-  await page.getByRole('button', { name: 'Save observation' }).click()
+    await page.getByRole('button', { name: 'Full Moon' }).click()
+    await page.locator('.dt-entry').getByRole('button', { name: 'Log attempt' }).click()
 
-  // A logged attempt carries the event it was logged against, so it lands
-  // inside that event's collapsed thread (see EventObservationThread) --
-  // has to be opened before its note text is on screen.
-  const moonThread = page.locator('.event-thread', { hasText: 'Full Moon' })
-  await expect(moonThread.getByRole('button', { name: /Open portfolio/ })).toBeVisible()
-  await moonThread.getByRole('button', { name: /Open portfolio/ }).click()
-  await expect(moonThread.getByText('Saw the Moon through thin cloud.')).toBeVisible()
+    await expect(page).toHaveURL('/app/journal')
+    await expect(page.getByText('Logging attempt for')).toBeVisible()
+    await page.getByPlaceholder(/What did you see tonight|How did/).fill('Saw the Moon through thin cloud.')
+    await page.getByRole('button', { name: 'Good' }).click()
+    await page.getByRole('button', { name: 'Save observation' }).click()
+
+    // A logged attempt carries the event it was logged against, so it lands
+    // inside that event's collapsed thread (see EventObservationThread) --
+    // has to be opened before its note text is on screen.
+    const moonThread = page.locator('.event-thread', { hasText: 'Full Moon' })
+    await expect(moonThread.getByRole('button', { name: /Open portfolio/ })).toBeVisible()
+    await moonThread.getByRole('button', { name: /Open portfolio/ }).click()
+    await expect(moonThread.getByText('Saw the Moon through thin cloud.')).toBeVisible()
+  } finally {
+    await deleteClerkTestUser({ email })
+  }
 })
 
 test('an existing account signs in without being sent through onboarding again', async ({ page }) => {
-  await page.goto('/')
+  const email = clerkTestEmail('signup-journey-returning')
+  const password = 'Correct-horse-battery1!'
+  const clerkUser = await createClerkTestUser(email, password)
+  // Establishes the clerk_user_id <-> PocketBase link ahead of time, so the
+  // sign-in below is the account's *second* login (created:false) -- the
+  // actual "existing account" case this test is about, not a first-time
+  // signup that happens to use the sign-in tab.
+  await primeClerkPocketBaseLink(PB_URL, clerkUser.id)
 
-  await page.getByRole('button', { name: 'Get started' }).click()
-  await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
-  await page.getByRole('tab', { name: 'Sign in' }).click()
-  await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+  await setupClerkTestingToken({ page })
 
-  await page.getByLabel('Email').fill('observer@example.com')
-  await page.getByLabel('Password', { exact: true }).fill('correct-horse-battery')
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  try {
+    await page.goto('/')
 
-  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
-  await expect(page).toHaveURL('/app/events')
-  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete'))).toBe('1')
+    await page.getByRole('button', { name: 'Get started' }).click()
+    await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
+    await page.getByRole('tab', { name: 'Sign in' }).click()
+    await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+
+    await fillClerkSignIn(page, email, password)
+
+    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
+    await expect(page).toHaveURL('/app/events')
+    await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete'))).toBe('1')
+  } finally {
+    await deleteClerkTestUser({ id: clerkUser.id })
+  }
 })

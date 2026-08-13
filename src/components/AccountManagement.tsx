@@ -1,149 +1,46 @@
 import { useState } from 'react'
-import { authErrorMessage, changePassword, deleteAccount, requestEmailChange } from '../lib/auth'
+import { ClerkProvider, useClerk } from '@clerk/react'
+import { authErrorMessage, deleteAccount } from '../lib/auth'
 import { trackEvent } from '../lib/analytics'
 
-type Panel = null | 'password' | 'email' | 'delete'
+type Panel = null | 'delete'
 
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined
+
+// Password and email are Clerk's to manage since KES-189 -- PocketBase's own
+// `users.password` is a random value nobody ever sees (set via
+// SetRandomPassword() in the Clerk exchange handler) and its `email` field
+// only mirrors whatever Clerk reports at last sign-in, so editing either one
+// through PocketBase's own API here would silently desync from the identity
+// Clerk actually authenticates against, or just always fail (an "old
+// password" prompt the account owner has no way to answer correctly).
+// Clerk's own account portal is the one place that's actually correct.
 export function AccountManagement({ email }: { email: string }) {
   const [openPanel, setOpenPanel] = useState<Panel>(null)
-
-  function toggle(panel: Panel) {
-    setOpenPanel((current) => (current === panel ? null : panel))
-  }
 
   return (
     <div className="settings-account-management">
       <div className="settings-account-actions">
-        <button type="button" onClick={() => toggle('password')}>
-          Change password
-        </button>
-        <button type="button" onClick={() => toggle('email')}>
-          Change email
-        </button>
-        <button type="button" className="settings-status--negative" onClick={() => toggle('delete')}>
+        {clerkPublishableKey ? (
+          <ClerkProvider publishableKey={clerkPublishableKey}>
+            <ManageAccountButton />
+          </ClerkProvider>
+        ) : null}
+        <button type="button" className="settings-status--negative" onClick={() => setOpenPanel(openPanel === 'delete' ? null : 'delete')}>
           Delete account
         </button>
       </div>
-      {openPanel === 'password' && <ChangePasswordForm onDone={() => setOpenPanel(null)} />}
-      {openPanel === 'email' && <ChangeEmailForm onDone={() => setOpenPanel(null)} />}
       {openPanel === 'delete' && <DeleteAccountForm email={email} onCancel={() => setOpenPanel(null)} />}
     </div>
   )
 }
 
-function ChangePasswordForm({ onDone }: { onDone: () => void }) {
-  const [oldPassword, setOldPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
-    setError(null)
-    if (newPassword !== confirm) {
-      setError('New passwords don’t match.')
-      return
-    }
-    setBusy(true)
-    try {
-      await changePassword(oldPassword, newPassword)
-      trackEvent('Password changed')
-      setDone(true)
-      window.setTimeout(onDone, 1500)
-    } catch (err) {
-      setError(authErrorMessage(err, 'Could not change password — check your current password.'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (done) return <p className="settings-help settings-status--positive">Password updated.</p>
-
+function ManageAccountButton() {
+  const clerk = useClerk()
   return (
-    <form className="account-form" onSubmit={handleSubmit}>
-      <input
-        type="password"
-        placeholder="Current password"
-        value={oldPassword}
-        onChange={(event) => setOldPassword(event.target.value)}
-        required
-      />
-      <input
-        type="password"
-        placeholder="New password"
-        value={newPassword}
-        onChange={(event) => setNewPassword(event.target.value)}
-        minLength={8}
-        required
-      />
-      <input
-        type="password"
-        placeholder="Confirm new password"
-        value={confirm}
-        onChange={(event) => setConfirm(event.target.value)}
-        minLength={8}
-        required
-      />
-      <div className="account-form-actions">
-        <button type="submit" disabled={busy}>
-          {busy ? 'Updating…' : 'Update password'}
-        </button>
-      </div>
-      {error && <p className="account-form-error">{error}</p>}
-    </form>
-  )
-}
-
-function ChangeEmailForm({ onDone }: { onDone: () => void }) {
-  const [newEmail, setNewEmail] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [sent, setSent] = useState(false)
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
-    setError(null)
-    setBusy(true)
-    try {
-      await requestEmailChange(newEmail)
-      trackEvent('Email change requested')
-      setSent(true)
-    } catch (err) {
-      setError(authErrorMessage(err, 'Could not start email change.'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (sent) {
-    return (
-      <p className="settings-help settings-status--positive">
-        Confirmation link sent to {newEmail}. Your email stays the same until you open it.{' '}
-        <button type="button" onClick={onDone}>
-          Done
-        </button>
-      </p>
-    )
-  }
-
-  return (
-    <form className="account-form" onSubmit={handleSubmit}>
-      <input
-        type="email"
-        placeholder="New email address"
-        value={newEmail}
-        onChange={(event) => setNewEmail(event.target.value)}
-        required
-      />
-      <div className="account-form-actions">
-        <button type="submit" disabled={busy}>
-          {busy ? 'Sending…' : 'Send confirmation link'}
-        </button>
-      </div>
-      {error && <p className="account-form-error">{error}</p>}
-    </form>
+    <button type="button" onClick={() => clerk.openUserProfile()}>
+      Manage password &amp; email
+    </button>
   )
 }
 

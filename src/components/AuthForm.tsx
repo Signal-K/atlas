@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ClerkProvider, SignIn, SignUp, useAuth as useClerkAuth } from '@clerk/react'
 import type { RecordModel } from 'pocketbase'
 import { trackEvent } from '../lib/analytics'
@@ -39,6 +40,7 @@ const clerkAppearance = { elements: { footerAction: { display: 'none' } } }
 // every pb.authStore.record?.id read and PocketBase collection rule
 // downstream keeps working unchanged.
 export function AuthForm(props: AuthFormProps) {
+  const navigate = useNavigate()
   if (!clerkPublishableKey) {
     return (
       <div className="settings-row settings-row--account">
@@ -48,7 +50,12 @@ export function AuthForm(props: AuthFormProps) {
     )
   }
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey}>
+    // Without routerPush/routerReplace, Clerk falls back to a real
+    // window.location navigation for its own redirects (e.g. after a
+    // completed sign-up) -- that's a hard reload in this SPA, remounting
+    // this component and losing the in-flight exchange before it can run.
+    // Routing it through react-router keeps it entirely client-side.
+    <ClerkProvider publishableKey={clerkPublishableKey} routerPush={(to) => navigate(to)} routerReplace={(to) => navigate(to, { replace: true })}>
       <AuthFormContent {...props} />
     </ClerkProvider>
   )
@@ -172,10 +179,16 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
         </div>
 
         <div className="account-form">
+          {/* Without an explicit redirect target, Clerk navigates the browser
+              to its Dashboard-configured default path once sign-in/sign-up
+              completes -- a real navigation that unmounts this component
+              before the isSignedIn effect below gets to run the exchange.
+              Redirecting back to wherever this form already is keeps that
+              handoff entirely in our own effect instead. */}
           {mode === 'sign-in' ? (
-            <SignIn routing="hash" appearance={clerkAppearance} />
+            <SignIn routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
           ) : (
-            <SignUp routing="hash" appearance={clerkAppearance} />
+            <SignUp routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
           )}
           {exchanging && <p className="settings-help">Finishing sign-in…</p>}
           {error && <p className="account-form-error">{error}</p>}
