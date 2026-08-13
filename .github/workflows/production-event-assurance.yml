@@ -46,10 +46,16 @@ jobs:
         run: npm run test:e2e:writes
         env:
           VITE_PB_URL: http://127.0.0.1:8094
+          # The Playwright "setup" project (e2e/global.setup.ts) always calls
+          # clerkSetup(), even for specs unrelated to Clerk -- test-mode pair.
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
       - name: Run read-only production catalogue smoke
         run: npx playwright test e2e/production-sky-events.spec.ts --workers=1
         env:
           RUN_PRODUCTION_SMOKE: '1'
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
       - name: Show PocketBase logs on failure
         if: failure()
         run: cat /tmp/pocketbase.log

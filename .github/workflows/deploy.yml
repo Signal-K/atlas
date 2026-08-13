@@ -35,6 +35,27 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+          # Test-mode key here, not the live one: `npm test` chains through
+          # test:e2e, and the Playwright "setup" project (e2e/global.setup.ts)
+          # calls clerkSetup(), which needs the pk_test_/sk_test_ pair to work
+          # at all -- the live instance doesn't support the test-mode OTP
+          # bypass these specs rely on. `npm test`'s build step still runs
+          # here (it's earlier in the chain than test:e2e), but its dist
+          # output gets superseded by the dedicated prod build step below --
+          # this build only exists to keep the chain intact.
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      # Rebuilds with the live Clerk key for the artifact that actually gets
+      # deployed -- `npm test` above only used the test-mode key so its
+      # e2e specs would pass.
+      - run: npm run build
+        env:
+          VITE_PB_URL: ${{ vars.VITE_PB_URL }}
+          VITE_ATLAS_MEDIA_URL: ${{ vars.VITE_ATLAS_MEDIA_URL }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+          VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
       - uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

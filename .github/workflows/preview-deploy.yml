@@ -34,6 +34,11 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+          # Test-mode key, not the live deploy key: previews shouldn't use
+          # production Clerk credentials, and the Playwright "setup" project
+          # (e2e/global.setup.ts) needs the test-mode pair to work at all.
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
       - uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
