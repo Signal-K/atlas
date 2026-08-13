@@ -59,6 +59,10 @@ export interface ObservationLogEntry {
   // -- set once the server-side vision request succeeds; absent otherwise
   // (feature not enabled, request failed, or still pending).
   aiCaption?: string
+  // Private R2 object metadata. `photo` remains the offline/local preview;
+  // the object key is intentionally not put in any public page URL.
+  photoR2Key?: string
+  photoR2Size?: number
 }
 
 export interface StreakState {

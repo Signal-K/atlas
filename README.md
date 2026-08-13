@@ -179,7 +179,7 @@ Needs, in this repo's GitHub settings:
 - Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit permission), `CLOUDFLARE_ACCOUNT_ID`.
 - Variables (Settings &rarr; Secrets and variables &rarr; Actions &rarr;
   Variables, not secrets — these end up in the public client bundle):
-  `VITE_PB_URL`, `VITE_VAPID_PUBLIC_KEY`, `VITE_POSTHOG_KEY`,
+  `VITE_PB_URL`, `VITE_ATLAS_MEDIA_URL`, `VITE_VAPID_PUBLIC_KEY`, `VITE_POSTHOG_KEY`,
   `VITE_POSTHOG_HOST`.
 - Optional repository/environment secrets for server-side analytics tooling:
   `POSTHOG_PROJECT_ID`, `POSTHOG_PERSONAL_API_KEY`. Do not add the personal
@@ -187,3 +187,30 @@ Needs, in this repo's GitHub settings:
 - A Cloudflare Pages project named `atlas` (create it once via the Cloudflare
   dashboard or `wrangler pages project create atlas`); the workflow deploys
   to it by name, it doesn't create it.
+
+### Private photo storage (R2)
+
+Journal photos are ready to move from PocketBase files to the private
+`atlas-media` R2 bucket. The app prepares a display-quality JPEG before upload
+(maximum edge 4096px at 92% quality), stores it through the `atlas-media`
+Worker, and keeps only the R2 object key/size in PocketBase. Private photo
+reads are authenticated by the Worker; public share cards use an opaque
+observation URL and the Worker checks that the record is public before serving
+anything.
+
+This is deliberately a **web master**, not an original-RAW archive: expect
+roughly 2–5MB for a modern phone photo. 10GB therefore holds about 2,000–5,000
+such uploads. Full-resolution DSLR/RAW originals should become an explicit
+paid archival option with lifecycle rules, rather than an invisible default
+cost on every check-in.
+
+One-time production activation (R2 is not enabled on the Cloudflare account
+yet):
+
+1. Enable R2 in the Cloudflare dashboard, then run `wrangler r2 bucket create atlas-media --location=weur`.
+2. Deploy `workers/atlas-media` with `wrangler deploy --config workers/atlas-media/wrangler.jsonc`; copy its `workers.dev` URL into the GitHub Actions variable `VITE_ATLAS_MEDIA_URL`.
+3. Ensure the deployment API token can deploy Workers and bind/read the R2 bucket, then deploy PocketBase with migration `20260813130000_atlas_observation_r2_media.js` before deploying the frontend.
+
+Until `VITE_ATLAS_MEDIA_URL` is set, the app deliberately retains the existing
+PocketBase attachment path, so this rollout is reversible and does not strand
+current photos.

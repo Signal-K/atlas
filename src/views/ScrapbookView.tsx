@@ -19,6 +19,8 @@ import { suggestObservationCaption } from '../lib/observationCaptionSuggestion'
 import { cityLabel, type City } from '../lib/cities'
 import { isLocalEvent } from '../lib/eventFilters'
 import type { CurrentLocation } from '../lib/currentLocation'
+import { isAtlasMediaEnabled } from '../lib/atlasMedia'
+import { optimizeObservationPhoto, PhotoOptimizationError } from '../lib/photoOptimization'
 
 // Entries made while signed out are scoped to this fixed local id so the
 // Scrapbook still works fully offline-first with no account. Once signed
@@ -60,6 +62,8 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
   const [prompt, setPrompt] = useState('What did you see tonight?')
   const [rating, setRating] = useState<AttemptRating | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
+  const [photoPreparing, setPhotoPreparing] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
   const [stampShareStatus, setStampShareStatus] = useState<{ cityName: string; message: string } | null>(null)
   const [captionIsSuggested, setCaptionIsSuggested] = useState(false)
   // Freeform entries (no draft handed off from Events/Plan) still need a
@@ -135,6 +139,8 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
   function clearDraft() {
     setRating(null)
     setPhoto(null)
+    setPhotoPreparing(false)
+    setPhotoError(null)
     setCaptionIsSuggested(false)
     setMentionedEvent(null)
     setEventQuery('')
@@ -202,6 +208,20 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
     const trimmed = note.trim()
     if (!trimmed) return
 
+    let entryPhoto = photo
+    if (photo && isAtlasMediaEnabled()) {
+      setPhotoPreparing(true)
+      setPhotoError(null)
+      try {
+        entryPhoto = await optimizeObservationPhoto(photo)
+      } catch (error) {
+        setPhotoError(error instanceof PhotoOptimizationError ? error.message : 'This photo could not be prepared for upload.')
+        setPhotoPreparing(false)
+        return
+      }
+      setPhotoPreparing(false)
+    }
+
     const entry: ObservationLogEntry = {
       id: crypto.randomUUID(),
       userId: scopeId,
@@ -220,13 +240,13 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
           : {}),
       ...(backdating ? { locationLabel: cityLabel(checkinLocation) } : {}),
       ...(rating ? { attemptRating: rating } : {}),
-      ...(photo ? { photo } : {}),
+      ...(entryPhoto ? { photo: entryPhoto } : {}),
     }
     await db.observations.add(entry)
     trackEvent('Logged observation', {
       hasTarget: draft != null || mentionedEvent != null,
       rating: rating ?? undefined,
-      hasPhoto: photo != null,
+      hasPhoto: entryPhoto != null,
       backdated: backdating,
     })
     setNote('')
@@ -420,9 +440,18 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
             </button>
           ))}
         </div>
-        <input type="file" accept="image/*" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} />
-        <button type="submit" className="scrapbook-submit">
-          Save observation
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            setPhoto(event.target.files?.[0] ?? null)
+            setPhotoError(null)
+          }}
+        />
+        {isAtlasMediaEnabled() && <p className="scrapbook-photo-storage-note">Photos are optimised to a 4096px JPEG before private upload. Originals stay on your device.</p>}
+        {photoError && <p className="scrapbook-photo-storage-error" role="alert">{photoError}</p>}
+        <button type="submit" className="scrapbook-submit" disabled={photoPreparing}>
+          {photoPreparing ? 'Preparing photo…' : 'Save observation'}
         </button>
       </form>
       {cityStamps.length > 0 && (

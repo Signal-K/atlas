@@ -1547,6 +1547,16 @@
   margin: 0 0 4px;
 }
 
+.scrapbook-photo-storage-note,
+.scrapbook-photo-storage-error {
+  margin: -2px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.scrapbook-photo-storage-note { color: var(--text); opacity: 0.76; }
+.scrapbook-photo-storage-error { color: #b42318; }
+
 .scrapbook-share-card {
   font-size: 12px;
   padding: 4px 10px;

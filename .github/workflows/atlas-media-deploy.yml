@@ -1,0 +1,25 @@
+name: Deploy Atlas media Worker
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'workers/atlas-media/**'
+  workflow_dispatch: {}
+
+concurrency:
+  group: atlas-media-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config workers/atlas-media/wrangler.jsonc

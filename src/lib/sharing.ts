@@ -9,6 +9,7 @@
 import { pb } from './pocketbase'
 import { db, type AttemptRating, type ObservationLogEntry } from './db'
 import { parsePbDate } from './pocketbaseDate'
+import { isAtlasMediaEnabled, publicObservationPhotoUrl, uploadObservationPhoto } from './atlasMedia'
 
 export interface PublicObservationCard {
   targetName?: string
@@ -37,7 +38,7 @@ export async function getPublicObservation(remoteId: string): Promise<PublicObse
       // new Date(data.observedAt) directly, which is Invalid Date in real
       // Safari on PocketBase's raw space-separated format. See pocketbaseDate.ts.
       observedAt: parsePbDate(record.observed_at).toISOString(),
-      photoUrl: record.photo ? pb.files.getURL(record, record.photo) : undefined,
+      photoUrl: record.photo_r2_key ? publicObservationPhotoUrl(record.id) : record.photo ? pb.files.getURL(record, record.photo) : undefined,
     }
   } catch {
     return null
@@ -50,11 +51,17 @@ export async function shareObservation(entry: ObservationLogEntry): Promise<stri
   if (!pb.authStore.isValid) throw new Error('Sign in to share a public card')
 
   if (entry.remoteId) {
+    if (entry.photo && !entry.photoR2Key && isAtlasMediaEnabled()) {
+      const uploaded = await uploadObservationPhoto(entry.remoteId, entry.photo)
+      await pb.collection('atlas_observations').update(entry.remoteId, { photo_r2_key: uploaded.key, photo_r2_size: uploaded.size })
+      await db.observations.update(entry.id, { photoR2Key: uploaded.key, photoR2Size: uploaded.size })
+    }
     await pb.collection('atlas_observations').update(entry.remoteId, { public: true })
     await db.observations.update(entry.id, { remoteId: entry.remoteId, isPublic: true })
     return shareUrlForRemoteId(entry.remoteId)
   }
 
+  const useR2 = Boolean(entry.photo && isAtlasMediaEnabled())
   const record = await pb.collection('atlas_observations').create({
     user: pb.authStore.record?.id,
     observed_at: entry.observedAt,
@@ -67,8 +74,12 @@ export async function shareObservation(entry: ObservationLogEntry): Promise<stri
     condition_summary: entry.conditionSummary,
     attempt_rating: entry.attemptRating,
     public: true,
-    ...(entry.photo ? { photo: entry.photo } : {}),
+    ...(!useR2 && entry.photo ? { photo: entry.photo } : {}),
   })
+  if (useR2 && entry.photo) {
+    const uploaded = await uploadObservationPhoto(record.id, entry.photo)
+    await pb.collection('atlas_observations').update(record.id, { photo_r2_key: uploaded.key, photo_r2_size: uploaded.size })
+  }
   await db.observations.update(entry.id, { remoteId: record.id, isPublic: true })
   return shareUrlForRemoteId(record.id)
 }

@@ -2,6 +2,7 @@ import { pb } from './pocketbase'
 import { db, type ObservationLogEntry, type SkyEvent } from './db'
 import { parsePbDate } from './pocketbaseDate'
 import { categoryForKind } from './eventCategories'
+import { fetchPrivateObservationPhoto, isAtlasMediaEnabled, uploadObservationPhoto } from './atlasMedia'
 
 const MELBOURNE = { lat: -37.8136, lon: 144.9631 }
 
@@ -187,6 +188,9 @@ function attemptRating(value: unknown): ObservationLogEntry['attemptRating'] {
 }
 
 async function pullObservationPhoto(record: Parameters<typeof pb.files.getURL>[0]): Promise<Blob | undefined> {
+  const r2Key = optionalText((record as { photo_r2_key?: unknown }).photo_r2_key)
+  if (r2Key && isAtlasMediaEnabled()) return fetchPrivateObservationPhoto(r2Key)
+
   const filename = optionalText((record as { photo?: unknown }).photo)
   if (!filename) return undefined
 
@@ -224,6 +228,19 @@ async function pullObservationsNow(): Promise<void> {
 
     for (const record of records) {
       const local = existingByRemoteId.get(record.id)
+      // A transient media-worker failure must not make a newly-created
+      // observation lose its local photo forever. Retry only records that
+      // were created for R2 (no legacy PocketBase attachment is present).
+      if (isAtlasMediaEnabled() && local?.photo && !optionalText(record.photo_r2_key) && !optionalText(record.photo)) {
+        try {
+          const uploaded = await uploadObservationPhoto(record.id, local.photo)
+          await pb.collection('atlas_observations').update(record.id, { photo_r2_key: uploaded.key, photo_r2_size: uploaded.size })
+          record.photo_r2_key = uploaded.key
+          record.photo_r2_size = uploaded.size
+        } catch {
+          // Keep the local image and retry on a later Journal sync.
+        }
+      }
       // Re-fetch cached non-images from earlier versions. Do not let a bad
       // response become permanent just because IndexedDB happens to contain
       // a Blob already.
@@ -241,6 +258,8 @@ async function pullObservationsNow(): Promise<void> {
         ...(optionalText(record.condition_summary) ? { conditionSummary: record.condition_summary } : {}),
         ...(attemptRating(record.attempt_rating) ? { attemptRating: attemptRating(record.attempt_rating) } : {}),
         ...(optionalText(record.ai_caption) ? { aiCaption: record.ai_caption } : {}),
+        ...(optionalText(record.photo_r2_key) ? { photoR2Key: record.photo_r2_key } : {}),
+        ...(Number.isFinite(Number(record.photo_r2_size)) && Number(record.photo_r2_size) > 0 ? { photoR2Size: Number(record.photo_r2_size) } : {}),
         ...(record.public === true ? { isPublic: true } : {}),
         ...(downloadedPhoto ? { photo: downloadedPhoto } : cachedPhoto ? { photo: cachedPhoto } : {}),
       }
@@ -346,8 +365,10 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
   if (!pb.authStore.isValid || !navigator.onLine) return null
 
   try {
-    // The SDK auto-converts to multipart/form-data when a value is a
-    // File/Blob, so `photo` can be passed straight through when present.
+    // R2 keeps uploaded image bytes out of the shared PocketBase volume. The
+    // older PocketBase file path stays as a graceful fallback until a media
+    // Worker URL is configured in the deployed client.
+    const useR2 = Boolean(entry.photo && isAtlasMediaEnabled())
     const record = await pb.collection('atlas_observations').create({
       user: pb.authStore.record?.id,
       observed_at: entry.observedAt,
@@ -359,9 +380,22 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
       location_label: entry.locationLabel,
       condition_summary: entry.conditionSummary,
       attempt_rating: entry.attemptRating,
-      ...(entry.photo ? { photo: entry.photo } : {}),
+      ...(!useR2 && entry.photo ? { photo: entry.photo } : {}),
     })
     await db.observations.update(entry.id, { remoteId: record.id })
+    if (useR2 && entry.photo) {
+      try {
+        const uploaded = await uploadObservationPhoto(record.id, entry.photo)
+        await pb.collection('atlas_observations').update(record.id, {
+          photo_r2_key: uploaded.key,
+          photo_r2_size: uploaded.size,
+        })
+        await db.observations.update(entry.id, { photoR2Key: uploaded.key, photoR2Size: uploaded.size })
+      } catch {
+        // The journal entry and its offline photo are safe. pullObservations
+        // will retry this R2 upload on a later signed-in Journal visit.
+      }
+    }
     return record.id
   } catch {
     // Stays local-only; the user still sees it in their Scrapbook.

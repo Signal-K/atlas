@@ -1,0 +1,17 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "atlas-media",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-13",
+  "workers_dev": true,
+  "r2_buckets": [
+    {
+      "binding": "ATLAS_MEDIA",
+      "bucket_name": "atlas-media"
+    }
+  ],
+  "vars": {
+    "POCKETBASE_URL": "https://signal-k-starsailors.fly.dev",
+    "ALLOWED_ORIGINS": "https://youratlas.cc,https://atlas-4xz.pages.dev,http://localhost:5173,http://127.0.0.1:5173"
+  }
+}
