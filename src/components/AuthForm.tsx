@@ -1,64 +1,72 @@
-import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { authErrorMessage, requestPasswordReset, signIn, signUp } from '../lib/auth'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ClerkProvider, SignIn, SignUp, useAuth as useClerkAuth } from '@clerk/react'
+import type { RecordModel } from 'pocketbase'
 import { trackEvent } from '../lib/analytics'
 import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
-import { pb } from '../lib/pocketbase'
+import { pb, pocketBaseUrl } from '../lib/pocketbase'
 import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
 
 export interface AuthFormProps {
   defaultMode?: 'sign-in' | 'sign-up'
   source: string
   intro?: ReactNode
-  // Only relevant on sign-up: how many locally-saved records (from before
-  // this account existed) got merged in. Settings uses this to show
-  // SignupWelcomeBeat; other callers can ignore it.
+  // Only relevant when the Clerk exchange reports a brand-new PocketBase
+  // account: how many locally-saved records (from before this account
+  // existed) got merged in. Settings uses this to show SignupWelcomeBeat;
+  // other callers can ignore it.
   onSignedUp?: (mergedCount: number) => void
   onSignedIn?: () => void
   onModeChange?: (mode: 'sign-in' | 'sign-up') => void
 }
 
-function Spinner() {
-  return (
-    <svg className="account-form-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.25" />
-      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
-  )
-}
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined
 
-function EyeIcon({ crossed }: { crossed: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" />
-      <circle cx="12" cy="12" r="3" />
-      {crossed && <path d="M3.5 3.5 20.5 20.5" />}
-    </svg>
-  )
-}
+// Suppresses each Clerk widget's own "Sign up"/"Sign in" footer link --
+// KES-188 deliberately replaced a hard-to-notice mode-switch link with
+// prominent tabs, so this form owns mode switching alone. Two live
+// switchers with no state link between them (Clerk's footer link swaps its
+// own internal view; it has no way to also flip our `mode` tab) would just
+// reintroduce that bug in a different spot.
+const clerkAppearance = { elements: { footerAction: { display: 'none' } } }
 
 // Shared sign-in/sign-up form, used both embedded in Settings (signed-out
-// state) and as the full-screen AuthGate shown before onboarding. The mode
-// switcher used to be a single small text link below the submit button --
-// easy to fire off "Create account" without noticing, which for a first-
-// time visitor typing an email their family of apps already recognizes
-// meant a brand new account got created where a login was intended (no
-// server-side "this email already exists in a different context" signal
-// is available client-side, so the only real fix is making the mode itself
-// impossible to miss).
-export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp, onSignedIn, onModeChange }: AuthFormProps) {
+// state) and as the full-screen AuthGate shown before onboarding. Renders
+// Clerk's own <SignIn>/<SignUp> for credential verification (KES-189) --
+// this component's own job is just the mode tabs and the handoff once
+// Clerk reports a session: exchange it for a PocketBase token via
+// POST /auth/clerk-exchange (backend/clerk_exchange.go) and store that in
+// pb.authStore exactly like the old password-based signIn/signUp did, so
+// every pb.authStore.record?.id read and PocketBase collection rule
+// downstream keeps working unchanged.
+export function AuthForm(props: AuthFormProps) {
+  if (!clerkPublishableKey) {
+    return (
+      <div className="settings-row settings-row--account">
+        {props.intro}
+        <p className="account-form-error">Sign-in is not configured on this deployment.</p>
+      </div>
+    )
+  }
+  return (
+    <ClerkProvider publishableKey={clerkPublishableKey}>
+      <AuthFormContent {...props} />
+    </ClerkProvider>
+  )
+}
+
+function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, onSignedIn, onModeChange }: AuthFormProps) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>(defaultMode)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [exchanging, setExchanging] = useState(false)
+  const { isLoaded, isSignedIn, getToken } = useClerkAuth()
+  // Clerk reports isSignedIn as soon as its own widget completes; this
+  // guards the exchange call to run exactly once per session rather than
+  // once per re-render, and lets a failed exchange be retried by flipping
+  // back to false.
+  const exchangeStartedRef = useRef(false)
   // Only fire "started" once per mount, on the visitor's first interaction
-  // with the form -- not on every keystroke.
+  // with the widget -- not on every keystroke.
   const startedRef = useRef(false)
-  const [resetSent, setResetSent] = useState(false)
-  const [resetError, setResetError] = useState<string | null>(null)
-  const emailId = useId()
-  const passwordId = useId()
 
   function trackFormStarted() {
     if (startedRef.current) return
@@ -70,73 +78,76 @@ export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp, o
     if (nextMode === mode) return
     setMode(nextMode)
     setError(null)
-    setResetSent(false)
-    setResetError(null)
     onModeChange?.(nextMode)
   }
 
-  async function handleForgotPassword() {
-    setResetError(null)
-    if (!email) {
-      setResetError('Enter your email above first.')
-      return
-    }
-    try {
-      await requestPasswordReset(email)
-      trackEvent('Password reset requested', { source })
-      setResetSent(true)
-    } catch (err) {
-      setResetError(authErrorMessage(err, 'Could not send reset email.'))
-    }
-  }
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || exchangeStartedRef.current) return
+    exchangeStartedRef.current = true
+    void exchangeClerkSession()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- exchangeClerkSession closes over mode/source, which only matter for analytics on the one run this effect triggers
+  }, [isLoaded, isSignedIn])
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  async function exchangeClerkSession() {
     setError(null)
-    setBusy(true)
+    setExchanging(true)
     trackEvent('Account form submitted', { source, mode })
     try {
-      if (mode === 'sign-in') {
-        await signIn(email, password)
-        const demoAccess = await redeemStoredDemoAccessCode()
+      const clerkToken = await getToken()
+      if (!clerkToken) throw new Error('No Clerk session token available.')
+
+      const response = await fetch(`${pocketBaseUrl}/auth/clerk-exchange`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: clerkToken }),
+      })
+      const payload = (await response.json().catch(() => null)) as
+        | { token: string; record: RecordModel; meta?: { created?: boolean } }
+        | { message?: string }
+        | null
+      if (!response.ok || !payload || !('token' in payload)) {
+        throw new Error((payload as { message?: string } | null)?.message ?? 'Could not complete sign-in.')
+      }
+      pb.authStore.save(payload.token, payload.record)
+
+      const demoAccess = await redeemStoredDemoAccessCode()
+      const created = payload.meta?.created ?? false
+      if (!created) {
         trackEvent('Sign in completed', { source, demoAccess })
         onSignedIn?.()
-      } else {
-        const { created } = await signUp(email, password)
-        const demoAccess = await redeemStoredDemoAccessCode()
-        const userId = pb.authStore.record?.id as string | undefined
-        const result = userId
-          ? await mergeLocalDataIntoAccount(userId)
-          : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, targetTaps: 0, equipmentChoice: 0, total: 0 }
-        trackEvent(created ? 'Sign up completed' : 'Sign up matched existing account', {
-          source,
-          mergedCount: result.total,
-          demoAccess,
-        })
-        trackEvent('Merge result', {
-          source,
-          favourites: result.favourites,
-          watchlist: result.watchlist,
-          observations: result.observations,
-          cameraPresets: result.cameraPresets,
-          targetTaps: result.targetTaps,
-          equipmentChoice: result.equipmentChoice,
-          total: result.total,
-          demoAccess,
-        })
-        onSignedUp?.(result.total)
+        return
       }
+
+      const userId = pb.authStore.record?.id as string | undefined
+      const result = userId
+        ? await mergeLocalDataIntoAccount(userId)
+        : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, targetTaps: 0, equipmentChoice: 0, total: 0 }
+      trackEvent('Sign up completed', { source, mergedCount: result.total, demoAccess })
+      trackEvent('Merge result', {
+        source,
+        favourites: result.favourites,
+        watchlist: result.watchlist,
+        observations: result.observations,
+        cameraPresets: result.cameraPresets,
+        targetTaps: result.targetTaps,
+        equipmentChoice: result.equipmentChoice,
+        total: result.total,
+        demoAccess,
+      })
+      onSignedUp?.(result.total)
     } catch (err) {
-      const fallback = mode === 'sign-in' ? 'Sign-in failed — check your email and password.' : 'Sign-up failed.'
-      setError(authErrorMessage(err, fallback))
+      setError(err instanceof Error ? err.message : 'Something went wrong finishing sign-in.')
       trackEvent(mode === 'sign-in' ? 'Sign in failed' : 'Sign up failed', { source })
+      // Allow retrying (e.g. the exchange endpoint was briefly unreachable)
+      // without needing to sign out of Clerk and back in.
+      exchangeStartedRef.current = false
     } finally {
-      setBusy(false)
+      setExchanging(false)
     }
   }
 
   return (
-    <div className="settings-row settings-row--account">
+    <div className="settings-row settings-row--account" onFocusCapture={trackFormStarted}>
       {intro}
       <div className="account-form-shell">
         <div className="account-mode-tabs" role="tablist" aria-label="Sign in or create an account">
@@ -160,60 +171,15 @@ export function AuthForm({ defaultMode = 'sign-in', source, intro, onSignedUp, o
           </button>
         </div>
 
-        <form className="account-form" onSubmit={handleSubmit} onFocus={trackFormStarted}>
-          <div className="account-form-field">
-            <label htmlFor={emailId}>Email</label>
-            <input
-              id={emailId}
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </div>
-          <div className="account-form-field">
-            <label htmlFor={passwordId}>Password</label>
-            <div className="account-form-password">
-              <input
-                id={passwordId}
-                type={showPassword ? 'text' : 'password'}
-                autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-                placeholder={mode === 'sign-in' ? 'Your password' : 'At least 8 characters'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={8}
-                required
-              />
-              <button
-                type="button"
-                className="account-form-password-toggle"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                aria-pressed={showPassword}
-                tabIndex={-1}
-              >
-                <EyeIcon crossed={showPassword} />
-              </button>
-            </div>
-          </div>
-
-          <div className="account-form-actions">
-            <button type="submit" className="account-form-submit" disabled={busy}>
-              {busy && <Spinner />}
-              {mode === 'sign-in' ? 'Sign in' : 'Create account'}
-            </button>
-            {mode === 'sign-in' && (
-              <button type="button" className="account-form-switch" onClick={handleForgotPassword}>
-                Forgot password?
-              </button>
-            )}
-          </div>
+        <div className="account-form">
+          {mode === 'sign-in' ? (
+            <SignIn routing="hash" appearance={clerkAppearance} />
+          ) : (
+            <SignUp routing="hash" appearance={clerkAppearance} />
+          )}
+          {exchanging && <p className="settings-help">Finishing sign-in…</p>}
           {error && <p className="account-form-error">{error}</p>}
-          {resetSent && <p className="settings-help settings-status--positive">Password reset link sent to {email}.</p>}
-          {resetError && <p className="account-form-error">{resetError}</p>}
-        </form>
+        </div>
       </div>
     </div>
   )
