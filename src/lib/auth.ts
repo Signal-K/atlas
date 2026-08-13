@@ -211,11 +211,9 @@ export async function syncOnboardingToAccount(): Promise<void> {
   }
 }
 
-// Surfaces PocketBase's actual per-field validation message (e.g. "email
-// already exists", the real password rule) instead of a fixed guess --
-// sign-in/sign-up were previously showing the same hardcoded string for
-// every failure, which misled users when the real cause was unrelated
-// (e.g. this account already existing) to the message shown.
+// Surfaces PocketBase's actual per-field validation message instead of a
+// fixed guess. Sign-in/sign-up errors are handled by Clerk's own widgets;
+// this is only used for PocketBase-side failures now, e.g. delete-account.
 export function authErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ClientResponseError) {
     const fieldErrors = Object.values(error.response?.data ?? {}) as Array<{ message?: string }>
