@@ -62,11 +62,17 @@ async function mockSkyEvents(page: Page) {
 
 async function openFullMoonEntry(page: Page) {
   await page.getByRole('button', { name: 'Full Moon' }).click()
+  // EntryDetailView is a separate lazy-loaded chunk (see EventsPage.tsx) --
+  // the default 5s expect timeout is occasionally too tight for its
+  // dynamic import + eval under CI/parallel-worker CPU contention, causing
+  // a flake where the click itself succeeds but this assertion times out
+  // before the chunk finishes mounting. Match the 15s timeout already used
+  // elsewhere in this suite for the same class of post-navigation wait.
   const equipmentPrompt = page.locator('.dt-equipment-prompt')
   if (await equipmentPrompt.isVisible().catch(() => false)) {
     await equipmentPrompt.locator('.dt-equipment-skip').click()
   }
-  await expect(page.getByRole('heading', { name: 'Full Moon' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Full Moon' })).toBeVisible({ timeout: 15_000 })
 }
 
 test.beforeEach(async ({ page }) => {
