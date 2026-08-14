@@ -27,6 +27,28 @@
   --dt-bg-page: var(--atlas-paper);
 }
 
+/* Above NavShell's own 900px breakpoint (src/ui/ui.css) the icon rail
+   (.nav-shell-nav, 88px wide including its border) is a real sidebar, not
+   a bottom tab bar -- `inset: 0` above was covering it entirely, so
+   opening any event detail made desktop navigation disappear until the
+   overlay closed again. Only pull the left edge in on wide viewports;
+   mobile keeps the true full-screen takeover.
+   .dt-entry/.dt-entry-missing (mobile.css) are themselves independently
+   `position: fixed; inset: 0` -- fixed positioning escapes to the
+   viewport regardless of the parent .mobile-shell's own offset, so both
+   need the same override or the sidebar reappears for one repaint then
+   vanishes again the moment EntryDetailView mounts its actual content. */
+@media (min-width: 901px) {
+  .mobile-shell.dt-entry-overlay {
+    left: 88px;
+  }
+
+  .mobile-shell.dt-entry-overlay .dt-entry,
+  .mobile-shell.dt-entry-overlay .dt-entry-missing {
+    left: 88px;
+  }
+}
+
 /* The underlying Events/Plan list keeps its own status line live (KES-179)
    so a quick action taken inside the entry-detail overlay still shows a
    confirmation once the overlay closes. While the overlay is open it sits

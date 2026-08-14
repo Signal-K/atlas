@@ -4737,6 +4737,14 @@
   margin-top: 4px;
 }
 
+/* Full ink weight (not the faded category-tag color) and a touch larger --
+   this is the one place the event's actual date lives, so it needs to read
+   as a date at a glance, not blend into the category/difficulty tags. */
+.dt-entry-date {
+  color: var(--dt-ink);
+  font-size: 11px;
+}
+
 .dt-entry-facts {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;

@@ -67,6 +67,14 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
   }, [subject.id])
   const duskLabel = formatTimeLabel(subject.darknessWindow.astronomicalDuskAt ?? subject.darknessWindow.civilDuskAt)
   const dawnLabel = formatTimeLabel(subject.darknessWindow.astronomicalDawnAt ?? subject.darknessWindow.civilDawnAt)
+  // The category/difficulty subtitle line (e.g. "Eclipse · Moderate ·
+  // Phone-friendly") never said *when* -- the only date anywhere on this
+  // page was buried mid-sentence in the "Why look tonight" body copy. Events
+  // browsed from Events/Plan are routinely days or weeks out, so surface it
+  // up front next to the title instead.
+  const dateLabel = subject.bestTimeIso
+    ? new Date(subject.bestTimeIso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+    : null
 
   async function handleToggleWatch() {
     if (!actions?.onToggleWatch) return
@@ -110,6 +118,12 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
           <div>
             <h2 className="dt-entry-title">{subject.title}</h2>
             <div className="dt-entry-subtitle">
+              {dateLabel && (
+                <>
+                  <span className="dt-entry-date">{dateLabel}</span>
+                  <span aria-hidden="true">·</span>
+                </>
+              )}
               {subject.subtitleLine}
               {subject.isGuide && <span className="dt-feed-guide-tag">GUIDE</span>}
             </div>
