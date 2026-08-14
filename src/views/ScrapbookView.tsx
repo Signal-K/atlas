@@ -419,7 +419,7 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
                   ))}
                 </div>
               )}
-              {!dateEventsLoading && dateEvents.length === 0 && <span>No named Atlas event here — this can still be a date-only check-in.</span>}
+              {!dateEventsLoading && dateEvents.length === 0 && <span>No named Atlas event here.</span>}
             </div>
           </details>
         )}
