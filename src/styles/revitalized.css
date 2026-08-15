@@ -216,11 +216,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 @media (max-width: 900px) {
   .nav-shell { padding-bottom: var(--tab-bar-height); }
-  .nav-shell-nav { position: fixed; inset: auto 0 0; width: 100%; height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom)); padding: 0 8px env(safe-area-inset-bottom); background: color-mix(in srgb, var(--atlas-paper) 92%, transparent); backdrop-filter: blur(18px); }
+  .nav-shell-nav { position: fixed; inset: auto 0 0; width: 100%; height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom)); padding: 0 8px env(safe-area-inset-bottom); background: color-mix(in srgb, var(--atlas-paper) 92%, transparent); backdrop-filter: blur(18px); z-index: 210; }
   .nav-shell-item { height: 52px; border-radius: 13px; }
   .nav-shell-item-active { background: rgba(23, 110, 156, .13); color: var(--atlas-sky-deep); box-shadow: none; }
   .nav-shell-main { padding: 24px 16px; }
-  .nav-shell-topbar { padding: 14px 16px; }
+  .nav-shell-topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   .page-header h1 { font-size: 36px; }
   .mobile-shell .dt-hub, .mobile-shell .dt-page { width: 100%; }
   /* .dt-hub carries a negative bottom margin tuned for the old in-flow/sticky
