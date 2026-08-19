@@ -11,6 +11,9 @@ import { trackEvent } from '../../lib/analytics'
 import { useAuth } from '../../lib/auth'
 import { useEventPointing } from '../../components/mobile/EventPointing'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
+import { MobileIcon } from '../../components/mobile/MobileIcon'
+import { categoryForKind } from '../../lib/eventCategories'
+import { KIND_LABELS } from '../../widgets/EventRow'
 import { eventLookaheadDays, forecastLookaheadDays } from '../../lib/entitlementLimits'
 import { buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import { CITIES, cityLabel, type City } from '../../lib/cities'
@@ -163,7 +166,14 @@ export function EventsView({
   const moonPct = Math.round(moonIlluminationPctAt(new Date()))
   const isBrowsingElsewhere = browseCity != null
   const todayKey = localDateKey(new Date().toISOString(), viewLocation.timeZone)
-  const todayEventCount = (events ?? []).filter((event) => localDateKey(event.startsAt, viewLocation.timeZone) === todayKey).length
+  const todaysEvents = useMemo(
+    () =>
+      (events ?? [])
+        .filter((event) => localDateKey(event.startsAt, viewLocation.timeZone) === todayKey)
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
+    [events, viewLocation.timeZone, todayKey],
+  )
+  const todayEventCount = todaysEvents.length
   const todayAdvisory = advisory.find((day) => day.date === todayKey) ?? null
 
   const majorEvents = useMemo(() => {
@@ -205,46 +215,96 @@ export function EventsView({
     })
   }
 
+  const hasNotificationsOrFlagships = reminders.length > 0 || majorEvents.length > 0
+
   return (
     <div className="dt-page">
       <div className="dt-masthead">
         <span className="dt-kicker">Today · {viewLocation.name}</span>
         <h2 className="dt-h2">Tonight&rsquo;s sky</h2>
-        <div className="dt-today-stats" aria-label="Today’s sky statistics">
-          <span><strong>{events === null ? '—' : todayEventCount}</strong> today</span>
-          <span><strong>{todayAdvisory?.cloudCoverPct == null ? '—' : `${100 - Math.round(todayAdvisory.cloudCoverPct)}%`}</strong> clear</span>
-          <span><strong>{moonPct}%</strong> moon</span>
-          <span><strong>{events === null ? '—' : events.length}</strong> upcoming</span>
-        </div>
       </div>
 
-      {reminders.length > 0 && (
-        <div className="dt-notification-strip" role="status">
-          <strong>{reminders.length} reminder{reminders.length === 1 ? '' : 's'} armed</strong>
-          <span>Atlas will get you ready before the next saved event.</span>
-        </div>
+      {/* 1. Today's events -- what's actually on tonight, before any numbers
+          or notices, since that's the one thing worth a glance every visit. */}
+      <section className="dt-section" aria-label="Today’s events">
+        {todaysEvents.length === 0 ? (
+          <p className="dt-empty-hint">Nothing on the schedule for tonight yet.</p>
+        ) : (
+          <div className="dt-today-list">
+            {todaysEvents.map((event) => {
+              const eventCategory = categoryForKind(event.kind)
+              return (
+                <button type="button" className="dt-feed-row dt-feed-row--listing" key={event.id} onClick={() => selectEvent(event)}>
+                  <span className="dt-feed-swatch" style={eventCategory ? { color: eventCategory.accent } : undefined}>
+                    {event.imageUrl ? <img src={event.imageUrl} alt="" loading="lazy" /> : <MobileIcon name={eventCategory?.icon ?? 'zap'} />}
+                  </span>
+                  <span className="dt-feed-body">
+                    <span className="dt-feed-kind">{KIND_LABELS[event.kind] ?? event.kind}</span>
+                    <span className="dt-feed-headline">{event.title}</span>
+                  </span>
+                  <span className="dt-feed-time">
+                    {new Date(event.startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: viewLocation.timeZone })}
+                  </span>
+                  <span className="dt-feed-chevron">
+                    <MobileIcon name="chevron" />
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      <div className="dt-seam" />
+
+      {/* 2. Today's stats. */}
+      <div className="dt-today-stats" aria-label="Today’s sky statistics">
+        <span><strong>{events === null ? '—' : todayEventCount}</strong> today</span>
+        <span><strong>{todayAdvisory?.cloudCoverPct == null ? '—' : `${100 - Math.round(todayAdvisory.cloudCoverPct)}%`}</strong> clear</span>
+        <span><strong>{moonPct}%</strong> moon</span>
+        <span><strong>{events === null ? '—' : events.length}</strong> upcoming</span>
+      </div>
+
+      {/* 3. Notifications & flagships -- armed reminders plus any eclipse or
+          meteor shower coming up soon, grouped under one heading. */}
+      {hasNotificationsOrFlagships && (
+        <>
+          <div className="dt-seam" />
+          <section className="dt-section" aria-label="Notifications and flagship events">
+            <div className="dt-section-heading">
+              <span className="dt-kicker">Notifications &amp; flagships</span>
+            </div>
+            {reminders.length > 0 && (
+              <div className="dt-notification-strip" role="status">
+                <strong>{reminders.length} reminder{reminders.length === 1 ? '' : 's'} armed</strong>
+                <span>Atlas will get you ready before the next saved event.</span>
+              </div>
+            )}
+            {majorEvents.length > 0 && (
+              <div className="dt-major-events">
+                {majorEvents.map((event) => {
+                  const nowIso = new Date().toISOString()
+                  const inProgress = event.startsAt <= nowIso && event.endsAt >= nowIso
+                  return (
+                    <button type="button" className="dt-major-event-card is-featured" key={event.id} onClick={() => selectEvent(event)}>
+                      {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" />}
+                      <div className="dt-major-event-body">
+                        <span className="dt-major-event-badge">
+                          {event.kind === 'eclipse' ? 'ECLIPSE' : 'METEOR SHOWER'} · {inProgress ? 'HAPPENING NOW' : daysUntil(event.startsAt)}
+                        </span>
+                        <strong>{event.title}</strong>
+                        <span className="dt-major-event-desc">{event.description}</span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </>
       )}
 
-      {majorEvents.length > 0 && (
-        <section className="dt-major-events">
-          {majorEvents.map((event) => {
-            const nowIso = new Date().toISOString()
-            const inProgress = event.startsAt <= nowIso && event.endsAt >= nowIso
-            return (
-              <button type="button" className="dt-major-event-card is-featured" key={event.id} onClick={() => selectEvent(event)}>
-                {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" />}
-                <div className="dt-major-event-body">
-                  <span className="dt-major-event-badge">
-                    {event.kind === 'eclipse' ? 'ECLIPSE' : 'METEOR SHOWER'} · {inProgress ? 'HAPPENING NOW' : daysUntil(event.startsAt)}
-                  </span>
-                  <strong>{event.title}</strong>
-                  <span className="dt-major-event-desc">{event.description}</span>
-                </div>
-              </button>
-            )
-          })}
-        </section>
-      )}
+      <div className="dt-seam" />
 
       <div className="dt-browse-location">
         {hasPremium ? (
@@ -283,6 +343,8 @@ export function EventsView({
       </div>
 
       <div className="dt-seam" />
+
+      {/* 4. All events. */}
       <div className="dt-feed-heading">
         <span className="dt-kicker">All events</span>
         <p>Every upcoming event, in time order.</p>
