@@ -22,6 +22,9 @@ test.describe('PocketBase-backed write actions', () => {
 
       await page.getByRole('tab', { name: 'Create account' }).click()
       await fillClerkSignUp(page, email, password)
+      // Settings intentionally opens on Location. Account remains available
+      // as a tab after sign-up without taking over the initial screen.
+      await page.getByRole('tab', { name: 'Account' }).click()
       // Clerk's own "Verify your email" step also renders the email as
       // plain text, so `getByText(email)` alone would pass before the
       // exchange has actually run -- wait for Settings' own post-exchange

@@ -278,7 +278,7 @@ export function EventsView({
             )}
           </div>
         ) : (
-          <p className="dt-browse-location-locked">Sky Pass unlocks browsing events in other locations — you&rsquo;re seeing {city.name}.</p>
+          <p className="dt-browse-location-locked">Sky Pass unlocks browsing events in other locations.</p>
         )}
       </div>
 

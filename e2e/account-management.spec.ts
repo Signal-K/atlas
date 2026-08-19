@@ -49,6 +49,7 @@ test.beforeEach(async ({ page }) => {
   await seedSignedInUser(page)
   await mockAuthRefresh(page)
   await page.goto('/app/settings')
+  await page.getByRole('tab', { name: 'Account' }).click()
   await expect(page.locator('.settings-account-email')).toHaveText(E2E_EMAIL)
 })
 
