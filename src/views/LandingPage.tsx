@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import atlasMobilePreview from '../../media/app-screenshots/04-mobile-today-hub.png'
+import atlasMobilePreview from '../../media/app-screenshots/06-mobile-events-hero.png'
 import { trackEvent } from '../lib/analytics'
 import './LandingPage.css'
 
@@ -128,20 +128,20 @@ export function LandingPage({ authenticatedEmail, isMobile, onEnter }: LandingPa
             <div className="atlas-preview-orbit atlas-preview-orbit--one" aria-hidden="true" />
             <div className="atlas-preview-orbit atlas-preview-orbit--two" aria-hidden="true" />
             <div className="atlas-preview-note atlas-preview-note--weather">
-              <span>Cloud</span>
-              <strong>18%</strong>
-              <small>Clear</small>
+              <span>Moon</span>
+              <strong>41%</strong>
+              <small>Waxing</small>
             </div>
             <div className="atlas-preview-note atlas-preview-note--target">
               <span>Next up</span>
-              <strong>Full Moon</strong>
-              <small>12:48 AM</small>
+              <strong>Lunar Eclipse</strong>
+              <small>9 days out</small>
             </div>
             <div className="atlas-phone-frame">
               <div className="atlas-phone-speaker" aria-hidden="true" />
               <img
                 src={atlasMobilePreview}
-                alt="Atlas Today screen showing a live sky map, the next target, cloud cover and darkness"
+                alt="Atlas Events screen showing tonight's featured sky event, upcoming events, and category filters"
               />
             </div>
           </div>

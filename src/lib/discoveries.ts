@@ -122,8 +122,8 @@ export async function listDiscoveries(): Promise<Discovery[]> {
     filters: record.filters || undefined,
     // Normalized here, once, rather than as raw PocketBase's space-
     // separated format -- every downstream `new Date(discovery.created)`
-    // (CommunityDigestSection, FeedView, DigestWidget) would otherwise get
-    // Invalid Date in real Safari. See pocketbaseDate.ts.
+    // (FeedView, DigestWidget) would otherwise get Invalid Date in real
+    // Safari. See pocketbaseDate.ts.
     created: parsePbDate(record.created).toISOString(),
     voteCount: countByDiscovery.get(record.id) ?? 0,
     hasVoted: votedByCurrentUser.has(record.id),

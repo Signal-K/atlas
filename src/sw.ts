@@ -17,8 +17,16 @@ self.addEventListener('activate', (event) => {
       // after this worker takes over. Navigate controlled windows once so
       // entitlement fixes and new feature access become active immediately
       // instead of requiring the user to discover that a reload is needed.
+      //
+      // A *focused* window is skipped: client.navigate() is a hard reload
+      // with no prompt, and a deploy can land while someone is mid-journal-
+      // entry or filling in a form -- silently wiping that is worse than
+      // running slightly-stale JS until they next background this tab,
+      // switch tabs, or reload it themselves.
       const windows = await self.clients.matchAll({ type: 'window' })
-      await Promise.all(windows.map((client) => ('navigate' in client ? client.navigate(client.url) : Promise.resolve())))
+      await Promise.all(
+        windows.map((client) => ('navigate' in client && !client.focused ? client.navigate(client.url) : Promise.resolve())),
+      )
     })(),
   )
 })

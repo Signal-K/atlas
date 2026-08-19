@@ -158,7 +158,11 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
       // reminders, and separately best-effort upgrades to synced server
       // push if already signed in -- never throws just for being a guest,
       // unlike calling subscribeToPush() directly.
-      const granted = await ensureNotificationPermission()
+      // This is a direct, deliberate retry the user just tapped -- unlike
+      // Events/Plan/the Deep-sky planner's passive calls, it should always
+      // actually attempt the browser prompt again rather than honor an
+      // earlier passive dismissal.
+      const granted = await ensureNotificationPermission({ force: true })
       if (!granted) {
         // Notification.permission still reflects whatever
         // requestPermission() actually resolved to. 'denied' means someone

@@ -40,19 +40,18 @@ test('captures product screenshots for the Atlas state-of-product doc', async ({
   await expect(firstPlan.locator('.camera-preset-card')).toBeVisible()
   await capture(page, '03-first-plan-expanded.png')
 
+  // The old Today hub (and its always-on full sky map) was removed for
+  // being overloaded and poorly designed -- Events is the app's home
+  // screen now. There's no single global "open sky map" trigger to shoot a
+  // sky-map-dialog screenshot from anymore; EventPointing's compass overlay
+  // is reached per-event via useEventPointing (see EventsView/PlanView) if
+  // that shot is wanted back later.
   await page.setViewportSize({ width: 390, height: 844 })
   await mockDeviceOrientation(page)
-  await page.goto('/app/today')
+  await page.goto('/app/events')
   await prepareScreenshotMode(page)
-  await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toBeVisible({ timeout: 15_000 })
-  await capture(page, '04-mobile-today-hub.png')
-
-  await page.getByRole('button', { name: 'Open full sky map' }).click()
-  const map = page.getByRole('dialog', { name: 'Live sky map' })
-  await expect(map).toBeVisible()
-  await expect(map.locator('.mobile-map-overlay-body .sky-map-canvas')).toBeVisible()
-  await expect.poll(() => canvasHasRenderedSky(page, '.mobile-map-overlay-body .sky-map-canvas')).toBe(true)
-  await capture(page, '05-mobile-sky-map.png')
+  await expect(page.getByRole('heading', { name: "Tonight's sky, reported." })).toBeVisible({ timeout: 15_000 })
+  await capture(page, '06-mobile-events-hero.png')
 })
 
 async function capture(page: Page, filename: string) {
@@ -176,30 +175,3 @@ async function mockDeviceOrientation(page: Page) {
   })
 }
 
-async function canvasHasRenderedSky(page: Page, selector: string) {
-  return page.locator(selector).evaluate((canvasElement) => {
-    const canvas = canvasElement as HTMLCanvasElement
-    const context = canvas.getContext('2d')
-    if (!context || canvas.width === 0 || canvas.height === 0) return false
-
-    const sampleWidth = Math.min(canvas.width, 120)
-    const sampleHeight = Math.min(canvas.height, 120)
-    const startX = Math.floor((canvas.width - sampleWidth) / 2)
-    const startY = Math.floor((canvas.height - sampleHeight) / 2)
-    const pixels = context.getImageData(startX, startY, sampleWidth, sampleHeight).data
-    let litPixels = 0
-    const colors = new Set<string>()
-
-    for (let i = 0; i < pixels.length; i += 16) {
-      const r = pixels[i]
-      const g = pixels[i + 1]
-      const b = pixels[i + 2]
-      const a = pixels[i + 3]
-      if (a > 0 && (r > 8 || g > 8 || b > 8)) litPixels += 1
-      colors.add(`${r >> 4}-${g >> 4}-${b >> 4}-${a >> 6}`)
-      if (colors.size > 8 && litPixels > 80) return true
-    }
-
-    return colors.size > 8 && litPixels > 80
-  })
-}

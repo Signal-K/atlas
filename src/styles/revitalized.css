@@ -182,20 +182,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background: color-mix(in srgb, var(--atlas-sky) 16%, transparent);
   color: var(--atlas-sky-deep);
 }
-.mobile-shell .dt-hub, .mobile-shell .dt-page { max-width: 1120px; margin: 0 auto; }
-.mobile-shell .dt-stitch { display: none; }
-/* .dt-starfield-bg is a decorative background-image, not a standalone
-   element -- HubView applies it as a second class directly on the main
-   `.dt-hub` content container (see HubView.tsx), not on a separate overlay.
-   `display: none` here previously hid the entire Dashboard/Hub whenever
-   that class was present -- only the dotted background pattern itself
-   should be suppressed. */
-.mobile-shell .dt-starfield-bg { background-image: none; }
-.mobile-shell .dt-briefing-head, .mobile-shell .dt-section-head { border-color: var(--atlas-line); }
+.mobile-shell .dt-page { max-width: 1120px; margin: 0 auto; }
+.mobile-shell .dt-section-head { border-color: var(--atlas-line); }
 .mobile-shell .dt-h2, .mobile-shell .mobile-sheet-title { color: var(--atlas-ink); font-family: var(--font-serif); letter-spacing: -.035em; }
 .mobile-shell .dt-kicker, .mobile-shell .dt-section-eyebrow { color: var(--atlas-sky); }
-.mobile-shell .dt-map-preview { border-radius: 22px; overflow: hidden; border: 1px solid var(--atlas-line); box-shadow: 0 18px 40px rgba(25, 47, 64, .12); }
-.mobile-shell .dt-widget-cell { padding: 16px; }
 .mobile-shell .dt-major-event-card { overflow: hidden; }
 /* Major/featured events (Perseids-peak-tonight, an eclipse this week) get
    the gold accent reserved for highlights elsewhere, plus a heavier border
@@ -216,19 +206,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 @media (max-width: 900px) {
   .nav-shell { padding-bottom: var(--tab-bar-height); }
-  .nav-shell-nav { position: fixed; inset: auto 0 0; width: 100%; height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom)); padding: 0 8px env(safe-area-inset-bottom); background: color-mix(in srgb, var(--atlas-paper) 92%, transparent); backdrop-filter: blur(18px); z-index: 210; }
+  .nav-shell-nav { position: fixed; inset: auto 0 0; width: 100%; height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px)); padding: 0 calc(env(safe-area-inset-right, 0px) + 8px) env(safe-area-inset-bottom, 0px) calc(env(safe-area-inset-left, 0px) + 8px); background: color-mix(in srgb, var(--atlas-paper) 92%, transparent); backdrop-filter: blur(18px); z-index: 210; }
   .nav-shell-item { height: 52px; border-radius: 13px; }
   .nav-shell-item-active { background: rgba(23, 110, 156, .13); color: var(--atlas-sky-deep); box-shadow: none; }
   .nav-shell-main { padding: 24px 16px; }
   .nav-shell-topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   .page-header h1 { font-size: 36px; }
-  .mobile-shell .dt-hub, .mobile-shell .dt-page { width: 100%; }
-  /* .dt-hub carries a negative bottom margin tuned for the old in-flow/sticky
-     nav bar; now that the nav is `position: fixed` above, that margin no
-     longer just closes a flow gap -- it lets trailing content (the sky map
-     widget) sit under the fixed bar. Pad the box back out so real content
-     clears it. */
-  .mobile-shell .dt-hub { padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 20px); }
+  .mobile-shell .dt-page { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }

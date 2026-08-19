@@ -1159,6 +1159,29 @@
 }
 
 @media (max-width: 430px) {
+  /* On a real phone, this hero's copy block used to eat the entire first
+     viewport (header + a wide dark gap + heading + lede + CTAs) before the
+     phone mockup showing what Atlas actually looks like ever appeared --
+     someone had to scroll to see the product at all. Tightening the
+     vertical rhythm here (padding/gaps/margins only, nothing about the
+     desktop/tablet layout above 430px) pulls the mockup up into view. */
+  .atlas-landing-hero {
+    padding: 28px 0 40px;
+    gap: 32px;
+  }
+
+  .atlas-landing-lede {
+    margin-top: 16px;
+  }
+
+  .atlas-auth-note {
+    margin-top: 16px;
+  }
+
+  .atlas-landing-hero-actions {
+    margin-top: 20px;
+  }
+
   .atlas-landing-brand {
     font-size: 21px;
   }

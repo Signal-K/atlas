@@ -25,8 +25,14 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           { src: 'favicon.png', sizes: '64x64', type: 'image/png' },
-          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          // Without a maskable variant, Android applies its own safe-zone
+          // mask to the plain icon above and can crop the moon logo
+          // unpredictably depending on the launcher's icon shape. This one
+          // keeps the artwork inside the ~80% safe-zone circle on a solid
+          // background so any mask shape crops background, never the logo.
+          { src: 'pwa-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       injectManifest: {

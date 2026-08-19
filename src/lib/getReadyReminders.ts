@@ -189,11 +189,30 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   })
 }
 
-export async function ensureNotificationPermission(): Promise<boolean> {
+// Events, Plan, and the Deep-sky planner each call ensureNotificationPermission
+// independently the moment someone taps "remind me" -- none of them ask the
+// user first, it's just a side effect of arming a reminder. Once Chrome/iOS
+// answer 'granted' or 'denied' this is already a no-op (see below), but a
+// dismissed/ignored native prompt leaves Notification.permission at
+// 'default' forever, and every one of those ambient call sites would retry
+// requestPermission() on every single future tap -- reads exactly like
+// "asking every time" even though each call is individually harmless. This
+// remembers a dismissal across reloads so passive call sites stop retrying
+// after the first miss; OnboardingFlow's explicit "Enable notifications"
+// button is a deliberate retry and passes `force` to bypass it.
+const PASSIVE_PROMPT_DISMISSED_KEY = 'atlas-notification-passive-prompt-dismissed'
+
+export async function ensureNotificationPermission(options?: { force?: boolean }): Promise<boolean> {
   if (!('Notification' in window)) return false
   if (Notification.permission === 'denied') return false
+  if (Notification.permission === 'default' && !options?.force && localStorage.getItem(PASSIVE_PROMPT_DISMISSED_KEY)) {
+    return false
+  }
   const granted = Notification.permission === 'granted' || (await Notification.requestPermission()) === 'granted'
-  if (!granted) return false
+  if (!granted) {
+    localStorage.setItem(PASSIVE_PROMPT_DISMISSED_KEY, '1')
+    return false
+  }
 
   if (pb.authStore.isValid && isPushSupported()) {
     try {

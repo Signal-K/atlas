@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AuthForm } from './AuthForm'
 
 interface AuthGateProps {
@@ -11,8 +12,15 @@ interface AuthGateProps {
 // past this (onboarding, the app shell) renders until useAuth()'s `user`
 // is set. Reuses the onboarding overlay's own styling for visual
 // continuity with the step that follows it.
+//
+// This used to have no way out at all: no close button, no guest mode, and
+// in a standalone/installed PWA there's no browser chrome to fall back on
+// either -- someone who didn't want to sign in right now was simply stuck.
+// "Back to Atlas" at least returns to the landing page rather than trapping
+// them here.
 export function AuthGate({ defaultMode, onSignedIn, onSignedUp }: AuthGateProps) {
   const [mode, setMode] = useState(defaultMode)
+  const navigate = useNavigate()
 
   return (
     <div className="onboarding-overlay">
@@ -26,6 +34,9 @@ export function AuthGate({ defaultMode, onSignedIn, onSignedUp }: AuthGateProps)
           onSignedIn={onSignedIn}
           onSignedUp={onSignedUp}
         />
+        <button type="button" className="onboarding-skip" onClick={() => navigate('/')}>
+          Back to Atlas
+        </button>
       </div>
     </div>
   )

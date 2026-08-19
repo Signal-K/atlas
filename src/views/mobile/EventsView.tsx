@@ -23,8 +23,8 @@ import { daysUntil } from '../../lib/eventFormat'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
 
-// Matches HubView's window -- how far out an eclipse/meteor shower still
-// counts as "coming up" rather than just another list entry.
+// How far out an eclipse/meteor shower still counts as "coming up" rather
+// than just another list entry.
 const MAJOR_EVENT_WINDOW_DAYS = 14
 
 export function EventsView({

@@ -445,9 +445,14 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
             </button>
           ))}
         </div>
+        <label className="scrapbook-photo-input" htmlFor="scrapbook-photo">
+          {photo ? photo.name : 'Add a photo'}
+        </label>
         <input
+          id="scrapbook-photo"
           type="file"
           accept="image/*"
+          hidden
           onChange={(event) => {
             setPhoto(event.target.files?.[0] ?? null)
             setPhotoError(null)
