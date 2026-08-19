@@ -36,40 +36,6 @@ function seedSignedInUser(page: Page, entitled: boolean) {
   )
 }
 
-async function mockPlanEvent(page: Page) {
-  await page.route('**/api/collections/sky_events/records**', async (route) => {
-    const now = new Date()
-    const startsAt = new Date(now.getTime() + 2 * 3_600_000)
-    const endsAt = new Date(now.getTime() + 3 * 3_600_000)
-
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        items: [
-          {
-            id: 'e2e-entitlement-plan-event',
-            kind: 'moon_phase',
-            target: 'moon',
-            title: 'Full Moon',
-            description: 'The Moon reaches its fullest point tonight.',
-            content: 'The Moon reaches its fullest point tonight.',
-            starts_at: startsAt.toISOString(),
-            ends_at: endsAt.toISOString(),
-            latitude: 0,
-            longitude: 0,
-            updated: now.toISOString(),
-          },
-        ],
-        page: 1,
-        perPage: 500,
-        totalItems: 1,
-        totalPages: 1,
-      }),
-    })
-  })
-}
-
 test('refreshes Sky Pass access after webhook-updated entitlement', async ({ page }) => {
   await seedSignedInUser(page, false)
 
@@ -90,15 +56,9 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
 
   await page.goto('/app/settings')
 
+  await page.getByRole('tab', { name: 'Account' }).click()
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible({ timeout: 10_000 })
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan' }).click()
-  await expect(page.getByRole('tab', { name: 'Plan workspace' })).toBeVisible()
-  const planSections = page.getByLabel('Plan sections')
-  await expect(planSections.getByRole('button', { name: /Explore/ })).toBeVisible()
-  await expect(planSections.getByRole('button', { name: /Ready/ })).toBeVisible()
-  await expect(planSections.getByRole('button', { name: /Watch/ })).toBeVisible()
-  await expect(planSections.getByRole('button', { name: /Calendar/ })).toBeVisible()
-  await expect(page.getByText('Unlock Planning with Sky Pass')).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan' })).toHaveCount(0)
 })
 
 test('trusts a paid reconciliation result when auth-refresh returns a stale entitlement field', async ({ page }) => {
@@ -126,12 +86,10 @@ test('trusts a paid reconciliation result when auth-refresh returns a stale enti
       }),
     })
   })
-  await mockPlanEvent(page)
+  await page.goto('/app/settings')
 
-  await page.goto('/app/plan')
-
-  await expect(page.getByRole('tab', { name: 'Plan workspace' })).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Account' }).click()
+  await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com', { timeout: 10_000 })
   await expect(page.getByRole('button', { name: 'Sky Pass active', exact: true })).toBeVisible()
 })
 
@@ -157,6 +115,7 @@ test('desktop settings shows one page heading and grouped account status', async
   await page.goto('/app/settings')
 
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toHaveCount(1)
+  await page.getByRole('tab', { name: 'Account' }).click()
   await expect(page.locator('.settings-section').filter({ has: page.getByRole('heading', { name: 'Account', exact: true }) })).toBeVisible()
   await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com')
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toHaveClass(/settings-status--pill/)
@@ -189,11 +148,8 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
   await page.route(`${PB_URL}/checkout/polar`, async (route) => {
     await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'checkout unavailable' }) })
   })
-  await mockPlanEvent(page)
-
-  await page.goto('/app/plan')
-  await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
-  await expect(page.getByText('One purchase works on desktop and mobile when you sign in with the same email.')).toBeVisible()
+  await page.goto('/app/settings')
+  await page.getByRole('tab', { name: 'Account' }).click()
   await expect(page.getByRole('button', { name: 'Already paid? Check purchase' })).toBeVisible()
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
@@ -229,6 +185,7 @@ test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailabl
   })
 
   await page.goto('/app/settings')
+  await page.getByRole('tab', { name: 'Account' }).click()
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
   await expect(page).toHaveURL(`${APP_URL}/fallback-checkout`)

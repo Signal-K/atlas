@@ -28,19 +28,13 @@ function App() {
   const { user, entitlementRefreshing } = useAuth()
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const {
-    hasClickedIntoApp,
-    onboardingFlowDismissed,
     showOnboardingFlow,
     markEntered,
     handleSignedIn,
     handleSignedUp,
     dismissOnboardingFlow,
   } = useOnboardingGate({ user, isAppRoute })
-  const { location, currentLocation, manualCity, setManualLocation } = useAppLocation({
-    isAppRoute,
-    hasClickedIntoApp,
-    onboardingFlowDismissed,
-  })
+  const { location, currentLocation, manualCity, setManualLocation } = useAppLocation()
   const motion = useParallax()
   const isMobile = useIsMobile()
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { AccountSettings } from '../views/AccountSettings'
+import { AskAtlas } from '../components/AskAtlas'
 import { ThemeSettings } from '../components/ThemeSettings'
 import { LocationSettings } from '../components/LocationSettings'
 import { PushSettings } from '../components/PushSettings'
@@ -21,13 +23,16 @@ export interface SettingsPageProps {
   accountDefaultMode?: 'sign-in' | 'sign-up'
 }
 
-const SECTIONS: Array<{ id: string; title: string }> = [
-  { id: 'account', title: 'Account' },
-  { id: 'devices', title: 'Device & camera setup' },
-  { id: 'appearance', title: 'Appearance' },
-  { id: 'location', title: 'Location & sensors' },
-  { id: 'notifications', title: 'Notifications' },
-  { id: 'leaderboard', title: 'Streak leaderboard' },
+type SettingsSection = 'location' | 'notifications' | 'appearance' | 'devices' | 'ask' | 'leaderboard' | 'account'
+
+const SECTIONS: Array<{ id: SettingsSection; title: string; shortTitle: string }> = [
+  { id: 'location', title: 'Location & sensors', shortTitle: 'Location' },
+  { id: 'notifications', title: 'Notifications', shortTitle: 'Alerts' },
+  { id: 'appearance', title: 'Appearance', shortTitle: 'Appearance' },
+  { id: 'devices', title: 'Device & camera setup', shortTitle: 'Camera' },
+  { id: 'ask', title: 'Ask Atlas', shortTitle: 'Ask Atlas' },
+  { id: 'leaderboard', title: 'Streak leaderboard', shortTitle: 'Community' },
+  { id: 'account', title: 'Account', shortTitle: 'Account' },
 ]
 
 export function SettingsPage({
@@ -41,38 +46,72 @@ export function SettingsPage({
   accountDefaultMode,
 }: SettingsPageProps) {
   const { user } = useAuth()
+  const [activeSection, setActiveSection] = useState<SettingsSection>('location')
+  const availableSections = SECTIONS.filter((section) => section.id !== 'devices' || Boolean(user))
+  const section = availableSections.find((candidate) => candidate.id === activeSection) ?? availableSections[0]
+
+  function contentFor(id: SettingsSection) {
+    switch (id) {
+      case 'account':
+        return <AccountSettings defaultMode={accountDefaultMode} source="settings" />
+      case 'devices':
+        return user ? <DeviceSettings deviceModels={user.deviceModels} entitled={user.entitled} /> : null
+      case 'appearance':
+        return <ThemeSettings />
+      case 'location':
+        return (
+          <LocationSettings
+            locationStatus={locationStatus}
+            requestLocation={requestLocation}
+            currentLocation={currentLocation}
+            manualCity={manualCity}
+            setManualLocation={setManualLocation}
+            needsMotionPermission={needsMotionPermission}
+            requestMotionPermission={requestMotionPermission}
+          />
+        )
+      case 'notifications':
+        return <PushSettings />
+      case 'leaderboard':
+        return <LeaderboardSettings />
+      case 'ask':
+        return <AskAtlas entitled={Boolean(user?.entitled)} />
+    }
+  }
 
   return (
-    <div className="page">
-      <header className="page-header">
+    <div className="page settings-page">
+      <header className="page-header settings-page-header">
         <h1>Settings</h1>
-        <p>Account, appearance, location, notifications, and leaderboard preferences.</p>
+        <p>Choose what you want to manage. Your account is available here, without taking over the page.</p>
       </header>
 
-      {SECTIONS.map((section) => {
-        if (section.id === 'devices' && !user) return null
-        return (
-          <Card key={section.id} className="settings-section">
-            <h2 className="settings-section-title">{section.title}</h2>
-            {section.id === 'account' && <AccountSettings defaultMode={accountDefaultMode} source="settings" />}
-            {section.id === 'devices' && user && <DeviceSettings deviceModels={user.deviceModels} entitled={user.entitled} />}
-            {section.id === 'appearance' && <ThemeSettings />}
-            {section.id === 'location' && (
-              <LocationSettings
-                locationStatus={locationStatus}
-                requestLocation={requestLocation}
-                currentLocation={currentLocation}
-                manualCity={manualCity}
-                setManualLocation={setManualLocation}
-                needsMotionPermission={needsMotionPermission}
-                requestMotionPermission={requestMotionPermission}
-              />
-            )}
-            {section.id === 'notifications' && <PushSettings />}
-            {section.id === 'leaderboard' && <LeaderboardSettings />}
-          </Card>
-        )
-      })}
+      <div className="settings-section-nav" role="tablist" aria-label="Settings sections">
+        {availableSections.map((item) => (
+          <button
+            type="button"
+            key={item.id}
+            role="tab"
+            aria-selected={section.id === item.id}
+            className={`settings-section-tab${section.id === item.id ? ' is-active' : ''}`}
+            onClick={() => setActiveSection(item.id)}
+          >
+            {item.shortTitle}
+          </button>
+        ))}
+      </div>
+
+      {section.id === 'ask' ? (
+        <div className="settings-ask-section">
+          <h2 className="settings-section-title">{section.title}</h2>
+          {contentFor(section.id)}
+        </div>
+      ) : (
+        <Card className="settings-section settings-active-section">
+          <h2 className="settings-section-title">{section.title}</h2>
+          {contentFor(section.id)}
+        </Card>
+      )}
     </div>
   )
 }

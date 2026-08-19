@@ -162,6 +162,9 @@ export function EventsView({
 
   const moonPct = Math.round(moonIlluminationPctAt(new Date()))
   const isBrowsingElsewhere = browseCity != null
+  const todayKey = localDateKey(new Date().toISOString(), viewLocation.timeZone)
+  const todayEventCount = (events ?? []).filter((event) => localDateKey(event.startsAt, viewLocation.timeZone) === todayKey).length
+  const todayAdvisory = advisory.find((day) => day.date === todayKey) ?? null
 
   const majorEvents = useMemo(() => {
     const windowEnd = Date.now() + MAJOR_EVENT_WINDOW_DAYS * 86_400_000
@@ -205,12 +208,22 @@ export function EventsView({
   return (
     <div className="dt-page">
       <div className="dt-masthead">
-        <span className="dt-kicker">Sky dispatch</span>
-        <h2 className="dt-h2">Tonight&rsquo;s sky, reported.</h2>
-        <div className="dt-masthead-readout">
-          {events ? events.length : 0} UPCOMING &middot; NEXT {lookaheadDays >= 365 ? 'ALL' : lookaheadDays} DAYS &middot; MOON {moonPct}%
+        <span className="dt-kicker">Today · {viewLocation.name}</span>
+        <h2 className="dt-h2">Tonight&rsquo;s sky</h2>
+        <div className="dt-today-stats" aria-label="Today’s sky statistics">
+          <span><strong>{events === null ? '—' : todayEventCount}</strong> today</span>
+          <span><strong>{todayAdvisory?.cloudCoverPct == null ? '—' : `${100 - Math.round(todayAdvisory.cloudCoverPct)}%`}</strong> clear</span>
+          <span><strong>{moonPct}%</strong> moon</span>
+          <span><strong>{events === null ? '—' : events.length}</strong> upcoming</span>
         </div>
       </div>
+
+      {reminders.length > 0 && (
+        <div className="dt-notification-strip" role="status">
+          <strong>{reminders.length} reminder{reminders.length === 1 ? '' : 's'} armed</strong>
+          <span>Atlas will get you ready before the next saved event.</span>
+        </div>
+      )}
 
       {majorEvents.length > 0 && (
         <section className="dt-major-events">
@@ -270,6 +283,10 @@ export function EventsView({
       </div>
 
       <div className="dt-seam" />
+      <div className="dt-feed-heading">
+        <span className="dt-kicker">All events</span>
+        <p>Every upcoming event, in time order.</p>
+      </div>
       <SkyEventBrowser events={events} onSelect={selectEvent} />
       {pointingOverlay}
     </div>

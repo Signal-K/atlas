@@ -4,13 +4,12 @@ import { seedSignedInUser } from './support/auth'
 // KES-131: basic coverage for the new AppShell/NavShell replacing
 // Sidebar/MobileShell. This doesn't assert on area content yet -- each
 // area is still a placeholder page until its own rebuild phase lands --
-// it asserts the one-shell nav is present, all five routes render, and
+// it asserts the one-shell nav is present, the primary routes render, and
 // the shell is responsive (side nav vs bottom tab bar) without pulling in
 // the old mobile.css palette.
 
 const AREAS = [
   { path: '/app/events', heading: 'Events' },
-  { path: '/app/plan', heading: 'Plan' },
   { path: '/app/journal', heading: 'Journal' },
   { path: '/app/ask', heading: 'Ask Atlas' },
   { path: '/app/settings', heading: 'Settings' },
@@ -28,6 +27,11 @@ for (const area of AREAS) {
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
   })
 }
+
+test('legacy Plan links redirect to Events', async ({ page }) => {
+  await page.goto('/app/plan')
+  await expect(page).toHaveURL('/app/events')
+})
 
 test('nav links switch between areas without a full reload', async ({ page }) => {
   await page.goto('/app/events')
@@ -61,6 +65,11 @@ test('narrow viewport renders the nav as a bottom tab bar, not a side nav', asyn
   // Bottom tab bar: full viewport width, pinned near the bottom.
   expect(box?.width).toBeGreaterThan(300)
   expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(700)
+  // The bar must remain a single 64px control row. A previous combination
+  // of sticky flex and fixed safe-area rules doubled its height and left the
+  // icons stranded in the upper half.
+  expect(box?.height).toBeLessThan(80)
+  await expect(nav.getByRole('link')).toHaveCount(3)
 })
 
 test('wide viewport renders the nav as a side nav, not a bottom tab bar', async ({ page }) => {

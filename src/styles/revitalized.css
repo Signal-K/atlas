@@ -67,6 +67,7 @@ body {
 }
 
 ::selection { background: rgba(23, 110, 156, .22); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 button, input, select, textarea { font-family: inherit; }
 button { transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
 button:not(:disabled):hover { transform: translateY(-1px); }
@@ -93,6 +94,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .page-header { display: grid; gap: 6px; padding-bottom: 21px; border-bottom: 1px solid var(--atlas-line); }
 .page-header h1 { font: 700 clamp(32px, 4vw, 52px)/.98 var(--font-serif); letter-spacing: -.055em; }
 .page-header p { max-width: 60ch; color: var(--atlas-ink-soft); font-size: 15px; }
+.settings-page { gap: 18px; }
+.settings-page-header { padding-bottom: 14px; }
+.settings-section-nav { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
+.settings-section-nav::-webkit-scrollbar { display: none; }
+.settings-section-tab { flex: 0 0 auto; min-height: 38px; padding: 7px 13px; border: 1px solid var(--atlas-line); border-radius: 999px; background: var(--atlas-card); color: var(--atlas-ink-soft); font-size: 13px; font-weight: 700; cursor: pointer; }
+.settings-section-tab.is-active { border-color: var(--atlas-sky); background: var(--atlas-sky); color: #fff; }
+.settings-active-section { min-height: 180px; }
+.settings-ask-section { display: grid; gap: 10px; }
 
 /* Shared cards, controls, forms and account/paywall surfaces */
 .ui-card, .settings-panel, .settings-group, .paywall-card, .ask-atlas, .dark-sky-view, .deep-sky-planner,
@@ -205,9 +214,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .mobile-shell .dt-feed-headline, .mobile-shell .dt-major-event-body h3 { color: var(--atlas-ink); }
 
 @media (max-width: 900px) {
-  .nav-shell { padding-bottom: var(--tab-bar-height); }
-  .nav-shell-nav { position: fixed; inset: auto 0 0; width: 100%; height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px)); padding: 0 calc(env(safe-area-inset-right, 0px) + 8px) env(safe-area-inset-bottom, 0px) calc(env(safe-area-inset-left, 0px) + 8px); background: color-mix(in srgb, var(--atlas-paper) 92%, transparent); backdrop-filter: blur(18px); z-index: 210; }
-  .nav-shell-item { height: 52px; border-radius: 13px; }
+  .nav-shell { padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px)); }
+  /* One bounded implementation for the bottom bar. The previous flex/sticky
+     rules and this fixed/safe-area rule were both active, allowing the bar
+     to reflow to roughly twice its intended height on mobile Safari. */
+  .nav-shell-nav {
+    position: fixed;
+    inset: auto 0 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
+    min-height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
+    max-height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
+    padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    overflow: hidden;
+    background: color-mix(in srgb, var(--atlas-paper) 92%, transparent);
+    backdrop-filter: blur(18px);
+    z-index: 210;
+  }
+  /* Keep the selected treatment as a compact control around the icon/label,
+     rather than a differently-sized coloured third of the whole bar. */
+  .nav-shell-item { align-self: center; justify-self: center; width: min(calc(100% - 16px), 112px); height: 48px; min-height: 0; padding: 4px; border-radius: 13px; }
   .nav-shell-item-active { background: rgba(23, 110, 156, .13); color: var(--atlas-sky-deep); box-shadow: none; }
   .nav-shell-main { padding: 24px 16px; }
   .nav-shell-topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }

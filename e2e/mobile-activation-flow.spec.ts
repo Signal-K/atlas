@@ -94,33 +94,13 @@ test('mobile signed-out visitor is blocked by the auth gate before reaching the 
   await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0)
 })
 
-test('mobile signed-in free user must checkout before using Plan', async ({ page }) => {
+test('mobile primary navigation keeps discovery focused', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
   await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan', exact: true }).click()
-
-  await expect(page.getByRole('heading', { name: 'Unlock Planning with Sky Pass' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Get the Sky Pass' })).toBeVisible()
-  await expect(page.getByLabel('Plan sections')).toHaveCount(0)
-})
-
-test('mobile entitled user can compare lower light pollution sites and routes', async ({ page }) => {
-  await seedSignedInUser(page, { entitled: true })
-  await page.goto('/app/events')
-
-  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan', exact: true }).click()
-  await page.getByRole('button', { name: /Dark sites/i }).click()
-
-  await expect(page.getByText(/Sky near .*:/)).toBeVisible()
-  const route = page.getByRole('link', { name: 'Open Drive Route' }).first()
-  if (await route.count()) {
-    await expect(page.getByRole('button', { name: 'Apple' }).first()).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Google' }).first()).toBeVisible()
-    await expect(route).toHaveAttribute('href', /dirflg=d|travelmode=driving/)
-  } else {
-    await expect(page.getByText(/No quick trip is in the catalog yet|won.t suggest a flight/)).toBeVisible()
-  }
+  const nav = page.getByRole('navigation', { name: 'Primary' })
+  await expect(nav.getByRole('link')).toHaveCount(3)
+  await expect(nav.getByRole('link', { name: 'Plan', exact: true })).toHaveCount(0)
+  await expect(nav.getByRole('link', { name: 'Ask Atlas', exact: true })).toHaveCount(0)
 })

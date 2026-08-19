@@ -270,7 +270,7 @@ export function WeekConditionsStrip({
         <p className="feed-nearby-alert">
           Darker sky nearby: <strong>{nearbyDarkerSite.name}</strong> is {Math.round(nearbyDarkerSite.distanceKm)} km away
           (estimated sky darkness {skyQualityScore(nearbyDarkerSite.bortleClass)}/5 vs {hereLightPollution.skyQualityScore}/5 here).{' '}
-          <Link to="/app/plan" onClick={() => trackEvent('Nearby darker sky alert clicked', { site: nearbyDarkerSite.id })}>
+          <Link to="/app/events" onClick={() => trackEvent('Nearby darker sky alert clicked', { site: nearbyDarkerSite.id })}>
             Plan a trip
           </Link>
         </p>

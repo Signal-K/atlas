@@ -11,13 +11,12 @@ export interface Coordinates {
 }
 
 const CACHE_KEY = 'atlas-location-cache'
-// Matches the maximumAge passed to getCurrentPosition below: within this
-// window we trust a cached fix instead of re-asking the browser, since a
-// fresh getCurrentPosition() call re-triggers the OS-level location prompt
-// on every page load/reload even when permission was already granted --
-// most visibly on macOS, where the prompt caps "remember" at one day and
-// otherwise reappears on every mount of this hook.
-const CACHE_TTL_MS = 3_600_000
+// A location is context, not a per-page-load permission request. Keep the
+// last rounded fix for a month and refresh only after the person explicitly
+// asks from onboarding or Settings. This stops installed PWAs repeatedly
+// surfacing the browser's OS-level prompt while still avoiding precise
+// long-term location storage.
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1_000
 
 interface CachedFix {
   lat: number
@@ -90,7 +89,7 @@ export function useLocationSeed({ autoRequest = true }: { autoRequest?: boolean 
         requestInFlight.current = false
         setStatus('denied')
       },
-      { timeout: 8000, maximumAge: 3_600_000 },
+      { timeout: 8000, maximumAge: CACHE_TTL_MS },
     )
   }, [])
 

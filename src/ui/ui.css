@@ -257,6 +257,9 @@
     order: 2;
     width: 100%;
     height: var(--tab-bar-height);
+    min-height: var(--tab-bar-height);
+    max-height: var(--tab-bar-height);
+    flex: none;
     flex-direction: row;
     justify-content: space-around;
     align-items: center;
@@ -273,6 +276,7 @@
     bottom: 0;
     top: auto;
     overflow-y: visible;
+    box-sizing: border-box;
   }
 
   .nav-shell-item {
@@ -283,6 +287,7 @@
     padding: var(--space-2);
     font-size: var(--text-xs);
     border-radius: 0;
+    min-width: 0;
   }
 
   .nav-shell-label {
