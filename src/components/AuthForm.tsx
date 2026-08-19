@@ -28,13 +28,30 @@ const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
 // switchers with no state link between them (Clerk's footer link swaps its
 // own internal view; it has no way to also flip our `mode` tab) would just
 // reintroduce that bug in a different spot.
+//
+// Clerk's <SignUp> also ships as its own fully-chromed card (background,
+// border, shadow, fixed max-width, its own "Create your account" header) --
+// dropped straight into account-form-shell's 360px column, that second card
+// doesn't share a coordinate system with the AuthGate/Settings card around
+// it, so it renders as a visually separate, misaligned sheet stacked on top
+// of ours instead of just being the form fields. Stripping the card/header
+// chrome here makes it lay out as plain fields inside our own card, the
+// same way the hand-rolled ClerkSignInPanel already does for sign-in.
 const clerkAppearance = {
   elements: {
+    rootBox: { width: '100%' },
+    cardBox: { width: '100%', boxShadow: 'none' },
+    card: { width: '100%', boxShadow: 'none', border: 'none', padding: 0, backgroundColor: 'transparent' },
+    header: { display: 'none' },
+    footer: { display: 'none' },
     footerAction: { display: 'none' },
     // Authentication providers remain configured in Clerk, but Atlas is
-    // temporarily email-and-password only. Hide the whole block so adding a
-    // provider there cannot put Google or Apple back into this UI.
+    // temporarily email-and-password only. Hide the whole block, plus the
+    // "or" divider Clerk renders between it and the email/password fields,
+    // so adding a provider there cannot put Google or Apple back into this
+    // UI and no orphaned divider is left behind.
     socialButtonsRoot: { display: 'none' },
+    dividerRow: { display: 'none' },
   },
 }
 
