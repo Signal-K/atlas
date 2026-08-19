@@ -130,11 +130,21 @@ npx playwright test
 
 Playwright is fully headless by default. Network-dependent astronomy, weather,
 geocoding, compass, and account scenarios use deterministic test fixtures.
+The normal suite never starts PocketBase or creates a superuser. The optional
+write-action check uses an already-provisioned, non-production Atlas backend:
+
+```bash
+E2E_WRITE_PB_URL=http://localhost:8094 npm run test:e2e:writes
+```
+
+It is intentionally not part of push/deploy CI. Do not point it at production:
+it creates and removes a Clerk test user and writes a smoke observation.
 
 ## GitHub Actions
 
 CI and deploys (`.github/workflows/ci.yml`, `deploy.yml`, `preview-deploy.yml`)
-run on every push/PR — see [Deploy target](#deploy-target) below.
+run on every push/PR without creating an empty PocketBase instance or asking
+for a new superuser — see [Deploy target](#deploy-target) below.
 
 Three scheduled workflows run against the shared PocketBase instance
 directly (not through the app runtime, and not gated on CI passing):
@@ -170,9 +180,9 @@ default branch — not `main`), using
 [`cloudflare/pages-action`](https://github.com/cloudflare/pages-action).
 `.github/workflows/preview-deploy.yml` does the same for every push to any
 other branch, landing on a Cloudflare Pages preview URL instead of
-production. Both run the full test suite (`npm test`, including a real
-local PocketBase for the write-action E2E) before deploying — see
-`ci.yml`/`deploy.yml` for the exact gate.
+production. Both run the full deterministic test suite (`npm test`) before
+deploying. Write-action E2E is explicit and only targets an already-provisioned
+non-production backend — see `ci.yml`/`deploy.yml` for the exact gate.
 
 Needs, in this repo's GitHub settings:
 

@@ -3,6 +3,11 @@ import { defineConfig, devices } from '@playwright/test'
 
 const e2ePort = process.env.PLAYWRIGHT_PORT || '5173'
 const e2eBaseURL = `http://localhost:${e2ePort}`
+// Write-action coverage is deliberately opt-in. It must use an existing,
+// provisioned non-production PocketBase service; Playwright must never create
+// a blank PocketBase data directory (and therefore a new-superuser setup
+// screen) merely to run this repository's normal test suite.
+const writeTestPbUrl = process.env.E2E_WRITE_PB_URL
 
 // STS-333: end-to-end coverage for the anonymous first-plan journey. Runs
 // against a real Vite dev server talking to whatever PocketBase VITE_PB_URL
@@ -50,7 +55,7 @@ export default defineConfig({
     url: e2eBaseURL,
     reuseExistingServer: false,
     env: {
-      VITE_PB_URL: process.env.VITE_PB_URL || 'http://localhost:8094',
+      VITE_PB_URL: writeTestPbUrl || process.env.VITE_PB_URL || 'http://localhost:8094',
       VITE_POLAR_CHECKOUT_URL: process.env.VITE_POLAR_CHECKOUT_URL || `${e2eBaseURL}/fallback-checkout`,
     },
     timeout: 30_000,

@@ -3,10 +3,13 @@ import { setupClerkTestingToken } from '@clerk/testing/playwright'
 import { clerkTestEmail, deleteClerkTestUser, fillClerkSignUp, readPocketBaseAuth } from './support/clerk'
 
 test.describe('PocketBase-backed write actions', () => {
-  test.skip(!process.env.E2E_WRITE_TESTS, 'Requires a local PocketBase backend with Atlas collections')
+  test.skip(
+    !process.env.E2E_WRITE_TESTS || !process.env.E2E_WRITE_PB_URL,
+    'Requires E2E_WRITE_PB_URL for an existing, non-production PocketBase service with Atlas collections.',
+  )
 
   test('signs up and writes an observation to local PocketBase', async ({ page, request }) => {
-    const pbUrl = process.env.VITE_PB_URL || 'http://localhost:8094'
+    const pbUrl = process.env.E2E_WRITE_PB_URL!
     const email = clerkTestEmail('write-actions')
     const password = `Atlas-e2e-${Date.now()}!`
     const note = `PocketBase write smoke ${Date.now()}`
