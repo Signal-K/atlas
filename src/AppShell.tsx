@@ -4,11 +4,37 @@ import { EventsIcon, JournalIcon, SettingsIcon } from './ui/icons'
 import { EventsPage } from './pages/EventsPage'
 import { JournalPage, type JournalPageProps } from './pages/JournalPage'
 import { AskAtlasPage } from './pages/AskAtlasPage'
-import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
-import type { AuthUser } from './lib/auth'
+import type { LocationStatus } from './lib/geo'
+import type { City } from './lib/cities'
 import type { CurrentLocation } from './lib/currentLocation'
+import type { AuthUser } from './lib/auth'
 import type { ObservationDraft } from './lib/observationDraft'
 import './ui/ui.css'
+
+// SettingsPage (the horizontal-tab-strip layout) was removed outright --
+// see KES-131 follow-up -- rather than reworked in place, so its removal
+// shows as its own commit. A mobile-first replacement lands in the next
+// commit; this placeholder only keeps /app/settings routable in between.
+export interface SettingsPageProps {
+  locationStatus: LocationStatus
+  requestLocation: () => void
+  currentLocation: CurrentLocation
+  manualCity: City | null
+  setManualLocation: (city: City | null) => void
+  needsMotionPermission: boolean
+  requestMotionPermission: () => void
+  accountDefaultMode?: 'sign-in' | 'sign-up'
+}
+
+function SettingsPage(_props: SettingsPageProps) {
+  return (
+    <div className="page">
+      <header className="page-header">
+        <h1>Settings</h1>
+      </header>
+    </div>
+  )
+}
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/app/events', label: 'Events', icon: <EventsIcon /> },
