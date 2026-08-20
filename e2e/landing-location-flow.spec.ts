@@ -239,10 +239,12 @@ test('location switching stays reachable via Settings after onboarding', async (
   await page.goto('/app/today')
   await expect(page).toHaveURL('/app/events')
 
+  await page.getByRole('button', { name: 'Menu' }).click()
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Settings' }).click()
   await expect(page).toHaveURL('/app/settings')
   await expect(page.getByPlaceholder('Search city, region, or country')).toHaveValue('London, England, United Kingdom')
 
+  await page.getByRole('button', { name: 'Menu' }).click()
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Events' }).click()
   await expect(page).toHaveURL('/app/events')
 })
