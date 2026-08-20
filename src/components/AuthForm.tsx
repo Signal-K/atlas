@@ -45,6 +45,31 @@ const clerkAppearance = {
     header: { display: 'none' },
     footer: { display: 'none' },
     footerAction: { display: 'none' },
+    main: { width: '100%', padding: 0 },
+    form: { width: '100%', gap: '28px' },
+    formField: { width: '100%', gap: '10px' },
+    formFieldLabel: { fontSize: '20px', fontWeight: '500', color: 'var(--text-h)' },
+    formFieldInput: {
+      width: '100%',
+      minHeight: '76px',
+      boxSizing: 'border-box',
+      padding: '16px 22px',
+      borderRadius: '14px',
+      border: '1px solid var(--border)',
+      background: 'var(--bg)',
+      color: 'var(--text-h)',
+      fontSize: '22px',
+    },
+    formFieldInputShowPasswordButton: { color: 'var(--text)', marginRight: '12px' },
+    formButtonPrimary: {
+      width: '100%',
+      minHeight: '86px',
+      borderRadius: '18px',
+      background: 'var(--text-h)',
+      color: 'var(--bg)',
+      fontSize: '22px',
+      fontWeight: '700',
+    },
     // Authentication providers remain configured in Clerk, but Atlas is
     // temporarily email-and-password only. Hide the whole block, plus the
     // "or" divider Clerk renders between it and the email/password fields,
@@ -244,6 +269,27 @@ function ClerkSignInPanel({
   const [claiming, setClaiming] = useState(false)
   const busy = fetchStatus === 'fetching' || claiming || exchanging
 
+  async function finalizeSignIn() {
+    // Clerk's password/ticket call can succeed while the attempt still needs
+    // another step (MFA, device trust, or a session that is already active).
+    // Calling finalize in those states throws "Cannot finalize sign-in
+    // without a created session" and used to escape the submit handler.
+    if (signIn.status !== 'complete' || !signIn.createdSessionId) {
+      const message = signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust'
+        ? 'This account needs an additional verification step. Please use the standard sign-in screen or try again.'
+        : 'Sign-in could not be completed. Please try again.'
+      setFormError(message)
+      return
+    }
+
+    try {
+      const { error } = await signIn.finalize()
+      if (error) setFormError(error.longMessage || error.message || 'Could not complete sign-in. Please try again.')
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Could not complete sign-in. Please try again.')
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!signIn || busy) return
@@ -257,7 +303,7 @@ function ClerkSignInPanel({
       return
     }
     if (!error) {
-      await signIn.finalize()
+      await finalizeSignIn()
       return
     }
 
@@ -287,7 +333,7 @@ function ClerkSignInPanel({
         setFormError('Incorrect email or password.')
         return
       }
-      await signIn.finalize()
+      await finalizeSignIn()
     } finally {
       setClaiming(false)
     }
