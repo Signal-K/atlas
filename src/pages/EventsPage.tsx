@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EventsView } from '../views/mobile/EventsView'
 import { EntryDetailView, type EntryDetailActions } from '../views/mobile/EntryDetailView'
 import type { EntryDetailSubject } from '../lib/entryDetail'
@@ -13,6 +13,14 @@ export interface EventsPageProps {
 
 export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions?: EntryDetailActions } | null>(null)
+
+  useEffect(() => {
+    function closeDetail() {
+      setEntryDetail(null)
+    }
+    window.addEventListener('atlas:mobile-home', closeDetail)
+    return () => window.removeEventListener('atlas:mobile-home', closeDetail)
+  }, [])
 
   function logEntryDetailAttempt() {
     if (!entryDetail) return

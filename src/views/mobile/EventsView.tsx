@@ -40,6 +40,7 @@ export function EventsView({
   onOpenEntry: (subject: EntryDetailSubject, actions?: EntryDetailActions) => void
 }) {
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
@@ -185,6 +186,7 @@ export function EventsView({
   }, [events])
 
   function selectEvent(event: SkyEvent) {
+    setSelectedEventId(event.id)
     const { start, end } = tonightWindowForTimeZone(new Date(event.startsAt), viewLocation.timeZone)
     const darknessWindow = getDarknessWindow(viewLocation.lat, viewLocation.lon, start, end)
     const subject = buildEventDetail(detailInputFromEvent(event, viewLocation, darknessWindow), advisoryFor(event))
@@ -214,6 +216,32 @@ export function EventsView({
           : undefined,
     })
   }
+
+  useEffect(() => {
+    function handleMobileHome() {
+      setSelectedEventId(null)
+    }
+
+    function handleNextEvent() {
+      const sequence = (events ?? [])
+        .filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon))
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+      if (sequence.length === 0) return
+      const currentIndex = selectedEventId ? sequence.findIndex((event) => event.id === selectedEventId) : -1
+      const nextEvent = sequence[(currentIndex + 1) % sequence.length]
+      if (nextEvent) selectEvent(nextEvent)
+    }
+
+    window.addEventListener('atlas:mobile-home', handleMobileHome)
+    window.addEventListener('atlas:next-event', handleNextEvent)
+    return () => {
+      window.removeEventListener('atlas:mobile-home', handleMobileHome)
+      window.removeEventListener('atlas:next-event', handleNextEvent)
+    }
+    // selectEvent is intentionally the local action invoked by the dock;
+    // these values are the event sequence and current position it operates on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, selectedEventId, viewLocation.lat, viewLocation.lon])
 
   const hasNotificationsOrFlagships = reminders.length > 0 || majorEvents.length > 0
 

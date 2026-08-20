@@ -224,10 +224,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .mobile-shell .dt-feed-row { border-color: var(--atlas-line); }
 .mobile-shell .dt-feed-headline, .mobile-shell .dt-major-event-body h3 { color: var(--atlas-ink); }
 
-/* Mobile drawer theme. Geometry and visibility live in ui/ui.css. */
+/* Mobile gesture dock theme. Geometry lives in ui/ui.css. */
 @media (max-width: 900px) {
-  .nav-shell-nav { background: color-mix(in srgb, var(--atlas-paper) 96%, transparent); }
-  .nav-shell-item-active { background: rgba(23, 110, 156, .13); color: var(--atlas-sky-deep); box-shadow: none; }
+  .mobile-quick-dock { background: color-mix(in srgb, var(--atlas-paper) 94%, transparent); border-top-color: var(--atlas-line); }
+  .mobile-dock-home, .mobile-dock-next { border-color: var(--atlas-line); background: var(--atlas-card); }
+  .mobile-dock-next-copy span, .mobile-dock-links a { color: var(--atlas-ink-soft); }
   .nav-shell-topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   .page-header h1 { font-size: 36px; }
   .mobile-shell .dt-page { width: 100%; }

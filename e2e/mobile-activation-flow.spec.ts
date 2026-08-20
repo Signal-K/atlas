@@ -99,8 +99,20 @@ test('mobile primary navigation keeps discovery focused', async ({ page }) => {
   await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  const nav = page.getByRole('navigation', { name: 'Primary' })
-  await expect(nav.getByRole('link')).toHaveCount(3)
-  await expect(nav.getByRole('link', { name: 'Plan', exact: true })).toHaveCount(0)
-  await expect(nav.getByRole('link', { name: 'Ask Atlas', exact: true })).toHaveCount(0)
+  const dock = page.getByRole('navigation', { name: 'Quick navigation' })
+  await expect(dock.getByRole('link')).toHaveCount(2)
+  await expect(dock.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
+})
+
+test('mobile gesture dock advances to the next event and returns home', async ({ page }) => {
+  await seedSignedInUser(page, { entitled: false })
+  await page.goto('/app/events')
+
+  const dock = page.getByRole('navigation', { name: 'Quick navigation' })
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+  await dock.getByRole('button', { name: /Next event/ }).click()
+  await expect(page.getByRole('heading', { name: 'Full Moon', exact: true })).toBeVisible()
+  await dock.getByRole('button', { name: /Home/ }).click()
+  await expect(page.getByRole('heading', { name: 'Full Moon', exact: true })).toHaveCount(0)
+  await expect(page).toHaveURL('/app/events')
 })

@@ -56,22 +56,19 @@ test('unknown /app/* path falls back to the events area', async ({ page }) => {
   await expect(page).toHaveURL('/app/events')
 })
 
-test('narrow viewport uses a top-triggered drawer, not a bottom nav bar', async ({ page }) => {
+test('narrow viewport uses a gesture dock with Home and next-event actions', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/events')
-  const nav = page.getByRole('navigation', { name: 'Primary' })
-  const trigger = page.getByRole('button', { name: 'Menu' })
-  await expect(trigger).toBeVisible()
-  await expect(nav).not.toHaveClass(/nav-shell-nav-open/)
-  const box = await nav.boundingBox()
-  expect(box?.x).toBeGreaterThan(300)
-  expect(box?.width).toBeLessThan(380)
-  await trigger.click()
-  await expect(nav).toHaveClass(/nav-shell-nav-open/)
-  await expect(nav.getByRole('link')).toHaveCount(3)
+  const dock = page.getByRole('navigation', { name: 'Quick navigation' })
+  await expect(dock).toBeVisible()
+  await expect(dock.getByRole('button', { name: /Home/ })).toBeVisible()
+  await expect(dock.getByRole('button', { name: /Next event/ })).toBeVisible()
+  const box = await dock.boundingBox()
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(700)
+  expect(box?.height).toBeLessThan(140)
 })
 
-test('wide viewport renders the nav as a side nav, not a drawer', async ({ page }) => {
+test('wide viewport renders the nav as a side nav, not a mobile dock', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/app/events')
   const nav = page.getByRole('navigation', { name: 'Primary' })
@@ -80,4 +77,5 @@ test('wide viewport renders the nav as a side nav, not a drawer', async ({ page 
   // Side nav: narrow column, full viewport height.
   expect(box?.width).toBeLessThan(300)
   expect(box?.height).toBeGreaterThan(700)
+  await expect(page.getByRole('navigation', { name: 'Quick navigation' })).toBeHidden()
 })
