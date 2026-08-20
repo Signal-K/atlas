@@ -42,10 +42,3 @@ jobs:
           # live instance -- not the test-mode instance these 4 specs
           # authenticate against. See playwright.config.ts.
           CLERK_BACKEND_UNAVAILABLE: '1'
-      - name: Upload Playwright results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-results
-          path: test-results
-          retention-days: 3

@@ -106,6 +106,17 @@ test('mobile primary navigation keeps discovery focused', async ({ page }) => {
 
 test('mobile gesture dock advances to the next event and returns home', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
+  // Pin the location instead of leaving it to real (unmocked) IP
+  // geolocation -- an unpredictable resolved city/time zone can shift which
+  // calendar day the mocked "Full Moon" event and the local sky-guide
+  // fallback land on, silently swapping which one the dock treats as
+  // "next". See landing-location-flow.spec.ts for the same pattern.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'atlas-manual-location',
+      JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278, admin1: 'England', country: 'United Kingdom', timeZone: 'Europe/London' }),
+    )
+  })
   await page.goto('/app/events')
 
   const dock = page.getByRole('navigation', { name: 'Quick navigation' })
