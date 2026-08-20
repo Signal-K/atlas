@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import '../../pages/dt-shared.css'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { isLocalEvent } from '../../lib/eventFilters'
@@ -47,6 +47,7 @@ export function EventsView({
   const [advisoryTimeZone, setAdvisoryTimeZone] = useState<string | undefined>(city.timeZone)
   const [browseCity, setBrowseCity] = useState<City | null>(null)
   const [browseQuery, setBrowseQuery] = useState('')
+  const pendingNextEventRef = useRef(false)
   const { user } = useAuth()
   const hasPremium = Boolean(user?.entitled)
 
@@ -219,18 +220,30 @@ export function EventsView({
 
   useEffect(() => {
     function handleMobileHome() {
+      pendingNextEventRef.current = false
       setSelectedEventId(null)
     }
 
+    // The dock dispatches this as soon as it's tapped, which can land
+    // before the initial sky-events fetch (events still null/empty) --
+    // e.g. right after route entry. Rather than silently no-opping the
+    // tap, remember it and honor it once events finish loading (the
+    // effect re-runs below whenever `events` changes).
     function handleNextEvent() {
       const sequence = (events ?? [])
         .filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon))
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-      if (sequence.length === 0) return
+      if (sequence.length === 0) {
+        pendingNextEventRef.current = true
+        return
+      }
+      pendingNextEventRef.current = false
       const currentIndex = selectedEventId ? sequence.findIndex((event) => event.id === selectedEventId) : -1
       const nextEvent = sequence[(currentIndex + 1) % sequence.length]
       if (nextEvent) selectEvent(nextEvent)
     }
+
+    if (pendingNextEventRef.current) handleNextEvent()
 
     window.addEventListener('atlas:mobile-home', handleMobileHome)
     window.addEventListener('atlas:next-event', handleNextEvent)
