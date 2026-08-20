@@ -62,9 +62,25 @@
   visibility: hidden;
 }
 
-.dt-page {
+/* .mobile-shell .dt-page (0,2,0) rather than bare .dt-page (0,1,0): mobile.css
+   defines its own legacy `.dt-page` rule (a solid `background: var(--dt-bg-page)`
+   plus a negative-margin full-bleed layout) at the same 0,1,0 specificity.
+   mobile.css is only pulled in lazily, as a side effect of mounting Journal's
+   Feed view or an event's detail overlay, so it wasn't loaded (and this rule
+   read as plain, transparent, in-flow) until a visitor happened to open one of
+   those -- at which point mobile.css's rule started winning the cascade tie for
+   the rest of the session, painting a solid rectangle (near-black in dark mode,
+   since --dt-bg-page tracks the theme) behind Events' content and pulling it out
+   of the page's normal padding. Higher specificity here wins outright regardless
+   of load order, and the explicit resets below undo the properties mobile.css's
+   rule declares that this one previously left unset. */
+.mobile-shell .dt-page {
+  background: transparent;
   color: var(--color-text);
   font-family: var(--font-sans);
+  padding: 0;
+  margin: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -72,12 +88,24 @@
 
 .dt-seam {
   height: 1px;
-  margin: 18px 0;
+  margin: var(--space-3) 0;
   background-image: repeating-linear-gradient(90deg, var(--color-border) 0 5px, transparent 5px 10px);
 }
 
 .dt-masthead {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+.dt-section-heading {
+  margin-bottom: var(--space-2);
+}
+
+.dt-today-list .dt-feed-row {
+  padding: var(--space-2) 0;
+}
+
+.dt-today-list .dt-feed-row:last-child {
+  border-bottom: 0;
 }
 
 .dt-kicker {
@@ -117,7 +145,6 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
-  margin-top: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -150,7 +177,6 @@
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-3);
   padding: 9px var(--space-3);
   border: 1px solid color-mix(in srgb, var(--color-good) 36%, var(--color-border));
   border-radius: var(--radius-md);
@@ -160,6 +186,71 @@
 }
 
 .dt-notification-strip strong { color: var(--color-text); }
+
+/* .dt-major-events/.dt-major-event-card previously had no base layout of
+   their own here -- only mobile.css (the legacy "Daily Transit" stylesheet)
+   defined them, and mobile.css only loads lazily as a side effect of
+   opening Journal's Feed view or an event's detail overlay. Until that
+   happened, an eclipse/meteor-shower card on Events rendered as an
+   unstyled stacked block instead of the card revitalized.css themes via
+   `.mobile-shell .dt-major-event-card.is-featured`. Defining the base
+   layout here (this stylesheet always loads with Events) removes that
+   hidden dependency. */
+.dt-major-events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dt-major-event-card {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-3);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  width: 100%;
+}
+
+.dt-major-event-card img {
+  width: 92px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.dt-major-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  min-width: 0;
+}
+
+.dt-major-event-badge {
+  font: 700 var(--text-xs) / 1.2 var(--font-mono);
+  letter-spacing: 0.05em;
+  color: var(--color-accent);
+}
+
+.dt-major-event-body strong {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+}
+
+.dt-major-event-desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 
 .dt-feed-heading {
   display: flex;
@@ -176,7 +267,7 @@
 }
 
 .dt-browse-location {
-  margin: var(--space-3) 0;
+  margin: 0;
 }
 
 .dt-browse-location-picker {
@@ -255,6 +346,36 @@
 .dt-empty-reasons {
   margin: 0;
   padding: 0 0 0 18px;
+}
+
+.dt-search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+}
+
+.dt-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: 500 var(--text-sm) / 1.2 var(--font-sans);
+}
+
+.dt-search-input:focus {
+  outline: none;
+}
+
+.dt-search-input::-webkit-search-cancel-button {
+  cursor: pointer;
 }
 
 .dt-filter-row {

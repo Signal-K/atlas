@@ -61,7 +61,11 @@ async function mockSkyEvents(page: Page) {
 }
 
 async function openFullMoonEntry(page: Page) {
-  await page.getByRole('button', { name: 'Full Moon' }).click()
+  // Events happening today now surface twice on purpose -- once in the
+  // "Today's events" preview, once in the full "All events" list below it
+  // -- so this matches whichever one renders first rather than assuming a
+  // single "Full Moon" button on the page.
+  await page.getByRole('button', { name: 'Full Moon' }).first().click()
   // EntryDetailView is a separate lazy-loaded chunk (see EventsPage.tsx) --
   // the default 5s expect timeout is occasionally too tight for its
   // dynamic import + eval under CI/parallel-worker CPU contention, causing

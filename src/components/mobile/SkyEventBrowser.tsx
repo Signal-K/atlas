@@ -32,6 +32,7 @@ export function SkyEventBrowser({
   timeZone?: string
 }) {
   const [categoryId, setCategoryId] = useState<string>(ALL_CATEGORY_ID)
+  const [query, setQuery] = useState('')
   const [showSatellitePasses, setShowSatellitePasses] = useState(false)
   // Wikimedia hotlinks occasionally fail to load -- fall back to the
   // category icon instead of leaving a blank swatch.
@@ -47,6 +48,7 @@ export function SkyEventBrowser({
   )
 
   const activeCategory = categories.find((category) => category.id === categoryId) ?? null
+  const normalizedQuery = query.trim().toLocaleLowerCase()
   const scopedEvents = useMemo(
     () =>
       (events ?? [])
@@ -54,8 +56,13 @@ export function SkyEventBrowser({
           if (activeCategory) return activeCategory.kinds.includes(event.kind)
           return showSatellitePasses || (event.kind !== 'iss_pass' && event.kind !== 'satellite_flare')
         })
+        .filter((event) => {
+          if (!normalizedQuery) return true
+          const haystack = `${event.title} ${event.target ?? ''} ${KIND_LABELS[event.kind] ?? event.kind}`.toLocaleLowerCase()
+          return haystack.includes(normalizedQuery)
+        })
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
-    [events, activeCategory, showSatellitePasses],
+    [events, activeCategory, showSatellitePasses, normalizedQuery],
   )
 
   const days = useMemo(() => {
@@ -81,7 +88,7 @@ export function SkyEventBrowser({
   const [visibleCount, setVisibleCount] = useState(SHOW_MORE_STEP)
   useEffect(() => {
     setVisibleCount(SHOW_MORE_STEP)
-  }, [categoryId, viewMode, selectedDay])
+  }, [categoryId, viewMode, selectedDay, normalizedQuery])
 
   const filteredEvents = dayFilteredEvents.slice(0, visibleCount)
   const remainingCount = dayFilteredEvents.length - filteredEvents.length
@@ -107,6 +114,18 @@ export function SkyEventBrowser({
 
   return (
     <div>
+      <div className="dt-search-row">
+        <MobileIcon name="search" />
+        <input
+          type="search"
+          className="dt-search-input"
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          placeholder="Search events"
+          aria-label="Search events"
+        />
+      </div>
+
       <div className="dt-filter-row">
         <div className="dt-chip-row" role="tablist" aria-label="Event categories">
           <button type="button" className={`dt-chip${categoryId === ALL_CATEGORY_ID ? ' is-active' : ''}`} onClick={() => selectCategory(ALL_CATEGORY_ID)}>
@@ -176,7 +195,7 @@ export function SkyEventBrowser({
       {events === null ? (
         <p className="dt-empty-hint">Loading&hellip;</p>
       ) : filteredEvents.length === 0 ? (
-        <p className="dt-empty-hint">No events in view.</p>
+        <p className="dt-empty-hint">{normalizedQuery ? `No events match “${query.trim()}”.` : 'No events in view.'}</p>
       ) : (
         groupedEvents.map((group) => (
           <div key={`event-group-${group.dateKey}`}>

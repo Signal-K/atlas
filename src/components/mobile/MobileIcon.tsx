@@ -15,6 +15,7 @@ export type MobileIconName =
   | 'aurora'
   | 'asteroid'
   | 'plane'
+  | 'search'
 
 export function MobileIcon({ name }: { name: MobileIconName | string }) {
   const common = {
@@ -27,6 +28,13 @@ export function MobileIcon({ name }: { name: MobileIconName | string }) {
     'aria-hidden': true,
   }
   switch (name) {
+    case 'search':
+      return (
+        <svg {...common}>
+          <circle cx="10.5" cy="10.5" r="6.5" />
+          <path d="m20 20-4.6-4.6" />
+        </svg>
+      )
     case 'zap':
       return (
         <svg {...common}>
