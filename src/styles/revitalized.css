@@ -77,15 +77,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* App chrome */
 .nav-shell { min-height: 100svh; }
+/* Sizing/spacing here is the desktop rail's own look (wider rail, bigger
+   icons, more breathing room than the base ui/ui.css values) and must stay
+   scoped to desktop -- these rules used to have no media guard at all, so
+   at any viewport they unconditionally won the same-specificity tie against
+   ui/ui.css's `@media (max-width: 900px)` mobile-nav rules (this file loads
+   after ui.css, so an unguarded rule here always wins ties regardless of
+   viewport). That silently collapsed the mobile bottom bar back down to an
+   88px-wide desktop-style rail. Colors/decoration stay unguarded below --
+   only geometry needs the guard. */
+@media (min-width: 901px) {
+  .nav-shell-nav { width: 88px; padding: 22px 0; gap: 14px; }
+  .nav-shell-item { width: 48px; height: 48px; border-radius: 16px; }
+  .nav-shell-main { padding: clamp(24px, 4vw, 54px); max-width: 1480px; width: 100%; margin: 0 auto; }
+}
 .nav-shell-nav {
-  width: 88px; padding: 22px 0; gap: 14px; border-right-color: var(--atlas-line);
+  border-right-color: var(--atlas-line);
   background: color-mix(in srgb, var(--atlas-paper) 84%, transparent); backdrop-filter: blur(18px);
 }
-.nav-shell-item { width: 48px; height: 48px; border-radius: 16px; color: var(--atlas-ink-soft); }
+.nav-shell-item { color: var(--atlas-ink-soft); }
 .nav-shell-item:hover { background: rgba(23, 110, 156, .09); color: var(--atlas-sky-deep); }
 .nav-shell-item-active { background: var(--atlas-ink); color: var(--atlas-paper); box-shadow: 0 8px 20px rgba(13, 35, 51, .18); }
 .nav-shell-topbar { padding: 17px clamp(20px, 4vw, 48px); border-bottom-color: var(--atlas-line); background: color-mix(in srgb, var(--atlas-paper) 72%, transparent); backdrop-filter: blur(16px); }
-.nav-shell-main { padding: clamp(24px, 4vw, 54px); max-width: 1480px; width: 100%; margin: 0 auto; }
 .app-brand { gap: 10px; font: 700 21px/1 var(--font-serif); letter-spacing: -.035em; }
 .app-brand img { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 5px 14px rgba(13, 35, 51, .16); }
 .app-pass-status { padding: 7px 12px; border-color: var(--atlas-line); background: var(--atlas-card); color: var(--atlas-ink-soft); font-weight: 700; }
