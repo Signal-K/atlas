@@ -4617,6 +4617,14 @@
     z-index: 35;
   }
 
+  /* NavShell replaced the old MobileShell, so keep the floating feedback
+     action above the persistent mobile quick dock. */
+  .nav-shell + .feedback-dock {
+    right: 14px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 106px);
+    z-index: 220;
+  }
+
   .feedback-dock-trigger {
     padding: 8px 12px;
     font-size: 11px;
