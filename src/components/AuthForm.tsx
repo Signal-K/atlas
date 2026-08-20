@@ -248,7 +248,7 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
   )
 }
 
-// Hand-rolled in place of Clerk's prebuilt <SignIn> (KES-190) so a failed
+// Hand-rolled in place of Clerk's prebuilt <SignIn> (KES-190) so a legacy
 // password attempt can be told apart from "this account doesn't exist in
 // Clerk yet" -- the prebuilt widget doesn't expose that distinction, and
 // it's exactly the case every account created before this migration hits
@@ -294,6 +294,26 @@ function ClerkSignInPanel({
     event.preventDefault()
     if (!signIn || busy) return
     setFormError(null)
+
+    // Pre-Clerk accounts do not exist in Clerk yet. Claim them before the
+    // password attempt can enter an incomplete MFA/device-trust state; a
+    // 404/409 simply means this is not an unclaimed legacy account and the
+    // normal Clerk flow continues.
+    setClaiming(true)
+    try {
+      const claimed = await claimLegacyAccount(email, password)
+      if (claimed) {
+        const { error: ticketError } = await signIn.ticket({ ticket: claimed })
+        if (ticketError) {
+          setFormError(ticketError.longMessage || ticketError.message || 'Could not complete sign-in. Please try again.')
+          return
+        }
+        await finalizeSignIn()
+        return
+      }
+    } finally {
+      setClaiming(false)
+    }
 
     let error
     try {
