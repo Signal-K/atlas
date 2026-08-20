@@ -129,9 +129,12 @@ test('mobile signed-in user can arm an event reminder', async ({ page }) => {
   // The Events redesign replaced the old "reported" dashboard heading.
   // Wait for the mocked event itself: it is the actual prerequisite for the
   // reminder interaction and keeps this test independent of page chrome.
-  await expect(page.getByRole('button', { name: /Full Moon/ })).toBeVisible({ timeout: 15_000 })
+  // Today's events now surface twice on purpose -- once in the "Today's
+  // events" preview, once in the full "All events" list below it -- so
+  // match whichever "Full Moon" renders first rather than assuming one.
+  await expect(page.getByRole('button', { name: /Full Moon/ }).first()).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: /Moon & eclipses/ }).click()
-  await page.getByRole('button', { name: /Full Moon/ }).click()
+  await page.getByRole('button', { name: /Full Moon/ }).first().click()
   await page.getByRole('button', { name: 'Remind' }).click()
 
   await expect(page.getByText('Reminder armed.')).toBeVisible()
