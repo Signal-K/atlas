@@ -4479,13 +4479,8 @@
 
 @media (max-width: 640px) {
   .feedback-dock {
-    /* Clear the fixed bottom tab bar (var(--tab-bar-height), 64px, plus
-       safe-area) with real margin -- mobile.css has a matching override
-       intended for this, but it's scoped to a `.mobile-shell ~` sibling
-       selector that never matches here (FeedbackDock isn't a DOM sibling
-       of .mobile-shell), so it silently never applied. */
     right: 12px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 106px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
     z-index: 35;
   }
 

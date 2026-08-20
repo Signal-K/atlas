@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 
 export interface NavItem {
   path: string
@@ -14,19 +14,38 @@ interface NavShellProps {
 }
 
 /**
- * One responsive shell: a side nav on wide viewports, a bottom tab bar on
- * narrow ones. Same markup, same CSS — this is what replaces the separate
- * Sidebar/MobileShell components that used to carry two different themes.
+ * One responsive shell: a side nav on wide viewports, and a top-triggered
+ * navigation drawer on narrow ones. Mobile deliberately does not use a
+ * persistent bottom navigation bar.
  */
 export function NavShell({ items, children, topBar }: NavShellProps) {
+  const location = useLocation()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
   return (
     <div className="nav-shell">
-      <nav className="nav-shell-nav" aria-label="Primary">
+      <button
+        type="button"
+        className="mobile-menu-trigger"
+        aria-expanded={mobileMenuOpen}
+        aria-controls="primary-navigation"
+        onClick={() => setMobileMenuOpen((open) => !open)}
+      >
+        <span className="mobile-menu-trigger-icon" aria-hidden="true"><span /><span /><span /></span>
+        <span>{mobileMenuOpen ? 'Close' : 'Menu'}</span>
+      </button>
+      {mobileMenuOpen && <button type="button" className="mobile-menu-backdrop" aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} />}
+      <nav id="primary-navigation" className={`nav-shell-nav${mobileMenuOpen ? ' nav-shell-nav-open' : ''}`} aria-label="Primary">
         {items.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) => `nav-shell-item${isActive ? ' nav-shell-item-active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
           >
             <span className="nav-shell-icon" aria-hidden="true">
               {item.icon}

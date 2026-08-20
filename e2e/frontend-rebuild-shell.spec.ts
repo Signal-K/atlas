@@ -5,7 +5,7 @@ import { seedSignedInUser } from './support/auth'
 // Sidebar/MobileShell. This doesn't assert on area content yet -- each
 // area is still a placeholder page until its own rebuild phase lands --
 // it asserts the one-shell nav is present, the primary routes render, and
-// the shell is responsive (side nav vs bottom tab bar) without pulling in
+// the shell is responsive (side nav vs mobile drawer) without pulling in
 // the old mobile.css palette.
 
 const AREAS = [
@@ -56,23 +56,22 @@ test('unknown /app/* path falls back to the events area', async ({ page }) => {
   await expect(page).toHaveURL('/app/events')
 })
 
-test('narrow viewport renders the nav as a bottom tab bar, not a side nav', async ({ page }) => {
+test('narrow viewport uses a top-triggered drawer, not a bottom nav bar', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/events')
   const nav = page.getByRole('navigation', { name: 'Primary' })
-  await expect(nav).toBeVisible()
+  const trigger = page.getByRole('button', { name: 'Menu' })
+  await expect(trigger).toBeVisible()
+  await expect(nav).not.toHaveClass(/nav-shell-nav-open/)
   const box = await nav.boundingBox()
-  // Bottom tab bar: full viewport width, pinned near the bottom.
-  expect(box?.width).toBeGreaterThan(300)
-  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(700)
-  // The bar must remain a single 64px control row. A previous combination
-  // of sticky flex and fixed safe-area rules doubled its height and left the
-  // icons stranded in the upper half.
-  expect(box?.height).toBeLessThan(80)
+  expect(box?.x).toBeGreaterThan(300)
+  expect(box?.width).toBeLessThan(380)
+  await trigger.click()
+  await expect(nav).toHaveClass(/nav-shell-nav-open/)
   await expect(nav.getByRole('link')).toHaveCount(3)
 })
 
-test('wide viewport renders the nav as a side nav, not a bottom tab bar', async ({ page }) => {
+test('wide viewport renders the nav as a side nav, not a drawer', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/app/events')
   const nav = page.getByRole('navigation', { name: 'Primary' })

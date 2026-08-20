@@ -224,13 +224,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .mobile-shell .dt-feed-row { border-color: var(--atlas-line); }
 .mobile-shell .dt-feed-headline, .mobile-shell .dt-major-event-body h3 { color: var(--atlas-ink); }
 
-/* Color/theme only below 900px -- src/ui/ui.css (NavShell's own stylesheet)
-   is the single owner of the bottom tab bar's size and position. Redeclaring
-   any of that here previously fought its rules for which one won each
-   scroll/repaint, which is what made the bar stutter and puff up to double
-   height on mobile Safari; this layer now only ever recolors classes ui.css
-   already sized and positioned. */
+/* Mobile drawer theme. Geometry and visibility live in ui/ui.css. */
 @media (max-width: 900px) {
+  .nav-shell-nav { background: color-mix(in srgb, var(--atlas-paper) 96%, transparent); }
   .nav-shell-item-active { background: rgba(23, 110, 156, .13); color: var(--atlas-sky-deep); box-shadow: none; }
   .nav-shell-topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   .page-header h1 { font-size: 36px; }

@@ -111,11 +111,16 @@
   border-bottom-color: var(--color-accent);
 }
 
-/* NavShell: side nav on wide viewports, bottom tab bar on narrow ones. */
+/* NavShell: side nav on wide viewports, menu drawer on narrow ones. */
 
 .nav-shell {
   display: flex;
   min-height: 100svh;
+}
+
+.mobile-menu-trigger,
+.mobile-menu-backdrop {
+  display: none;
 }
 
 .nav-shell-nav {
@@ -301,18 +306,11 @@
   }
 }
 
-/* Mobile bottom tab bar -- the single, authoritative definition of the
-   nav's geometry below the 900px breakpoint. This used to be split across
-   this file (a sticky, in-flow bar) and src/styles/revitalized.css (a
-   fixed, safe-area-aware bar layered on top), and having both active at
-   once let the bar reflow to roughly double its intended height and
-   stutter as the two rules fought each other on scroll. Geometry and
-   position live here, and only here; revitalized.css may still add color
-   theming on top of these classes, but must never touch size or position. */
+/* Mobile navigation is a top control plus an off-canvas drawer. There is no
+   fixed bottom element and no bottom spacer. */
 @media (max-width: 900px) {
   .nav-shell {
     flex-direction: column;
-    padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
   }
 
   .nav-shell-body {
@@ -320,42 +318,61 @@
   }
 
   .nav-shell-nav {
-    order: 2;
     position: fixed;
-    inset: auto 0 0 0;
-    width: 100%;
-    height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
-    min-height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
-    max-height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
+    inset: 0 0 0 auto;
+    width: min(86vw, 360px);
+    height: 100svh;
+    min-height: 100svh;
+    max-height: none;
     flex: none;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
-    gap: 0;
-    padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    display: flex;
+    gap: var(--space-3);
+    padding: calc(env(safe-area-inset-top, 0px) + 88px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
     border-right: none;
-    border-top: 1px solid var(--color-border);
+    border-left: 1px solid var(--color-border);
+    transform: translateX(105%);
+    transition: transform 180ms ease;
     overflow: hidden;
     background: var(--color-surface-raised);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    /* Above the reused .mobile-shell surfaces (own stacking contexts) and
-       the install prompt, so taps always land on the bar, not on content
-       painted after it in the DOM. */
     z-index: 210;
   }
 
+  .nav-shell-nav-open { transform: translateX(0); }
+
+  .mobile-menu-trigger {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 72px);
+    right: 16px;
+    z-index: 220;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+    box-shadow: 0 8px 24px rgba(13, 35, 51, .14);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .mobile-menu-trigger-icon { display: grid; gap: 3px; }
+  .mobile-menu-trigger-icon span { display: block; width: 15px; height: 2px; border-radius: 2px; background: currentColor; }
+  .mobile-menu-backdrop { position: fixed; inset: 0; z-index: 205; display: block; border: 0; background: rgba(13, 24, 32, .42); cursor: pointer; }
+
   .nav-shell-item {
-    flex-direction: column;
-    justify-self: center;
-    align-self: center;
-    gap: 2px;
-    width: min(100%, 112px);
-    height: 48px;
-    padding: 4px;
-    font-size: var(--text-xs);
+    justify-content: flex-start;
+    width: 100%;
+    height: 56px;
+    padding: 0 16px;
+    gap: 14px;
     border-radius: var(--radius-md);
-    min-width: 0;
+    font-size: var(--text-base);
   }
 
   .nav-shell-label {
@@ -365,7 +382,8 @@
     margin: 0;
     overflow: visible;
     clip: auto;
-    font-size: var(--text-xs);
+    font-size: var(--text-base);
+    font-weight: 650;
   }
 
   .nav-shell-main {
