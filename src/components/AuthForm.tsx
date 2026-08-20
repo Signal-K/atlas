@@ -47,6 +47,7 @@ const clerkAppearance = {
     footerAction: { display: 'none' },
     main: { width: '100%', padding: 0 },
     form: { width: '100%', gap: '28px' },
+    formFieldRow: { width: '100%' },
     formField: { width: '100%', gap: '10px' },
     formFieldLabel: { fontSize: '20px', fontWeight: '500', color: 'var(--text-h)' },
     formFieldInput: {
@@ -69,6 +70,34 @@ const clerkAppearance = {
       color: 'var(--bg)',
       fontSize: '22px',
       fontWeight: '700',
+    },
+    otpCodeField: {
+      width: '100%',
+      display: 'flex',
+      justifyContent: 'center',
+      gap: '10px',
+    },
+    otpCodeFieldInput: {
+      width: '48px',
+      minWidth: '0',
+      height: '62px',
+      boxSizing: 'border-box',
+      padding: 0,
+      borderRadius: '12px',
+      border: '1px solid var(--border)',
+      background: 'var(--bg)',
+      color: 'var(--text-h)',
+      fontSize: '22px',
+      textAlign: 'center',
+    },
+    alert: {
+      width: '100%',
+      boxSizing: 'border-box',
+      margin: 0,
+      borderRadius: '12px',
+      padding: '14px 18px',
+      fontSize: '15px',
+      lineHeight: '1.45',
     },
     // Authentication providers remain configured in Clerk, but Atlas is
     // temporarily email-and-password only. Hide the whole block, plus the

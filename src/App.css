@@ -2334,6 +2334,7 @@
 .onboarding-modal {
   width: 100%;
   max-width: 360px;
+  box-sizing: border-box;
   padding: 28px;
   border-radius: 12px;
   background: var(--bg);
@@ -2360,6 +2361,7 @@
 }
 
 .auth-gate-modal {
+  width: min(100%, 760px);
   max-width: 760px;
   padding: 64px 56px 54px;
   border-radius: 24px;
