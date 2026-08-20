@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClerkProvider, SignUp, useAuth as useClerkAuth, useSignIn } from '@clerk/react'
+import { ClerkProvider, SignIn, SignUp, useAuth as useClerkAuth, useSignIn } from '@clerk/react'
 import type { RecordModel } from 'pocketbase'
 import { trackEvent } from '../lib/analytics'
 import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
@@ -267,7 +267,12 @@ function ClerkSignInPanel({
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [claiming, setClaiming] = useState(false)
+  const [showStandardSignIn, setShowStandardSignIn] = useState(false)
   const busy = fetchStatus === 'fetching' || claiming || exchanging
+
+  if (showStandardSignIn) {
+    return <SignIn routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
+  }
 
   async function finalizeSignIn() {
     // Clerk's password/ticket call can succeed while the attempt still needs
@@ -297,13 +302,20 @@ function ClerkSignInPanel({
 
     // Pre-Clerk accounts do not exist in Clerk yet. Claim them before the
     // password attempt can enter an incomplete MFA/device-trust state; a
-    // 404/409 simply means this is not an unclaimed legacy account and the
-    // normal Clerk flow continues.
+    // A 404 means this is not a legacy PocketBase account. A 409 means the
+    // identity already exists and is handed to Clerk's complete widget.
     setClaiming(true)
     try {
-      const claimed = await claimLegacyAccount(email, password)
-      if (claimed) {
-        const { error: ticketError } = await signIn.ticket({ ticket: claimed })
+      const claimResult = await claimLegacyAccount(email, password)
+      if (claimResult.alreadyClerk) {
+        // This account has already been migrated or a previous claim stopped
+        // after creating its Clerk identity. Hand off to Clerk's complete
+        // widget so password, device trust, and MFA can all finish normally.
+        setShowStandardSignIn(true)
+        return
+      }
+      if (claimResult.token) {
+        const { error: ticketError } = await signIn.ticket({ ticket: claimResult.token })
         if (ticketError) {
           setFormError(ticketError.longMessage || ticketError.message || 'Could not complete sign-in. Please try again.')
           return
@@ -343,12 +355,16 @@ function ClerkSignInPanel({
     // user has no way to act on.
     setClaiming(true)
     try {
-      const claimed = await claimLegacyAccount(email, password)
-      if (!claimed) {
+      const claimResult = await claimLegacyAccount(email, password)
+      if (claimResult.alreadyClerk) {
+        setShowStandardSignIn(true)
+        return
+      }
+      if (!claimResult.token) {
         setFormError('Incorrect email or password.')
         return
       }
-      const { error: ticketError } = await signIn.ticket({ ticket: claimed })
+      const { error: ticketError } = await signIn.ticket({ ticket: claimResult.token })
       if (ticketError) {
         setFormError('Incorrect email or password.')
         return
@@ -399,10 +415,9 @@ function ClerkSignInPanel({
 // for a pre-migration PocketBase account and returns a one-time sign-in
 // token to redeem via signIn.ticket() -- no OTP round-trip, since the
 // product decision (KES-190) is to not require email verification yet.
-// Returns null on any failure (account doesn't exist, or already claimed --
-// the backend 409s that case so a real wrong-password attempt on an
-// already-migrated account still fails normally).
-async function claimLegacyAccount(email: string, password: string): Promise<string | null> {
+// A 409 is preserved as `alreadyClerk` so the UI can hand the user to Clerk's
+// complete sign-in widget instead of attempting the incomplete custom flow.
+async function claimLegacyAccount(email: string, password: string): Promise<{ token?: string; alreadyClerk: boolean }> {
   try {
     const response = await fetch(`${pocketBaseUrl}/auth/clerk-claim`, {
       method: 'POST',
@@ -410,9 +425,10 @@ async function claimLegacyAccount(email: string, password: string): Promise<stri
       body: JSON.stringify({ email, password }),
     })
     const payload = (await response.json().catch(() => null)) as { token?: string } | null
-    if (!response.ok || !payload?.token) return null
-    return payload.token
+    if (response.status === 409) return { alreadyClerk: true }
+    if (!response.ok || !payload?.token) return { alreadyClerk: false }
+    return { token: payload.token, alreadyClerk: false }
   } catch {
-    return null
+    return { alreadyClerk: false }
   }
 }

@@ -22,6 +22,10 @@ export function initAnalytics() {
       // requiring a manual $pageview capture() on every navigate() call.
       capture_pageview: 'history_change',
       persistence: 'localStorage',
+      // Session recording's beacon endpoint is blocked in some production
+      // browsers/networks and only creates console noise; product analytics
+      // events and surveys do not require replay recording.
+      disable_session_recording: true,
       // Mask all form input by default (unknown recording audience); the
       // feedback/email fields get an explicit second mask since they're
       // the most likely place free-text PII shows up.
