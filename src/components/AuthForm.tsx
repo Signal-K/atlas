@@ -415,8 +415,9 @@ function ClerkSignInPanel({
 // for a pre-migration PocketBase account and returns a one-time sign-in
 // token to redeem via signIn.ticket() -- no OTP round-trip, since the
 // product decision (KES-190) is to not require email verification yet.
-// A 409 is preserved as `alreadyClerk` so the UI can hand the user to Clerk's
-// complete sign-in widget instead of attempting the incomplete custom flow.
+// Already-linked accounts return `alreadyClerk` so the UI can hand the user to
+// Clerk's complete sign-in widget instead of attempting the incomplete custom
+// flow. This is a successful response, not an error state.
 async function claimLegacyAccount(email: string, password: string): Promise<{ token?: string; alreadyClerk: boolean }> {
   try {
     const response = await fetch(`${pocketBaseUrl}/auth/clerk-claim`, {
@@ -424,8 +425,8 @@ async function claimLegacyAccount(email: string, password: string): Promise<{ to
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
-    const payload = (await response.json().catch(() => null)) as { token?: string } | null
-    if (response.status === 409) return { alreadyClerk: true }
+    const payload = (await response.json().catch(() => null)) as { token?: string; alreadyClerk?: boolean } | null
+    if (payload?.alreadyClerk) return { alreadyClerk: true }
     if (!response.ok || !payload?.token) return { alreadyClerk: false }
     return { token: payload.token, alreadyClerk: false }
   } catch {
