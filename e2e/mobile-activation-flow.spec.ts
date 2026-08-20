@@ -111,7 +111,11 @@ test('mobile gesture dock advances to the next event and returns home', async ({
   const dock = page.getByRole('navigation', { name: 'Quick navigation' })
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
   await dock.getByRole('button', { name: /Next event/ }).click()
-  await expect(page.getByRole('heading', { name: 'Full Moon', exact: true })).toBeVisible()
+  // The dock dispatches this the instant it's tapped, which can land before
+  // the initial sky-events fetch resolves -- EventsView replays the tap once
+  // events finish loading rather than dropping it, so this needs the same
+  // generous timeout as the initial "Events" heading above, not the default.
+  await expect(page.getByRole('heading', { name: 'Full Moon', exact: true })).toBeVisible({ timeout: 15_000 })
   await dock.getByRole('button', { name: /Home/ }).click()
   await expect(page.getByRole('heading', { name: 'Full Moon', exact: true })).toHaveCount(0)
   await expect(page).toHaveURL('/app/events')
