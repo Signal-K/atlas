@@ -100,8 +100,9 @@ test('mobile primary navigation keeps discovery focused', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
   const dock = page.getByRole('navigation', { name: 'Primary' })
-  await expect(dock.getByRole('link')).toHaveCount(3)
+  await expect(dock.getByRole('link')).toHaveCount(4)
   await expect(dock.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Search', exact: true })).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
 })

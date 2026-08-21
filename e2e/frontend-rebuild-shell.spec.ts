@@ -10,6 +10,7 @@ import { seedSignedInUser } from './support/auth'
 
 const AREAS = [
   { path: '/app/events', heading: 'Events' },
+  { path: '/app/search', heading: 'Search' },
   { path: '/app/journal', heading: 'Journal' },
   { path: '/app/ask', heading: 'Ask Atlas' },
   { path: '/app/settings', heading: 'Settings' },
@@ -62,6 +63,7 @@ test('narrow viewport uses a bottom tab bar for primary navigation', async ({ pa
   const dock = page.getByRole('navigation', { name: 'Primary' })
   await expect(dock).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Search', exact: true })).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
   const box = await dock.boundingBox()

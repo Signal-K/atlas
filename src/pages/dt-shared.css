@@ -360,6 +360,12 @@
   color: var(--color-text-muted);
 }
 
+.dt-search-row svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 .dt-search-input {
   flex: 1;
   min-width: 0;

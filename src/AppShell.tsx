@@ -1,9 +1,10 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
-import { EventsIcon, JournalIcon, SettingsIcon } from './ui/icons'
+import { EventsIcon, JournalIcon, SearchIcon, SettingsIcon } from './ui/icons'
 import { EventsPage } from './pages/EventsPage'
 import { JournalPage, type JournalPageProps } from './pages/JournalPage'
 import { AskAtlasPage } from './pages/AskAtlasPage'
+import { SearchPage } from './pages/SearchPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { CurrentLocation } from './lib/currentLocation'
 import type { ObservationDraft } from './lib/observationDraft'
@@ -12,6 +13,7 @@ import './ui/ui.css'
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/app/events', label: 'Events', icon: <EventsIcon /> },
+  { path: '/app/search', label: 'Search', icon: <SearchIcon /> },
   { path: '/app/journal', label: 'Journal', icon: <JournalIcon /> },
   { path: '/app/settings', label: 'Settings', icon: <SettingsIcon /> },
 ]
@@ -20,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
 // title in place of the vertical space a full page-header would take.
 const PAGE_TITLES: Record<string, string> = {
   '/app/events': 'Events',
+  '/app/search': 'Search',
   '/app/journal': 'Journal',
   '/app/ask': 'Ask Atlas',
   '/app/settings': 'Settings',
@@ -66,6 +69,7 @@ export function AppShell({
           {/* Planning was removed: Events is the single place to discover,
               save and prepare for an observation. Keep old deep links safe. */}
           <Route path="/app/plan" element={<Navigate to="/app/events" replace />} />
+          <Route path="/app/search" element={<SearchPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
           <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
           <Route path="/app/ask" element={<AskAtlasPage />} />
           <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
