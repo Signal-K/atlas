@@ -40,7 +40,7 @@ export function NavShell({ items, children, topBar }: NavShellProps) {
         {topBar && <div className="nav-shell-topbar">{topBar}</div>}
         <main className="nav-shell-main">{children}</main>
       </div>
-      <MobileQuickDock />
+      <MobileQuickDock items={items} />
     </div>
   )
 }

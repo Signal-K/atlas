@@ -227,7 +227,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 900px) {
   .mobile-quick-dock { background: color-mix(in srgb, var(--atlas-paper) 94%, transparent); border-top-color: var(--atlas-line); }
   .mobile-dock-home, .mobile-dock-next { border-color: var(--atlas-line); background: var(--atlas-card); }
-  .mobile-dock-next-copy span, .mobile-dock-links a { color: var(--atlas-ink-soft); }
+  .mobile-dock-next-copy span { color: var(--atlas-ink-soft); }
+  .mobile-tab-item { color: var(--atlas-ink-soft); }
+  .mobile-tab-item.is-active { color: var(--atlas-sky-deep); background: color-mix(in srgb, var(--atlas-sky) 12%, transparent); }
   .nav-shell-topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   .page-header h1 { font-size: 36px; }
   .mobile-shell .dt-page { width: 100%; }
