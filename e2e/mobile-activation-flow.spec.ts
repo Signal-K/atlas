@@ -122,7 +122,10 @@ test('opening an event swaps the tab bar for a back/swipe gesture dock', async (
   await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: /Full Moon/ }).click()
+  // Today's events render both in the "Today's events" preview and again in
+  // the full "All events" list below it, so this needs disambiguating --
+  // see the mobile-layout-overhaul commit for the same pattern elsewhere.
+  await page.getByRole('button', { name: /Full Moon/ }).first().click()
   await expect(page.getByRole('heading', { name: 'Full Moon', exact: true })).toBeVisible({ timeout: 15_000 })
 
   const dock = page.getByRole('navigation', { name: 'Event navigation' })
