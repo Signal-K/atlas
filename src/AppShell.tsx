@@ -1,11 +1,10 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
 import { EventsIcon, JournalIcon, SettingsIcon } from './ui/icons'
 import { EventsPage } from './pages/EventsPage'
 import { JournalPage, type JournalPageProps } from './pages/JournalPage'
 import { AskAtlasPage } from './pages/AskAtlasPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
-import type { AuthUser } from './lib/auth'
 import type { CurrentLocation } from './lib/currentLocation'
 import type { ObservationDraft } from './lib/observationDraft'
 import './ui/ui.css'
@@ -16,10 +15,16 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/app/settings', label: 'Settings', icon: <SettingsIcon /> },
 ]
 
+// Mirrors each page's own <h1>, so the mobile topbar can show the page
+// title in place of the vertical space a full page-header would take.
+const PAGE_TITLES: Record<string, string> = {
+  '/app/events': 'Events',
+  '/app/journal': 'Journal',
+  '/app/ask': 'Ask Atlas',
+  '/app/settings': 'Settings',
+}
+
 interface AppShellProps {
-  user: AuthUser
-  entitlementRefreshing: boolean
-  onOpenSettings: () => void
   onLogAttempt: (draft: ObservationDraft) => void
   settingsProps: SettingsPageProps
   journalProps: JournalPageProps
@@ -33,15 +38,13 @@ interface AppShellProps {
  * lives on Events, the app's home) -- see KES-131.
  */
 export function AppShell({
-  user,
-  entitlementRefreshing,
-  onOpenSettings,
   onLogAttempt,
   settingsProps,
   journalProps,
   currentLocation,
 }: AppShellProps) {
-  const passLabel = user.entitled ? 'Sky Pass active' : entitlementRefreshing ? 'Checking access…' : 'Free'
+  const location = useLocation()
+  const pageTitle = PAGE_TITLES[location.pathname]
 
   return (
     <NavShell
@@ -50,11 +53,9 @@ export function AppShell({
         <div className="app-topbar">
           <div className="app-brand">
             <img src="/atlas-icon.png" alt="" width={24} height={24} />
-            <span>Atlas</span>
+            <span className="app-brand-name">Atlas</span>
           </div>
-          <button type="button" className={`app-pass-status${user.entitled ? ' is-active' : ''}`} onClick={onOpenSettings}>
-            {passLabel}
-          </button>
+          {pageTitle && <span className="app-page-title">{pageTitle}</span>}
         </div>
       }
     >
