@@ -25,7 +25,7 @@ function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
   const isAppRoute = routerLocation.pathname.startsWith('/app')
-  const { user, entitlementRefreshing } = useAuth()
+  const { user } = useAuth()
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const {
     showOnboardingFlow,
@@ -117,9 +117,6 @@ function App() {
         />
       )}
       <AppShell
-        user={user}
-        entitlementRefreshing={entitlementRefreshing}
-        onOpenSettings={() => navigate('/app/settings')}
         currentLocation={currentLocation}
         onLogAttempt={logAttempt}
         journalProps={{ draft: observationDraft, onDraftConsumed: () => setObservationDraft(null), currentLocation }}

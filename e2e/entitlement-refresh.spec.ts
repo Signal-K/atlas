@@ -90,7 +90,7 @@ test('trusts a paid reconciliation result when auth-refresh returns a stale enti
 
   await page.getByRole('tab', { name: 'Account' }).click()
   await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com', { timeout: 10_000 })
-  await expect(page.getByRole('button', { name: 'Sky Pass active', exact: true })).toBeVisible()
+  await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible()
 })
 
 test('desktop settings shows one page heading and grouped account status', async ({ page }) => {
