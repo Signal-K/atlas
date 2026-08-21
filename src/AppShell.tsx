@@ -7,6 +7,7 @@ import { AskAtlasPage } from './pages/AskAtlasPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { CurrentLocation } from './lib/currentLocation'
 import type { ObservationDraft } from './lib/observationDraft'
+import { MobileDetailNavProvider } from './lib/mobileDetailNav'
 import './ui/ui.css'
 
 const NAV_ITEMS: NavItem[] = [
@@ -47,30 +48,32 @@ export function AppShell({
   const pageTitle = PAGE_TITLES[location.pathname]
 
   return (
-    <NavShell
-      items={NAV_ITEMS}
-      topBar={
-        <div className="app-topbar">
-          <div className="app-brand">
-            <img src="/atlas-icon.png" alt="" width={24} height={24} />
-            <span className="app-brand-name">Atlas</span>
+    <MobileDetailNavProvider>
+      <NavShell
+        items={NAV_ITEMS}
+        topBar={
+          <div className="app-topbar">
+            <div className="app-brand">
+              <img src="/atlas-icon.png" alt="" width={24} height={24} />
+              <span className="app-brand-name">Atlas</span>
+            </div>
+            {pageTitle && <span className="app-page-title">{pageTitle}</span>}
           </div>
-          {pageTitle && <span className="app-page-title">{pageTitle}</span>}
-        </div>
-      }
-    >
-      <Routes>
-        <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
-        {/* Planning was removed: Events is the single place to discover,
-            save and prepare for an observation. Keep old deep links safe. */}
-        <Route path="/app/plan" element={<Navigate to="/app/events" replace />} />
-        <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
-        <Route path="/app/ask" element={<AskAtlasPage />} />
-        <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
-        <Route path="/app/dashboard" element={<Navigate to="/app/events" replace />} />
-        {/* Legacy sky-map links redirect to Events, the merged app home. */}
-        <Route path="*" element={<Navigate to="/app/events" replace />} />
-      </Routes>
-    </NavShell>
+        }
+      >
+        <Routes>
+          <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
+          {/* Planning was removed: Events is the single place to discover,
+              save and prepare for an observation. Keep old deep links safe. */}
+          <Route path="/app/plan" element={<Navigate to="/app/events" replace />} />
+          <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
+          <Route path="/app/ask" element={<AskAtlasPage />} />
+          <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
+          <Route path="/app/dashboard" element={<Navigate to="/app/events" replace />} />
+          {/* Legacy sky-map links redirect to Events, the merged app home. */}
+          <Route path="*" element={<Navigate to="/app/events" replace />} />
+        </Routes>
+      </NavShell>
+    </MobileDetailNavProvider>
   )
 }
