@@ -74,7 +74,7 @@ export interface StreakState {
 
 export interface SyncQueueItem {
   id?: number
-  collection: 'atlas_favourites' | 'atlas_watchlist' | 'atlas_observations' | 'atlas_streaks' | 'atlas_camera_presets'
+  collection: 'atlas_favourites' | 'atlas_watchlist' | 'atlas_observations' | 'atlas_streaks' | 'atlas_camera_presets' | 'atlas_tagged_events'
   op: 'create' | 'update' | 'delete'
   recordId: string
   payload?: unknown
@@ -84,6 +84,19 @@ export interface SyncQueueItem {
 export interface PinnedEvent {
   eventId: string // primary key
   pinnedAt: string
+}
+
+// A per-event bookmark (distinct from Favourite/WatchlistEntry above, which
+// are keyed by event *kind*/*target* -- "watch all meteor showers" -- not a
+// single event instance). Tagging an event is "I want this specific
+// occurrence in my feed and to be notified about it", not "notify me about
+// every future event like this."
+export interface TaggedEvent {
+  id: string
+  userId: string
+  eventId: string
+  taggedAt: string
+  remoteId?: string
 }
 
 export type PresetSource = 'builtin' | 'imported' | 'community'
@@ -121,6 +134,7 @@ class AtlasDB extends Dexie {
   syncQueue!: EntityTable<SyncQueueItem, 'id'>
   pinnedEvents!: EntityTable<PinnedEvent, 'eventId'>
   cameraPresets!: EntityTable<CameraPreset, 'id'>
+  taggedEvents!: EntityTable<TaggedEvent, 'id'>
 
   constructor() {
     super('atlas')
@@ -140,6 +154,9 @@ class AtlasDB extends Dexie {
     })
     this.version(4).stores({
       cameraPresets: 'id, userId, [userId+targetKey], device, targetKey, source',
+    })
+    this.version(5).stores({
+      taggedEvents: 'id, userId, eventId, [userId+eventId]',
     })
     // New observation fields (targetName, deviceUsed, etc.) don't need a
     // schema/index change -- Dexie stores whatever properties are on the

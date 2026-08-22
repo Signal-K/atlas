@@ -1422,6 +1422,134 @@
   gap: 14px;
 }
 
+.trip-hint {
+  color: var(--text);
+  opacity: 0.78;
+  margin: 4px 0 16px;
+}
+
+.trip-builder-step {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.trip-date-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.trip-date-row label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.85;
+}
+
+.trip-leg-list {
+  display: grid;
+  gap: 8px;
+}
+
+.trip-leg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.trip-add-leg {
+  display: grid;
+  gap: 8px;
+}
+
+.trip-city-results {
+  display: grid;
+  gap: 4px;
+}
+
+.trip-city-results button {
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-h);
+}
+
+.trip-phone-picker {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.trip-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trip-leg-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.trip-leg-card.is-active-leg {
+  border-color: var(--accent);
+}
+
+.trip-leg-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trip-leg-guide {
+  display: grid;
+  gap: 10px;
+}
+
+.trip-leg-guide-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.trip-leg-guide-facts span {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.trip-milky-way--yes {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.trip-milky-way--marginal {
+  opacity: 0.85;
+}
+
+.trip-milky-way--no {
+  opacity: 0.6;
+}
+
+.trip-leg-narrative {
+  color: var(--text);
+  line-height: 1.5;
+}
+
 .city-stamp-share-kicker {
   font-size: 12px;
   letter-spacing: 0.08em;

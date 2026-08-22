@@ -14,6 +14,9 @@ const handlers: Partial<Record<SyncQueueItem['collection'], (item: SyncQueueItem
   atlas_watchlist: async (item) => {
     await pb.collection('atlas_watchlist').create(item.payload as Record<string, unknown>)
   },
+  atlas_tagged_events: async (item) => {
+    await pb.collection('atlas_tagged_events').create(item.payload as Record<string, unknown>)
+  },
 }
 
 // Same shape of check as auth.ts's isExistingAccountError, generalized to

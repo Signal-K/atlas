@@ -7,9 +7,10 @@ export interface AskAtlasProps {
   context?: string
 }
 
-// A Sky Pass-only Q&A box (backend/main.go's POST /ai/ask), for questions
-// specific to the page it's mounted on. Free accounts see an upsell instead
-// of the input, since each answer costs a metered Claude API call.
+// A Sky Pass-only Q&A box (pocketbase/pb_hooks/ask-atlas.pb.js's POST
+// /atlas/ask), for questions specific to the page it's mounted on. Free
+// accounts see an upsell instead of the input, since each answer costs a
+// metered Claude API call.
 export function AskAtlas({ entitled, context }: AskAtlasProps) {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')

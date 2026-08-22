@@ -3,6 +3,8 @@ import { KIND_LABELS } from '../../widgets/EventRow'
 import { categoryForKind, EVENT_CATEGORIES, GUIDE_KIND_IDS } from '../../lib/eventCategories'
 import { dateGroupLabel } from '../../lib/eventFormat'
 import { localDateKey } from '../../lib/weather'
+import { getTaggedEventIds } from '../../lib/eventTags'
+import { defaultsToTaggedOnly } from '../../lib/eventFeedPreferences'
 import type { SkyEvent } from '../../lib/db'
 import { MobileIcon } from './MobileIcon'
 
@@ -34,6 +36,17 @@ export function SkyEventBrowser({
   // Wikimedia hotlinks occasionally fail to load -- fall back to the
   // category icon instead of leaving a blank swatch.
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set())
+  const [taggedIds, setTaggedIds] = useState<Set<string>>(new Set())
+  const [showTaggedOnly, setShowTaggedOnly] = useState(() => defaultsToTaggedOnly())
+
+  useEffect(() => {
+    function refreshTags() {
+      getTaggedEventIds().then(setTaggedIds)
+    }
+    refreshTags()
+    window.addEventListener('atlas:tagged-events-changed', refreshTags)
+    return () => window.removeEventListener('atlas:tagged-events-changed', refreshTags)
+  }, [])
 
   const categories = useMemo(
     () => EVENT_CATEGORIES
@@ -56,8 +69,9 @@ export function SkyEventBrowser({
           const haystack = `${event.title} ${event.target ?? ''} ${KIND_LABELS[event.kind] ?? event.kind}`.toLocaleLowerCase()
           return haystack.includes(normalizedQuery)
         })
+        .filter((event) => !showTaggedOnly || taggedIds.has(event.id))
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
-    [events, activeCategory, showSatellitePasses, normalizedQuery],
+    [events, activeCategory, showSatellitePasses, normalizedQuery, showTaggedOnly, taggedIds],
   )
 
   // Everything already lives in memory (a bounded upcoming-events window),
@@ -141,6 +155,15 @@ export function SkyEventBrowser({
         Satellite passes {showSatellitePasses ? 'on' : 'off'}
       </button>
 
+      <button
+        type="button"
+        className={`dt-chip dt-tagged-toggle${showTaggedOnly ? ' is-active' : ''}`}
+        aria-pressed={showTaggedOnly}
+        onClick={() => setShowTaggedOnly((current) => !current)}
+      >
+        Tagged only {showTaggedOnly ? 'on' : 'off'}
+      </button>
+
       {events === null ? (
         <p className="dt-empty-hint">Loading&hellip;</p>
       ) : filteredEvents.length === 0 ? (
@@ -169,6 +192,7 @@ export function SkyEventBrowser({
                     <span className="dt-feed-kind">
                       {KIND_LABELS[event.kind] ?? event.kind}
                       {isGuide && <span className="dt-feed-guide-tag">GUIDE</span>}
+                      {taggedIds.has(event.id) && <span className="dt-feed-guide-tag dt-feed-tag-badge">TAGGED</span>}
                     </span>
                     <span className="dt-feed-headline">{event.title}</span>
                   </span>

@@ -5,6 +5,7 @@ import { isLocalEvent } from '../../lib/eventFilters'
 import { addGetReadyReminder, ensureNotificationPermission, listGetReadyReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
 import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
 import { addToWatchlist, getWatchlist, isWatching, removeFromWatchlist, type WatchlistItem } from '../../lib/watchlist'
+import { getTaggedEventIds, toggleEventTag } from '../../lib/eventTags'
 import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '../../lib/weather'
 import { moonIlluminationPctAt } from '../../lib/moonPhase'
 import { trackEvent } from '../../lib/analytics'
@@ -42,6 +43,7 @@ export function EventsView({
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+  const [taggedIds, setTaggedIds] = useState<Set<string>>(new Set())
   const [reminders, setReminders] = useState<GetReadyReminder[]>(() => listGetReadyReminders())
   const [advisory, setAdvisory] = useState<DailyViewingAdvisory[]>([])
   const [advisoryTimeZone, setAdvisoryTimeZone] = useState<string | undefined>(city.timeZone)
@@ -70,7 +72,7 @@ export function EventsView({
     await pullSkyEvents()
     const now = new Date()
     const lookaheadEnd = new Date(now.getTime() + lookaheadDays * 86_400_000)
-    const [upcoming, watched] = await Promise.all([getEventsInRange(now, lookaheadEnd), getWatchlist()])
+    const [upcoming, watched, tagged] = await Promise.all([getEventsInRange(now, lookaheadEnd), getWatchlist(), getTaggedEventIds()])
     const localUpcoming = upcoming.filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon))
     const daysWithEvents = new Set(localUpcoming.map((event) => localDateKey(event.startsAt, viewLocation.timeZone)))
     const guides = buildDailySkyGuideEvents(
@@ -81,6 +83,7 @@ export function EventsView({
     ).filter((guide) => !daysWithEvents.has(localDateKey(guide.startsAt, viewLocation.timeZone)))
     setEvents([...guides, ...localUpcoming])
     setWatchlist(watched)
+    setTaggedIds(tagged)
     setReminders(listGetReadyReminders())
   }
 
@@ -95,8 +98,15 @@ export function EventsView({
     function refreshReminders() {
       setReminders(listGetReadyReminders())
     }
+    function refreshTags() {
+      getTaggedEventIds().then(setTaggedIds)
+    }
     window.addEventListener('atlas:get-ready-reminders-changed', refreshReminders)
-    return () => window.removeEventListener('atlas:get-ready-reminders-changed', refreshReminders)
+    window.addEventListener('atlas:tagged-events-changed', refreshTags)
+    return () => {
+      window.removeEventListener('atlas:get-ready-reminders-changed', refreshReminders)
+      window.removeEventListener('atlas:tagged-events-changed', refreshTags)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- viewLocation identity is the reload boundary
   }, [viewLocation.lat, viewLocation.lon, lookaheadDays, forecastDays])
 
@@ -123,6 +133,19 @@ export function EventsView({
     }
     setWatchlist(await getWatchlist())
     return { watching: nowWatching, message: nowWatching ? 'Added to your watchlist.' : 'Removed from your watchlist.' }
+  }
+
+  // Tagging is free (unlike watch/remind, which are Sky Pass-gated) -- it's
+  // just a per-event bookmark for the feed's "Tagged only" filter. Tagging
+  // on also arms a get-ready reminder (best-effort; reminders themselves
+  // don't require Sky Pass either), so "bookmark" and "get notified" are one
+  // action instead of two, per the feed's tagging feature.
+  async function toggleTag(event: SkyEvent): Promise<QuickActionOutcome> {
+    const nowTagged = !taggedIds.has(event.id)
+    await toggleEventTag(event.id, !nowTagged)
+    if (nowTagged) await addReminder(event)
+    setTaggedIds(await getTaggedEventIds())
+    return { tagged: nowTagged, message: nowTagged ? 'Tagged -- added to your feed filter and armed a reminder.' : 'Untagged.' }
   }
 
   async function addReminder(event: SkyEvent): Promise<QuickActionOutcome> {
@@ -197,6 +220,8 @@ export function EventsView({
       onToggleWatch: () => toggleWatch(event),
       reminderActive: !!reminder,
       onRemind: () => addReminder(event),
+      tagged: taggedIds.has(event.id),
+      onToggleTag: () => toggleTag(event),
       onPoint: pointActionFor(event)?.onPoint,
       roadmap:
         event.kind === 'eclipse'

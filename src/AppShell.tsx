@@ -1,8 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
-import { EventsIcon, JournalIcon, SettingsIcon } from './ui/icons'
+import { EventsIcon, JournalIcon, PlanIcon, SettingsIcon } from './ui/icons'
 import { EventsPage } from './pages/EventsPage'
 import { JournalPage, type JournalPageProps } from './pages/JournalPage'
+import { PlanPage } from './pages/PlanPage'
 import { AskAtlasPage } from './pages/AskAtlasPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { AuthUser } from './lib/auth'
@@ -12,6 +13,7 @@ import './ui/ui.css'
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/app/events', label: 'Events', icon: <EventsIcon /> },
+  { path: '/app/plan', label: 'Plan', icon: <PlanIcon /> },
   { path: '/app/journal', label: 'Journal', icon: <JournalIcon /> },
   { path: '/app/settings', label: 'Settings', icon: <SettingsIcon /> },
 ]
@@ -61,9 +63,9 @@ export function AppShell({
       <Routes>
         <Route path="/app/events/:eventId" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
         <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
-        {/* Planning was removed: Events is the single place to discover,
-            save and prepare for an observation. Keep old deep links safe. */}
-        <Route path="/app/plan" element={<Navigate to="/app/events" replace />} />
+        {/* Sky Pass multi-city trip planner. PaywallGate inside
+            PlanPage/PlanTripView handles the free-account paywall. */}
+        <Route path="/app/plan" element={<PlanPage />} />
         <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
         <Route path="/app/ask" element={<AskAtlasPage />} />
         <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />

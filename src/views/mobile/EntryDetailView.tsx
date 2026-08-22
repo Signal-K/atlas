@@ -24,6 +24,7 @@ export interface QuickActionOutcome {
   message?: string
   watching?: boolean
   reminderActive?: boolean
+  tagged?: boolean
 }
 
 export interface EntryDetailActions {
@@ -33,6 +34,11 @@ export interface EntryDetailActions {
   onRemind?: () => Promise<QuickActionOutcome | void>
   onPoint?: () => void
   roadmap?: EntryDetailRoadmap
+  // Per-event bookmark (feed's "Tagged only" filter), distinct from
+  // onToggleWatch's kind/target-level watch. Tagging also arms a get-ready
+  // reminder for this event -- see EventsView's onToggleTag.
+  tagged?: boolean
+  onToggleTag?: () => Promise<QuickActionOutcome | void>
 }
 
 interface EntryDetailViewProps {
@@ -61,11 +67,13 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
   // props whenever a different event is opened.
   const [watching, setWatching] = useState(actions?.watching ?? false)
   const [reminderActive, setReminderActive] = useState(actions?.reminderActive ?? false)
+  const [tagged, setTagged] = useState(actions?.tagged ?? false)
   const [quickActionMessage, setQuickActionMessage] = useState<string | null>(null)
   useEffect(() => {
     setInstrument(subject.suitability.find((pill) => pill.label === 'Phone')?.active ? 'phone' : 'telescope')
     setWatching(actions?.watching ?? false)
     setReminderActive(actions?.reminderActive ?? false)
+    setTagged(actions?.tagged ?? false)
     setQuickActionMessage(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject.id])
@@ -97,6 +105,13 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
     if (!actions?.onRemind) return
     const outcome = await actions.onRemind()
     if (outcome?.reminderActive !== undefined) setReminderActive(outcome.reminderActive)
+    setQuickActionMessage(outcome?.message ?? null)
+  }
+
+  async function handleToggleTag() {
+    if (!actions?.onToggleTag) return
+    const outcome = await actions.onToggleTag()
+    if (outcome?.tagged !== undefined) setTagged(outcome.tagged)
     setQuickActionMessage(outcome?.message ?? null)
   }
 
@@ -247,9 +262,18 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
           </section>
         )}
 
-        {actions && (actions.onToggleWatch || actions.onRemind || actions.onPoint) && (
+        {actions && (actions.onToggleWatch || actions.onRemind || actions.onPoint || actions.onToggleTag) && (
           <>
             <div className="dt-entry-quick-actions">
+              {actions.onToggleTag && (
+                <button type="button" className={`dt-entry-quick-action${tagged ? ' is-active' : ''}`} onClick={handleToggleTag}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.59-4.59a2 2 0 0 0 0-2.82Z" />
+                    <circle cx="7.5" cy="7.5" r="1" fill="currentColor" />
+                  </svg>
+                  <span>{tagged ? 'Tagged' : 'Tag'}</span>
+                </button>
+              )}
               {actions.onToggleWatch && (
                 <button type="button" className={`dt-entry-quick-action${watching ? ' is-active' : ''}`} onClick={handleToggleWatch}>
                   <MobileIcon name="pin" />

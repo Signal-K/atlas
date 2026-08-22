@@ -58,7 +58,19 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
           city={city}
           onOpenEntry={(subject, actions) => {
             setEntryDetail({ subject, actions })
-            navigate(`/app/events/${encodeURIComponent(subject.id)}`, { state: { entryDetail: { subject, actions } } })
+            // `actions` is always a bag of closures (onToggleWatch/onRemind/
+            // onToggleTag/etc, each bound over the source event) -- passing
+            // it into router state throws a synchronous DataCloneError from
+            // history.pushState (functions aren't structured-cloneable),
+            // which previously aborted this whole navigate() call before the
+            // URL/history entry ever updated. Only `subject` is plain data,
+            // so only it goes into state; the local `entryDetail` state set
+            // above (not location.state) is what actually supplies `actions`
+            // to the render below for this click -- location.state.actions
+            // was never reachable for anything but a same-tab back/forward
+            // navigation anyway, where a fresh set of live callbacks isn't
+            // available regardless.
+            navigate(`/app/events/${encodeURIComponent(subject.id)}`, { state: { entryDetail: { subject } } })
           }}
         />
       </div>

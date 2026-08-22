@@ -231,7 +231,15 @@ async function pullObservationsNow(): Promise<void> {
     // portfolio could settle, which was especially painful on a PWA over a
     // mobile connection. Each image is still validated and stored locally;
     // only the network scheduling changes.
-    await Promise.all(records.map(async (record) => {
+    //
+    // Each record is isolated via Promise.allSettled: with Promise.all, one
+    // record throwing (a Dexie write failure, a malformed field) rejected
+    // the whole batch, and the outer catch below swallowed that silently --
+    // wiping every *other* record's hydration for this pull too, not just
+    // the bad one. That regressed the Journal/city-stamps view from "one
+    // entry stayed stale" (the old serial loop's failure mode) to "nothing
+    // pulled this visit."
+    const results = await Promise.allSettled(records.map(async (record) => {
       const local = existingByRemoteId.get(record.id)
       // A transient media-worker failure must not make a newly-created
       // observation lose its local photo forever. Retry only records that
@@ -275,9 +283,17 @@ async function pullObservationsNow(): Promise<void> {
         await db.observations.add({ id: `remote-${record.id}`, userId, ...fields })
       }
     }))
-  } catch {
+
+    const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+    if (failures.length > 0) {
+      // Surfaced for debugging (this used to fail silently); the Journal
+      // still shows whatever did hydrate successfully above.
+      console.error(`pullObservationsNow: ${failures.length}/${records.length} observations failed to hydrate`, failures[0].reason)
+    }
+  } catch (err) {
     // The Journal continues to show its local cache offline or when the
     // private collection is temporarily unavailable.
+    console.error('pullObservationsNow failed', err)
   }
 }
 

@@ -3667,6 +3667,14 @@
   margin: -4px 0 14px;
 }
 
+.dt-tagged-toggle {
+  margin: -4px 0 14px 8px;
+}
+
+.dt-feed-tag-badge {
+  background: var(--dt-ink);
+}
+
 .dt-view-toggle {
   display: flex;
   flex-shrink: 0;

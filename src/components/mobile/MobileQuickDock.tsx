@@ -62,6 +62,7 @@ export function MobileQuickDock() {
     <nav className="mobile-quick-dock mobile-quick-dock--menu" aria-label="Menu">
       <div className="mobile-dock-menu">
         <NavLink to="/app/events">Events</NavLink>
+        <NavLink to="/app/plan">Plan</NavLink>
         <NavLink to="/app/journal">Journal</NavLink>
         <NavLink to="/app/settings">Settings</NavLink>
       </div>
