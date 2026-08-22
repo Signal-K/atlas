@@ -6,6 +6,31 @@ declare let self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
+const MEDIA_CACHE = 'atlas-portfolio-media-v1'
+
+// Portfolio previews are remote PocketBase/R2 images, so they are not part
+// of the app-shell precache. Keep successful image responses in a small
+// runtime cache instead: the first visit fetches them normally, while
+// revisiting the Journal or opening the PWA offline can paint from disk.
+self.addEventListener('fetch', (event) => {
+  const request = event.request
+  if (request.method !== 'GET' || request.destination !== 'image') return
+
+  event.respondWith(
+    caches.open(MEDIA_CACHE).then(async (cache) => {
+      const cached = await cache.match(request)
+      if (cached) return cached
+      try {
+        const response = await fetch(request)
+        if (response.ok || response.type === 'opaque') await cache.put(request, response.clone())
+        return response
+      } catch {
+        return cached ?? Response.error()
+      }
+    }),
+  )
+})
+
 // Take over immediately on every deploy instead of waiting for all tabs of
 // the old version to close (see vite.config.ts for why this matters).
 self.skipWaiting()

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { EventsView } from '../views/mobile/EventsView'
 import { EntryDetailView, type EntryDetailActions } from '../views/mobile/EntryDetailView'
 import type { EntryDetailSubject } from '../lib/entryDetail'
@@ -13,18 +14,29 @@ export interface EventsPageProps {
 
 export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions?: EntryDetailActions } | null>(null)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { eventId } = useParams<{ eventId?: string }>()
+  const isDetailRoute = Boolean(eventId)
 
   useEffect(() => {
     function closeDetail() {
       setEntryDetail(null)
+      if (isDetailRoute) navigate('/app/events')
     }
     window.addEventListener('atlas:mobile-home', closeDetail)
     return () => window.removeEventListener('atlas:mobile-home', closeDetail)
-  }, [])
+  }, [isDetailRoute, navigate])
+
+  useEffect(() => {
+    if (isDetailRoute && !entryDetail && !location.state?.entryDetail) navigate('/app/events', { replace: true })
+  }, [entryDetail, isDetailRoute, location.state, navigate])
+
+  const detail = entryDetail ?? (location.state?.entryDetail as typeof entryDetail | undefined) ?? null
 
   function logEntryDetailAttempt() {
-    if (!entryDetail) return
-    const { subject } = entryDetail
+    if (!detail) return
+    const { subject } = detail
     onLogAttempt({
       eventId: subject.id,
       targetName: subject.title,
@@ -35,24 +47,31 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
       directionLabel: subject.direction?.compassLabel,
     })
     setEntryDetail(null)
+    navigate('/app/events')
   }
 
   return (
     <div className="page">
       <h1 className="sr-only">Events</h1>
-      <div className="mobile-shell">
+      <div className={`mobile-shell${isDetailRoute ? ' events-page-background' : ''}`}>
         <EventsView
           city={city}
-          onOpenEntry={(subject, actions) => setEntryDetail({ subject, actions })}
+          onOpenEntry={(subject, actions) => {
+            setEntryDetail({ subject, actions })
+            navigate(`/app/events/${encodeURIComponent(subject.id)}`, { state: { entryDetail: { subject, actions } } })
+          }}
         />
       </div>
 
-      {entryDetail && (
-        <div className="mobile-shell dt-entry-overlay">
+      {isDetailRoute && detail && (
+        <div className="event-detail-page">
           <EntryDetailView
-            subject={entryDetail.subject}
-            actions={entryDetail.actions}
-            onClose={() => setEntryDetail(null)}
+            subject={detail.subject}
+            actions={detail.actions}
+            onClose={() => {
+              setEntryDetail(null)
+              navigate('/app/events')
+            }}
             onLogAttempt={logEntryDetailAttempt}
           />
         </div>

@@ -1,5 +1,5 @@
 import { useRef, type TouchEvent } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 const SWIPE_THRESHOLD = 42
 
@@ -9,7 +9,9 @@ function dispatchMobileAction(name: 'atlas:mobile-home' | 'atlas:next-event') {
 
 export function MobileQuickDock() {
   const navigate = useNavigate()
+  const location = useLocation()
   const touchStartX = useRef<number | null>(null)
+  const isEventDetail = /^\/app\/events\/[^/]+$/.test(location.pathname)
 
   function goHome() {
     dispatchMobileAction('atlas:mobile-home')
@@ -32,8 +34,9 @@ export function MobileQuickDock() {
     if (delta <= -SWIPE_THRESHOLD) openNextEvent()
   }
 
-  return (
-    <nav className="mobile-quick-dock" aria-label="Quick navigation">
+  if (isEventDetail) {
+    return (
+      <nav className="mobile-quick-dock mobile-quick-dock--detail" aria-label="Event navigation">
       <div
         className="mobile-dock-swipe-panel"
         onTouchStart={handleTouchStart}
@@ -51,7 +54,14 @@ export function MobileQuickDock() {
           <span className="mobile-dock-next-arrow" aria-hidden="true">→</span>
         </button>
       </div>
-      <div className="mobile-dock-links" aria-label="More areas">
+      </nav>
+    )
+  }
+
+  return (
+    <nav className="mobile-quick-dock mobile-quick-dock--menu" aria-label="Menu">
+      <div className="mobile-dock-menu">
+        <NavLink to="/app/events">Events</NavLink>
         <NavLink to="/app/journal">Journal</NavLink>
         <NavLink to="/app/settings">Settings</NavLink>
       </div>

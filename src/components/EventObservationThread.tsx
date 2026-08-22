@@ -31,7 +31,7 @@ function ThreadPreview({ entry }: { entry: ObservationLogEntry }) {
     }
   }, [entry.photo])
 
-  if (photoUrl && !failed) return <img src={photoUrl} alt="" onError={() => setFailed(true)} />
+  if (photoUrl && !failed) return <img src={photoUrl} alt="" loading="eager" decoding="async" onError={() => setFailed(true)} />
   return <span className="event-thread-note-preview" aria-label="Written observation">✦</span>
 }
 

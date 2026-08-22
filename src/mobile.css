@@ -4734,6 +4734,35 @@
   margin: 10px 0 0;
 }
 
+.dt-entry-instrument-choice {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.dt-entry-instrument-choice button {
+  border: 1px solid var(--dt-ink-faded);
+  background: transparent;
+  color: var(--dt-ink-muted);
+  padding: 8px 12px;
+  cursor: pointer;
+  font: 700 11px/1 var(--dt-font-data);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dt-entry-instrument-choice button.is-selected {
+  border-color: var(--dt-ink);
+  background: var(--dt-ink);
+  color: var(--dt-bg-page);
+}
+
+.dt-entry-instrument-note {
+  margin: 10px 0 0;
+  color: var(--dt-ink);
+  font: 400 14px/1.55 var(--dt-font-serif);
+}
+
 .dt-entry-body {
   font: 400 14px/1.6 var(--dt-font-serif);
   color: var(--dt-ink);

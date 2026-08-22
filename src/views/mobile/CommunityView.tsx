@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { FeedView } from '../FeedView'
 import { PhotoChallengesView } from '../PhotoChallengesView'
 import { DigestWidget } from '../../widgets/DigestWidget'
@@ -13,25 +13,17 @@ const MODES: Array<{ id: CommunityMode; label: string }> = [
   { id: 'leaderboard', label: 'Board' },
 ]
 
-const MODE_CONTENT: Record<CommunityMode, ReactNode> = {
-  digest: (
-    <section className="widget-section">
-      <h2>This week's top discoveries</h2>
-      <DigestWidget />
-    </section>
-  ),
-  feed: <FeedView />,
-  challenges: <PhotoChallengesView />,
-  leaderboard: (
-    <section className="widget-section">
-      <h2>Streak leaderboard</h2>
-      <LeaderboardWidget />
-    </section>
-  ),
-}
-
 export function CommunityView() {
   const [mode, setMode] = useState<CommunityMode>('digest')
+
+  function contentForMode() {
+    if (mode === 'feed') return <FeedView />
+    if (mode === 'challenges') return <PhotoChallengesView />
+    if (mode === 'leaderboard') {
+      return <section className="widget-section"><h2>Streak leaderboard</h2><LeaderboardWidget /></section>
+    }
+    return <section className="widget-section"><h2>This week's top discoveries</h2><DigestWidget onOpenFeed={() => setMode('feed')} /></section>
+  }
 
   return (
     <div className="mobile-community">
@@ -55,7 +47,7 @@ export function CommunityView() {
           ))}
         </div>
       </section>
-      <div className="mobile-community-panel">{MODE_CONTENT[mode]}</div>
+      <div className="mobile-community-panel">{contentForMode()}</div>
     </div>
   )
 }

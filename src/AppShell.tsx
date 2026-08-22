@@ -59,6 +59,7 @@ export function AppShell({
       }
     >
       <Routes>
+        <Route path="/app/events/:eventId" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
         <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
         {/* Planning was removed: Events is the single place to discover,
             save and prepare for an observation. Keep old deep links safe. */}

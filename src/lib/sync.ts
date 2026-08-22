@@ -226,7 +226,12 @@ async function pullObservationsNow(): Promise<void> {
     const existing = await db.observations.where('userId').equals(userId).toArray()
     const existingByRemoteId = new Map(existing.flatMap((entry) => (entry.remoteId ? [[entry.remoteId, entry] as const] : [])))
 
-    for (const record of records) {
+    // Hydrate media concurrently. The previous serial loop made a journal
+    // visit wait for every full-size attachment in sequence before the
+    // portfolio could settle, which was especially painful on a PWA over a
+    // mobile connection. Each image is still validated and stored locally;
+    // only the network scheduling changes.
+    await Promise.all(records.map(async (record) => {
       const local = existingByRemoteId.get(record.id)
       // A transient media-worker failure must not make a newly-created
       // observation lose its local photo forever. Retry only records that
@@ -269,7 +274,7 @@ async function pullObservationsNow(): Promise<void> {
       } else {
         await db.observations.add({ id: `remote-${record.id}`, userId, ...fields })
       }
-    }
+    }))
   } catch {
     // The Journal continues to show its local cache offline or when the
     // private collection is temporarily unavailable.

@@ -65,6 +65,11 @@ const DIFFICULTY_LABEL: Record<TargetDifficulty, string> = {
 // though naked-eye or a phone can still catch it.
 const BINOCULARS_UNHELPFUL = new Set(['meteor_shower', 'fireball', 'solar_flare', 'iss_pass', 'satellite_flare'])
 
+// Moon illumination is useful context for dark-sky targets and lunar events,
+// but it is not a property of a planet such as Venus. Keep the detail facts
+// about the target rather than showing the same generic moon number everywhere.
+const MOON_RELEVANT_EVENT_KINDS = new Set(['moon_phase', 'eclipse', 'meteor_shower', 'fireball', 'deep_sky', 'asteroid_approach'])
+
 export function formatTimeLabel(iso: string | null, timeZone?: string): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
@@ -119,7 +124,7 @@ interface EventDetailInput {
   phoneFriendly: boolean
   nakedEyeVisible: boolean
   why: string
-  moonPct: number
+  moonPct: number | null
   darknessWindow: DarknessWindow
   sourceEvent?: SkyEvent
   location?: EntryDetailLocation
@@ -199,7 +204,7 @@ export function detailInputFromEvent(event: SkyEvent, location: EntryDetailLocat
     phoneFriendly: meta.phoneFriendly,
     nakedEyeVisible: meta.nakedEyeVisible,
     why: event.content || event.description || meta.reason,
-    moonPct: moonIlluminationPctAt(bestTime),
+    moonPct: MOON_RELEVANT_EVENT_KINDS.has(event.kind) ? moonIlluminationPctAt(bestTime) : null,
     darknessWindow,
     sourceEvent: event,
     location,

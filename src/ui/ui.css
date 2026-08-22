@@ -361,6 +361,36 @@
   .mobile-dock-links a { flex: 0 0 auto; padding: 5px 12px; border-radius: var(--radius-pill); color: var(--color-text-muted); font-size: var(--text-xs); font-weight: 700; text-decoration: none; }
   .mobile-dock-links a[aria-current='page'] { background: var(--color-accent-bg); color: var(--color-accent); }
 
+  /* The event list stays mounted while its child route is open so the
+     swipe-next action retains its loaded sequence, but it must not remain a
+     second scroll surface behind the detail page. */
+  .events-page-background { display: none; }
+
+  .mobile-dock-menu {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mobile-dock-menu a {
+    display: grid;
+    place-items: center;
+    min-height: 54px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .mobile-dock-menu a[aria-current='page'] {
+    border-color: var(--color-accent);
+    background: var(--color-accent-bg);
+    color: var(--color-accent);
+  }
+
   .nav-shell-main {
     padding: var(--space-4) calc(env(safe-area-inset-right, 0px) + var(--space-4)) var(--space-4) calc(env(safe-area-inset-left, 0px) + var(--space-4));
   }

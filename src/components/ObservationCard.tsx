@@ -33,7 +33,7 @@ export function ObservationCard({ entry }: { entry: ObservationLogEntry }) {
     <div className="observation-card">
       {photoUrl && !photoFailed && (
         <div className="observation-card-photo">
-          <img src={photoUrl} alt={entry.targetName ?? 'Observation'} loading="lazy" onError={() => setPhotoFailed(true)} />
+          <img src={photoUrl} alt={entry.targetName ?? 'Observation'} loading="lazy" decoding="async" onError={() => setPhotoFailed(true)} />
         </div>
       )}
       <div className="observation-card-body">

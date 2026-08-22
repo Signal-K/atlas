@@ -3,13 +3,10 @@ import { KIND_LABELS } from '../../widgets/EventRow'
 import { categoryForKind, EVENT_CATEGORIES, GUIDE_KIND_IDS } from '../../lib/eventCategories'
 import { dateGroupLabel } from '../../lib/eventFormat'
 import { localDateKey } from '../../lib/weather'
-import { SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
 import type { SkyEvent } from '../../lib/db'
 import { MobileIcon } from './MobileIcon'
 
 type EventStatus = 'go' | 'marginal' | 'poor'
-type ViewMode = 'list' | 'calendar'
-
 const ALL_CATEGORY_ID = 'all'
 const SATELLITE_CATEGORY_ID = 'satellites'
 
@@ -37,8 +34,6 @@ export function SkyEventBrowser({
   // Wikimedia hotlinks occasionally fail to load -- fall back to the
   // category icon instead of leaving a blank swatch.
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set())
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
   const categories = useMemo(
     () => EVENT_CATEGORIES
@@ -65,22 +60,6 @@ export function SkyEventBrowser({
     [events, activeCategory, showSatellitePasses, normalizedQuery],
   )
 
-  const days = useMemo(() => {
-    const todayKey = localDateKey(new Date().toISOString(), timeZone)
-    return Array.from({ length: SKY_GUIDE_WINDOW_DAYS }).map((_, i) => {
-      const d = new Date(`${todayKey}T12:00:00Z`)
-      d.setUTCDate(d.getUTCDate() + i)
-      const dateKey = d.toISOString().slice(0, 10)
-      const hasEvents = scopedEvents.some((event) => localDateKey(event.startsAt, timeZone) === dateKey)
-      return { dateKey, hasEvents }
-    })
-  }, [scopedEvents, timeZone])
-
-  const dayFilteredEvents = useMemo(() => {
-    if (viewMode !== 'calendar' || !selectedDay) return scopedEvents
-    return scopedEvents.filter((event) => localDateKey(event.startsAt, timeZone) === selectedDay)
-  }, [scopedEvents, viewMode, selectedDay, timeZone])
-
   // Everything already lives in memory (a bounded upcoming-events window),
   // so "show more" just extends the visible slice -- no refetch, and never
   // a dead-end "go filter differently" message.
@@ -88,14 +67,13 @@ export function SkyEventBrowser({
   const [visibleCount, setVisibleCount] = useState(SHOW_MORE_STEP)
   useEffect(() => {
     setVisibleCount(SHOW_MORE_STEP)
-  }, [categoryId, viewMode, selectedDay, normalizedQuery])
+  }, [categoryId, normalizedQuery])
 
-  const filteredEvents = dayFilteredEvents.slice(0, visibleCount)
-  const remainingCount = dayFilteredEvents.length - filteredEvents.length
+  const filteredEvents = scopedEvents.slice(0, visibleCount)
+  const remainingCount = scopedEvents.length - filteredEvents.length
 
   function selectCategory(id: string) {
     setCategoryId(id)
-    setSelectedDay(null)
   }
 
   // Group the (already date-sorted) visible slice under bold date rules --
@@ -114,6 +92,10 @@ export function SkyEventBrowser({
 
   return (
     <div>
+      <div className="dt-feed-heading">
+        <span className="dt-kicker">All events</span>
+        <p>Every upcoming event, in time order.</p>
+      </div>
       <div className="dt-search-row">
         <MobileIcon name="search" />
         <input
@@ -145,21 +127,6 @@ export function SkyEventBrowser({
           ))}
         </div>
 
-        <div className="dt-view-toggle">
-          <button
-            type="button"
-            className={viewMode === 'list' ? 'is-active' : ''}
-            onClick={() => {
-              setViewMode('list')
-              setSelectedDay(null)
-            }}
-          >
-            List
-          </button>
-          <button type="button" className={viewMode === 'calendar' ? 'is-active' : ''} onClick={() => setViewMode('calendar')}>
-            Calendar
-          </button>
-        </div>
       </div>
 
       <button
@@ -169,28 +136,10 @@ export function SkyEventBrowser({
         onClick={() => {
           setShowSatellitePasses((current) => !current)
           setCategoryId(ALL_CATEGORY_ID)
-          setSelectedDay(null)
         }}
       >
         Satellite passes {showSatellitePasses ? 'on' : 'off'}
       </button>
-
-      {viewMode === 'calendar' && (
-        <div className="dt-day-strip">
-          {days.map((day) => (
-            <button
-              type="button"
-              key={`day-${day.dateKey}`}
-              className={`dt-day-chip${selectedDay === day.dateKey ? ' is-active' : ''}`}
-              onClick={() => setSelectedDay((current) => (current === day.dateKey ? null : day.dateKey))}
-            >
-              <span>{new Date(`${day.dateKey}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2).toUpperCase()}</span>
-              <strong>{Number(day.dateKey.slice(8, 10))}</strong>
-              <span className={`dt-day-chip-dot${day.hasEvents ? ' has-events' : ''}`} />
-            </button>
-          ))}
-        </div>
-      )}
 
       {events === null ? (
         <p className="dt-empty-hint">Loading&hellip;</p>

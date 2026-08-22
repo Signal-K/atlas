@@ -3,7 +3,7 @@ import { listDiscoveries, type Discovery } from '../lib/discoveries'
 
 const WEEK_MS = 7 * 86_400_000
 
-export function DigestWidget() {
+export function DigestWidget({ onOpenFeed }: { onOpenFeed?: () => void }) {
   const [top, setTop] = useState<Discovery[] | null>(null)
 
   useEffect(() => {
@@ -25,7 +25,18 @@ export function DigestWidget() {
   }, [])
 
   if (top === null) return <p>Loading&hellip;</p>
-  if (top.length === 0) return <p>No discoveries shared this week yet — be the first, over in the Feed tab.</p>
+  if (top.length === 0) {
+    return (
+      <div className="digest-empty-state">
+        <span className="digest-empty-mark" aria-hidden="true">✦</span>
+        <div>
+          <strong>The sky log is quiet</strong>
+          <p>No discoveries have been shared this week. Add the first field note and give the community something to look up.</p>
+        </div>
+        {onOpenFeed && <button type="button" onClick={onOpenFeed}>Open Feed <span aria-hidden="true">→</span></button>}
+      </div>
+    )
+  }
 
   return (
     <ul className="digest-list">

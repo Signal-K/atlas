@@ -48,6 +48,9 @@ interface EntryDetailViewProps {
 // consistent page so the three surfaces can't drift into different-looking
 // detail screens again.
 export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: EntryDetailViewProps) {
+  const [instrument, setInstrument] = useState<'phone' | 'telescope'>(() =>
+    subject.suitability.find((pill) => pill.label === 'Phone')?.active ? 'phone' : 'telescope',
+  )
   const [recipeOpen, setRecipeOpen] = useState(false)
   const [roadmapLoading, setRoadmapLoading] = useState(false)
   const [roadmapText, setRoadmapText] = useState<string | null>(null)
@@ -60,11 +63,18 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
   const [reminderActive, setReminderActive] = useState(actions?.reminderActive ?? false)
   const [quickActionMessage, setQuickActionMessage] = useState<string | null>(null)
   useEffect(() => {
+    setInstrument(subject.suitability.find((pill) => pill.label === 'Phone')?.active ? 'phone' : 'telescope')
     setWatching(actions?.watching ?? false)
     setReminderActive(actions?.reminderActive ?? false)
     setQuickActionMessage(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject.id])
+  const phoneSupported = subject.suitability.find((pill) => pill.label === 'Phone')?.active ?? false
+  const instrumentNote = instrument === 'phone'
+    ? phoneSupported
+      ? `Phone plan: use a stable surface or tripod, focus on ${subject.title}, and use Night mode or a longer exposure if available.`
+      : `Phone plan: use a tripod and the longest exposure available, but expect ${subject.title} to be difficult to resolve without more light or optics.`
+    : `Telescope plan: start with the lowest-power eyepiece, centre ${subject.title}, then increase magnification only once it is steady and well focused.`
   const duskLabel = formatTimeLabel(subject.darknessWindow.astronomicalDuskAt ?? subject.darknessWindow.civilDuskAt)
   const dawnLabel = formatTimeLabel(subject.darknessWindow.astronomicalDawnAt ?? subject.darknessWindow.civilDawnAt)
   // The category/difficulty subtitle line (e.g. "Eclipse · Moderate ·
@@ -155,6 +165,15 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
             ))}
           </div>
           <p className="dt-entry-note">{subject.suitabilityNote}</p>
+          <div className="dt-entry-instrument-choice" role="group" aria-label="Choose your equipment">
+            <button type="button" className={instrument === 'phone' ? 'is-selected' : ''} aria-pressed={instrument === 'phone'} onClick={() => setInstrument('phone')}>
+              Phone
+            </button>
+            <button type="button" className={instrument === 'telescope' ? 'is-selected' : ''} aria-pressed={instrument === 'telescope'} onClick={() => setInstrument('telescope')}>
+              Telescope
+            </button>
+          </div>
+          <p className="dt-entry-instrument-note">{instrumentNote}</p>
         </section>
 
         <section className="dt-entry-section">

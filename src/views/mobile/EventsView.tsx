@@ -385,11 +385,7 @@ export function EventsView({
 
       <div className="dt-seam" />
 
-      {/* 4. All events. */}
-      <div className="dt-feed-heading">
-        <span className="dt-kicker">All events</span>
-        <p>Every upcoming event, in time order.</p>
-      </div>
+      {/* 4. All events: one chronological, date-grouped calendar feed. */}
       <SkyEventBrowser events={events} onSelect={selectEvent} />
       {pointingOverlay}
     </div>

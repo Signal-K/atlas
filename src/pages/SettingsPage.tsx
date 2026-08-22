@@ -6,7 +6,6 @@ import { LocationSettings } from '../components/LocationSettings'
 import { PushSettings } from '../components/PushSettings'
 import { LeaderboardSettings } from '../components/LeaderboardSettings'
 import { DeviceSettings } from '../components/DeviceSettings'
-import { Card } from '../ui/Card'
 import { AskAtlasIcon } from '../ui/icons'
 import { useAuth } from '../lib/auth'
 import type { LocationStatus } from '../lib/geo'
@@ -25,6 +24,12 @@ export interface SettingsPageProps {
 }
 
 type SettingsSection = 'location' | 'notifications' | 'appearance' | 'devices' | 'ask' | 'leaderboard' | 'account'
+
+const SECTION_GROUPS: Array<{ title: string; ids: SettingsSection[] }> = [
+  { title: 'Personal', ids: ['location', 'appearance', 'devices'] },
+  { title: 'Atlas', ids: ['notifications', 'ask', 'leaderboard'] },
+  { title: 'Account', ids: ['account'] },
+]
 
 const icon = {
   viewBox: '0 0 24 24',
@@ -159,33 +164,51 @@ export function SettingsPage({
     <div className="page settings-page">
       <h1 className="settings-page-title">Settings</h1>
 
-      <div className="settings-grid" role="tablist" aria-label="Settings sections">
-        {availableSections.map((item) => (
-          <button
-            type="button"
-            key={item.id}
-            role="tab"
-            aria-selected={section.id === item.id}
-            className={`settings-grid-tab${section.id === item.id ? ' is-active' : ''}`}
-            onClick={() => setActiveSection(item.id)}
-          >
-            <span className="settings-grid-tab-icon">{item.icon}</span>
-            {item.shortTitle}
-          </button>
-        ))}
-      </div>
+      <div className="settings-layout">
+        <nav className="settings-list" role="tablist" aria-label="Settings sections">
+          {SECTION_GROUPS.map((group) => {
+            const items = group.ids
+              .map((id) => availableSections.find((candidate) => candidate.id === id))
+              .filter((item): item is (typeof availableSections)[number] => Boolean(item))
+            if (items.length === 0) return null
+            return (
+              <div className="settings-list-group" key={group.title}>
+                <h2>{group.title}</h2>
+                <div className="settings-list-items">
+                  {items.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      role="tab"
+                      aria-selected={section.id === item.id}
+                      className={`settings-list-item${section.id === item.id ? ' is-active' : ''}`}
+                      onClick={() => setActiveSection(item.id)}
+                    >
+                      <span className="settings-list-icon">{item.icon}</span>
+                      <span className="settings-list-copy">
+                        <strong>{item.title}</strong>
+                        <small>{item.id === 'location' ? `${currentLocation.name} · ${locationStatus === 'granted' ? 'Using location' : 'Set location'}` : 'Manage in Atlas'}</small>
+                      </span>
+                      <span className="settings-list-chevron" aria-hidden="true">›</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </nav>
 
-      {section.id === 'ask' ? (
-        <div className="settings-ask-section">
-          <h2 className="settings-section-title">{section.title}</h2>
+        <section className={`settings-detail${section.id === 'ask' ? ' settings-detail--ask' : ''}`}>
+          <div className="settings-detail-heading">
+            <span className="settings-detail-icon">{section.icon}</span>
+            <div>
+              <p className="settings-detail-kicker">Settings</p>
+              <h2 className="settings-section-title">{section.title}</h2>
+            </div>
+          </div>
           {contentFor(section.id)}
-        </div>
-      ) : (
-        <Card className="settings-section settings-active-section">
-          <h2 className="settings-section-title">{section.title}</h2>
-          {contentFor(section.id)}
-        </Card>
-      )}
+        </section>
+      </div>
     </div>
   )
 }
