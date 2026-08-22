@@ -10,6 +10,7 @@ import { seedSignedInUser } from './support/auth'
 
 const AREAS = [
   { path: '/app/events', heading: 'Events' },
+  { path: '/app/search', heading: 'Search' },
   { path: '/app/journal', heading: 'Journal' },
   { path: '/app/ask', heading: 'Ask Atlas' },
   { path: '/app/settings', heading: 'Settings' },
@@ -56,16 +57,18 @@ test('unknown /app/* path falls back to the events area', async ({ page }) => {
   await expect(page).toHaveURL('/app/events')
 })
 
-test('narrow viewport uses a gesture dock with Home and next-event actions', async ({ page }) => {
+test('narrow viewport uses a bottom tab bar for primary navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/events')
-  const dock = page.getByRole('navigation', { name: 'Quick navigation' })
+  const dock = page.getByRole('navigation', { name: 'Primary' })
   await expect(dock).toBeVisible()
-  await expect(dock.getByRole('button', { name: /Home/ })).toBeVisible()
-  await expect(dock.getByRole('button', { name: /Next event/ })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Search', exact: true })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
   const box = await dock.boundingBox()
   expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(700)
-  expect(box?.height).toBeLessThan(140)
+  expect(box?.height).toBeLessThan(100)
 })
 
 test('wide viewport renders the nav as a side nav, not a mobile dock', async ({ page }) => {
@@ -77,5 +80,5 @@ test('wide viewport renders the nav as a side nav, not a mobile dock', async ({ 
   // Side nav: narrow column, full viewport height.
   expect(box?.width).toBeLessThan(300)
   expect(box?.height).toBeGreaterThan(700)
-  await expect(page.getByRole('navigation', { name: 'Quick navigation' })).toBeHidden()
+  await expect(page.getByRole('navigation', { name: 'Event navigation' })).toBeHidden()
 })

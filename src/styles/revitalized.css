@@ -101,8 +101,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .nav-shell-topbar { padding: 17px clamp(20px, 4vw, 48px); border-bottom-color: var(--atlas-line); background: color-mix(in srgb, var(--atlas-paper) 72%, transparent); backdrop-filter: blur(16px); }
 .app-brand { gap: 10px; font: 700 21px/1 var(--font-serif); letter-spacing: -.035em; }
 .app-brand img { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 5px 14px rgba(13, 35, 51, .16); }
-.app-pass-status { padding: 7px 12px; border-color: var(--atlas-line); background: var(--atlas-card); color: var(--atlas-ink-soft); font-weight: 700; }
-.app-pass-status.is-active { border-color: rgba(46, 139, 115, .45); color: var(--atlas-mint); }
+.app-page-title { font: 700 19px/1 var(--font-serif); letter-spacing: -.03em; color: var(--atlas-ink); }
 .page { max-width: 1180px; gap: 26px; }
 .page-header { display: grid; gap: 6px; padding-bottom: 21px; border-bottom: 1px solid var(--atlas-line); }
 .page-header h1 { font: 700 clamp(32px, 4vw, 52px)/.98 var(--font-serif); letter-spacing: -.055em; }
@@ -278,7 +277,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 900px) {
   .mobile-quick-dock { background: color-mix(in srgb, var(--atlas-paper) 94%, transparent); border-top-color: var(--atlas-line); }
   .mobile-dock-home, .mobile-dock-next { border-color: var(--atlas-line); background: var(--atlas-card); }
-  .mobile-dock-next-copy span, .mobile-dock-links a { color: var(--atlas-ink-soft); }
+  .mobile-dock-next-copy span { color: var(--atlas-ink-soft); }
+  .mobile-tab-item { color: var(--atlas-ink-soft); }
+  .mobile-tab-item.is-active { color: var(--atlas-sky-deep); background: color-mix(in srgb, var(--atlas-sky) 12%, transparent); }
   .nav-shell-topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   .page-header h1 { font-size: 36px; }
   .mobile-shell .dt-page { width: 100%; }

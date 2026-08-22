@@ -73,6 +73,15 @@ export function AskAtlasIcon() {
   )
 }
 
+export function SearchIcon() {
+  return (
+    <svg {...common}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-4.6-4.6" />
+    </svg>
+  )
+}
+
 export function SettingsIcon() {
   return (
     <svg {...common}>

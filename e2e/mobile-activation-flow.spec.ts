@@ -99,12 +99,15 @@ test('mobile primary navigation keeps discovery focused', async ({ page }) => {
   await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  const dock = page.getByRole('navigation', { name: 'Quick navigation' })
-  await expect(dock.getByRole('link')).toHaveCount(2)
+  const dock = page.getByRole('navigation', { name: 'Primary' })
+  await expect(dock.getByRole('link')).toHaveCount(4)
+  await expect(dock.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Search', exact: true })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
 })
 
-test('mobile gesture dock advances to the next event and returns home', async ({ page }) => {
+test('opening an event swaps the tab bar for a back/swipe gesture dock', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
   // Pin the location instead of leaving it to real (unmocked) IP
   // geolocation -- an unpredictable resolved city/time zone can shift which
@@ -119,15 +122,26 @@ test('mobile gesture dock advances to the next event and returns home', async ({
   })
   await page.goto('/app/events')
 
-  const dock = page.getByRole('navigation', { name: 'Quick navigation' })
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  await dock.getByRole('button', { name: /Next event/ }).click()
-  // The dock dispatches this the instant it's tapped, which can land before
-  // the initial sky-events fetch resolves -- EventsView replays the tap once
-  // events finish loading rather than dropping it, so this needs the same
-  // generous timeout as the initial "Events" heading above, not the default.
+  // Today's events render both in the "Today's events" preview and again in
+  // the full "All events" list below it, so this needs disambiguating --
+  // see the mobile-layout-overhaul commit for the same pattern elsewhere.
+  await page.getByRole('button', { name: /Full Moon/ }).first().click()
   await expect(page.getByRole('heading', { name: 'Full Moon', exact: true })).toBeVisible({ timeout: 15_000 })
-  await dock.getByRole('button', { name: /Home/ }).click()
-  await expect(page.getByRole('heading', { name: 'Full Moon', exact: true })).toHaveCount(0)
+
+  const dock = page.getByRole('navigation', { name: 'Event navigation' })
+  await expect(dock).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeHidden()
+
+  // Today's sky mixes the mocked "Full Moon" event with local-guide filler
+  // content (see e.g. the "Jupiter from Melbourne tonight" guide), so
+  // cycling forward can land on a different item -- assert the detail
+  // overlay stayed open (by its title element, not a specific name) rather
+  // than which item is now showing.
+  await dock.getByRole('button', { name: /Next event/ }).click()
+  await expect(page.locator('.dt-entry-title')).toBeVisible({ timeout: 15_000 })
+  await dock.getByRole('button', { name: /Back/ }).click()
+  await expect(page.locator('.dt-entry-title')).toHaveCount(0)
   await expect(page).toHaveURL('/app/events')
+  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
 })

@@ -24,11 +24,13 @@ export function SkyEventBrowser({
   onSelect,
   statusForEvent,
   timeZone,
+  autoFocusSearch,
 }: {
   events: SkyEvent[] | null
   onSelect: (event: SkyEvent) => void
   statusForEvent?: (event: SkyEvent) => EventStatus | null
   timeZone?: string
+  autoFocusSearch?: boolean
 }) {
   const [categoryId, setCategoryId] = useState<string>(ALL_CATEGORY_ID)
   const [query, setQuery] = useState('')
@@ -119,6 +121,7 @@ export function SkyEventBrowser({
           onChange={(event) => setQuery(event.currentTarget.value)}
           placeholder="Search events"
           aria-label="Search events"
+          autoFocus={autoFocusSearch}
         />
       </div>
 
