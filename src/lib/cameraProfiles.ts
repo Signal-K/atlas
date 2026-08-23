@@ -2,6 +2,10 @@ export type DeviceMaker = 'apple' | 'google' | 'nothing' | 'samsung' | 'other'
 export type RecipeFamily = DeviceMaker
 
 export type DeviceId =
+  | 'iphone'
+  | 'iphone-15'
+  | 'iphone-16'
+  | 'iphone-17'
   | 'iphone-17-pro'
   | 'iphone-16-pro'
   | 'iphone-15-pro'
@@ -44,6 +48,42 @@ export const MAKER_LABELS: Record<DeviceMaker, string> = {
 export const MAKER_ORDER: DeviceMaker[] = ['google', 'nothing', 'apple', 'samsung', 'other']
 
 export const CAMERA_PROFILES: Record<DeviceId, CameraProfile> = {
+  iphone: {
+    id: 'iphone',
+    maker: 'apple',
+    recipeFamily: 'apple',
+    name: 'Other iPhone',
+    supportedModes: ['Night mode', 'standard camera'],
+    notes: 'Use Night mode when available and brace the phone against something solid for the sharpest sky shots.',
+    gear: { focalLengthMm: 26, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'iphone-15': {
+    id: 'iphone-15',
+    maker: 'apple',
+    recipeFamily: 'apple',
+    name: 'iPhone 15',
+    supportedModes: ['Night mode', 'standard camera'],
+    notes: 'Use Night mode and a stable support. The main camera is the dependable choice for sky scenes.',
+    gear: { focalLengthMm: 26, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'iphone-16': {
+    id: 'iphone-16',
+    maker: 'apple',
+    recipeFamily: 'apple',
+    name: 'iPhone 16',
+    supportedModes: ['Night mode', 'standard camera'],
+    notes: 'Use Night mode and keep the phone still; a stable support matters more than zoom for sky shots.',
+    gear: { focalLengthMm: 26, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
+  'iphone-17': {
+    id: 'iphone-17',
+    maker: 'apple',
+    recipeFamily: 'apple',
+    name: 'iPhone 17',
+    supportedModes: ['Night mode', 'standard camera'],
+    notes: 'Use Night mode and a stable support. Start with the main camera rather than digital zoom.',
+    gear: { focalLengthMm: 26, sensorWidthMm: FULL_FRAME_EQUIVALENT_SENSOR_WIDTH_MM },
+  },
   'iphone-17-pro': {
     id: 'iphone-17-pro',
     maker: 'apple',
@@ -176,7 +216,9 @@ export function makerForDevice(id: DeviceId): DeviceMaker {
 
 export function detectDeviceFromUserAgent(userAgent = navigator.userAgent): DeviceId {
   const ua = userAgent.toLowerCase()
-  if (ua.includes('iphone')) return 'iphone-17-pro'
+  // iOS user agents do not reliably identify the exact model, so do not
+  // silently claim a Pro camera profile for every iPhone.
+  if (ua.includes('iphone')) return 'iphone'
   if (ua.includes('pixel')) return 'pixel-10-pro'
   if (ua.includes('samsung') || ua.includes('sm-')) return 'galaxy-s26-ultra'
   if (ua.includes('nothing') || ua.includes('a059') || ua.includes('a059p')) return 'nothing-phone-3a'

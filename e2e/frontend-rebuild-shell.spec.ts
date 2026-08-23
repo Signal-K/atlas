@@ -35,6 +35,21 @@ test('Plan route renders the Sky Pass trip planner entry point', async ({ page }
   await expect(page.getByRole('heading', { name: 'Plan a trip', exact: true }).first()).toBeVisible()
 })
 
+test('trip planner lets people select a city before entering leg dates', async ({ page }) => {
+  await seedSignedInUser(page, { entitled: true, onboardingComplete: true })
+  await page.goto('/app/plan')
+
+  const citySearch = page.getByRole('searchbox', { name: 'Search cities' })
+  await citySearch.fill('Tallinn')
+  await page.getByRole('option', { name: 'Tallinn' }).click()
+
+  await expect(page.getByText('Selected city: Tallinn')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Add city' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'iPhone 15', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'iPhone 16', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Other iPhone', exact: true })).toBeVisible()
+})
+
 test('nav links switch between areas without a full reload', async ({ page }) => {
   await page.goto('/app/events')
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible()

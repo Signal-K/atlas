@@ -68,6 +68,7 @@ function TripBuilder({ onSaved }: { onSaved: (trip: TripPlan) => void }) {
   const [endDate, setEndDate] = useState('')
   const [legs, setLegs] = useState<TripLeg[]>([])
   const [cityQuery, setCityQuery] = useState('')
+  const [selectedCity, setSelectedCity] = useState<City | null>(null)
   const [legStart, setLegStart] = useState('')
   const [legEnd, setLegEnd] = useState('')
   const [equipment, setEquipment] = useState<string[]>([])
@@ -80,12 +81,18 @@ function TripBuilder({ onSaved }: { onSaved: (trip: TripPlan) => void }) {
     [cityQuery],
   )
 
-  function addLeg(city: City) {
-    if (!legStart || !legEnd || legs.length >= TRIP_MAX_LEGS) return
-    setLegs((current) => [...current, makeLeg(city, legStart, legEnd)])
+  function addLeg() {
+    if (!selectedCity || !legStart || !legEnd || legs.length >= TRIP_MAX_LEGS) return
+    setLegs((current) => [...current, makeLeg(selectedCity, legStart, legEnd)])
     setCityQuery('')
+    setSelectedCity(null)
     setLegStart('')
     setLegEnd('')
+  }
+
+  function selectCity(city: City) {
+    setSelectedCity(city)
+    setCityQuery(cityLabel(city))
   }
 
   function removeLeg(index: number) {
@@ -154,7 +161,16 @@ function TripBuilder({ onSaved }: { onSaved: (trip: TripPlan) => void }) {
         )}
         {legs.length < TRIP_MAX_LEGS && (
           <div className="trip-add-leg">
-            <input type="search" placeholder="Search a city" value={cityQuery} onChange={(e) => setCityQuery(e.target.value)} />
+            <input
+              type="search"
+              placeholder="Search a city"
+              value={cityQuery}
+              aria-label="Search cities"
+              onChange={(e) => {
+                setCityQuery(e.target.value)
+                setSelectedCity(null)
+              }}
+            />
             <div className="trip-date-row">
               <label>
                 From
@@ -165,14 +181,22 @@ function TripBuilder({ onSaved }: { onSaved: (trip: TripPlan) => void }) {
                 <input type="date" value={legEnd} min={legStart || startDate || undefined} max={endDate || undefined} onChange={(e) => setLegEnd(e.target.value)} />
               </label>
             </div>
-            {cityQuery.trim() && (
+            {cityQuery.trim() && !selectedCity && (
               <div className="trip-city-results" role="listbox" aria-label="City results">
                 {cityResults.map((city) => (
-                  <button type="button" key={cityLabel(city)} onClick={() => addLeg(city)} disabled={!legStart || !legEnd}>
+                  <button type="button" key={cityLabel(city)} role="option" onClick={() => selectCity(city)}>
                     {cityLabel(city)}
                   </button>
                 ))}
                 {cityResults.length === 0 && <p>No matching cities.</p>}
+              </div>
+            )}
+            {selectedCity && (
+              <div className="trip-city-selection">
+                <span>Selected city: <strong>{cityLabel(selectedCity)}</strong></span>
+                <button type="button" onClick={addLeg} disabled={!legStart || !legEnd}>
+                  Add city
+                </button>
               </div>
             )}
           </div>
