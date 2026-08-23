@@ -58,7 +58,7 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
 
   await page.getByRole('tab', { name: 'Account' }).click()
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan' })).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
 })
 
 test('trusts a paid reconciliation result when auth-refresh returns a stale entitlement field', async ({ page }) => {
@@ -116,7 +116,7 @@ test('desktop settings shows one page heading and grouped account status', async
 
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toHaveCount(1)
   await page.getByRole('tab', { name: 'Account' }).click()
-  await expect(page.locator('.settings-section').filter({ has: page.getByRole('heading', { name: 'Account', exact: true }) })).toBeVisible()
+  await expect(page.locator('.settings-detail').filter({ has: page.getByRole('heading', { name: 'Account', exact: true }) })).toBeVisible()
   await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com')
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toHaveClass(/settings-status--pill/)
 })

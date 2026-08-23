@@ -29,9 +29,10 @@ for (const area of AREAS) {
   })
 }
 
-test('legacy Plan links redirect to Events', async ({ page }) => {
+test('Plan route renders the Sky Pass trip planner entry point', async ({ page }) => {
   await page.goto('/app/plan')
-  await expect(page).toHaveURL('/app/events')
+  await expect(page).toHaveURL('/app/plan')
+  await expect(page.getByRole('heading', { name: 'Plan a trip', exact: true }).first()).toBeVisible()
 })
 
 test('nav links switch between areas without a full reload', async ({ page }) => {
@@ -64,6 +65,7 @@ test('narrow viewport uses a bottom tab bar for primary navigation', async ({ pa
   await expect(dock).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Search', exact: true })).toBeVisible()
+  await expect(dock.getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
   await expect(dock.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
   const box = await dock.boundingBox()
