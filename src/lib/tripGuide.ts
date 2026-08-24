@@ -4,7 +4,7 @@ import { estimateLightPollution, rankDarkSkySites } from './darkSky'
 import { moonIlluminationPctAt } from './moonPhase'
 import { fetchViewingForecast } from './weather'
 import { getEventsInRange, pullSkyEvents } from './sync'
-import { isLocalEvent } from './eventFilters'
+import { isVisibleLocalEvent } from './eventFilters'
 import { categoryForKind } from './eventCategories'
 import { localDateKey } from './weather'
 
@@ -55,7 +55,7 @@ async function computeTripLegSignals(leg: TripLeg, interests: string[]): Promise
   const rangeEnd = new Date(`${leg.endDate}T23:59:59`)
   const events = await getEventsInRange(rangeStart, rangeEnd)
   const highlights = events
-    .filter((event) => isLocalEvent(event, leg.lat, leg.lon))
+    .filter((event) => isVisibleLocalEvent(event, leg.lat, leg.lon))
     .filter((event) => interests.length === 0 || interests.includes(categoryForKind(event.kind)?.id ?? ''))
     .slice(0, 10)
     .map((event) => ({ title: event.title, kind: event.kind, date: event.startsAt.slice(0, 10) }))

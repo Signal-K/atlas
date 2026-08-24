@@ -308,13 +308,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .mobile-shell .dt-feed-row { border-color: var(--atlas-line); }
 .mobile-shell .dt-feed-headline, .mobile-shell .dt-major-event-body h3 { color: var(--atlas-ink); }
 
-/* Mobile gesture dock theme. Geometry lives in ui/ui.css. */
+/* Mobile menu theme. Geometry lives in ui/ui.css. */
 @media (max-width: 900px) {
-  .mobile-quick-dock { background: color-mix(in srgb, var(--atlas-paper) 94%, transparent); border-top-color: var(--atlas-line); }
-  .mobile-dock-home, .mobile-dock-next { border-color: var(--atlas-line); background: var(--atlas-card); }
-  .mobile-dock-next-copy span { color: var(--atlas-ink-soft); }
-  .mobile-tab-item { color: var(--atlas-ink-soft); }
-  .mobile-tab-item.is-active { color: var(--atlas-sky-deep); background: color-mix(in srgb, var(--atlas-sky) 12%, transparent); }
+  .mobile-menu-trigger { border-color: var(--atlas-line); background: color-mix(in srgb, var(--atlas-paper) 94%, transparent); color: var(--atlas-ink); }
+  .mobile-menu-panel { border-right-color: var(--atlas-line); background: var(--atlas-paper); }
+  .mobile-menu-links a, .mobile-menu-request { color: var(--atlas-ink); }
+  .mobile-menu-links a:hover, .mobile-menu-links a[aria-current='page'] { color: var(--atlas-sky-deep); background: color-mix(in srgb, var(--atlas-sky) 12%, transparent); }
+  .mobile-menu-request { border-color: var(--atlas-line); background: var(--atlas-card); }
   .nav-shell-topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   .page-header h1 { font-size: 36px; }
   .mobile-shell .dt-page { width: 100%; }

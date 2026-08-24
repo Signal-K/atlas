@@ -4747,6 +4747,12 @@
     z-index: 35;
   }
 
+  /* Feature requests live in the mobile menu. Keep the panel available when
+     that menu dispatches the action, but never leave a floating control over
+     the app content. */
+  .nav-shell + .feedback-dock:not(.feedback-dock--open) { display: none; }
+  .nav-shell + .feedback-dock.feedback-dock--open { right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); z-index: 240; }
+
   /* NavShell replaced the old MobileShell, so keep the floating feedback
      action above the persistent mobile quick dock. */
   .nav-shell + .feedback-dock {

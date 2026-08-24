@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import '../../pages/dt-shared.css'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
-import { isLocalEvent } from '../../lib/eventFilters'
+import { isVisibleLocalEvent } from '../../lib/eventFilters'
 import { addGetReadyReminder, ensureNotificationPermission, listGetReadyReminders, type GetReadyReminder } from '../../lib/getReadyReminders'
 import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
 import { addToWatchlist, getWatchlist, isWatching, removeFromWatchlist, type WatchlistItem } from '../../lib/watchlist'
@@ -24,6 +24,7 @@ import { requestEclipseRoadmap } from '../../lib/eclipseRoadmap'
 import { getDarknessWindow } from '../../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../../lib/timeZone'
 import { daysUntil } from '../../lib/eventFormat'
+import { ensurePushSubscription, queueWatchConfirmation } from '../../lib/push'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
 
@@ -73,7 +74,7 @@ export function EventsView({
     const now = new Date()
     const lookaheadEnd = new Date(now.getTime() + lookaheadDays * 86_400_000)
     const [upcoming, watched, tagged] = await Promise.all([getEventsInRange(now, lookaheadEnd), getWatchlist(), getTaggedEventIds()])
-    const localUpcoming = upcoming.filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon))
+    const localUpcoming = upcoming.filter((event) => isVisibleLocalEvent(event, viewLocation.lat, viewLocation.lon))
     const daysWithEvents = new Set(localUpcoming.map((event) => localDateKey(event.startsAt, viewLocation.timeZone)))
     const guides = buildDailySkyGuideEvents(
       new Date(),
@@ -127,7 +128,21 @@ export function EventsView({
     const nowWatching = !isWatching(watchlist, 'target', event.target)
     if (nowWatching) {
       await addToWatchlist('target', event.target)
+      let pushMessage = ''
+      try {
+        const pushReady = await ensurePushSubscription()
+        const confirmed = pushReady ? await queueWatchConfirmation({ id: event.id, title: event.title }) : false
+        pushMessage = confirmed
+          ? 'Watching. A confirmation notification is queued.'
+          : pushReady
+            ? 'Watching. Atlas will notify you about good viewing windows.'
+            : 'Watching saved, but push is not enabled. Enable it in Settings to receive notifications.'
+      } catch {
+        pushMessage = 'Watching saved, but push setup needs attention in Settings.'
+      }
       onSavedForLater?.()
+      setWatchlist(await getWatchlist())
+      return { watching: nowWatching, message: pushMessage }
     } else {
       await removeFromWatchlist('target', event.target)
     }
@@ -256,7 +271,7 @@ export function EventsView({
     // effect re-runs below whenever `events` changes).
     function handleNextEvent() {
       const sequence = (events ?? [])
-        .filter((event) => isLocalEvent(event, viewLocation.lat, viewLocation.lon))
+        .filter((event) => isVisibleLocalEvent(event, viewLocation.lat, viewLocation.lon))
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
       if (sequence.length === 0) {
         pendingNextEventRef.current = true

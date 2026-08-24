@@ -14,7 +14,7 @@ import './ui/ui.css'
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/app/events', label: 'Events', icon: <EventsIcon /> },
-  { path: '/app/search', label: 'Search', icon: <SearchIcon /> },
+  { path: '/app/search', label: 'Explore', icon: <SearchIcon /> },
   { path: '/app/plan', label: 'Plan', icon: <PlanIcon /> },
   { path: '/app/journal', label: 'Journal', icon: <JournalIcon /> },
   { path: '/app/settings', label: 'Settings', icon: <SettingsIcon /> },
@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
 // title in place of the vertical space a full page-header would take.
 const PAGE_TITLES: Record<string, string> = {
   '/app/events': 'Events',
-  '/app/search': 'Search',
+  '/app/search': 'Explore',
   '/app/plan': 'Plan',
   '/app/journal': 'Journal',
   '/app/ask': 'Ask Atlas',

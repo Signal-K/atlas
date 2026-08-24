@@ -57,13 +57,56 @@ export async function subscribeToPush(): Promise<void> {
     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
   })
   const json = subscription.toJSON()
-
-  await pb.collection('atlas_push_subscriptions').create({
+  const payload = {
     user: pb.authStore.record?.id,
     endpoint: json.endpoint,
     p256dh: json.keys?.p256dh,
     auth: json.keys?.auth,
+  }
+  try {
+    const existing = await pb.collection('atlas_push_subscriptions').getFirstListItem(`endpoint = "${json.endpoint}"`)
+    if (existing.user !== payload.user) await pb.collection('atlas_push_subscriptions').update(existing.id, payload)
+  } catch {
+    await pb.collection('atlas_push_subscriptions').create(payload)
+  }
+}
+
+const WATCH_CONFIRMATION_KEY = 'atlas-watch-confirmation-queued'
+
+function melbourneHour(date: Date): number {
+  const hour = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', hour12: false }).format(date)
+  return Number(hour)
+}
+
+function melbourneDateKey(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+}
+
+/** The first eligible watch after the 11am AEST product cut-over gets one confirmation. */
+export function watchConfirmationEligible(date = new Date()): boolean {
+  return melbourneHour(date) >= 11 && !localStorage.getItem(WATCH_CONFIRMATION_KEY)
+}
+
+export async function ensurePushSubscription(): Promise<boolean> {
+  if (!isPushSupported() || !pb.authStore.isValid) return false
+  if (!(await getPushSubscription())) await subscribeToPush()
+  return (await getPushSubscription()) != null
+}
+
+export async function queueWatchConfirmation(event: { id: string; title: string }): Promise<boolean> {
+  if (!watchConfirmationEligible() || !pb.authStore.isValid) return false
+  const subscription = await getPushSubscription()
+  if (!subscription) return false
+  const localId = crypto.randomUUID()
+  await pb.collection('atlas_push_confirmation_queue').create({
+    user: pb.authStore.record?.id,
+    local_id: localId,
+    event_id: event.id,
+    title: event.title,
+    created_at: new Date().toISOString(),
   })
+  localStorage.setItem(WATCH_CONFIRMATION_KEY, `${melbourneDateKey(new Date())}:${localId}`)
+  return true
 }
 
 export async function unsubscribeFromPush(): Promise<void> {

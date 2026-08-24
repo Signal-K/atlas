@@ -25,7 +25,13 @@
   /* .mobile-shell alone sets --dt-bg-page: transparent for the hub/plan
      layouts; the entry overlay needs its own opaque paper background. */
   --dt-bg-page: var(--atlas-paper);
+  /* Let the actual fixed detail surface receive taps even though this
+     wrapper is also used as the route-level stacking layer. */
+  pointer-events: none;
 }
+
+.mobile-shell.dt-entry-overlay .dt-entry,
+.mobile-shell.dt-entry-overlay .dt-entry-missing { pointer-events: auto; }
 
 /* Above NavShell's own 900px breakpoint (src/ui/ui.css) the icon rail
    (.nav-shell-nav, 88px wide including its border) is a real sidebar, not

@@ -3,7 +3,7 @@ import { KIND_LABELS } from '../../widgets/EventRow'
 import { categoryForKind, EVENT_CATEGORIES, GUIDE_KIND_IDS } from '../../lib/eventCategories'
 import { dateGroupLabel } from '../../lib/eventFormat'
 import { localDateKey } from '../../lib/weather'
-import { getTaggedEventIds } from '../../lib/eventTags'
+import { getTaggedEventIds, toggleEventTag } from '../../lib/eventTags'
 import { defaultsToTaggedOnly } from '../../lib/eventFeedPreferences'
 import type { SkyEvent } from '../../lib/db'
 import { MobileIcon } from './MobileIcon'
@@ -182,31 +182,47 @@ export function SkyEventBrowser({
               const eventStatus = statusForEvent?.(event) ?? null
               const eventCategory = categoryForKind(event.kind)
               const isGuide = GUIDE_KIND_IDS.has(event.kind)
+              const tagged = taggedIds.has(event.id)
               return (
-                <button type="button" className="dt-feed-row dt-feed-row--listing" key={event.id} onClick={() => onSelect(event)}>
-                  <span className="dt-feed-swatch" style={eventCategory ? { color: eventCategory.accent } : undefined}>
-                    {event.imageUrl && !failedImageIds.has(event.id) ? (
-                      <img src={event.imageUrl} alt="" loading="lazy" onError={() => setFailedImageIds((prev) => new Set(prev).add(event.id))} />
-                    ) : (
-                      <MobileIcon name={eventCategory?.icon ?? 'zap'} />
-                    )}
-                  </span>
-                  <span className="dt-feed-body">
-                    <span className="dt-feed-kind">
-                      {KIND_LABELS[event.kind] ?? event.kind}
-                      {isGuide && <span className="dt-feed-guide-tag">GUIDE</span>}
-                      {taggedIds.has(event.id) && <span className="dt-feed-guide-tag dt-feed-tag-badge">TAGGED</span>}
+                <div className="dt-feed-row-wrap" key={event.id}>
+                  <button type="button" className="dt-feed-row dt-feed-row--listing" onClick={() => onSelect(event)}>
+                    <span className="dt-feed-swatch" style={eventCategory ? { color: eventCategory.accent } : undefined}>
+                      {event.imageUrl && !failedImageIds.has(event.id) ? (
+                        <img src={event.imageUrl} alt="" loading="lazy" onError={() => setFailedImageIds((prev) => new Set(prev).add(event.id))} />
+                      ) : (
+                        <MobileIcon name={eventCategory?.icon ?? 'zap'} />
+                      )}
                     </span>
-                    <span className="dt-feed-headline">{event.title}</span>
-                  </span>
-                  <span className="dt-feed-time">
-                    {new Date(event.startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })}
-                  </span>
-                  <span className={`dt-status-dot${eventStatus ? ` dt-status-dot--${eventStatus}` : ''}`} />
-                  <span className="dt-feed-chevron">
-                    <MobileIcon name="chevron" />
-                  </span>
-                </button>
+                    <span className="dt-feed-body">
+                      <span className="dt-feed-kind">
+                        {KIND_LABELS[event.kind] ?? event.kind}
+                        {isGuide && <span className="dt-feed-guide-tag">GUIDE</span>}
+                        {tagged && <span className="dt-feed-guide-tag dt-feed-tag-badge">TAGGED</span>}
+                      </span>
+                      <span className="dt-feed-headline">{event.title}</span>
+                    </span>
+                    <span className="dt-feed-time">
+                      {new Date(event.startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })}
+                    </span>
+                    <span className={`dt-status-dot${eventStatus ? ` dt-status-dot--${eventStatus}` : ''}`} />
+                    <span className="dt-feed-chevron">
+                      <MobileIcon name="chevron" />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`dt-feed-tag-button${tagged ? ' is-active' : ''}`}
+                    aria-label={tagged ? `Remove tag from ${event.title}` : `Tag ${event.title}`}
+                    aria-pressed={tagged}
+                    onClick={async (clickEvent) => {
+                      clickEvent.stopPropagation()
+                      await toggleEventTag(event.id, tagged)
+                      setTaggedIds(await getTaggedEventIds())
+                    }}
+                  >
+                    <span aria-hidden="true">{tagged ? '◆' : '◇'}</span>
+                  </button>
+                </div>
               )
             })}
           </div>

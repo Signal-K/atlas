@@ -4277,6 +4277,26 @@
   background: var(--dt-rust-400);
 }
 
+.dt-feed-row-wrap { position: relative; display: flex; align-items: stretch; }
+.dt-feed-row-wrap .dt-feed-row { min-width: 0; flex: 1; }
+.dt-feed-tag-button {
+  flex: 0 0 40px;
+  border: 1px solid var(--dt-rule);
+  border-left: 0;
+  background: transparent;
+  color: var(--dt-ink-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+.dt-feed-tag-button.is-active { color: var(--dt-ink); background: var(--dt-glacier-200); }
+.dt-feed-tag-button:focus-visible { outline: 2px solid var(--dt-ink); outline-offset: -2px; }
+
+.explore-tabs { display: flex; gap: 8px; margin: 0 0 18px; border-bottom: 1px solid var(--dt-rule); }
+.explore-tabs button { padding: 10px 4px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--dt-ink-muted); font: 800 11px/1 var(--dt-font-data); text-transform: uppercase; cursor: pointer; }
+.explore-tabs button.is-active { border-bottom-color: var(--dt-ink); color: var(--dt-ink); }
+.explore-city-picker { display: grid; gap: 6px; margin: 0 0 18px; color: var(--dt-ink-muted); font: 800 10px/1 var(--dt-font-data); letter-spacing: .06em; text-transform: uppercase; }
+.explore-city-picker select { min-height: 42px; padding: 0 10px; border: 1px solid var(--dt-rule); border-radius: 4px; background: var(--dt-paper); color: var(--dt-ink); font: 600 14px/1 var(--dt-font-serif); }
+
 .mobile-shell ~ .feedback-dock .feedback-dock-trigger,
 .mobile-shell + .feedback-dock .feedback-dock-trigger {
   border-color: var(--mobile-line);
@@ -4438,6 +4458,8 @@
 
 .dt-entry-back,
 .dt-visible-tonight-head .dt-entry-back {
+  position: relative;
+  z-index: 20;
   display: inline-flex;
   align-items: center;
   gap: 4px;

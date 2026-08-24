@@ -1,5 +1,6 @@
 import { haversineKm } from './cities'
 import type { SkyEvent } from './db'
+import { isVisibleFromLocation } from './eventVisibility.mjs'
 
 // Raised from 120: the curated CITIES list (cities.ts) is sparse enough
 // that a meaningful fraction of real user locations sit 120-200km from
@@ -26,6 +27,11 @@ function hasNoRealLocation(event: SkyEvent): boolean {
 export function isLocalEvent(event: SkyEvent, lat: number, lon: number): boolean {
   if (hasNoRealLocation(event)) return true
   return haversineKm({ lat, lon }, { lat: event.latitude!, lon: event.longitude! }) <= LOCAL_EVENT_RADIUS_KM
+}
+
+/** Includes both geographic matching and the observer-time visibility gate. */
+export function isVisibleLocalEvent(event: SkyEvent, lat: number, lon: number): boolean {
+  return isLocalEvent(event, lat, lon) && isVisibleFromLocation(event, lat, lon)
 }
 
 export function localEventDistanceKm(event: SkyEvent, lat: number, lon: number): number | null {

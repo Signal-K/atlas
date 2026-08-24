@@ -169,6 +169,14 @@ export function FeedbackDock() {
     return () => window.removeEventListener('atlas:analytics-event', onAnalyticsEvent)
   }, [npsDismissedRecently, npsSubmitted, activeSurveyIds])
 
+  useEffect(() => {
+    function openFeatureRequest() {
+      setMode('feature')
+    }
+    window.addEventListener('atlas:open-feature-request', openFeatureRequest)
+    return () => window.removeEventListener('atlas:open-feature-request', openFeatureRequest)
+  }, [])
+
   const canSubmitFeature = featureText.trim().length >= 6
   const canSubmitNps = npsScore != null
 
@@ -271,7 +279,7 @@ export function FeedbackDock() {
   }
 
   return (
-    <div className="feedback-dock" aria-live="polite">
+    <div className={`feedback-dock${mode ? ' feedback-dock--open' : ''}`} aria-live="polite">
       <button type="button" className="feedback-dock-trigger" onClick={() => setMode('feature')} aria-label="Request feature">
         <span className="feedback-dock-trigger-icon" aria-hidden="true">
           +

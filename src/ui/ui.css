@@ -293,12 +293,14 @@
   }
 }
 
-/* Mobile navigation is a gesture dock. It is a new bottom surface, not the
-   old persistent row of equal-weight tabs. */
+/* Mobile navigation is a compact hamburger and side panel. Content gets the
+   full viewport instead of losing a fixed strip at the bottom. */
 @media (max-width: 900px) {
+  .nav-shell:has(.dt-entry-overlay) .nav-shell-topbar { pointer-events: none; visibility: hidden; }
+
   .nav-shell {
     flex-direction: column;
-    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0;
   }
 
   /* The page title moves into the topbar on mobile, replacing the
@@ -324,19 +326,47 @@
     display: none;
   }
 
-  .mobile-quick-dock {
+  .mobile-menu-trigger {
     position: fixed;
-    inset: auto 0 0;
-    z-index: 210;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    left: 12px;
+    z-index: 1000;
+    width: 40px;
+    height: 40px;
     display: grid;
-    gap: 8px;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface-raised);
-    box-shadow: 0 -10px 28px rgba(13, 35, 51, .12);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
+    color: var(--color-text);
+    box-shadow: 0 8px 24px rgba(13, 35, 51, .12);
+    cursor: pointer;
   }
+
+  .mobile-menu-trigger-lines { display: grid; gap: 4px; }
+  .mobile-menu-trigger-lines i { display: block; width: 17px; height: 2px; border-radius: 2px; background: currentColor; }
+  .mobile-menu-layer, .mobile-menu-backdrop { position: fixed; inset: 0; }
+  .mobile-menu-layer { z-index: 999; }
+  .mobile-menu-backdrop { border: 0; background: rgba(7, 17, 25, .34); cursor: pointer; }
+  .mobile-menu-panel {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: min(320px, 86vw);
+    padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px calc(env(safe-area-inset-bottom, 0px) + 20px);
+    border-right: 1px solid var(--color-border);
+    background: var(--color-bg);
+    box-shadow: 20px 0 48px rgba(13, 35, 51, .18);
+    overflow-y: auto;
+  }
+  .mobile-menu-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; font-size: 20px; font-weight: 800; }
+  .mobile-menu-close { width: 34px; height: 34px; border: 1px solid var(--color-border); border-radius: 50%; background: transparent; color: inherit; font-size: 24px; cursor: pointer; }
+  .mobile-menu-links { display: grid; gap: 6px; }
+  .mobile-menu-links a, .mobile-menu-request { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border: 1px solid transparent; border-radius: 12px; color: var(--color-text); text-decoration: none; font-weight: 700; cursor: pointer; }
+  .mobile-menu-links a:hover, .mobile-menu-links a[aria-current='page'] { border-color: var(--color-border); background: var(--color-accent-bg); color: var(--color-accent); }
+  .mobile-menu-links svg { width: 20px; height: 20px; }
+  .mobile-menu-request { width: 100%; margin-top: 22px; border-color: var(--color-border); background: var(--color-surface-raised); color: var(--color-text); justify-content: flex-start; }
+  .mobile-menu-request span { color: var(--color-accent); font-size: 22px; line-height: 1; }
 
   .mobile-dock-swipe-panel {
     display: grid;
@@ -362,39 +392,6 @@
   .mobile-dock-next-copy span { color: var(--color-text-muted); font-size: var(--text-xs); }
   .mobile-dock-next-arrow { color: var(--color-accent); font-size: 24px; }
 
-  .mobile-tab-bar {
-    display: flex;
-    align-items: stretch;
-    justify-content: space-around;
-    gap: 4px;
-  }
-
-  .mobile-tab-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    min-height: 54px;
-    padding: 6px 4px;
-    border-radius: var(--radius-md);
-    color: var(--color-text-muted);
-    text-decoration: none;
-    font-size: var(--text-xs);
-    font-weight: 700;
-  }
-
-  .mobile-tab-item.is-active {
-    color: var(--color-accent);
-    background: var(--color-accent-bg);
-  }
-
-  .mobile-tab-icon svg {
-    width: 20px;
-    height: 20px;
-  }
-
   .nav-shell-main {
     padding: var(--space-4) calc(env(safe-area-inset-right, 0px) + var(--space-4)) var(--space-4) calc(env(safe-area-inset-left, 0px) + var(--space-4));
   }
@@ -405,5 +402,6 @@
     z-index: 9;
     background: var(--color-bg);
     padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0px));
+    padding-left: 64px;
   }
 }

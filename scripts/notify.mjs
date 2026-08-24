@@ -206,6 +206,42 @@ async function sendGetReadyReminders(pb, now) {
   return { sent, skippedWeather, skippedNoSubscription, failed }
 }
 
+async function sendWatchConfirmations(pb) {
+  const pending = await pb.collection('atlas_push_confirmation_queue').getFullList({
+    filter: 'sent_at = ""',
+  })
+  let sent = 0
+  let failed = 0
+  for (const confirmation of pending) {
+    const subscriptions = await subscriptionsForUser(pb, confirmation.user)
+    if (subscriptions.length === 0) {
+      await pb.collection('atlas_push_confirmation_queue').update(confirmation.id, { last_error: 'no_push_subscription' })
+      continue
+    }
+    const payload = JSON.stringify({
+      title: 'Atlas: watch registered',
+      body: `You’re watching ${confirmation.title}. We’ll notify you when it’s a good time to look.`,
+      url: '/app/events',
+    })
+    try {
+      const delivered = await sendPayloadToSubscriptions(pb, subscriptions, payload)
+      if (delivered > 0) {
+        await pb.collection('atlas_push_confirmation_queue').update(confirmation.id, {
+          sent_at: new Date().toISOString(),
+          last_error: '',
+        })
+        sent += delivered
+      } else {
+        await pb.collection('atlas_push_confirmation_queue').update(confirmation.id, { last_error: 'no_active_push_subscription' })
+      }
+    } catch (error) {
+      await pb.collection('atlas_push_confirmation_queue').update(confirmation.id, { last_error: error.message ?? 'push_failed' })
+      failed += 1
+    }
+  }
+  return { sent, failed }
+}
+
 async function main() {
   if (!PB_ADMIN_EMAIL || !PB_ADMIN_PASSWORD) {
     console.error('PB_ADMIN_EMAIL and PB_ADMIN_PASSWORD env vars are required.')
@@ -239,14 +275,14 @@ async function main() {
 
     const matchingEvents = upcoming.filter((event) => matches(event, favourite))
     for (const event of matchingEvents) {
-      // Unique (user, event) index doubles as the dedup check: if this
-      // insert fails, we've already notified this user for this event.
+      // The marker is written only after delivery, but it still guards future
+      // cron runs from sending the same event again.
       try {
-        await pb.collection('atlas_notifications_sent').create({ user: entry.user, event: event.id })
-      } catch {
+        await pb.collection('atlas_notifications_sent').getFirstListItem(`user = "${entry.user}" && event = "${event.id}"`)
         continue
+      } catch {
+        // No delivered marker yet; continue through weather and push gates.
       }
-
       if (event.latitude != null && event.longitude != null) {
         const date = event.starts_at.slice(0, 10)
         const cloudCover = await fetchCloudCoverPct(event.latitude, event.longitude, date)
@@ -295,6 +331,13 @@ async function main() {
       }
 
       if (sentForEvent > 0) {
+        // Only mark a notification as sent after at least one subscription
+        // accepted it. Weather/no-subscription skips must remain retryable.
+        try {
+          await pb.collection('atlas_notifications_sent').create({ user: entry.user, event: event.id })
+        } catch {
+          // Another scheduled runner may have won the unique race.
+        }
         await captureServerEvent(entry.user, 'Reminder push delivered (server)', {
           eventId: event.id,
           subscriptionCount: sentForEvent,
@@ -304,9 +347,10 @@ async function main() {
   }
 
   const getReady = await sendGetReadyReminders(pb, now)
+  const watchConfirmations = await sendWatchConfirmations(pb)
 
   console.log(
-    `Notify complete: ${notified} watchlist pushes sent, ${skippedWeather} watchlist skipped for weather, ${skippedNoSubscription} watchlist skipped with no subscription. Get-ready: ${getReady.sent} pushes sent, ${getReady.skippedWeather} skipped for weather, ${getReady.skippedNoSubscription} skipped with no subscription, ${getReady.failed} failed.`,
+    `Notify complete: ${notified} watchlist pushes sent, ${skippedWeather} watchlist skipped for weather, ${skippedNoSubscription} watchlist skipped with no subscription. Watch confirmations: ${watchConfirmations.sent} sent, ${watchConfirmations.failed} failed. Get-ready: ${getReady.sent} pushes sent, ${getReady.skippedWeather} skipped for weather, ${getReady.skippedNoSubscription} skipped with no subscription, ${getReady.failed} failed.`,
   )
 }
 

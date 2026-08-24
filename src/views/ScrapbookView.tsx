@@ -17,7 +17,7 @@ import { cityStampsFromObservations, pushCityStampFromObservation, shareCityStam
 import { requestPhotoCaption } from '../lib/photoCaption'
 import { suggestObservationCaption } from '../lib/observationCaptionSuggestion'
 import { cityLabel, type City } from '../lib/cities'
-import { isLocalEvent } from '../lib/eventFilters'
+import { isVisibleLocalEvent } from '../lib/eventFilters'
 import type { CurrentLocation } from '../lib/currentLocation'
 import { isAtlasMediaEnabled } from '../lib/atlasMedia'
 import { optimizeObservationPhoto, PhotoOptimizationError } from '../lib/photoOptimization'
@@ -187,7 +187,7 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
     setDateEventsLoading(true)
     getEventsForDate(checkinDate)
       .then((events) => {
-        if (!cancelled) setDateEvents(events.filter((event) => isLocalEvent(event, checkinLocation.lat, checkinLocation.lon)))
+        if (!cancelled) setDateEvents(events.filter((event) => isVisibleLocalEvent(event, checkinLocation.lat, checkinLocation.lon)))
       })
       .finally(() => {
         if (!cancelled) setDateEventsLoading(false)

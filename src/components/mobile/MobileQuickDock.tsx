@@ -1,83 +1,69 @@
-import { useRef, type TouchEvent } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import type { NavItem } from '../../ui/NavShell'
 import { useMobileDetailNav } from '../../lib/mobileDetailNav'
-
-const SWIPE_THRESHOLD = 42
-
-function dispatchMobileAction(name: 'atlas:mobile-home' | 'atlas:next-event') {
-  window.dispatchEvent(new CustomEvent(name))
-}
 
 interface MobileQuickDockProps {
   items: NavItem[]
 }
 
-// Normally a plain tab bar driven by NAV_ITEMS. While a full-screen event
-// detail is open (see lib/mobileDetailNav), it swaps to a back/swipe
-// control instead, since the tabs don't apply inside that overlay.
 export function MobileQuickDock({ items }: MobileQuickDockProps) {
+  const [open, setOpen] = useState(false)
   const { active: detailActive } = useMobileDetailNav()
-  const touchStartX = useRef<number | null>(null)
+  const location = useLocation()
 
-  function goBack() {
-    dispatchMobileAction('atlas:mobile-home')
-  }
+  useEffect(() => setOpen(false), [location.pathname])
 
-  function openNextEvent() {
-    dispatchMobileAction('atlas:next-event')
-  }
-
-  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
-    touchStartX.current = event.touches[0]?.clientX ?? null
-  }
-
-  function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
-    if (touchStartX.current == null) return
-    const delta = (event.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current
-    touchStartX.current = null
-    if (delta >= SWIPE_THRESHOLD) goBack()
-    if (delta <= -SWIPE_THRESHOLD) openNextEvent()
-  }
-
-  if (detailActive) {
-    return (
-      <nav className="mobile-quick-dock" aria-label="Event navigation">
-        <div
-          className="mobile-dock-swipe-panel"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          <button type="button" className="mobile-dock-home" onClick={goBack}>
-            <span className="mobile-dock-home-mark" aria-hidden="true">←</span>
-            <span>Back</span>
-          </button>
-          <button type="button" className="mobile-dock-next" onClick={openNextEvent}>
-            <span className="mobile-dock-next-copy">
-              <strong>Next event</strong>
-              <span>Swipe left to explore</span>
-            </span>
-            <span className="mobile-dock-next-arrow" aria-hidden="true">→</span>
-          </button>
-        </div>
-      </nav>
-    )
-  }
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [])
 
   return (
-    <nav className="mobile-quick-dock mobile-tab-bar" aria-label="Primary">
-      {items.map((item) => (
-        <NavLink
-          key={item.path}
-          to={item.path}
-          className={({ isActive }) => `mobile-tab-item${isActive ? ' is-active' : ''}`}
-        >
-          <span className="mobile-tab-icon" aria-hidden="true">
-            {item.icon}
-          </span>
-          <span className="mobile-tab-label">{item.label}</span>
-        </NavLink>
-      ))}
-    </nav>
+    <>
+      {!detailActive && <button
+        type="button"
+        className="mobile-menu-trigger"
+        aria-label="Open menu"
+        aria-expanded={open}
+        aria-controls="mobile-navigation-panel"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span aria-hidden="true" className="mobile-menu-trigger-lines"><i /><i /><i /></span>
+      </button>}
+      {open && !detailActive && (
+        <div className="mobile-menu-layer" role="presentation">
+          <button type="button" className="mobile-menu-backdrop" aria-label="Close menu" onClick={() => setOpen(false)} />
+          <aside id="mobile-navigation-panel" className="mobile-menu-panel" aria-label="Mobile menu">
+            <div className="mobile-menu-panel-head">
+              <span>Atlas</span>
+              <button type="button" className="mobile-menu-close" aria-label="Close menu" onClick={() => setOpen(false)}>×</button>
+            </div>
+            <nav className="mobile-menu-links" aria-label="Primary">
+              {items.map((item) => (
+                <NavLink key={item.path} to={item.path} onClick={() => setOpen(false)}>
+                  <span aria-hidden="true">{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </nav>
+            <button
+              type="button"
+              className="mobile-menu-request"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('atlas:open-feature-request'))
+                setOpen(false)
+              }}
+            >
+              <span aria-hidden="true">+</span>
+              Request a feature
+            </button>
+          </aside>
+        </div>
+      )}
+    </>
   )
 }
