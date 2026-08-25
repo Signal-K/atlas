@@ -75,6 +75,30 @@ const OBJECTS = [
     description: 'A bright planetary nebula in Vulpecula, one of the easiest of its kind to observe.',
     imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/09/M27%2C_NGC_6853%2C_Dumbbell_Nebula_%28noao-02185%29.jpg',
   },
+  {
+    id: 'm1', name: 'Crab Nebula (M1)', ra: 5.576, kind: 'nebula',
+    description: 'The faint supernova remnant in Taurus, best observed from a dark site with a telescope.',
+  },
+  {
+    id: 'm20', name: 'Trifid Nebula (M20)', ra: 18.022, kind: 'nebula',
+    description: 'A summer emission and reflection nebula divided by three dark dust lanes.',
+  },
+  {
+    id: 'm16', name: 'Eagle Nebula (M16)', ra: 18.319, kind: 'nebula',
+    description: 'A star-forming cloud whose embedded cluster is visible as a misty patch in small optics.',
+  },
+  {
+    id: 'm22', name: 'Sagittarius Cluster (M22)', ra: 18.602, kind: 'cluster',
+    description: 'A bright globular cluster, easy in binoculars and spectacular in a telescope.',
+  },
+  {
+    id: 'm33', name: 'Triangulum Galaxy (M33)', ra: 1.574, kind: 'galaxy',
+    description: 'A large, low-surface-brightness spiral galaxy that rewards a dark site.',
+  },
+  {
+    id: 'm101', name: 'Pinwheel Galaxy (M101)', ra: 14.03, kind: 'galaxy',
+    description: 'A large face-on spiral whose faint arms become visible under transparent dark skies.',
+  },
 ]
 
 const observer = new Astronomy.Observer(0, 0, 0)

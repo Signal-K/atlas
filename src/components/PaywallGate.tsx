@@ -95,7 +95,8 @@ export function PaywallGate({
   return (
     <div className="paywall-card">
       <span className="paywall-card-badge">One-time Sky Pass</span>
-      <h2>Unlock {feature} with Sky Pass</h2>
+      <h2>Plan the whole trip, not just tonight</h2>
+      <p className="paywall-card-description">{description}</p>
       <div className="paywall-card-breakdown">
         <div>
           <strong>Always free</strong>
@@ -123,7 +124,7 @@ export function PaywallGate({
               onClick={handleCheckoutClick}
               disabled={isStartingCheckout || isCheckingPurchase}
             >
-              {isStartingCheckout ? 'Starting checkout…' : 'Get the Sky Pass'}
+              {isStartingCheckout ? 'Starting checkout…' : 'Get Sky Pass · £24 once'}
             </button>
             <button
               type="button"

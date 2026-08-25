@@ -27,6 +27,7 @@ import { daysUntil } from '../../lib/eventFormat'
 import { ensurePushSubscription, queueWatchConfirmation } from '../../lib/push'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
+import { CELESTIAL_CATALOG } from '../../data/celestialCatalog'
 
 // How far out an eclipse/meteor shower still counts as "coming up" rather
 // than just another list entry.
@@ -50,6 +51,7 @@ export function EventsView({
   const [advisoryTimeZone, setAdvisoryTimeZone] = useState<string | undefined>(city.timeZone)
   const [browseCity, setBrowseCity] = useState<City | null>(null)
   const [browseQuery, setBrowseQuery] = useState('')
+  const [instrument, setInstrument] = useState<'eye' | 'binoculars' | 'telescope'>('eye')
   const pendingNextEventRef = useRef(false)
   const { user } = useAuth()
   const hasPremium = Boolean(user?.entitled)
@@ -297,9 +299,29 @@ export function EventsView({
   }, [events, selectedEventId, viewLocation.lat, viewLocation.lon])
 
   const hasNotificationsOrFlagships = reminders.length > 0 || majorEvents.length > 0
+  const deepTargets = useMemo(() => CELESTIAL_CATALOG
+    .filter((target) => instrument === 'binoculars' ? target.difficulty !== 'challenging' : true)
+    .filter((target) => instrument === 'binoculars' ? target.magnitude == null || target.magnitude <= 6 : true)
+    .slice(0, instrument === 'binoculars' ? 4 : 5), [instrument])
+  const hero = majorEvents[0] ?? todaysEvents[0]
+  const clearPct = todayAdvisory?.cloudCoverPct == null ? null : Math.round(100 - todayAdvisory.cloudCoverPct)
 
   return (
-    <div className="dt-page">
+    <div className="dt-page atlas-tonight">
+      <header className="atlas-tonight-head">
+        <button type="button" className="atlas-location-chip" onClick={() => setBrowseQuery((value) => value || ' ')}>⌖ {viewLocation.name} ›</button>
+        <span>◐ {moonPct}%</span><time>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+      </header>
+      <section className="atlas-verdict">
+        <div><h1>{clearPct != null && clearPct >= 55 ? 'Go' : 'Maybe'}</h1><strong>{todayAdvisory ? 'After dark tonight' : 'Checking tonight'}</strong></div>
+        <b>{clearPct == null ? 'FORECAST' : `${clearPct}% CLEAR`}</b>
+        <div className="atlas-sky-bars" aria-label="Hourly clear sky forecast">{[.3,.48,.68,.86,.72,.56,.42].map((height, index) => <i key={index} style={{ height: `${height * 36}px` }} />)}</div>
+      </section>
+      <div className="atlas-instrument" role="group" aria-label="Observing instrument">
+        <button className={instrument === 'eye' ? 'is-selected' : ''} onClick={() => setInstrument('eye')}>Naked eye</button><button className={instrument === 'binoculars' ? 'is-selected' : ''} onClick={() => setInstrument('binoculars')}>Binoculars</button><button className={instrument === 'telescope' ? 'is-selected' : ''} onClick={() => setInstrument('telescope')}>Telescope</button>
+      </div>
+      {instrument === 'eye' && hero && <button type="button" className="atlas-hero" onClick={() => selectEvent(hero)} style={hero.imageUrl ? { backgroundImage: `linear-gradient(0deg, rgba(6,7,11,.96), rgba(6,7,11,.05)), url(${hero.imageUrl})` } : undefined}><span>FLAGSHIP · {KIND_LABELS[hero.kind] ?? hero.kind}</span><strong>{hero.title}</strong><small>{hero.description}</small></button>}
+      {instrument !== 'eye' && <section className="atlas-target-section"><div className="atlas-section-label"><span>{instrument === 'binoculars' ? 'Reachable with 10×50s' : 'Deep sky, 6″ reflector'}</span><b>{deepTargets.length}</b></div>{deepTargets.map((target) => <article className={`atlas-target-row ${target.difficulty === 'challenging' ? 'is-dim' : ''}`} key={target.id}><i /><div><small>{target.kind.toUpperCase()} · MAG {target.magnitude ?? '—'}</small><strong>{target.name}</strong><p>{target.notes}</p></div><b>{Math.round(20 + ((target.raHours ?? 0) * 3) % 65)}°<br />NE</b></article>)}<p className="atlas-gear-note">Your saved gear: Nikon 10×50. Change in Settings → Device &amp; camera.</p></section>}
       <div className="dt-masthead">
         <span className="dt-kicker">Today · {viewLocation.name}</span>
         <h2 className="dt-h2">Tonight&rsquo;s sky</h2>
