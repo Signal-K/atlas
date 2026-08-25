@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../lib/auth'
 import { PaywallGate } from '../components/PaywallGate'
 import { CITIES, cityLabel, type City } from '../lib/cities'
-import { EVENT_CATEGORIES } from '../lib/eventCategories'
-import { MAKER_LABELS, MAKER_ORDER, modelsForMaker, type DeviceMaker } from '../lib/cameraProfiles'
+import { MAKER_LABELS, MAKER_ORDER, modelsForMaker, type DeviceId, CAMERA_PROFILES, deviceIdFromPreset } from '../lib/cameraProfiles'
+import { InterestsPicker } from '../components/InterestsPicker'
+import { getPreferredEventTypes } from '../lib/eventPreferences'
 import {
   TRIP_MAX_LEGS,
   VIEWING_INSTRUMENTS,
@@ -24,6 +26,9 @@ const MILKY_WAY_LABEL: Record<'yes' | 'marginal' | 'no', string> = {
   marginal: 'Milky Way marginal',
   no: 'Milky Way washed out',
 }
+
+type TripBuilderStep = 'dates' | 'cities' | 'equipment' | 'interests' | 'review'
+const TRIP_BUILDER_STEPS: TripBuilderStep[] = ['dates', 'cities', 'equipment', 'interests', 'review']
 
 export function PlanTripView() {
   const { user, entitlementRefreshing } = useAuth()
@@ -46,6 +51,7 @@ export function PlanTripView() {
 }
 
 function PlanTripWorkspace() {
+  const { user } = useAuth()
   const [trip, setTrip] = useState<TripPlan | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -58,12 +64,13 @@ function PlanTripWorkspace() {
 
   if (loading) return <p>Loading your trip…</p>
 
-  if (!trip) return <TripBuilder onSaved={setTrip} />
+  if (!trip) return <TripBuilder onSaved={setTrip} user={user} />
 
   return <TripSummary trip={trip} onChanged={setTrip} onDeleted={() => setTrip(null)} />
 }
 
-function TripBuilder({ onSaved }: { onSaved: (trip: TripPlan) => void }) {
+function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; user: ReturnType<typeof useAuth>['user'] }) {
+  const [stepIndex, setStepIndex] = useState(0)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [legs, setLegs] = useState<TripLeg[]>([])
@@ -76,10 +83,32 @@ function TripBuilder({ onSaved }: { onSaved: (trip: TripPlan) => void }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Default interests from user preferences on mount
+  useEffect(() => {
+    if (interests.length === 0) {
+      getPreferredEventTypes().then((kinds) => {
+        if (kinds.length > 0) setInterests(kinds)
+      })
+    }
+  }, [])
+
+  // Default equipment from user's device selections on mount
+  useEffect(() => {
+    if (equipment.length === 0 && user?.deviceModels) {
+      const deviceIds = user.deviceModels
+        .map(deviceIdFromPreset)
+        .filter((id) => id !== null)
+        .map((id) => id as DeviceId)
+      if (deviceIds.length > 0) setEquipment(deviceIds)
+    }
+  }, [user?.deviceModels])
+
   const cityResults = useMemo(
     () => (cityQuery.trim() ? CITIES.filter((c) => cityLabel(c).toLowerCase().includes(cityQuery.trim().toLowerCase())).slice(0, 8) : []),
     [cityQuery],
   )
+
+  const step = TRIP_BUILDER_STEPS[stepIndex]
 
   function addLeg() {
     if (!selectedCity || !legStart || !legEnd || legs.length >= TRIP_MAX_LEGS) return
@@ -103,8 +132,22 @@ function TripBuilder({ onSaved }: { onSaved: (trip: TripPlan) => void }) {
     setEquipment((current) => (current.includes(id) ? current.filter((v) => v !== id) : [...current, id]))
   }
 
-  function toggleInterest(id: string) {
-    setInterests((current) => (current.includes(id) ? current.filter((v) => v !== id) : [...current, id]))
+  function toggleInterest(categoryKinds: string[]) {
+    setInterests((current) => {
+      const active = categoryKinds.every((kind) => current.includes(kind))
+      return active ? current.filter((kind) => !categoryKinds.includes(kind)) : [...new Set([...current, ...categoryKinds])]
+    })
+  }
+
+  function advance() {
+    setError('')
+    if (stepIndex + 1 >= TRIP_BUILDER_STEPS.length) handleSave()
+    else setStepIndex(stepIndex + 1)
+  }
+
+  function goBack() {
+    setError('')
+    if (stepIndex > 0) setStepIndex(stepIndex - 1)
   }
 
   const canSave = startDate && endDate && legs.length > 0 && equipment.length > 0
@@ -119,155 +162,400 @@ function TripBuilder({ onSaved }: { onSaved: (trip: TripPlan) => void }) {
       onSaved(trip)
     } catch {
       setError('Could not save your trip. Please try again.')
-    } finally {
       setSaving(false)
     }
   }
 
   return (
     <section className="widget-section trip-builder">
-      <h2>Plan a trip</h2>
-      <p className="trip-hint">One trip at a time -- add every city you'll visit, then generate a guide per city.</p>
-
-      <div className="trip-builder-step">
-        <span className="camera-flow-label">1. Trip dates</span>
-        <div className="trip-date-row">
-          <label>
-            Start
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </label>
-          <label>
-            End
-            <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
-          </label>
-        </div>
+      <div className="trip-builder-progress">
+        {TRIP_BUILDER_STEPS.map((s, i) => (
+          <span key={s} className={`trip-builder-dot${i <= stepIndex ? ' is-active' : ''}`} />
+        ))}
       </div>
 
-      <div className="trip-builder-step">
-        <span className="camera-flow-label">2. Cities ({legs.length}/{TRIP_MAX_LEGS})</span>
-        {legs.length > 0 && (
-          <ul className="row-list trip-leg-list">
-            {legs.map((leg, index) => (
-              <li key={`${leg.cityKey}-${leg.startDate}`} className="trip-leg-row">
-                <span>
-                  <strong>{leg.cityName}</strong> · {leg.startDate} to {leg.endDate}
-                </span>
-                <button type="button" onClick={() => removeLeg(index)} aria-label={`Remove ${leg.cityName}`}>
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {legs.length < TRIP_MAX_LEGS && (
-          <div className="trip-add-leg">
-            <input
-              type="search"
-              placeholder="Search a city"
-              value={cityQuery}
-              aria-label="Search cities"
-              onChange={(e) => {
-                setCityQuery(e.target.value)
+      <div className="trip-builder-steps">
+        <AnimatePresence mode="wait">
+          {step === 'dates' && (
+            <TripBuilderStepDates
+              key="dates"
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+            />
+          )}
+
+          {step === 'cities' && (
+            <TripBuilderStepCities
+              key="cities"
+              legs={legs}
+              startDate={startDate}
+              endDate={endDate}
+              cityQuery={cityQuery}
+              selectedCity={selectedCity}
+              legStart={legStart}
+              legEnd={legEnd}
+              cityResults={cityResults}
+              onCityQueryChange={(q) => {
+                setCityQuery(q)
                 setSelectedCity(null)
               }}
+              onSelectCity={selectCity}
+              onLegStartChange={setLegStart}
+              onLegEndChange={setLegEnd}
+              onAddLeg={addLeg}
+              onRemoveLeg={removeLeg}
             />
-            <div className="trip-date-row">
-              <label>
-                From
-                <input type="date" value={legStart} min={startDate || undefined} max={endDate || undefined} onChange={(e) => setLegStart(e.target.value)} />
-              </label>
-              <label>
-                To
-                <input type="date" value={legEnd} min={legStart || startDate || undefined} max={endDate || undefined} onChange={(e) => setLegEnd(e.target.value)} />
-              </label>
-            </div>
-            {cityQuery.trim() && !selectedCity && (
-              <div className="trip-city-results" role="listbox" aria-label="City results">
-                {cityResults.map((city) => (
-                  <button type="button" key={cityLabel(city)} role="option" onClick={() => selectCity(city)}>
-                    {cityLabel(city)}
-                  </button>
-                ))}
-                {cityResults.length === 0 && <p>No matching cities.</p>}
-              </div>
-            )}
-            {selectedCity && (
-              <div className="trip-city-selection">
-                <span>Selected city: <strong>{cityLabel(selectedCity)}</strong></span>
-                <button type="button" onClick={addLeg} disabled={!legStart || !legEnd}>
-                  Add city
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          )}
 
-      <div className="trip-builder-step">
-        <span className="camera-flow-label">3. Equipment</span>
-        <div className="filter-tabs">
-          {VIEWING_INSTRUMENTS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              className={equipment.includes(option.id) ? 'is-active' : ''}
-              onClick={() => toggleEquipment(option.id)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <PhonePicker selected={equipment} onToggle={toggleEquipment} />
-      </div>
+          {step === 'equipment' && (
+            <TripBuilderStepEquipment
+              key="equipment"
+              equipment={equipment}
+              onToggleEquipment={toggleEquipment}
+              onTogglePhoneModel={(id) => toggleEquipment(id)}
+            />
+          )}
 
-      <div className="trip-builder-step">
-        <span className="camera-flow-label">4. Interests</span>
-        <div className="filter-tabs">
-          {EVENT_CATEGORIES.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              className={interests.includes(category.id) ? 'is-active' : ''}
-              onClick={() => toggleInterest(category.id)}
-            >
-              {category.label}
-            </button>
-          ))}
-        </div>
+          {step === 'interests' && (
+            <TripBuilderStepInterests
+              key="interests"
+              interests={interests}
+              onToggleCategory={toggleInterest}
+            />
+          )}
+
+          {step === 'review' && (
+            <TripBuilderStepReview
+              key="review"
+              startDate={startDate}
+              endDate={endDate}
+              legs={legs}
+              equipment={equipment}
+              interests={interests}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {error && <p className="account-form-error">{error}</p>}
-      <button type="button" className="scrapbook-submit" disabled={!canSave || saving} onClick={handleSave}>
-        {saving ? 'Saving…' : 'Save trip'}
-      </button>
+
+      <div className="trip-builder-actions">
+        {stepIndex > 0 && (
+          <button type="button" className="trip-builder-back" onClick={goBack}>
+            Back
+          </button>
+        )}
+        {stepIndex < TRIP_BUILDER_STEPS.length - 1 && (
+          <button type="button" className="trip-builder-continue" onClick={advance}>
+            Continue
+          </button>
+        )}
+        {stepIndex === TRIP_BUILDER_STEPS.length - 1 && (
+          <button type="button" className="trip-builder-save" disabled={!canSave || saving} onClick={handleSave}>
+            {saving ? 'Saving…' : 'Save trip'}
+          </button>
+        )}
+      </div>
     </section>
   )
 }
 
+function TripBuilderStepDates({
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
+}: {
+  startDate: string
+  endDate: string
+  onStartDateChange: (date: string) => void
+  onEndDateChange: (date: string) => void
+}) {
+  return (
+    <motion.div
+      className="trip-builder-step-content"
+      initial={{ x: 24, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -24, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h3>When will you travel?</h3>
+      <div className="trip-date-row">
+        <label>
+          Start date
+          <input type="date" value={startDate} onChange={(e) => onStartDateChange(e.target.value)} autoFocus />
+        </label>
+        <label>
+          End date
+          <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => onEndDateChange(e.target.value)} />
+        </label>
+      </div>
+    </motion.div>
+  )
+}
+
+function TripBuilderStepCities({
+  legs,
+  startDate,
+  endDate,
+  cityQuery,
+  selectedCity,
+  legStart,
+  legEnd,
+  cityResults,
+  onCityQueryChange,
+  onSelectCity,
+  onLegStartChange,
+  onLegEndChange,
+  onAddLeg,
+  onRemoveLeg,
+}: {
+  legs: TripLeg[]
+  startDate: string
+  endDate: string
+  cityQuery: string
+  selectedCity: City | null
+  legStart: string
+  legEnd: string
+  cityResults: City[]
+  onCityQueryChange: (q: string) => void
+  onSelectCity: (city: City) => void
+  onLegStartChange: (date: string) => void
+  onLegEndChange: (date: string) => void
+  onAddLeg: () => void
+  onRemoveLeg: (i: number) => void
+}) {
+  return (
+    <motion.div
+      className="trip-builder-step-content"
+      initial={{ x: 24, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -24, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h3>Which cities? ({legs.length}/{TRIP_MAX_LEGS})</h3>
+
+      {legs.length > 0 && (
+        <ul className="row-list trip-leg-list">
+          {legs.map((leg, index) => (
+            <li key={`${leg.cityKey}-${leg.startDate}`} className="trip-leg-row">
+              <span>
+                <strong>{leg.cityName}</strong> · {leg.startDate} to {leg.endDate}
+              </span>
+              <button type="button" onClick={() => onRemoveLeg(index)} aria-label={`Remove ${leg.cityName}`}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {legs.length < TRIP_MAX_LEGS && (
+        <div className="trip-add-leg">
+          <input
+            type="search"
+            placeholder="Search a city"
+            value={cityQuery}
+            aria-label="Search cities"
+            onChange={(e) => onCityQueryChange(e.target.value)}
+            autoFocus
+          />
+          <div className="trip-date-row">
+            <label>
+              From
+              <input type="date" value={legStart} min={startDate || undefined} max={endDate || undefined} onChange={(e) => onLegStartChange(e.target.value)} />
+            </label>
+            <label>
+              To
+              <input type="date" value={legEnd} min={legStart || startDate || undefined} max={endDate || undefined} onChange={(e) => onLegEndChange(e.target.value)} />
+            </label>
+          </div>
+          {cityQuery.trim() && !selectedCity && (
+            <div className="trip-city-results" role="listbox" aria-label="City results">
+              {cityResults.map((city) => (
+                <button type="button" key={cityLabel(city)} role="option" onClick={() => onSelectCity(city)}>
+                  {cityLabel(city)}
+                </button>
+              ))}
+              {cityResults.length === 0 && <p>No matching cities.</p>}
+            </div>
+          )}
+          {selectedCity && (
+            <div className="trip-city-selection">
+              <span>Selected: <strong>{cityLabel(selectedCity)}</strong></span>
+              <button type="button" onClick={onAddLeg} disabled={!legStart || !legEnd}>
+                Add city
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+function TripBuilderStepEquipment({
+  equipment,
+  onToggleEquipment,
+  onTogglePhoneModel,
+}: {
+  equipment: string[]
+  onToggleEquipment: (id: string) => void
+  onTogglePhoneModel: (id: string) => void
+}) {
+  return (
+    <motion.div
+      className="trip-builder-step-content"
+      initial={{ x: 24, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -24, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h3>What gear are you bringing?</h3>
+      <p className="trip-hint">Viewing instruments</p>
+      <div className="filter-tabs">
+        {VIEWING_INSTRUMENTS.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            className={equipment.includes(option.id) ? 'is-active' : ''}
+            onClick={() => onToggleEquipment(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <PhonePicker selected={equipment} onToggle={onTogglePhoneModel} />
+    </motion.div>
+  )
+}
+
+function TripBuilderStepInterests({
+  interests,
+  onToggleCategory,
+}: {
+  interests: string[]
+  onToggleCategory: (kinds: string[]) => void
+}) {
+  return (
+    <motion.div
+      className="trip-builder-step-content"
+      initial={{ x: 24, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -24, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h3>What interests you?</h3>
+      <p className="trip-hint">We'll highlight these in your personalized city guides.</p>
+      <InterestsPicker selected={interests} onToggleCategory={onToggleCategory} />
+    </motion.div>
+  )
+}
+
+function TripBuilderStepReview({
+  startDate,
+  endDate,
+  legs,
+  equipment,
+  interests,
+}: {
+  startDate: string
+  endDate: string
+  legs: TripLeg[]
+  equipment: string[]
+  interests: string[]
+}) {
+  return (
+    <motion.div
+      className="trip-builder-step-content"
+      initial={{ x: 24, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -24, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h3>Ready to go?</h3>
+      <div className="trip-review">
+        <div className="trip-review-section">
+          <strong>Trip dates</strong>
+          <p>{startDate} to {endDate}</p>
+        </div>
+        <div className="trip-review-section">
+          <strong>Cities ({legs.length})</strong>
+          <ul>
+            {legs.map((leg) => (
+              <li key={leg.cityKey}>
+                {leg.cityName} · {leg.startDate} to {leg.endDate}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="trip-review-section">
+          <strong>Gear ({equipment.length} items)</strong>
+          <ul>
+            {equipment.map((id) => (
+              <li key={id}>{CAMERA_PROFILES[id as DeviceId]?.name || VIEWING_INSTRUMENTS.find((v) => v.id === id)?.label || id}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="trip-review-section">
+          <strong>Interests ({interests.length})</strong>
+          <p className="trip-hint">{interests.length > 0 ? 'Set in your personalized guides' : 'None selected'}</p>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 function PhonePicker({ selected, onToggle }: { selected: string[]; onToggle: (id: string) => void }) {
-  const [maker, setMaker] = useState<DeviceMaker>('apple')
+  const selectedPhoneIds = selected.filter((id) => id in CAMERA_PROFILES) as DeviceId[]
+  const selectedPhoneNames = selectedPhoneIds.map((id) => CAMERA_PROFILES[id]?.name || id)
 
   return (
     <div className="trip-phone-picker">
-      <div className="filter-tabs camera-maker-tabs">
-        {MAKER_ORDER.map((id) => (
-          <button key={id} type="button" className={maker === id ? 'is-active' : ''} onClick={() => setMaker(id)}>
-            {MAKER_LABELS[id]}
-          </button>
-        ))}
-      </div>
-      <div className="filter-tabs">
-        {modelsForMaker(maker).map((profile) => (
-          <button
-            key={profile.id}
-            type="button"
-            className={selected.includes(profile.id) ? 'is-active' : ''}
-            onClick={() => onToggle(profile.id)}
-          >
-            {profile.name}
-          </button>
-        ))}
-      </div>
+      <p className="trip-hint">Phone models</p>
+
+      {selectedPhoneIds.length > 0 && (
+        <div className="trip-phone-picker-selected">
+          <div className="trip-phone-picker-selected-label">Selected:</div>
+          <div className="trip-phone-picker-chips">
+            {selectedPhoneNames.map((name, i) => (
+              <div key={selectedPhoneIds[i]} className="trip-phone-picker-chip">
+                <span>{name}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${name}`}
+                  onClick={() => onToggle(selectedPhoneIds[i])}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {MAKER_ORDER.map((maker) => {
+        const models = modelsForMaker(maker)
+        return (
+          <div key={maker} className="trip-phone-picker-section">
+            <div className="trip-phone-picker-maker">{MAKER_LABELS[maker]}</div>
+            <div className="filter-tabs trip-phone-models">
+              {models.map((profile) => (
+                <button
+                  key={profile.id}
+                  type="button"
+                  className={selected.includes(profile.id) ? 'is-active' : ''}
+                  onClick={() => onToggle(profile.id)}
+                >
+                  {profile.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

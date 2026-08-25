@@ -256,3 +256,23 @@ export function effectiveGearProfile(device: DeviceId): GearProfile {
   const customFocalLengthMm = getCustomLensFocalLengthMm()
   return customFocalLengthMm != null ? { ...base, focalLengthMm: customFocalLengthMm } : base
 }
+
+// Translate a DEVICE_PRESETS snake_case id (e.g. 'iphone_15_pro') to a
+// cameraProfiles kebab-case DeviceId (e.g. 'iphone-15-pro') for trip
+// equipment defaults. Only covers presets with CAMERA_PROFILES equivalents;
+// others return null and are skipped in the default selection.
+const PRESET_TO_DEVICE_ID: Partial<Record<string, DeviceId>> = {
+  iphone_15_pro: 'iphone-15-pro',
+  iphone_16_pro: 'iphone-16-pro',
+  pixel_8_pro: 'pixel-8-pro',
+  pixel_9_pro: 'pixel-9-pro',
+  galaxy_s24_ultra: 'galaxy-s24-ultra',
+  galaxy_s25_ultra: 'galaxy-s25-ultra',
+  nothing_phone_2: 'nothing-phone-2',
+  nothing_phone_3: 'nothing-phone-3',
+  other: 'other-phone',
+}
+
+export function deviceIdFromPreset(value: string): DeviceId | null {
+  return PRESET_TO_DEVICE_ID[value] ?? null
+}

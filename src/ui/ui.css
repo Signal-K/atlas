@@ -359,8 +359,11 @@
     box-shadow: 20px 0 48px rgba(13, 35, 51, .18);
     overflow-y: auto;
   }
-  .mobile-menu-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; font-size: 20px; font-weight: 800; }
-  .mobile-menu-close { width: 34px; height: 34px; border: 1px solid var(--color-border); border-radius: 50%; background: transparent; color: inherit; font-size: 24px; cursor: pointer; }
+  .mobile-menu-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .mobile-menu-profile { display: grid; gap: 4px; }
+  .mobile-menu-greeting { display: block; font-size: 16px; font-weight: 800; color: var(--color-text); }
+  .mobile-menu-tier { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
+  .mobile-menu-close { width: 34px; height: 34px; border: 1px solid var(--color-border); border-radius: 50%; background: transparent; color: inherit; font-size: 24px; cursor: pointer; transition: transform 0.2s; }
   .mobile-menu-links { display: grid; gap: 6px; }
   .mobile-menu-links a, .mobile-menu-request { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border: 1px solid transparent; border-radius: 12px; color: var(--color-text); text-decoration: none; font-weight: 700; cursor: pointer; }
   .mobile-menu-links a:hover, .mobile-menu-links a[aria-current='page'] { border-color: var(--color-border); background: var(--color-accent-bg); color: var(--color-accent); }
