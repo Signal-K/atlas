@@ -31,9 +31,9 @@ interface Smudge {
 }
 
 const LAYERS: StarLayer[] = [
-  { depth: 0.15, areaPerStar: 2200, sizeRange: [0.3, 0.9], alphaRange: [0.25, 0.5] },
-  { depth: 0.4, areaPerStar: 4200, sizeRange: [0.7, 1.5], alphaRange: [0.4, 0.75] },
-  { depth: 0.85, areaPerStar: 13000, sizeRange: [1.2, 2.7], alphaRange: [0.6, 1] },
+  { depth: 0.15, areaPerStar: 2200, sizeRange: [0.3, 0.9], alphaRange: [0.4, 0.7] },
+  { depth: 0.4, areaPerStar: 4200, sizeRange: [0.7, 1.5], alphaRange: [0.55, 0.9] },
+  { depth: 0.85, areaPerStar: 13000, sizeRange: [1.2, 2.7], alphaRange: [0.7, 1] },
 ]
 
 // Loosely inspired by the star colors visible in Hubble Deep Field imagery:
@@ -123,7 +123,7 @@ function createSmudges(width: number, height: number, rand: () => number, isDark
     rx: 55 + rand() * 120,
     ry: 28 + rand() * 65,
     rotation: rand() * Math.PI,
-    alpha: 0.045 + rand() * 0.075,
+    alpha: 0.07 + rand() * 0.12,
     color: palette[Math.floor(rand() * palette.length)],
   }))
 }

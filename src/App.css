@@ -1446,6 +1446,12 @@
   font-size: 12px;
   color: var(--text);
   opacity: 0.85;
+  flex: 1;
+  min-width: 0;
+}
+
+.trip-date-row input[type='date'] {
+  max-width: 100%;
 }
 
 .trip-leg-list {

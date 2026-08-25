@@ -158,7 +158,7 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
     if (stepIndex > 0) setStepIndex(stepIndex - 1)
   }
 
-  const canSave = startDate && endDate && legs.length > 0 && equipment.length > 0
+  const canSave = startDate && endDate && legs.length > 0 && equipment.length > 0 && endDate >= startDate
   const canContinue = step === 'dates'
     ? Boolean(startDate && endDate && endDate >= startDate)
     : step === 'cities'

@@ -96,7 +96,6 @@ export function PaywallGate({
     <div className="paywall-card">
       <span className="paywall-card-badge">One-time Sky Pass</span>
       <h2>Unlock {feature} with Sky Pass</h2>
-      <p>{description}</p>
       <div className="paywall-card-breakdown">
         <div>
           <strong>Always free</strong>
