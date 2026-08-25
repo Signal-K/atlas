@@ -91,6 +91,7 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
   const [error, setError] = useState('')
 
   // Default interests from user preferences on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (interests.length === 0) {
       getPreferredEventTypes().then((kinds) => {
