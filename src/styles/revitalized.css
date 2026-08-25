@@ -167,6 +167,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .trip-builder .filter-tabs button.is-active { background: var(--atlas-ink); color: var(--atlas-paper); border-color: var(--atlas-ink); }
 .trip-builder .scrapbook-submit { margin-top: 4px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--atlas-sky); color: #fff; font-weight: 800; }
 .trip-builder .scrapbook-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+/* The planner is a focused workflow, not a dashboard panel. Keep the first
+   step compact and make progress legible at a glance. */
+.plan-page { max-width: 1040px; }
+body:has(.plan-page) .starfield { opacity: .16; }
+.plan-page .page-header { gap: 8px; }
+.plan-page .page-header p { max-width: 52ch; line-height: 1.5; }
+.plan-page .trip-builder { min-height: 0; }
+.plan-page .trip-builder-steps { min-height: 0; margin-bottom: 18px; }
+.plan-page .trip-builder-step-content { gap: 14px; }
+.plan-page .trip-builder-step-content h3 { margin: 0; color: var(--atlas-ink); font: 700 clamp(24px, 3vw, 32px)/1.05 var(--font-serif); letter-spacing: -.035em; }
+.plan-page .trip-builder-progress { justify-content: flex-start; gap: 0; margin: 0 0 8px; }
+.plan-page .trip-builder-progress-step { display: inline-flex; align-items: center; gap: 7px; color: var(--atlas-ink-soft); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.plan-page .trip-builder-progress-step:not(:last-child)::after { width: clamp(18px, 4vw, 44px); height: 1px; margin: 0 10px; background: var(--atlas-line); content: ''; }
+.plan-page .trip-builder-progress-step.is-current { color: var(--atlas-sky-deep); }
+.plan-page .trip-builder-progress-step.is-complete { color: var(--atlas-mint); }
+.plan-page .trip-builder-dot { width: 9px; height: 9px; opacity: 1; background: var(--atlas-line); }
+.plan-page .trip-builder-progress-step.is-current .trip-builder-dot { background: var(--atlas-sky); box-shadow: 0 0 0 4px color-mix(in srgb, var(--atlas-sky) 14%, transparent); }
+.plan-page .trip-builder-progress-step.is-complete .trip-builder-dot { background: var(--atlas-mint); }
+.plan-page .trip-builder-actions { padding-top: 14px; border-top-color: var(--atlas-line); }
+.plan-page .trip-builder-continue:disabled,
+.plan-page .trip-builder-save:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.plan-page .trip-builder-back,
+.plan-page .trip-builder-continue,
+.plan-page .trip-builder-save { min-height: 42px; border-radius: 10px; }
+.plan-page .trip-builder-continue,
+.plan-page .trip-builder-save { background: var(--atlas-sky); }
+.plan-page .trip-builder-continue:hover:not(:disabled),
+.plan-page .trip-builder-save:hover:not(:disabled) { background: var(--atlas-sky-deep); }
+.plan-page .trip-date-row { gap: 14px; }
+.plan-page .trip-date-row > label { display: grid; }
+.plan-page .trip-leg-row { border-color: var(--atlas-line); background: color-mix(in srgb, var(--atlas-card) 70%, transparent); }
+.plan-page .trip-leg-card { border-color: var(--atlas-line); background: color-mix(in srgb, var(--atlas-card) 78%, transparent); }
 @media (max-width: 700px) {
   .settings-page { gap: 14px; }
   .settings-page-title { margin: 0 0 2px; text-align: center; font-size: 30px; }
@@ -194,6 +227,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .digest-empty-mark { width: 36px; height: 36px; }
   .digest-empty-state button { grid-column: 2; justify-self: start; }
   .trip-builder { padding: 18px 14px; border-radius: 14px; }
+  .plan-page { gap: 16px; }
+  .plan-page .trip-builder-progress { overflow-x: auto; padding: 4px 2px 8px; }
+  .plan-page .trip-builder-progress-step { flex-shrink: 0; font-size: 10px; }
+  .plan-page .trip-builder-progress-step:not(:last-child)::after { width: 16px; margin: 0 7px; }
+  .plan-page .trip-builder-actions { justify-content: stretch; }
+  .plan-page .trip-builder-actions > button { flex: 1; }
   .trip-city-selection { align-items: stretch; flex-direction: column; }
   .trip-city-selection button { width: 100%; }
 }

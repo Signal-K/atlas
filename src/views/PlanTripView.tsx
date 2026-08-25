@@ -29,6 +29,13 @@ const MILKY_WAY_LABEL: Record<'yes' | 'marginal' | 'no', string> = {
 
 type TripBuilderStep = 'dates' | 'cities' | 'equipment' | 'interests' | 'review'
 const TRIP_BUILDER_STEPS: TripBuilderStep[] = ['dates', 'cities', 'equipment', 'interests', 'review']
+const TRIP_BUILDER_STEP_LABELS: Record<TripBuilderStep, string> = {
+  dates: 'Dates',
+  cities: 'Cities',
+  equipment: 'Gear',
+  interests: 'Interests',
+  review: 'Review',
+}
 
 export function PlanTripView() {
   const { user, entitlementRefreshing } = useAuth()
@@ -151,6 +158,13 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
   }
 
   const canSave = startDate && endDate && legs.length > 0 && equipment.length > 0
+  const canContinue = step === 'dates'
+    ? Boolean(startDate && endDate && endDate >= startDate)
+    : step === 'cities'
+      ? legs.length > 0
+      : step === 'equipment'
+        ? equipment.length > 0
+        : true
 
   async function handleSave() {
     if (!canSave) return
@@ -170,7 +184,10 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
     <section className="widget-section trip-builder">
       <div className="trip-builder-progress">
         {TRIP_BUILDER_STEPS.map((s, i) => (
-          <span key={s} className={`trip-builder-dot${i <= stepIndex ? ' is-active' : ''}`} />
+          <span key={s} className={`trip-builder-progress-step${i === stepIndex ? ' is-current' : ''}${i < stepIndex ? ' is-complete' : ''}`}>
+            <span className="trip-builder-dot" />
+            <span>{TRIP_BUILDER_STEP_LABELS[s]}</span>
+          </span>
         ))}
       </div>
 
@@ -248,7 +265,7 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
           </button>
         )}
         {stepIndex < TRIP_BUILDER_STEPS.length - 1 && (
-          <button type="button" className="trip-builder-continue" onClick={advance}>
+          <button type="button" className="trip-builder-continue" disabled={!canContinue} onClick={advance}>
             Continue
           </button>
         )}
