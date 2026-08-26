@@ -10,7 +10,6 @@ import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '.
 import { moonIlluminationPctAt } from '../../lib/moonPhase'
 import { trackEvent } from '../../lib/analytics'
 import { useAuth } from '../../lib/auth'
-import { useEventPointing } from '../../components/mobile/EventPointing'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
 import { MobileIcon } from '../../components/mobile/MobileIcon'
 import { categoryForKind } from '../../lib/eventCategories'
@@ -67,7 +66,6 @@ export function EventsView({
   const viewLocation: CurrentLocation = browseCity
     ? { name: cityLabel(browseCity), lat: browseCity.lat, lon: browseCity.lon, source: 'manual', timeZone: browseCity.timeZone }
     : city
-  const { pointActionFor, overlay: pointingOverlay } = useEventPointing(viewLocation)
   const lookaheadDays = eventLookaheadDays(hasPremium)
   const forecastDays = forecastLookaheadDays(hasPremium)
 
@@ -239,7 +237,6 @@ export function EventsView({
       onRemind: () => addReminder(event),
       tagged: taggedIds.has(event.id),
       onToggleTag: () => toggleTag(event),
-      onPoint: pointActionFor(event)?.onPoint,
       roadmap:
         event.kind === 'eclipse'
           ? {
@@ -449,7 +446,6 @@ export function EventsView({
 
       {/* 4. All events: one chronological, date-grouped calendar feed. */}
       <SkyEventBrowser events={events} onSelect={selectEvent} />
-      {pointingOverlay}
     </div>
   )
 }
