@@ -77,17 +77,16 @@ test('unknown /app/* path falls back to the events area', async ({ page }) => {
   await expect(page).toHaveURL('/app/events')
 })
 
-test('narrow viewport uses a compact menu for primary navigation', async ({ page }) => {
+test('narrow viewport uses the persistent Atlas tab bar for primary navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/events')
-  await page.getByRole('button', { name: 'Open menu' }).click()
-  const menu = page.getByRole('complementary', { name: 'Mobile menu' })
-  await expect(menu.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Explore', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
-  await expect(page.locator('.mobile-quick-dock')).toHaveCount(0)
+  const tabBar = page.getByRole('navigation', { name: 'Primary' }).last()
+  await expect(tabBar.getByRole('link', { name: 'Tonight', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Explore', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
+  await expect(page.locator('.mobile-menu-trigger')).toHaveCount(0)
 })
 
 test('wide viewport renders the nav as a side nav, not a mobile dock', async ({ page }) => {
