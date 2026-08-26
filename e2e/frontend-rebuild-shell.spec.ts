@@ -94,7 +94,9 @@ test('narrow viewport uses the persistent Atlas tab bar for primary navigation',
   await expect(tabBar.getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
   await expect(tabBar.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
   await expect(tabBar.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
-  await expect(page.locator('.mobile-menu-trigger')).toHaveCount(0)
+  // The persistent tab bar is primary navigation; the compact menu remains
+  // available for secondary actions such as feature requests.
+  await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible()
 })
 
 test('wide viewport renders the nav as a side nav, not a mobile dock', async ({ page }) => {
