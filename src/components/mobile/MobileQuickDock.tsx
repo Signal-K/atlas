@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { NavLink, useLocation } from 'react-router-dom'
 import type { NavItem } from '../../ui/NavShell'
 import { useMobileDetailNav } from '../../lib/mobileDetailNav'
@@ -12,7 +12,6 @@ interface MobileQuickDockProps {
 
 export function MobileQuickDock({ items }: MobileQuickDockProps) {
   const [open, setOpen] = useState(false)
-  const [openingFeatureRequest, setOpeningFeatureRequest] = useState(false)
   const { active: detailActive } = useMobileDetailNav()
   const { user } = useAuth()
   const location = useLocation()
@@ -39,10 +38,7 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
           aria-label="Open menu"
           aria-expanded={open}
           aria-controls="mobile-navigation-panel"
-          onClick={() => {
-            setOpeningFeatureRequest(false)
-            setOpen((current) => !current)
-          }}
+          onClick={() => setOpen((current) => !current)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -53,17 +49,14 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
           </span>
         </motion.button>
       )}
-      <AnimatePresence>
-        {open && !detailActive && (
+      {open && !detailActive && (
           <motion.div
             className="mobile-menu-layer"
             role="presentation"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             ref={dragRef}
-            style={{ pointerEvents: openingFeatureRequest ? 'none' : undefined }}
           >
             <motion.button
               type="button"
@@ -72,7 +65,6 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
               onClick={() => setOpen(false)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
             />
             <motion.aside
               id="mobile-navigation-panel"
@@ -80,9 +72,7 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
               aria-label="Mobile menu"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-              style={{ pointerEvents: openingFeatureRequest ? 'none' : undefined }}
               drag="x"
               dragConstraints={{ right: 0, left: -320 }}
               dragElastic={0.2}
@@ -119,7 +109,6 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
                 type="button"
                 className="mobile-menu-request"
                 onClick={() => {
-                  setOpeningFeatureRequest(true)
                   window.dispatchEvent(new CustomEvent('atlas:open-feature-request'))
                   setOpen(false)
                 }}
@@ -131,8 +120,7 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
               </motion.button>
             </motion.aside>
           </motion.div>
-        )}
-      </AnimatePresence>
+      )}
     </>
   )
 }
