@@ -28,10 +28,10 @@ export function JournalPage({ draft = null, onDraftConsumed = () => {}, currentL
   const [mode, setMode] = useState<JournalMode>('private')
 
   return (
-    <div className="page">
-      <header className="page-header">
+    <div className="page atlas-journal">
+      <header className="page-header atlas-journal-header">
         <h1>Journal</h1>
-        <p>Private capture, archive, sharing, city stamps, and photo challenges.</p>
+        <p>Private observations, saved locally first.</p>
       </header>
 
       <Tabs
