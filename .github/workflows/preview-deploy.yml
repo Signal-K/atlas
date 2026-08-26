@@ -9,6 +9,11 @@ on:
     branches-ignore: [master]
   workflow_dispatch: {}
 
+env:
+  # Cloudflare Pages uses branch name to generate preview URL subdomain.
+  # This is deterministic: branch-name.atlas.pages.dev (slugified).
+  CF_PAGES_PROJECT: atlas
+
 concurrency:
   group: pages-preview-${{ github.ref }}
   cancel-in-progress: true
@@ -19,14 +24,39 @@ jobs:
     permissions:
       contents: read
       deployments: write
+      pull-requests: write
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.url }}
+      deployment_id: ${{ steps.deployment.outputs.deployment_id }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Create GitHub deployment
+        id: deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = context.ref.replace('refs/heads/', '');
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: `preview-${branchName}`,
+              required_contexts: [],
+              auto_merge: false,
+              description: 'Preview deployment'
+            });
+            core.setOutput('deployment_id', deployment.data.id);
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
+
       - run: npm ci
+
       - run: npx playwright install --with-deps chromium
+
       - run: npm test
         env:
           VITE_PB_URL: ${{ vars.VITE_PB_URL }}
@@ -44,12 +74,86 @@ jobs:
           # test-mode instance these 4 specs authenticate against. See
           # playwright.config.ts.
           CLERK_BACKEND_UNAVAILABLE: '1'
-      - uses: cloudflare/pages-action@v1
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: atlas
+          projectName: ${{ env.CF_PAGES_PROJECT }}
           directory: dist
           # Same pin as deploy.yml -- v2 (the action's default) is EOL and
           # crashes under the Node 24 runners GitHub Actions now uses.
           wranglerVersion: '3'
+
+      - name: Update GitHub deployment status
+        uses: actions/github-script@v7
+        if: success()
+        with:
+          script: |
+            const previewUrl = '${{ steps.deploy.outputs.url }}';
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.deployment_id }},
+              state: 'success',
+              environment_url: previewUrl,
+              description: 'Preview deployment completed'
+            });
+
+      - name: Update GitHub deployment status (failure)
+        uses: actions/github-script@v7
+        if: failure()
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.deployment_id }},
+              state: 'failure',
+              description: 'Preview deployment failed'
+            });
+
+      - name: Comment preview URL on PR
+        if: github.event_name == 'push' && github.event.pull_request == null
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = context.ref.replace('refs/heads/', '');
+            // Cloudflare Pages slugifies branch names (lowercase, replace spaces/special chars)
+            const previewUrl = '${{ steps.deploy.outputs.url }}';
+
+            // Find existing comment to update
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const existingComment = comments.data.find(comment =>
+              comment.body.includes('🚀 Preview deployment')
+            );
+
+            const body = `🚀 **Preview Deployment Ready**
+
+**Branch:** \`${branchName}\`
+**Preview URL:** ${previewUrl}
+
+This preview will be updated with every push to this branch.`;
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: body
+              });
+            } else if (context.issue?.number) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
