@@ -1617,6 +1617,134 @@
   color: var(--text);
 }
 
+.trip-optional-badge {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.trip-section-label {
+  margin: 8px 0 -4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+
+/* Itinerary: the hero of the builder -- an editable list of stays. */
+.trip-itinerary-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px 16px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.trip-itinerary-empty-icon {
+  font-size: 28px;
+}
+
+.trip-itinerary-empty p {
+  margin: 0;
+  max-width: 32ch;
+  font-size: 14px;
+}
+
+.trip-itinerary-summary {
+  display: inline-flex;
+  align-self: start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trip-itinerary {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.trip-itinerary-stop {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trip-itinerary-stop:last-child {
+  border-bottom: 0;
+}
+
+.trip-itinerary-marker {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-bg);
+}
+
+.trip-itinerary-stop-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trip-itinerary-stop-body strong {
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.trip-itinerary-dates {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.trip-leg-remove {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+}
+
+.trip-leg-remove:hover {
+  color: var(--text-h);
+  border-color: var(--text);
+}
+
+.trip-add-leg-label {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.trip-add-leg-dates {
+  display: grid;
+  gap: 10px;
+}
+
 /* Review step layout */
 .trip-review {
   display: grid;

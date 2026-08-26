@@ -35,31 +35,30 @@ test('Plan route renders the Sky Pass trip planner entry point', async ({ page }
   await expect(page.getByRole('heading', { name: 'Plan a trip', exact: true }).first()).toBeVisible()
 })
 
-test('trip planner adds a city leg with prefilled stay dates', async ({ page }) => {
+test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
   await seedSignedInUser(page, { entitled: true, onboardingComplete: true })
   await page.goto('/app/plan')
 
-  const startDate = page.locator('input[type="date"]').nth(0)
-  const endDate = page.locator('input[type="date"]').nth(1)
-  await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled()
-  await startDate.fill('2026-09-01')
-  await endDate.fill('2026-09-05')
-  await page.getByRole('button', { name: 'Continue' }).click()
+  // The builder opens on the itinerary step -- there is no separate
+  // trip-dates step; the trip window is derived from the stays. Continue is
+  // gated on having at least one stop.
+  await expect(page.getByRole('button', { name: /Continue/ })).toBeDisabled()
 
-  // City search is now a live-geocoding combobox (curated fallback covers
-  // this offline); the option's accessible name carries the place plus its
+  // City search is a live-geocoding combobox (curated fallback covers this
+  // offline); the option's accessible name carries the place plus its
   // coordinates, so match on the name substring.
   const citySearch = page.getByPlaceholder('Search any town or city')
   await citySearch.fill('Tallinn')
   await page.getByRole('option', { name: /Tallinn/ }).click()
 
-  await expect(page.getByText('Selected: Tallinn')).toBeVisible()
-  // Selecting a city prefills its stay from the trip's start date, so the
-  // leg can be added in a single tap rather than forcing manual date entry.
-  const addCity = page.getByRole('button', { name: 'Add city' })
-  await expect(addCity).toBeEnabled()
-  await addCity.click()
-  await expect(page.locator('.trip-leg-row')).toContainText('Tallinn')
+  // Selecting a place reveals its stay dates already prefilled, so the stop
+  // can be added in a single tap rather than forcing manual date entry.
+  const addStop = page.getByRole('button', { name: 'Add to trip' })
+  await expect(addStop).toBeEnabled()
+  await addStop.click()
+
+  await expect(page.locator('.trip-itinerary-stop')).toContainText('Tallinn')
+  await expect(page.getByRole('button', { name: /Continue/ })).toBeEnabled()
 })
 
 test('nav links switch between areas without a full reload', async ({ page }) => {
