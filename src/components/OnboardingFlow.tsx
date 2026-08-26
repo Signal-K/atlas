@@ -194,7 +194,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
 
   return (
     <div className="onboarding-overlay">
-      <div className="onboarding-modal onboarding-flow-modal">
+      <div className="onboarding-modal onboarding-flow-modal atlas-onboarding-flow">
         <div className="onboarding-flow-progress" aria-hidden="true">
           {STEPS.map((s, i) => (
             <span key={s} className={`onboarding-flow-dot${i <= stepIndex ? ' is-active' : ''}`} />
@@ -247,8 +247,10 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
 
         {step === 'location' && (
           <>
-            <h2>Where are you observing from?</h2>
-            <p>Currently using {city.name}.</p>
+            <p className="atlas-onboarding-kicker">Step one of four</p>
+            <h2>Where do you<br />look up from?</h2>
+            <p>Atlas needs a location to work out your darkness window and what&rsquo;s actually above you.</p>
+            <p className="onboarding-flow-hint">Current Atlas location: {city.name}</p>
             <LocationSearchInput
               id="onboarding-location"
               value={locationQuery}

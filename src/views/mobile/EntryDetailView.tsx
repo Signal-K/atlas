@@ -130,7 +130,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
   }
 
   return (
-    <div className="dt-entry">
+    <div className="dt-entry atlas-entry-detail">
       <div className="dt-entry-rule" style={{ background: subject.accent }} />
       <div className="dt-entry-scroll">
         <button type="button" className="dt-entry-back" onClick={onClose}>
