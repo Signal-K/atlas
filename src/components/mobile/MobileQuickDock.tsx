@@ -12,6 +12,7 @@ interface MobileQuickDockProps {
 
 export function MobileQuickDock({ items }: MobileQuickDockProps) {
   const [open, setOpen] = useState(false)
+  const [openingFeatureRequest, setOpeningFeatureRequest] = useState(false)
   const { active: detailActive } = useMobileDetailNav()
   const { user } = useAuth()
   const location = useLocation()
@@ -38,7 +39,10 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
           aria-label="Open menu"
           aria-expanded={open}
           aria-controls="mobile-navigation-panel"
-          onClick={() => setOpen((current) => !current)}
+          onClick={() => {
+            setOpeningFeatureRequest(false)
+            setOpen((current) => !current)
+          }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -59,6 +63,7 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             ref={dragRef}
+            style={{ pointerEvents: openingFeatureRequest ? 'none' : undefined }}
           >
             <motion.button
               type="button"
@@ -77,6 +82,7 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+              style={{ pointerEvents: openingFeatureRequest ? 'none' : undefined }}
               drag="x"
               dragConstraints={{ right: 0, left: -320 }}
               dragElastic={0.2}
@@ -113,6 +119,7 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
                 type="button"
                 className="mobile-menu-request"
                 onClick={() => {
+                  setOpeningFeatureRequest(true)
                   window.dispatchEvent(new CustomEvent('atlas:open-feature-request'))
                   setOpen(false)
                 }}
