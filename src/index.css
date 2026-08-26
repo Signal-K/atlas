@@ -1,4 +1,7 @@
 :root {
+  /* Used by the app-shell bootstrap to distinguish a loaded stylesheet from
+     a stale or failed Workbox response before React mounts. */
+  --atlas-style-revision: atlas-2026-08-12c;
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
