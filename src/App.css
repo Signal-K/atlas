@@ -1470,23 +1470,43 @@
   border-radius: 8px;
 }
 
-.trip-add-leg {
-  display: grid;
-  gap: 8px;
+.trip-leg-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.trip-city-results {
-  display: grid;
-  gap: 4px;
-}
-
-.trip-city-results button {
-  text-align: left;
-  padding: 8px 10px;
+.trip-leg-move {
+  min-width: 28px;
+  padding: 4px 6px;
+  line-height: 1;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: transparent;
   color: var(--text-h);
+}
+
+.trip-leg-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.trip-leg-warnings {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(201, 146, 43, 0.5);
+  border-radius: 8px;
+  background: rgba(201, 146, 43, 0.1);
+  color: #c9922b;
+  font-size: 0.85rem;
+}
+
+.trip-add-leg {
+  display: grid;
+  gap: 8px;
 }
 
 .trip-phone-picker {
