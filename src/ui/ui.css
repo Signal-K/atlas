@@ -118,8 +118,6 @@
   min-height: 100svh;
 }
 
-.mobile-quick-dock { display: none; }
-
 .nav-shell-nav {
   /* Icon-only rail, not a labeled sidebar -- seamless with the page (no
      distinct panel fill), matching the reference design. */

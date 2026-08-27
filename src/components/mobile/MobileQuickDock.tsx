@@ -31,7 +31,7 @@ export function MobileQuickDock({ items }: MobileQuickDockProps) {
 
   return (
     <>
-      {!detailActive && (
+      {!detailActive && !open && (
         <motion.button
           type="button"
           className="mobile-menu-trigger"

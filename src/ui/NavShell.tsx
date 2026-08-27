@@ -1,4 +1,3 @@
-import { AppTabBar } from '../components/AppTabBar'
 import { MobileQuickDock } from '../components/mobile/MobileQuickDock'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -41,7 +40,6 @@ export function NavShell({ items, children, topBar }: NavShellProps) {
         <main className="nav-shell-main">{children}</main>
       </div>
       <MobileQuickDock items={items} />
-      <AppTabBar items={items} />
     </div>
   )
 }
