@@ -119,3 +119,6 @@ what was scoped/shipped.
 | epic-ci-test-reliability | epic | CI test reliability fixes | in-progress |
 | story-tonight-window-timezone-fallback | story | Fix e2e mocks missing Open-Meteo timezone, truncating the tonight window | done |
 | story-entitlement-checkout-fallback-flake | story | Known flake — dynamic Polar checkout fallback tests in entitlement-refresh.spec.ts | backlog |
+| epic-journal-and-content | epic | Atlas journal and editorial content | backlog |
+| story-journal-rich-entry-editor | story | Rich Journal/Scrapbook entries and archive | backlog |
+| story-daily-transit-in-app-feed | story | The Daily Transit feed inside Atlas | backlog |

@@ -309,10 +309,16 @@ function ClerkSignInPanel({
     // Calling finalize in those states throws "Cannot finalize sign-in
     // without a created session" and used to escape the submit handler.
     if (signIn.status !== 'complete' || !signIn.createdSessionId) {
-      const message = signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust'
-        ? 'This account needs an additional verification step. Please use the standard sign-in screen or try again.'
-        : 'Sign-in could not be completed. Please try again.'
-      setFormError(message)
+      if (signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust') {
+        // Clerk's own widget knows how to drive these follow-up steps
+        // (device-trust email code, MFA); our custom form does not model
+        // them. Hand off there instead of just telling the user to go find
+        // it themselves -- Clerk resumes the in-progress attempt rather
+        // than restarting it, so nothing already entered is lost.
+        setShowStandardSignIn(true)
+        return
+      }
+      setFormError('Sign-in could not be completed. Please try again.')
       return
     }
 
@@ -328,33 +334,6 @@ function ClerkSignInPanel({
     event.preventDefault()
     if (!signIn || busy) return
     setFormError(null)
-
-    // Pre-Clerk accounts do not exist in Clerk yet. Claim them before the
-    // password attempt can enter an incomplete MFA/device-trust state; a
-    // A 404 means this is not a legacy PocketBase account. A 409 means the
-    // identity already exists and is handed to Clerk's complete widget.
-    setClaiming(true)
-    try {
-      const claimResult = await claimLegacyAccount(email, password)
-      if (claimResult.alreadyClerk) {
-        // This account has already been migrated or a previous claim stopped
-        // after creating its Clerk identity. Hand off to Clerk's complete
-        // widget so password, device trust, and MFA can all finish normally.
-        setShowStandardSignIn(true)
-        return
-      }
-      if (claimResult.token) {
-        const { error: ticketError } = await signIn.ticket({ ticket: claimResult.token })
-        if (ticketError) {
-          setFormError(ticketError.longMessage || ticketError.message || 'Could not complete sign-in. Please try again.')
-          return
-        }
-        await finalizeSignIn()
-        return
-      }
-    } finally {
-      setClaiming(false)
-    }
 
     let error
     try {
