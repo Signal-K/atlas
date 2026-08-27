@@ -77,7 +77,7 @@ function collectFeatureRequestContext() {
   const activeTabs = collectVisibleText('[role="tab"][aria-selected="true"]', 4)
   const visibleHeadings = collectVisibleText('main h1, main h2, main h3, .mobile-content h1, .mobile-content h2, .mobile-content h3', 6)
   const visibleSections = collectVisibleText(
-    '.dashboard-subtitle, .mobile-profile-kicker, .dt-brand-subtitle, .settings-status, .paywall-copy strong',
+    '.mobile-profile-kicker, .dt-brand-subtitle, .settings-status, .paywall-copy strong',
     6,
   )
 

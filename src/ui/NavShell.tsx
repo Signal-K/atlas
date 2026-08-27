@@ -1,5 +1,4 @@
 import { AppTabBar } from '../components/AppTabBar'
-import { MobileQuickDock } from '../components/mobile/MobileQuickDock'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -16,8 +15,9 @@ interface NavShellProps {
 }
 
 /**
- * One responsive shell: a side nav on wide viewports, plus a compact tab bar
- * and menu for secondary actions on narrow ones.
+ * One responsive shell: a side rail on wide viewports, a bottom tab bar on
+ * narrow ones -- matches the Atlas Mobile design canvas exactly (Turn 2,
+ * frame 2a): persistent 5-item tab bar, no hamburger/drawer.
  */
 export function NavShell({ items, children, topBar }: NavShellProps) {
   return (
@@ -40,7 +40,6 @@ export function NavShell({ items, children, topBar }: NavShellProps) {
         {topBar && <div className="nav-shell-topbar">{topBar}</div>}
         <main className="nav-shell-main">{children}</main>
       </div>
-      <MobileQuickDock items={items} />
       <AppTabBar items={items} />
     </div>
   )

@@ -57,8 +57,7 @@ test('signed-in mobile user submits a feature request without leaving the app', 
   await page.goto('/app/events')
   await captureAnalytics(page)
 
-  await page.getByRole('button', { name: 'Open menu' }).click()
-  await page.getByRole('complementary', { name: 'Mobile menu' }).getByRole('button', { name: 'Request a feature' }).click()
+  await page.getByRole('button', { name: 'Request feature' }).click()
   await expect(page.getByRole('dialog', { name: 'Request a feature' })).toBeVisible()
   await page.getByLabel('Feature idea').fill('Add an offline stargazing checklist')
   await expect(page.getByLabel('Email for follow-up')).toHaveCount(0)

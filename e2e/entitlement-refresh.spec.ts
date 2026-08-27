@@ -58,7 +58,7 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
 
   await page.getByRole('tab', { name: 'Account' }).click()
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
+  await expect(page.locator('#primary-navigation').getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
 })
 
 test('trusts a paid reconciliation result when auth-refresh returns a stale entitlement field', async ({ page }) => {

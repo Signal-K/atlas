@@ -31,7 +31,7 @@ routerAdd(
       '1bf30516-1449-4b67-8fdb-c5616d5d4232', // Legacy Atlas Sky Pass, CHF 5 one-time
     ]
     const defaultCompProductId = '352cfa25-638e-4f6e-bbcf-00e4d4b12854'
-    const productIds = productIdsEnv
+    let productIds = productIdsEnv
       ? productIdsEnv
           .split(',')
           .map((id) => id.trim())
@@ -39,6 +39,13 @@ routerAdd(
       : legacyProductId
         ? [legacyProductId]
         : defaultProductIds
+
+    // Gate: remove Lifetime product from checkout after Nov 30, 2026 (no new sales, existing holders unaffected).
+    const lifetimeProductId = '352cfa25-638e-4f6e-bbcf-00e4d4b12854'
+    const lifetimeSunsetDate = new Date('2026-11-30T23:59:59Z')
+    if (new Date() > lifetimeSunsetDate) {
+      productIds = productIds.filter((id) => id !== lifetimeProductId)
+    }
 
     if (!accessToken || !successUrl) {
       console.error('POLAR_ACCESS_TOKEN or POLAR_SUCCESS_URL is not set; rejecting checkout request.')
