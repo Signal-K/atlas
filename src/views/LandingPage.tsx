@@ -73,7 +73,6 @@ export function LandingPage({ authenticatedEmail, isMobile, onEnter }: LandingPa
         <nav aria-label="Landing page">
           <a href="#features">What it does</a>
           <a href="#camera-presets">Camera presets</a>
-          <a href="#daily-transit">The Daily Transit</a>
         </nav>
 
         <div className="atlas-landing-nav-actions">
@@ -241,26 +240,6 @@ export function LandingPage({ authenticatedEmail, isMobile, onEnter }: LandingPa
           </div>
         </section>
 
-        <section className="atlas-transit-section" id="daily-transit" aria-labelledby="atlas-transit-title">
-          <div className="atlas-transit-mark" aria-hidden="true">
-            <span>TDT</span>
-            <i />
-            <small>Media arm of Atlas</small>
-          </div>
-
-          <div className="atlas-transit-copy">
-            <p className="atlas-kicker">The Daily Transit</p>
-            <h2 id="atlas-transit-title">The stories behind looking up.</h2>
-            <p>
-              The Daily Transit is the media arm of Atlas: a podcast interviewing people who use the app, plus written stories and field notes about the night sky.
-            </p>
-            <a className="atlas-button atlas-button--outline" href="https://thedailytransit.com" target="_blank" rel="noreferrer">
-              Visit The Daily Transit
-              <ArrowIcon />
-            </a>
-          </div>
-        </section>
-
         <section className="atlas-final-cta" aria-labelledby="atlas-final-title">
           <p className="atlas-kicker">Tonight is already happening</p>
           <h2 id="atlas-final-title">Find your reason to step outside.</h2>
@@ -278,9 +257,6 @@ export function LandingPage({ authenticatedEmail, isMobile, onEnter }: LandingPa
           <span>Atlas</span>
         </div>
         <p>Atlas, a Star Sailors app</p>
-        <a href="https://thedailytransit.com" target="_blank" rel="noreferrer">
-          The Daily Transit
-        </a>
       </footer>
     </div>
   )
