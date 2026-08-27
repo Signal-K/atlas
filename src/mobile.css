@@ -615,13 +615,6 @@
   overflow: hidden;
 }
 
-.mobile-map-overlay-body .sky-map-canvas {
-  width: 100%;
-  height: 100dvh;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
 .mobile-map-search {
   position: absolute;
   left: 14px;
@@ -1743,43 +1736,6 @@
   white-space: nowrap;
 }
 
-.sky-map-frame {
-  position: relative;
-  border: 1px solid var(--mobile-line);
-  background:
-    radial-gradient(circle at 72% 42%, rgba(245, 158, 11, 0.12), transparent 36%),
-    radial-gradient(circle at 38% 54%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 50%),
-    #050912;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.sky-map-frame--hub {
-  min-height: 270px;
-  border-color: rgba(124, 196, 255, 0.24);
-  border-radius: 10px;
-}
-
-.sky-map-frame--full {
-  min-height: 360px;
-  border-color: rgba(124, 196, 255, 0.28);
-  border-radius: 10px;
-}
-
-.sky-map-canvas {
-  width: 100%;
-  height: 200px;
-  display: block;
-}
-
-.sky-map-frame--hub .sky-map-canvas {
-  height: 270px;
-}
-
-.sky-map-frame--full .sky-map-canvas {
-  height: 360px;
-}
-
 .clarity-slider-block {
   margin-top: 12px;
 }
@@ -2784,54 +2740,6 @@
   cursor: pointer;
   flex-shrink: 0;
   padding: 0;
-}
-
-.dt-map-preview {
-  position: relative;
-  height: 190px;
-  border: 1px solid var(--dt-ink);
-  background-image: radial-gradient(var(--dt-rule) 1px, transparent 1px);
-  background-size: 20px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 2px;
-  overflow: hidden;
-  cursor: pointer;
-  width: 100%;
-  padding: 0;
-  color: inherit;
-}
-
-.dt-map-preview .sky-map-frame--hub {
-  position: absolute;
-  inset: 0;
-  min-height: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-}
-
-.dt-map-preview .sky-map-frame--hub .sky-map-canvas {
-  width: 100%;
-  height: 100%;
-}
-
-.dt-map-preview-label {
-  font: 700 0.72rem/1.1 var(--dt-font-data);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--dt-ink-muted);
-}
-
-.dt-map-readout {
-  display: flex;
-  justify-content: space-between;
-  font: 500 0.78rem/1.4 var(--dt-font-data);
-  letter-spacing: 0.08em;
-  color: var(--dt-ink-muted);
-  padding: 8px 2px 18px;
-  border-bottom: 1px solid var(--dt-rule);
 }
 
 .dt-pointing-row {
