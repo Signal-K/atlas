@@ -1,3 +1,4 @@
+import { AppTabBar } from '../components/AppTabBar'
 import { MobileQuickDock } from '../components/mobile/MobileQuickDock'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -15,9 +16,8 @@ interface NavShellProps {
 }
 
 /**
- * One responsive shell: a side nav on wide viewports, and a top-triggered
- * navigation drawer on narrow ones. Mobile deliberately does not use a
- * persistent bottom navigation bar.
+ * One responsive shell: a side nav on wide viewports, plus a compact tab bar
+ * and menu for secondary actions on narrow ones.
  */
 export function NavShell({ items, children, topBar }: NavShellProps) {
   return (
@@ -41,6 +41,7 @@ export function NavShell({ items, children, topBar }: NavShellProps) {
         <main className="nav-shell-main">{children}</main>
       </div>
       <MobileQuickDock items={items} />
+      <AppTabBar items={items} />
     </div>
   )
 }

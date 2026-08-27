@@ -161,8 +161,11 @@ export function SettingsPage({
   }
 
   return (
-    <div className="page settings-page">
+    <div className="page settings-page atlas-settings">
       <h1 className="settings-page-title">Settings</h1>
+      <div className="atlas-account-card">
+        <span aria-hidden="true">◌</span><div><strong>{user?.email ?? 'Your Atlas account'}</strong><small>{user?.entitled ? 'SKY PASS · ACTIVE' : 'FREE ACCOUNT'}</small></div>
+      </div>
 
       <div className="settings-layout">
         <nav className="settings-list" role="tablist" aria-label="Settings sections">
@@ -187,7 +190,7 @@ export function SettingsPage({
                       <span className="settings-list-icon">{item.icon}</span>
                       <span className="settings-list-copy">
                         <strong>{item.title}</strong>
-                        <small>{item.id === 'location' ? `${currentLocation.name} · ${locationStatus === 'granted' ? 'Using location' : 'Set location'}` : 'Manage in Atlas'}</small>
+                        <small>{item.id === 'location' ? currentLocation.name : item.id === 'appearance' ? 'Dark / light' : item.id === 'devices' ? 'Device & camera' : 'Manage in Atlas'}</small>
                       </span>
                       <span className="settings-list-chevron" aria-hidden="true">›</span>
                     </button>

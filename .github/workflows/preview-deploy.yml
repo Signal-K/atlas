@@ -1,9 +1,7 @@
 name: Deploy Cloudflare Pages preview
 
-# Mirrors deploy.yml's production deploy, but for every push to a branch
-# other than master. cloudflare/pages-action deploys to a preview URL
-# whenever the pushed branch isn't the Pages project's production branch
-# (master, matching deploy.yml) -- so this never touches production.
+# Direct-upload previews use the real Cloudflare Pages project name. Cloudflare
+# returns the canonical preview URL; do not construct a pages.dev hostname here.
 on:
   push:
     branches-ignore: [master]
@@ -32,24 +30,29 @@ jobs:
           VITE_PB_URL: ${{ vars.VITE_PB_URL }}
           VITE_ATLAS_MEDIA_URL: ${{ vars.VITE_ATLAS_MEDIA_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
-          VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
-          VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
-          # Test-mode key, not the live deploy key: previews shouldn't use
-          # production Clerk credentials, and the Playwright "setup" project
-          # (e2e/global.setup.ts) needs the test-mode pair to work at all.
+          # Keep the lazy analytics chunk out of the deterministic test gate.
+          # The preview artifact is rebuilt with the real key below.
+          VITE_POSTHOG_KEY: ''
+          VITE_POSTHOG_HOST: ''
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          # KES-190: VITE_PB_URL above is the production backend, which only
-          # verifies Clerk tokens against the live instance, not the
-          # test-mode instance these 4 specs authenticate against. See
-          # playwright.config.ts.
           CLERK_BACKEND_UNAVAILABLE: '1'
-      - uses: cloudflare/pages-action@v1
+      - name: Build preview artifact
+        run: npm run build
+        env:
+          VITE_PB_URL: ${{ vars.VITE_PB_URL }}
+          VITE_ATLAS_MEDIA_URL: ${{ vars.VITE_ATLAS_MEDIA_URL }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+          VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
+      - name: Deploy preview to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: atlas
           directory: dist
-          # Same pin as deploy.yml -- v2 (the action's default) is EOL and
-          # crashes under the Node 24 runners GitHub Actions now uses.
+          branch: ${{ github.ref_name }}
           wranglerVersion: '3'

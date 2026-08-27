@@ -1,3 +1,5 @@
+@import './design-tokens.css';
+
 .starfield {
   position: fixed;
   inset: 0;
@@ -1468,23 +1470,43 @@
   border-radius: 8px;
 }
 
-.trip-add-leg {
-  display: grid;
-  gap: 8px;
+.trip-leg-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.trip-city-results {
-  display: grid;
-  gap: 4px;
-}
-
-.trip-city-results button {
-  text-align: left;
-  padding: 8px 10px;
+.trip-leg-move {
+  min-width: 28px;
+  padding: 4px 6px;
+  line-height: 1;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: transparent;
   color: var(--text-h);
+}
+
+.trip-leg-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.trip-leg-warnings {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(201, 146, 43, 0.5);
+  border-radius: 8px;
+  background: rgba(201, 146, 43, 0.1);
+  color: #c9922b;
+  font-size: 0.85rem;
+}
+
+.trip-add-leg {
+  display: grid;
+  gap: 8px;
 }
 
 .trip-phone-picker {
@@ -1593,6 +1615,134 @@
   font-size: 18px;
   font-weight: 600;
   color: var(--text);
+}
+
+.trip-optional-badge {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.trip-section-label {
+  margin: 8px 0 -4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+
+/* Itinerary: the hero of the builder -- an editable list of stays. */
+.trip-itinerary-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px 16px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.trip-itinerary-empty-icon {
+  font-size: 28px;
+}
+
+.trip-itinerary-empty p {
+  margin: 0;
+  max-width: 32ch;
+  font-size: 14px;
+}
+
+.trip-itinerary-summary {
+  display: inline-flex;
+  align-self: start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trip-itinerary {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.trip-itinerary-stop {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trip-itinerary-stop:last-child {
+  border-bottom: 0;
+}
+
+.trip-itinerary-marker {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-bg);
+}
+
+.trip-itinerary-stop-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trip-itinerary-stop-body strong {
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.trip-itinerary-dates {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.trip-leg-remove {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+}
+
+.trip-leg-remove:hover {
+  color: var(--text-h);
+  border-color: var(--text);
+}
+
+.trip-add-leg-label {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.trip-add-leg-dates {
+  display: grid;
+  gap: 10px;
 }
 
 /* Review step layout */
@@ -5261,3 +5411,11 @@
   color: var(--accent);
   font-weight: 600;
 }
+/* Resolved mobile redesign: one starfield-ground component language. */
+.atlas-tab-bar{display:none}.atlas-tonight{max-width:680px;margin:auto;padding-bottom:96px}.atlas-tonight-head{display:flex;align-items:center;gap:12px;padding:6px 0 18px;color:var(--fg2);font:700 12px var(--num)}.atlas-tonight-head time{margin-left:auto}.atlas-location-chip{border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:7px 10px;color:var(--fg);cursor:pointer}.atlas-verdict{padding:12px 0 20px;display:grid;grid-template-columns:1fr auto;gap:10px}.atlas-verdict h1{font:800 48px/.9 var(--disp);letter-spacing:-.04em}.atlas-verdict strong{font:700 16px var(--num);color:var(--fg2)}.atlas-verdict>b{align-self:center;border-radius:999px;padding:6px 10px;background:color-mix(in srgb,var(--go) 18%,transparent);color:var(--go);font:700 11px var(--num)}.atlas-sky-bars{grid-column:1/-1;height:40px;display:flex;align-items:end;gap:5px}.atlas-sky-bars i{flex:1;border-radius:3px 3px 0 0;background:var(--go)}.atlas-sky-bars i:nth-child(1),.atlas-sky-bars i:nth-child(7){background:var(--warn)}.atlas-instrument{display:grid;grid-template-columns:repeat(3,1fr);padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel);margin:0 0 16px}.atlas-instrument button{border:0;border-radius:999px;background:transparent;padding:9px 4px;color:var(--fg2);font:700 11px var(--ui);cursor:pointer}.atlas-instrument .is-selected{background:var(--fg);color:var(--bg)}.atlas-hero{display:grid;width:100%;min-height:176px;align-content:end;gap:5px;padding:18px;border:0;border-radius:16px;background:linear-gradient(145deg,var(--c-planet),var(--bg2));background-size:cover;background-position:center;color:#fff;text-align:left;cursor:pointer}.atlas-hero span,.atlas-target-row small,.atlas-section-label{font:700 10px var(--num);letter-spacing:.08em}.atlas-hero strong{font:800 27px/.98 var(--disp)}.atlas-hero small{color:#eee}.atlas-target-section{margin:18px 0}.atlas-section-label{display:flex;justify-content:space-between;padding:0 0 8px;color:var(--fg2)}.atlas-section-label b{border:1px solid var(--line);border-radius:999px;padding:1px 6px;color:var(--fg)}.atlas-target-row{display:grid;grid-template-columns:4px 1fr auto;gap:11px;padding:13px 0;border-top:1px solid var(--line)}.atlas-target-row>i{border-radius:5px;background:var(--c-planet)}.atlas-target-row div{min-width:0}.atlas-target-row small{display:block;color:var(--c-planet)}.atlas-target-row strong{display:block;color:var(--fg);font-size:16px}.atlas-target-row p{margin:2px 0 0;color:var(--fg2);font-size:12px;line-height:1.35}.atlas-target-row>b{align-self:center;text-align:right;font:700 11px/1.45 var(--num);color:var(--fg2)}.atlas-target-row.is-dim{opacity:.45}.atlas-gear-note{margin:12px 0 0;padding:10px;border:1px dashed var(--line2);border-radius:12px;color:var(--fg2);font-size:12px}
+@media(max-width:900px){.nav-shell-nav,.nav-shell-topbar{display:none}.nav-shell-main{padding:18px 16px 0!important}.nav-shell-main>.page{padding:0!important}.atlas-tab-bar{position:fixed;z-index:20;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(5,1fr);padding:8px max(8px,env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(18px)}.atlas-tab{display:grid;justify-items:center;gap:3px;color:var(--fg3);text-decoration:none;font-size:10px}.atlas-tab svg{width:21px;height:21px}.atlas-tab small{font:600 10px var(--ui)}.atlas-tab.is-active{color:var(--fg)}}
+.atlas-settings{max-width:900px;padding-bottom:92px}.settings-page-title{font:800 38px/.95 var(--disp);letter-spacing:-.04em}.atlas-account-card{display:flex;align-items:center;gap:12px;margin:18px 0;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}.atlas-account-card>span{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:25px}.atlas-account-card strong,.atlas-account-card small{display:block}.atlas-account-card small{margin-top:2px;color:var(--accent);font:700 10px var(--num);letter-spacing:.08em}.settings-layout{display:grid;grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:18px}.settings-list{display:grid;gap:15px}.settings-list-group h2{margin:0 0 6px;padding:0 4px;color:var(--fg3);font:700 10px var(--num);letter-spacing:.1em;text-transform:uppercase}.settings-list-items,.settings-detail{overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--panel)}.settings-list-item{display:grid;grid-template-columns:34px 1fr 16px;align-items:center;gap:10px;width:100%;min-height:62px;padding:10px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg);text-align:left;cursor:pointer}.settings-list-item:last-child{border-bottom:0}.settings-list-item.is-active{background:var(--accent-soft)}.settings-list-icon,.settings-detail-icon{display:grid;place-items:center;color:var(--accent)}.settings-list-icon svg,.settings-detail-icon svg{width:19px;height:19px}.settings-list-copy{display:grid}.settings-list-copy strong{font-size:14px}.settings-list-copy small{color:var(--fg2);font-size:11px}.settings-list-chevron{color:var(--fg3);font-size:22px}.settings-detail{padding:18px}.settings-detail-heading{display:flex;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--line)}.settings-detail-kicker{margin:0;color:var(--fg3);font:700 10px var(--num);letter-spacing:.1em;text-transform:uppercase}.settings-section-title{font:800 23px/1 var(--disp)}
+@media(max-width:700px){.settings-layout{grid-template-columns:1fr}.settings-detail{min-height:220px}.settings-page-title{font-size:34px}}
+.atlas-onboarding-flow{background:linear-gradient(180deg,transparent 0 32%,color-mix(in srgb,var(--bg) 94%,transparent) 54%),var(--bg)!important;border-color:var(--line)!important;color:var(--fg)!important}.atlas-onboarding-flow h2{font:800 38px/.94 var(--disp)!important}.atlas-onboarding-kicker{color:var(--fg3)!important;font:700 10px var(--num)!important;letter-spacing:.1em;text-transform:uppercase}.paywall-card{border:1px solid var(--line)!important;border-radius:18px!important;background:var(--panel)!important;color:var(--fg)!important}.paywall-card h2{font:800 34px/.95 var(--disp)!important}.paywall-card-badge{border:1px solid var(--accent)!important;border-radius:999px!important;color:var(--accent)!important;font:700 10px var(--num)!important;letter-spacing:.08em}.paywall-card-breakdown>div{border-top:1px solid var(--line)!important}.paywall-card-breakdown strong{color:var(--accent)!important}.paywall-card-cta{background:var(--accent)!important;color:var(--accent-ink)!important;border-radius:14px!important}
+.atlas-entry-detail .dt-entry-head{padding:18px 0}.atlas-entry-detail .dt-entry-title{font:800 32px/.96 var(--disp)}.atlas-entry-detail .dt-entry-facts{border-color:var(--line);background:var(--panel);border-radius:14px}.atlas-entry-detail .dt-entry-facts strong{font-family:var(--num)}.atlas-entry-detail .dt-entry-section{border-color:var(--line)}.atlas-entry-detail .dt-section-eyebrow{color:var(--fg3);font-family:var(--num);letter-spacing:.1em}.atlas-entry-detail .dt-entry-actions{border-color:var(--line);background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(14px)}.atlas-entry-detail .dt-entry-log{border-radius:14px;background:var(--accent);color:var(--accent-ink)}
+.atlas-journal{max-width:780px;padding-bottom:92px}.atlas-journal-header h1{font:800 38px/.95 var(--disp)}.atlas-journal .tabs{border-bottom-color:var(--line)}.atlas-journal .tab{color:var(--fg2)}.atlas-journal .tab.is-active{color:var(--accent);border-bottom-color:var(--accent)}.atlas-journal .scrapbook-form,.atlas-journal .scrapbook-entry{border:1px solid var(--line);border-radius:14px;background:repeating-linear-gradient(to bottom,var(--paper) 0,var(--paper) 30px,var(--paper-line) 31px,var(--paper) 32px);color:var(--fg);box-shadow:none}.atlas-journal .scrapbook-form{padding:16px}.atlas-journal .scrapbook-header h2,.atlas-journal .scrapbook-entry h3{font-family:var(--serif);color:var(--fg)}.atlas-journal .scrapbook-entry{padding:14px}.atlas-journal textarea,.atlas-journal input{border-color:var(--line);background:color-mix(in srgb,var(--panel2) 60%,transparent);color:var(--fg)}.atlas-journal .scrapbook-submit{border-radius:14px;background:var(--accent);color:var(--accent-ink)}

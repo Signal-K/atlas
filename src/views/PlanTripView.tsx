@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../lib/auth'
 import { PaywallGate } from '../components/PaywallGate'
-import { CITIES, cityLabel, type City } from '../lib/cities'
+import { cityLabel, type City } from '../lib/cities'
 import { MAKER_LABELS, MAKER_ORDER, modelsForMaker, type DeviceId, CAMERA_PROFILES, deviceIdFromPreset } from '../lib/cameraProfiles'
 import { InterestsPicker } from '../components/InterestsPicker'
+import { LocationSearchInput } from '../components/LocationSearchInput'
 import { getPreferredEventTypes } from '../lib/eventPreferences'
 import {
   TRIP_MAX_LEGS,
@@ -27,14 +28,49 @@ const MILKY_WAY_LABEL: Record<'yes' | 'marginal' | 'no', string> = {
   no: 'Milky Way washed out',
 }
 
-type TripBuilderStep = 'dates' | 'cities' | 'equipment' | 'interests' | 'review'
-const TRIP_BUILDER_STEPS: TripBuilderStep[] = ['dates', 'cities', 'equipment', 'interests', 'review']
+// The builder is three plain steps: lay out the stops, add optional
+// personalization, review and save. There is no separate "trip dates" step --
+// the trip window is derived from the stays themselves (see deriveTripDates),
+// which removes the old double-date-entry that made the flow confusing.
+type TripBuilderStep = 'itinerary' | 'details' | 'review'
+const TRIP_BUILDER_STEPS: TripBuilderStep[] = ['itinerary', 'details', 'review']
 const TRIP_BUILDER_STEP_LABELS: Record<TripBuilderStep, string> = {
-  dates: 'Dates',
-  cities: 'Cities',
-  equipment: 'Gear',
-  interests: 'Interests',
+  itinerary: 'Itinerary',
+  details: 'Gear',
   review: 'Review',
+}
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function formatDayLabel(iso: string): string {
+  if (!iso) return ''
+  const date = new Date(`${iso}T12:00:00`)
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// The trip window is the envelope of every stay -- earliest check-in to
+// latest check-out -- rather than something the user types separately.
+function deriveTripDates(legs: TripLeg[]): { startDate: string; endDate: string } {
+  if (legs.length === 0) return { startDate: '', endDate: '' }
+  const starts = legs.map((leg) => leg.startDate).sort((a, b) => a.localeCompare(b))
+  const ends = legs.map((leg) => leg.endDate).sort((a, b) => a.localeCompare(b))
+  return { startDate: starts[0], endDate: ends[ends.length - 1] }
+}
+
+// Non-blocking sanity check: pairs of stays whose nights overlap (you can't
+// be in two cities the same night). Gaps between stays are intentionally not
+// flagged -- travel/rest days are normal.
+function tripLegIssues(legs: TripLeg[]): string[] {
+  const issues: string[] = []
+  const ordered = [...legs].sort((a, b) => a.startDate.localeCompare(b.startDate))
+  for (let i = 1; i < ordered.length; i++) {
+    if (ordered[i].startDate <= ordered[i - 1].endDate) {
+      issues.push(`${ordered[i - 1].cityName} and ${ordered[i].cityName} overlap on the same nights.`)
+    }
+  }
+  return issues
 }
 
 export function PlanTripView() {
@@ -78,8 +114,6 @@ function PlanTripWorkspace() {
 
 function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; user: ReturnType<typeof useAuth>['user'] }) {
   const [stepIndex, setStepIndex] = useState(0)
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
   const [legs, setLegs] = useState<TripLeg[]>([])
   const [cityQuery, setCityQuery] = useState('')
   const [selectedCity, setSelectedCity] = useState<City | null>(null)
@@ -111,15 +145,13 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
     }
   }, [user?.deviceModels])
 
-  const cityResults = useMemo(
-    () => (cityQuery.trim() ? CITIES.filter((c) => cityLabel(c).toLowerCase().includes(cityQuery.trim().toLowerCase())).slice(0, 8) : []),
-    [cityQuery],
-  )
+  const { startDate, endDate } = useMemo(() => deriveTripDates(legs), [legs])
+  const legIssues = useMemo(() => tripLegIssues(legs), [legs])
 
   const step = TRIP_BUILDER_STEPS[stepIndex]
 
   function addLeg() {
-    if (!selectedCity || !legStart || !legEnd || legs.length >= TRIP_MAX_LEGS) return
+    if (!selectedCity || !legStart || !legEnd || legEnd < legStart || legs.length >= TRIP_MAX_LEGS) return
     setLegs((current) => [...current, makeLeg(selectedCity, legStart, legEnd)])
     setCityQuery('')
     setSelectedCity(null)
@@ -130,10 +162,28 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
   function selectCity(city: City) {
     setSelectedCity(city)
     setCityQuery(cityLabel(city))
+    // Prefill the stay dates so a place can be added in one tap: the first
+    // stay starts today, and each later stay picks up where the previous one
+    // ended. The user can still adjust before adding.
+    if (!legStart) {
+      const defaultStart = legs.length > 0 ? legs[legs.length - 1].endDate : todayKey()
+      setLegStart(defaultStart)
+      if (!legEnd) setLegEnd(defaultStart)
+    }
   }
 
   function removeLeg(index: number) {
     setLegs((current) => current.filter((_, i) => i !== index))
+  }
+
+  function moveLeg(index: number, direction: -1 | 1) {
+    setLegs((current) => {
+      const target = index + direction
+      if (target < 0 || target >= current.length) return current
+      const next = [...current]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
   }
 
   function toggleEquipment(id: string) {
@@ -158,14 +208,10 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
     if (stepIndex > 0) setStepIndex(stepIndex - 1)
   }
 
-  const canSave = startDate && endDate && legs.length > 0 && equipment.length > 0 && endDate >= startDate
-  const canContinue = step === 'dates'
-    ? Boolean(startDate && endDate && endDate >= startDate)
-    : step === 'cities'
-      ? legs.length > 0
-      : step === 'equipment'
-        ? equipment.length > 0
-        : true
+  // Gear and interests are optional now, so the only hard requirement is at
+  // least one stay; the trip dates are derived from those stays.
+  const canSave = legs.length > 0
+  const canContinue = step === 'itinerary' ? legs.length > 0 : true
 
   async function handleSave() {
     if (!canSave) return
@@ -194,19 +240,9 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
 
       <div className="trip-builder-steps">
         <AnimatePresence mode="wait">
-          {step === 'dates' && (
-            <TripBuilderStepDates
-              key="dates"
-              startDate={startDate}
-              endDate={endDate}
-              onStartDateChange={setStartDate}
-              onEndDateChange={setEndDate}
-            />
-          )}
-
-          {step === 'cities' && (
-            <TripBuilderStepCities
-              key="cities"
+          {step === 'itinerary' && (
+            <TripBuilderStepItinerary
+              key="itinerary"
               legs={legs}
               startDate={startDate}
               endDate={endDate}
@@ -214,7 +250,7 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
               selectedCity={selectedCity}
               legStart={legStart}
               legEnd={legEnd}
-              cityResults={cityResults}
+              issues={legIssues}
               onCityQueryChange={(q) => {
                 setCityQuery(q)
                 setSelectedCity(null)
@@ -224,22 +260,16 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
               onLegEndChange={setLegEnd}
               onAddLeg={addLeg}
               onRemoveLeg={removeLeg}
+              onMoveLeg={moveLeg}
             />
           )}
 
-          {step === 'equipment' && (
-            <TripBuilderStepEquipment
-              key="equipment"
+          {step === 'details' && (
+            <TripBuilderStepDetails
+              key="details"
               equipment={equipment}
-              onToggleEquipment={toggleEquipment}
-              onTogglePhoneModel={(id) => toggleEquipment(id)}
-            />
-          )}
-
-          {step === 'interests' && (
-            <TripBuilderStepInterests
-              key="interests"
               interests={interests}
+              onToggleEquipment={toggleEquipment}
               onToggleCategory={toggleInterest}
             />
           )}
@@ -267,7 +297,7 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
         )}
         {stepIndex < TRIP_BUILDER_STEPS.length - 1 && (
           <button type="button" className="trip-builder-continue" disabled={!canContinue} onClick={advance}>
-            Continue
+            {step === 'details' ? 'Continue' : `Continue${legs.length > 0 ? ` · ${legs.length} ${legs.length === 1 ? 'stop' : 'stops'}` : ''}`}
           </button>
         )}
         {stepIndex === TRIP_BUILDER_STEPS.length - 1 && (
@@ -280,41 +310,7 @@ function TripBuilder({ onSaved, user }: { onSaved: (trip: TripPlan) => void; use
   )
 }
 
-function TripBuilderStepDates({
-  startDate,
-  endDate,
-  onStartDateChange,
-  onEndDateChange,
-}: {
-  startDate: string
-  endDate: string
-  onStartDateChange: (date: string) => void
-  onEndDateChange: (date: string) => void
-}) {
-  return (
-    <motion.div
-      className="trip-builder-step-content"
-      initial={{ x: 24, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -24, opacity: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <h3>When will you travel?</h3>
-      <div className="trip-date-row">
-        <label>
-          Start date
-          <input type="date" value={startDate} onChange={(e) => onStartDateChange(e.target.value)} autoFocus />
-        </label>
-        <label>
-          End date
-          <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => onEndDateChange(e.target.value)} />
-        </label>
-      </div>
-    </motion.div>
-  )
-}
-
-function TripBuilderStepCities({
+function TripBuilderStepItinerary({
   legs,
   startDate,
   endDate,
@@ -322,13 +318,14 @@ function TripBuilderStepCities({
   selectedCity,
   legStart,
   legEnd,
-  cityResults,
+  issues,
   onCityQueryChange,
   onSelectCity,
   onLegStartChange,
   onLegEndChange,
   onAddLeg,
   onRemoveLeg,
+  onMoveLeg,
 }: {
   legs: TripLeg[]
   startDate: string
@@ -337,14 +334,16 @@ function TripBuilderStepCities({
   selectedCity: City | null
   legStart: string
   legEnd: string
-  cityResults: City[]
+  issues: string[]
   onCityQueryChange: (q: string) => void
   onSelectCity: (city: City) => void
   onLegStartChange: (date: string) => void
   onLegEndChange: (date: string) => void
   onAddLeg: () => void
   onRemoveLeg: (i: number) => void
+  onMoveLeg: (i: number, direction: -1 | 1) => void
 }) {
+  const atMax = legs.length >= TRIP_MAX_LEGS
   return (
     <motion.div
       className="trip-builder-step-content"
@@ -353,59 +352,106 @@ function TripBuilderStepCities({
       exit={{ x: -24, opacity: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <h3>Which cities? ({legs.length}/{TRIP_MAX_LEGS})</h3>
+      <h3>Where are you going?</h3>
+      <p className="trip-hint">
+        Add each place you'll stay and the nights you'll be there. Atlas builds a sky guide for every stop — your trip
+        dates come from the stays themselves.
+      </p>
 
-      {legs.length > 0 && (
-        <ul className="row-list trip-leg-list">
-          {legs.map((leg, index) => (
-            <li key={`${leg.cityKey}-${leg.startDate}`} className="trip-leg-row">
-              <span>
-                <strong>{leg.cityName}</strong> · {leg.startDate} to {leg.endDate}
-              </span>
-              <button type="button" onClick={() => onRemoveLeg(index)} aria-label={`Remove ${leg.cityName}`}>
-                Remove
-              </button>
-            </li>
+      {legs.length === 0 ? (
+        <div className="trip-itinerary-empty">
+          <span className="trip-itinerary-empty-icon" aria-hidden="true">🗺️</span>
+          <p>No stops yet. Search for your first place below to start your itinerary.</p>
+        </div>
+      ) : (
+        <>
+          <div className="trip-itinerary-summary">
+            {formatDayLabel(startDate)} – {formatDayLabel(endDate)} · {legs.length} {legs.length === 1 ? 'stop' : 'stops'}
+          </div>
+          <ol className="trip-itinerary">
+            {legs.map((leg, index) => (
+              <li key={`${leg.cityKey}-${leg.startDate}`} className="trip-itinerary-stop">
+                <span className="trip-itinerary-marker" aria-hidden="true" />
+                <div className="trip-itinerary-stop-body">
+                  <strong>{leg.cityName}</strong>
+                  <span className="trip-itinerary-dates">
+                    {formatDayLabel(leg.startDate)} – {formatDayLabel(leg.endDate)}
+                  </span>
+                </div>
+                <span className="trip-leg-row-actions">
+                  <button
+                    type="button"
+                    className="trip-leg-move"
+                    onClick={() => onMoveLeg(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`Move ${leg.cityName} earlier`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="trip-leg-move"
+                    onClick={() => onMoveLeg(index, 1)}
+                    disabled={index === legs.length - 1}
+                    aria-label={`Move ${leg.cityName} later`}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="trip-leg-remove"
+                    onClick={() => onRemoveLeg(index)}
+                    aria-label={`Remove ${leg.cityName}`}
+                  >
+                    ✕
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+
+      {issues.length > 0 && (
+        <ul className="trip-leg-warnings" role="status">
+          {issues.map((issue) => (
+            <li key={issue}>⚠ {issue}</li>
           ))}
         </ul>
       )}
 
-      {legs.length < TRIP_MAX_LEGS && (
+      {atMax ? (
+        <p className="trip-hint">You've reached the maximum of {TRIP_MAX_LEGS} stops.</p>
+      ) : (
         <div className="trip-add-leg">
-          <input
-            type="search"
-            placeholder="Search a city"
+          <p className="trip-add-leg-label">{legs.length === 0 ? 'Add your first stop' : 'Add another stop'}</p>
+          <LocationSearchInput
+            id="trip-city-search"
             value={cityQuery}
-            aria-label="Search cities"
-            onChange={(e) => onCityQueryChange(e.target.value)}
-            autoFocus
+            onChange={onCityQueryChange}
+            onSelect={onSelectCity}
+            placeholder="Search any town or city"
           />
-          <div className="trip-date-row">
-            <label>
-              From
-              <input type="date" value={legStart} min={startDate || undefined} max={endDate || undefined} onChange={(e) => onLegStartChange(e.target.value)} />
-            </label>
-            <label>
-              To
-              <input type="date" value={legEnd} min={legStart || startDate || undefined} max={endDate || undefined} onChange={(e) => onLegEndChange(e.target.value)} />
-            </label>
-          </div>
-          {cityQuery.trim() && !selectedCity && (
-            <div className="trip-city-results" role="listbox" aria-label="City results">
-              {cityResults.map((city) => (
-                <button type="button" key={cityLabel(city)} role="option" onClick={() => onSelectCity(city)}>
-                  {cityLabel(city)}
-                </button>
-              ))}
-              {cityResults.length === 0 && <p>No matching cities.</p>}
-            </div>
-          )}
           {selectedCity && (
-            <div className="trip-city-selection">
-              <span>Selected: <strong>{cityLabel(selectedCity)}</strong></span>
-              <button type="button" onClick={onAddLeg} disabled={!legStart || !legEnd}>
-                Add city
-              </button>
+            <div className="trip-add-leg-dates">
+              <div className="trip-date-row">
+                <label>
+                  From
+                  <input type="date" value={legStart} onChange={(e) => onLegStartChange(e.target.value)} />
+                </label>
+                <label>
+                  To
+                  <input type="date" value={legEnd} min={legStart || undefined} onChange={(e) => onLegEndChange(e.target.value)} />
+                </label>
+              </div>
+              <div className="trip-city-selection">
+                <span>
+                  <strong>{cityLabel(selectedCity)}</strong>
+                </span>
+                <button type="button" onClick={onAddLeg} disabled={!legStart || !legEnd || legEnd < legStart}>
+                  Add to trip
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -414,14 +460,16 @@ function TripBuilderStepCities({
   )
 }
 
-function TripBuilderStepEquipment({
+function TripBuilderStepDetails({
   equipment,
+  interests,
   onToggleEquipment,
-  onTogglePhoneModel,
+  onToggleCategory,
 }: {
   equipment: string[]
+  interests: string[]
   onToggleEquipment: (id: string) => void
-  onTogglePhoneModel: (id: string) => void
+  onToggleCategory: (kinds: string[]) => void
 }) {
   return (
     <motion.div
@@ -431,8 +479,15 @@ function TripBuilderStepEquipment({
       exit={{ x: -24, opacity: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <h3>What gear are you bringing?</h3>
-      <p className="trip-hint">Viewing instruments</p>
+      <h3>
+        Personalize your guides <span className="trip-optional-badge">Optional</span>
+      </h3>
+      <p className="trip-hint">
+        Tell Atlas what you're bringing and what you're into, and it tailors each city's guide. Prefer to skip? Just
+        continue — you can still generate a guide for every stop.
+      </p>
+
+      <p className="trip-section-label">Gear</p>
       <div className="filter-tabs">
         {VIEWING_INSTRUMENTS.map((option) => (
           <button
@@ -445,28 +500,9 @@ function TripBuilderStepEquipment({
           </button>
         ))}
       </div>
-      <PhonePicker selected={equipment} onToggle={onTogglePhoneModel} />
-    </motion.div>
-  )
-}
+      <PhonePicker selected={equipment} onToggle={onToggleEquipment} />
 
-function TripBuilderStepInterests({
-  interests,
-  onToggleCategory,
-}: {
-  interests: string[]
-  onToggleCategory: (kinds: string[]) => void
-}) {
-  return (
-    <motion.div
-      className="trip-builder-step-content"
-      initial={{ x: 24, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -24, opacity: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <h3>What interests you?</h3>
-      <p className="trip-hint">We'll highlight these in your personalized city guides.</p>
+      <p className="trip-section-label">Interests</p>
       <InterestsPicker selected={interests} onToggleCategory={onToggleCategory} />
     </motion.div>
   )
@@ -497,14 +533,14 @@ function TripBuilderStepReview({
       <div className="trip-review">
         <div className="trip-review-section">
           <strong>Trip dates</strong>
-          <p>{startDate} to {endDate}</p>
+          <p>{formatDayLabel(startDate)} – {formatDayLabel(endDate)}</p>
         </div>
         <div className="trip-review-section">
-          <strong>Cities ({legs.length})</strong>
+          <strong>Stops ({legs.length})</strong>
           <ul>
             {legs.map((leg) => (
               <li key={leg.cityKey}>
-                {leg.cityName} · {leg.startDate} to {leg.endDate}
+                {leg.cityName} · {formatDayLabel(leg.startDate)} – {formatDayLabel(leg.endDate)}
               </li>
             ))}
           </ul>

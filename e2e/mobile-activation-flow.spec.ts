@@ -97,21 +97,18 @@ test('mobile signed-out visitor is blocked by the auth gate before reaching the 
   await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0)
 })
 
-test('mobile primary navigation opens from a compact menu', async ({ page }) => {
+test('mobile primary navigation uses the Atlas tab bar', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
   await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: 'Open menu' }).click()
-  const menu = page.getByRole('complementary', { name: 'Mobile menu' })
-  await expect(menu.getByRole('link')).toHaveCount(5)
-  await expect(menu.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Explore', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
-  await expect(menu.getByRole('button', { name: 'Request a feature' })).toBeVisible()
-  await menu.getByRole('button', { name: 'Close menu' }).click()
+  const tabBar = page.locator('.atlas-tab-bar')
+  await expect(tabBar.getByRole('link')).toHaveCount(5)
+  await expect(tabBar.getByRole('link', { name: 'Tonight', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Explore', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
   const tagButton = page.locator('.dt-feed-tag-button').first()
   await tagButton.click()
   await expect(page.locator('.dt-feed-tag-button.is-active')).toHaveCount(1)
@@ -119,7 +116,7 @@ test('mobile primary navigation opens from a compact menu', async ({ page }) => 
   await expect(page.locator('.dt-feed-tag-button.is-active')).toHaveCount(0)
 })
 
-test('opening an event keeps the compact menu and detail back control', async ({ page }) => {
+test('opening an event hides the tab bar and retains detail back control', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
   // Pin the location instead of leaving it to real (unmocked) IP
   // geolocation -- an unpredictable resolved city/time zone can shift which
@@ -141,7 +138,7 @@ test('opening an event keeps the compact menu and detail back control', async ({
   await page.getByRole('button', { name: /Night guide/ }).first().click()
   await expect(page.locator('.dt-entry-title')).toBeVisible({ timeout: 15_000 })
 
-  await expect(page.getByRole('button', { name: 'Open menu' })).toHaveCount(0)
+  await expect(page.locator('.atlas-tab-bar')).toBeHidden()
   await expect(page.getByRole('navigation', { name: 'Event navigation' })).toHaveCount(0)
   // The fixed shell has a known top-layer hit-test quirk in headless
   // Chromium; invoke the real DOM handler so this still verifies the route
