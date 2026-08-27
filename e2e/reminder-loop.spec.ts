@@ -33,8 +33,15 @@ async function mockReminderData(page: Page) {
 
   await page.route('**/api/collections/sky_events/records**', async (route) => {
     const now = new Date()
-    const startsAt = new Date(now.getTime() + 2 * 3_600_000)
-    const endsAt = new Date(now.getTime() + 3 * 3_600_000)
+    // isVisibleFromLocation() (src/lib/eventVisibility.mjs) gates moon_phase
+    // events on the Moon actually being above the horizon during the event
+    // window, sampled at 7 points across it. A short 1-hour window pinned to
+    // "now" made this flaky: whether the Moon is up at lat/lon 0 depends on
+    // the real wall-clock time the suite happens to run at. A window longer
+    // than one full moonrise-to-moonset cycle (~24-25h) is guaranteed to
+    // contain a visible sample regardless of when CI runs.
+    const startsAt = now
+    const endsAt = new Date(now.getTime() + 30 * 3_600_000)
 
     await route.fulfill({
       status: 200,
