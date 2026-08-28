@@ -191,9 +191,25 @@ function withCommonNames(stars) {
   })
 }
 
+// withCommonNames matches by RA/Dec proximity, so close binary/multiple-star
+// components (e.g. Rigil Kentaurus A and B, Castor A and B -- separate rows
+// in the source catalog, well within the match tolerance of each other) can
+// both match the same fallback entry and end up with the same id and name.
+// That id is used as a React key (EventsView's "most visible tonight" list)
+// and would need to be unique for any future by-id star lookup, so dedupe by
+// suffixing repeats with their catalog rank among same-id stars.
+function dedupeIds(stars) {
+  const counts = new Map()
+  return stars.map((star) => {
+    const seen = (counts.get(star.id) ?? 0) + 1
+    counts.set(star.id, seen)
+    return seen === 1 ? star : { ...star, id: `${star.id}-${seen}` }
+  })
+}
+
 async function main() {
   const { text, source } = await loadSource()
-  const stars = text ? withCommonNames(parseTsv(text)) : fallbackCatalog()
+  const stars = dedupeIds(text ? withCommonNames(parseTsv(text)) : fallbackCatalog())
   if (stars.length === 0) throw new Error('Generated catalog is empty')
   await writeFile(OUT_FILE, renderCatalog(stars, source))
   console.log(`Wrote ${stars.length} stars to ${path.relative(ROOT, OUT_FILE)}`)

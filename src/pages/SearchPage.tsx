@@ -65,13 +65,18 @@ export function SearchPage({ city, onLogAttempt }: SearchPageProps) {
     }
   }, [city.lat, city.lon, city.timeZone, lookaheadDays])
 
-  const exploreLocation: CurrentLocation = {
-    name: cityLabel(exploreCity),
-    lat: exploreCity.lat,
-    lon: exploreCity.lon,
-    source: 'manual',
-    timeZone: exploreCity.timeZone ?? city.timeZone,
-  }
+  // "Browse another city" is a Sky Pass feature -- gated the same way in
+  // EventsView.tsx's location switcher. Without this check, free accounts
+  // could get the paid feature for free just by using this tab instead of
+  // the home screen's location switcher, since exploreCity/exploreLocation
+  // otherwise have no premium check anywhere in this file.
+  useEffect(() => {
+    if (!hasPremium) setExploreCity((current) => (current.name === city.name ? current : { name: city.name, lat: city.lat, lon: city.lon, timeZone: city.timeZone }))
+  }, [hasPremium, city.name, city.lat, city.lon, city.timeZone])
+
+  const exploreLocation: CurrentLocation = hasPremium
+    ? { name: cityLabel(exploreCity), lat: exploreCity.lat, lon: exploreCity.lon, source: 'manual', timeZone: exploreCity.timeZone ?? city.timeZone }
+    : city
   const standoutEvents = useMemo(() => {
     if (!allEvents) return null
     const local = allEvents.filter((event) => isVisibleLocalEvent(event, exploreLocation.lat, exploreLocation.lon))
@@ -196,15 +201,19 @@ export function SearchPage({ city, onLogAttempt }: SearchPageProps) {
               <span className="dt-kicker">Standout events</span>
               <p>See what is genuinely observable from another city.</p>
             </div>
-            <label className="explore-city-picker">
-              <span>City</span>
-              <select value={exploreCity.name} onChange={(event) => {
-                const next = CITIES.find((candidate) => candidate.name === event.currentTarget.value)
-                if (next) setExploreCity(next)
-              }}>
-                {CITIES.map((candidate) => <option key={candidate.name} value={candidate.name}>{cityLabel(candidate)}</option>)}
-              </select>
-            </label>
+            {hasPremium ? (
+              <label className="explore-city-picker">
+                <span>City</span>
+                <select value={exploreCity.name} onChange={(event) => {
+                  const next = CITIES.find((candidate) => candidate.name === event.currentTarget.value)
+                  if (next) setExploreCity(next)
+                }}>
+                  {CITIES.map((candidate) => <option key={candidate.name} value={candidate.name}>{cityLabel(candidate)}</option>)}
+                </select>
+              </label>
+            ) : (
+              <p className="dt-browse-location-locked">Sky Pass unlocks browsing events in other locations. Showing {city.name}.</p>
+            )}
             <SkyEventBrowser events={standoutEvents} onSelect={(event) => selectEvent(event, exploreLocation)} timeZone={exploreLocation.timeZone} />
           </section>
         )}
