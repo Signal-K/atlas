@@ -7,7 +7,9 @@ import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
 import { addToWatchlist, getWatchlist, isWatching, removeFromWatchlist, type WatchlistItem } from '../../lib/watchlist'
 import { getTaggedEventIds, toggleEventTag } from '../../lib/eventTags'
 import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '../../lib/weather'
-import { moonIlluminationPctAt } from '../../lib/moonPhase'
+import { moonIlluminationPctAt, moonPhaseNameAt } from '../../lib/moonPhase'
+import { scoreTonight, tonightRatingLabel } from '../../lib/tonightScore'
+import { topVisibleTonight } from '../../lib/visiblePlanets'
 import { trackEvent } from '../../lib/analytics'
 import { useAuth } from '../../lib/auth'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
@@ -300,24 +302,58 @@ export function EventsView({
     .filter((target) => instrument === 'binoculars' ? target.difficulty !== 'challenging' : true)
     .filter((target) => instrument === 'binoculars' ? target.magnitude == null || target.magnitude <= 6 : true)
     .slice(0, instrument === 'binoculars' ? 4 : 5), [instrument])
+  // Flagship (eclipse/meteor shower/etc.) or, failing that, today's first
+  // scheduled event -- worth surfacing regardless of which instrument is
+  // selected, not just naked-eye, since it's the one thing worth a glance.
   const hero = majorEvents[0] ?? todaysEvents[0]
-  const clearPct = todayAdvisory?.cloudCoverPct == null ? null : Math.round(100 - todayAdvisory.cloudCoverPct)
+  const moonPhaseName = useMemo(() => moonPhaseNameAt(new Date()), [])
+  const topVisible = useMemo(
+    () => (instrument === 'eye' ? topVisibleTonight(new Date(), viewLocation.lat, viewLocation.lon, 3) : []),
+    [instrument, viewLocation.lat, viewLocation.lon],
+  )
+  const tonight = useMemo(() => {
+    if (!todayAdvisory) return null
+    return scoreTonight({
+      cloudCoverPct: todayAdvisory.cloudCoverPct,
+      precipitationChancePct: todayAdvisory.precipitationChancePct,
+      moonIlluminationPct: moonPct,
+      hasBrightTarget: hero != null,
+    })
+  }, [todayAdvisory, moonPct, hero])
 
   return (
     <div className="dt-page atlas-tonight">
       <header className="atlas-tonight-head">
-        <button type="button" className="atlas-location-chip" onClick={() => setBrowseQuery((value) => value || ' ')}>⌖ {viewLocation.name} ›</button>
-        <span>◐ {moonPct}%</span><time>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+        <div className="atlas-tonight-head-row">
+          <button type="button" className="atlas-location-chip" onClick={() => setBrowseQuery((value) => value || ' ')}>⌖ {viewLocation.name} ›</button>
+          <span>◐ {moonPct}% · {moonPhaseName}</span>
+          <time>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+        </div>
+        <div className="atlas-instrument" role="group" aria-label="Observing instrument">
+          <button className={instrument === 'eye' ? 'is-selected' : ''} onClick={() => setInstrument('eye')}>Naked eye</button><button className={instrument === 'binoculars' ? 'is-selected' : ''} onClick={() => setInstrument('binoculars')}>Binoculars</button><button className={instrument === 'telescope' ? 'is-selected' : ''} onClick={() => setInstrument('telescope')}>Telescope</button>
+        </div>
       </header>
       <section className="atlas-verdict">
-        <div><h1>{clearPct != null && clearPct >= 55 ? 'Go' : 'Maybe'}</h1><strong>{todayAdvisory ? 'After dark tonight' : 'Checking tonight'}</strong></div>
-        <b>{clearPct == null ? 'FORECAST' : `${clearPct}% CLEAR`}</b>
-        <div className="atlas-sky-bars" aria-label="Hourly clear sky forecast">{[.3,.48,.68,.86,.72,.56,.42].map((height, index) => <i key={index} style={{ height: `${height * 36}px` }} />)}</div>
+        <div><h1>{tonight ? tonightRatingLabel(tonight.rating) : 'Checking'}</h1><strong>{todayAdvisory ? 'After dark tonight' : 'Checking tonight'}</strong></div>
+        {tonight && tonight.reasons[0] && <p className="atlas-verdict-reason">{tonight.reasons[0]}</p>}
       </section>
-      <div className="atlas-instrument" role="group" aria-label="Observing instrument">
-        <button className={instrument === 'eye' ? 'is-selected' : ''} onClick={() => setInstrument('eye')}>Naked eye</button><button className={instrument === 'binoculars' ? 'is-selected' : ''} onClick={() => setInstrument('binoculars')}>Binoculars</button><button className={instrument === 'telescope' ? 'is-selected' : ''} onClick={() => setInstrument('telescope')}>Telescope</button>
-      </div>
-      {instrument === 'eye' && hero && <button type="button" className="atlas-hero" onClick={() => selectEvent(hero)} style={hero.imageUrl ? { backgroundImage: `linear-gradient(0deg, rgba(6,7,11,.96), rgba(6,7,11,.05)), url(${hero.imageUrl})` } : undefined}><span>FLAGSHIP · {KIND_LABELS[hero.kind] ?? hero.kind}</span><strong>{hero.title}</strong><small>{hero.description}</small></button>}
+      {hero && <button type="button" className="atlas-hero" onClick={() => selectEvent(hero)} style={hero.imageUrl ? { backgroundImage: `linear-gradient(0deg, rgba(6,7,11,.96), rgba(6,7,11,.05)), url(${hero.imageUrl})` } : undefined}><span>FLAGSHIP · {KIND_LABELS[hero.kind] ?? hero.kind}</span><strong>{hero.title}</strong><small>{hero.description}</small></button>}
+      {instrument === 'eye' && topVisible.length > 0 && (
+        <section className="atlas-target-section">
+          <div className="atlas-section-label"><span>Most visible tonight</span><b>{topVisible.length}</b></div>
+          {topVisible.map((object) => (
+            <article className="atlas-target-row" key={object.id}>
+              <i />
+              <div>
+                <small>{object.kind.toUpperCase()}{object.magnitude != null ? ` · MAG ${object.magnitude.toFixed(1)}` : ''}</small>
+                <strong>{object.name}</strong>
+                {object.constellation && <p>{object.constellation}</p>}
+              </div>
+              <b>{Math.round(object.altitudeDeg)}°<br />{object.compassLabel}</b>
+            </article>
+          ))}
+        </section>
+      )}
       {instrument !== 'eye' && <section className="atlas-target-section"><div className="atlas-section-label"><span>{instrument === 'binoculars' ? 'Reachable with 10×50s' : 'Deep sky, 6″ reflector'}</span><b>{deepTargets.length}</b></div>{deepTargets.map((target) => <article className={`atlas-target-row ${target.difficulty === 'challenging' ? 'is-dim' : ''}`} key={target.id}><i /><div><small>{target.kind.toUpperCase()} · MAG {target.magnitude ?? '—'}</small><strong>{target.name}</strong><p>{target.notes}</p></div><b>{Math.round(20 + ((target.raHours ?? 0) * 3) % 65)}°<br />NE</b></article>)}<p className="atlas-gear-note">Your saved gear: Nikon 10×50. Change in Settings → Device &amp; camera.</p></section>}
       <div className="dt-masthead">
         <span className="dt-kicker">Today · {viewLocation.name}</span>

@@ -295,8 +295,6 @@
    the Atlas Mobile design canvas exactly. Content gets the full viewport
    above it instead of losing a side rail. */
 @media (max-width: 900px) {
-  .nav-shell:has(.dt-entry-overlay) .nav-shell-topbar { pointer-events: none; visibility: hidden; }
-
   .nav-shell {
     flex-direction: column;
     padding-bottom: 0;

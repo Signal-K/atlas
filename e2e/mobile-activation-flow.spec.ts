@@ -116,7 +116,7 @@ test('mobile primary navigation uses the Atlas tab bar', async ({ page }) => {
   await expect(page.locator('.dt-feed-tag-button.is-active')).toHaveCount(0)
 })
 
-test('opening an event hides the tab bar and retains detail back control', async ({ page }) => {
+test('opening an event covers the tab bar with the detail overlay and retains back control', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
   // Pin the location instead of leaving it to real (unmocked) IP
   // geolocation -- an unpredictable resolved city/time zone can shift which
@@ -138,7 +138,11 @@ test('opening an event hides the tab bar and retains detail back control', async
   await page.getByRole('button', { name: /Night guide/ }).first().click()
   await expect(page.locator('.dt-entry-title')).toBeVisible({ timeout: 15_000 })
 
-  await expect(page.locator('.atlas-tab-bar')).toBeHidden()
+  // The tab bar stays mounted (it no longer unmounts on detail open -- that
+  // was causing the flicker/disappear bug) but the full-screen overlay
+  // (z-index 90) fully covers it (z-index 20), so it isn't interactable.
+  await expect(page.locator('.atlas-tab-bar')).toBeVisible()
+  await expect(page.locator('.dt-entry-overlay')).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Event navigation' })).toHaveCount(0)
   // The fixed shell has a known top-layer hit-test quirk in headless
   // Chromium; invoke the real DOM handler so this still verifies the route

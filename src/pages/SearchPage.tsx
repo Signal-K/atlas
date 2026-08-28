@@ -16,7 +16,6 @@ import { getDarknessWindow } from '../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../lib/timeZone'
 import { eventLookaheadDays } from '../lib/entitlementLimits'
 import { localDateKey } from '../lib/weather'
-import { useMobileDetailNav } from '../lib/mobileDetailNav'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { SkyEvent } from '../lib/db'
@@ -41,12 +40,6 @@ export function SearchPage({ city, onLogAttempt }: SearchPageProps) {
   const { user } = useAuth()
   const hasPremium = Boolean(user?.entitled)
   const lookaheadDays = eventLookaheadDays(hasPremium)
-  const { setActive: setMobileDetailActive } = useMobileDetailNav()
-
-  useEffect(() => {
-    setMobileDetailActive(entryDetail !== null)
-    return () => setMobileDetailActive(false)
-  }, [entryDetail, setMobileDetailActive])
 
   useEffect(() => {
     let cancelled = false

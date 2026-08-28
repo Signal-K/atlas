@@ -9,7 +9,6 @@ import { SearchPage } from './pages/SearchPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { CurrentLocation } from './lib/currentLocation'
 import type { ObservationDraft } from './lib/observationDraft'
-import { MobileDetailNavProvider } from './lib/mobileDetailNav'
 import './ui/ui.css'
 
 const NAV_ITEMS: NavItem[] = [
@@ -52,12 +51,17 @@ export function AppShell({
 }: AppShellProps) {
   const location = useLocation()
   const pageTitle = PAGE_TITLES[location.pathname]
+  // Events (the app's home) builds its own complete header -- location
+  // switcher, instrument toggle, moon phase, time -- so it doesn't need this
+  // generic wordmark bar stacked on top of it. Every other page still relies
+  // on this for its title until it gets a real header of its own.
+  const showGenericTopBar = location.pathname !== '/app/events'
 
   return (
-    <MobileDetailNavProvider>
-      <NavShell
-        items={NAV_ITEMS}
-        topBar={
+    <NavShell
+      items={NAV_ITEMS}
+      topBar={
+        showGenericTopBar ? (
           <div className="app-topbar">
             <div className="app-brand">
               <img src="/atlas-icon.png" alt="" width={24} height={24} />
@@ -65,22 +69,22 @@ export function AppShell({
             </div>
             {pageTitle && <span className="app-page-title">{pageTitle}</span>}
           </div>
-        }
-      >
-        <Routes>
-          <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
-          {/* Sky Pass multi-city trip planner. PaywallGate inside
-              PlanPage/PlanTripView handles the free-account paywall. */}
-          <Route path="/app/plan" element={<PlanPage />} />
-          <Route path="/app/search" element={<SearchPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
-          <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
-          <Route path="/app/ask" element={<AskAtlasPage />} />
-          <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
-          <Route path="/app/dashboard" element={<Navigate to="/app/events" replace />} />
-          {/* Legacy sky-map links redirect to Events, the merged app home. */}
-          <Route path="*" element={<Navigate to="/app/events" replace />} />
-        </Routes>
-      </NavShell>
-    </MobileDetailNavProvider>
+        ) : undefined
+      }
+    >
+      <Routes>
+        <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
+        {/* Sky Pass multi-city trip planner. PaywallGate inside
+            PlanPage/PlanTripView handles the free-account paywall. */}
+        <Route path="/app/plan" element={<PlanPage />} />
+        <Route path="/app/search" element={<SearchPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
+        <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
+        <Route path="/app/ask" element={<AskAtlasPage />} />
+        <Route path="/app/settings" element={<SettingsPage {...settingsProps} />} />
+        <Route path="/app/dashboard" element={<Navigate to="/app/events" replace />} />
+        {/* Legacy sky-map links redirect to Events, the merged app home. */}
+        <Route path="*" element={<Navigate to="/app/events" replace />} />
+      </Routes>
+    </NavShell>
   )
 }

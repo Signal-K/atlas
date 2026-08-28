@@ -5,7 +5,6 @@ import type { EntryDetailSubject } from '../lib/entryDetail'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
-import { useMobileDetailNav } from '../lib/mobileDetailNav'
 
 export interface EventsPageProps {
   city: CurrentLocation
@@ -14,7 +13,6 @@ export interface EventsPageProps {
 
 export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions?: EntryDetailActions } | null>(null)
-  const { setActive: setMobileDetailActive } = useMobileDetailNav()
 
   useEffect(() => {
     function closeDetail() {
@@ -23,13 +21,6 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
     window.addEventListener('atlas:mobile-home', closeDetail)
     return () => window.removeEventListener('atlas:mobile-home', closeDetail)
   }, [])
-
-  // The mobile bottom bar swaps to a back/swipe control while an event is
-  // open full-screen, and back to the normal tabs once it closes.
-  useEffect(() => {
-    setMobileDetailActive(entryDetail !== null)
-    return () => setMobileDetailActive(false)
-  }, [entryDetail, setMobileDetailActive])
 
   function logEntryDetailAttempt() {
     if (!entryDetail) return

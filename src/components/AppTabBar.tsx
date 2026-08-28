@@ -1,9 +1,26 @@
 import { NavLink } from 'react-router-dom'
 import type { NavItem } from '../ui/NavShell'
-import { useMobileDetailNav } from '../lib/mobileDetailNav'
 
+// The persistent mobile bottom nav. Always mounted, always visible -- it
+// used to unmount itself whenever a full-screen event-detail overlay was
+// open (see git history / mobileDetailNav), which is what caused the
+// bar to visibly flicker/disappear on every tap into an event. That hiding
+// was also unnecessary: the overlay (.dt-entry, z-index 90) already fully
+// covers this bar (z-index 20) on its own, so removing the DOM node bought
+// nothing but a mount/unmount flash. Never make this bar conditional again.
 export function AppTabBar({ items }: { items: NavItem[] }) {
-  const { active: detailActive } = useMobileDetailNav()
-  if (detailActive) return null
-  return <nav className="atlas-tab-bar" aria-label="Primary">{items.map((item) => <NavLink key={item.path} to={item.path} className={({ isActive }) => `atlas-tab${isActive ? ' is-active' : ''}`}><span aria-hidden="true">{item.icon}</span><small>{item.path.endsWith('/events') ? 'Tonight' : item.label}</small></NavLink>)}</nav>
+  return (
+    <nav className="atlas-tab-bar" aria-label="Primary">
+      {items.map((item) => (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          className={({ isActive }) => `atlas-tab${isActive ? ' is-active' : ''}`}
+        >
+          <span aria-hidden="true">{item.icon}</span>
+          <small>{item.path.endsWith('/events') ? 'Tonight' : item.label}</small>
+        </NavLink>
+      ))}
+    </nav>
+  )
 }

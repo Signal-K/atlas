@@ -1,4 +1,4 @@
-import { getVisiblePlanetsTonight, getStarObjects } from './skyMapLayers'
+import { getVisiblePlanetsTonight, getStarObjects, type SkyMapObject } from './skyMapLayers'
 import type { SkyEvent } from './db'
 
 const MAX_STARS_MENTIONED = 3
@@ -75,6 +75,18 @@ export function buildVisiblePlanetsEvent(now: Date, lat: number, lon: number): S
     longitude: lon,
     updatedAt: now.toISOString(),
   }
+}
+
+// Ranked "what's actually up right now" for the home screen -- planets and
+// bright stars above the horizon, brightest (lowest magnitude) first. Reuses
+// the exact same alt/az computation as describeVisibleSky above so the home
+// screen's list and the guide copy it's built from can never disagree.
+export function topVisibleTonight(now: Date, lat: number, lon: number, count = 3): SkyMapObject[] {
+  const { visible: visiblePlanets } = getVisiblePlanetsTonight(now, lat, lon)
+  const visibleStars = getStarObjects(now, lat, lon).filter((star) => star.visible)
+  return [...visiblePlanets, ...visibleStars]
+    .sort((a, b) => (a.magnitude ?? 99) - (b.magnitude ?? 99))
+    .slice(0, count)
 }
 
 // One "visible tonight" filler per day in the window, for days that don't
