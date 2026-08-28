@@ -327,6 +327,14 @@
     padding: var(--space-4) calc(env(safe-area-inset-right, 0px) + var(--space-4)) calc(96px + var(--space-4)) calc(env(safe-area-inset-left, 0px) + var(--space-4));
   }
 
+  /* When a page has no topbar (e.g. Events, which builds its own header),
+     .nav-shell-main is the first child in .nav-shell-body and sits flush
+     against the viewport top -- it needs the safe-area inset itself, since
+     there's no sticky topbar above it to absorb the status bar/notch. */
+  .nav-shell-body > .nav-shell-main:first-child {
+    padding-top: calc(env(safe-area-inset-top, 0px) + var(--space-4));
+  }
+
   .nav-shell-topbar {
     position: sticky;
     top: 0;
