@@ -1,5 +1,6 @@
 import * as Astronomy from 'astronomy-engine'
 import { BRIGHT_STARS } from '../data/brightStars'
+import { MESSIER_OBJECTS } from '../data/messierCatalog'
 import { azimuthToCompass, getHorizontalPosition } from './skyPosition'
 import type { SkyEvent } from './db'
 
@@ -65,23 +66,23 @@ function simbadUrl(name: string): string {
   return `https://simbad.u-strasbg.fr/simbad/sim-id?Ident=${encodeURIComponent(name)}`
 }
 
-// Small bundled seed list for the first real map layer. These are deliberately
-// bright/showpiece targets; a generated catalog can replace this without
-// changing the SkyMapObject API.
-export const DEEP_SKY_TARGETS: DeepSkyTarget[] = [
-  { id: 'm31', name: 'Andromeda Galaxy', type: 'galaxy', raHours: 0.712, decDeg: 41.269, magnitude: 3.4, angularSizeDeg: 3.1 },
-  { id: 'm42', name: 'Orion Nebula', type: 'nebula', raHours: 5.588, decDeg: -5.391, magnitude: 4.0, angularSizeDeg: 1.1 },
-  { id: 'm45', name: 'Pleiades', type: 'open cluster', raHours: 3.792, decDeg: 24.117, magnitude: 1.6, angularSizeDeg: 1.8 },
-  { id: 'm44', name: 'Beehive Cluster', type: 'open cluster', raHours: 8.672, decDeg: 19.672, magnitude: 3.7, angularSizeDeg: 1.6 },
-  { id: 'm8', name: 'Lagoon Nebula', type: 'nebula', raHours: 18.061, decDeg: -24.386, magnitude: 6.0, angularSizeDeg: 1.5 },
-  { id: 'm20', name: 'Trifid Nebula', type: 'nebula', raHours: 18.041, decDeg: -23.029, magnitude: 6.3, angularSizeDeg: 0.5 },
-  { id: 'm57', name: 'Ring Nebula', type: 'planetary nebula', raHours: 18.894, decDeg: 33.029, magnitude: 8.8, angularSizeDeg: 0.025 },
-  { id: 'm27', name: 'Dumbbell Nebula', type: 'planetary nebula', raHours: 19.993, decDeg: 22.721, magnitude: 7.4, angularSizeDeg: 0.13 },
-  { id: 'm13', name: 'Hercules Cluster', type: 'globular cluster', raHours: 16.695, decDeg: 36.467, magnitude: 5.8, angularSizeDeg: 0.33 },
+// Non-Messier showpiece targets that were bundled alongside the original
+// hand-written Messier subset below -- kept as their own list (rather than
+// dropped when that subset was replaced by the full generated Messier
+// catalog) so any existing deep_sky event already referencing one of these
+// ids by no coincidence keeps resolving.
+const EXTRA_DEEP_SKY_TARGETS: DeepSkyTarget[] = [
   { id: 'ngc3372', name: 'Carina Nebula', type: 'nebula', raHours: 10.752, decDeg: -59.867, magnitude: 1.0, angularSizeDeg: 2.0 },
   { id: 'ngc7000', name: 'North America Nebula', type: 'nebula', raHours: 20.974, decDeg: 44.333, magnitude: 4.0, angularSizeDeg: 2.0 },
   { id: 'omega-centauri', name: 'Omega Centauri', type: 'globular cluster', raHours: 13.447, decDeg: -47.48, magnitude: 3.9, angularSizeDeg: 0.6 },
 ]
+
+// The full 109-object Messier catalog (see scripts/generate-messier-catalog.mjs)
+// plus the non-Messier showpieces above -- previously just 12 hand-picked
+// Messier objects, which meant most deep_sky events silently lost their
+// direction/altitude on the event-detail page if their target wasn't one of
+// those 12.
+export const DEEP_SKY_TARGETS: DeepSkyTarget[] = [...MESSIER_OBJECTS, ...EXTRA_DEEP_SKY_TARGETS]
 
 function phaseLabel(phaseDeg: number): string {
   if (phaseDeg < 22.5 || phaseDeg >= 337.5) return 'New Moon'

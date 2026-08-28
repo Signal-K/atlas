@@ -8,6 +8,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { parseRaHours, parseDecDeg } from './lib/sexagesimal.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_FILE = path.join(ROOT, 'src/data/brightStars.ts')
@@ -19,7 +20,12 @@ const VIZIER_URL =
     '-source': 'V/50/catalog',
     '-out.max': '10000',
     '-out': 'HR,Name,RAJ2000,DEJ2000,Vmag,B-V',
-    Vmag: `..${MAX_MAG}`,
+    // VizieR's ASU range syntax "..N" silently drops rows below an implicit
+    // lower bound (observed: it excludes negative magnitudes entirely, which
+    // means the brightest real stars -- Sirius, Canopus, both well under the
+    // curated fallback's own magnitude -1 to 0 range -- vanished from every
+    // fetch this made). "<=N" is the correct inclusive upper-bound query.
+    Vmag: `<=${MAX_MAG}`,
   }).toString()
 
 const FALLBACK_STARS = [
@@ -68,36 +74,13 @@ function slugify(value) {
     .replace(/^-|-$/g, '')
 }
 
-function parseSexagesimal(value, scale) {
-  if (!value) return null
-  const parts = value.trim().replace(/[+:]/g, ' ').split(/\s+/).map(Number)
-  if (parts.some((part) => Number.isNaN(part))) return null
-  const sign = value.trim().startsWith('-') ? -1 : 1
-  const abs = Math.abs(parts[0]) + (parts[1] ?? 0) / 60 + (parts[2] ?? 0) / 3600
-  return sign * abs * scale
-}
-
-function parseRaHours(value) {
-  const raw = String(value ?? '').trim()
-  if (!raw) return null
-  const sexagesimal = /[:\s]/.test(raw) ? parseSexagesimal(raw, 1) : null
-  if (sexagesimal != null) return sexagesimal > 24 ? sexagesimal / 15 : sexagesimal
-  const decimal = Number(raw)
-  if (!Number.isFinite(decimal)) return null
-  return decimal > 24 ? decimal / 15 : decimal
-}
-
-function parseDecDeg(value) {
-  const raw = String(value ?? '').trim()
-  if (!raw) return null
-  const sexagesimal = /[:\s]/.test(raw) ? parseSexagesimal(raw, 1) : null
-  if (sexagesimal != null) return sexagesimal
-  const decimal = Number(raw)
-  return Number.isFinite(decimal) ? decimal : null
-}
-
 function parseNumber(value) {
-  const n = Number(String(value ?? '').trim())
+  const raw = String(value ?? '').trim()
+  // Number('') is 0, not NaN -- a blank B-V cell would otherwise silently
+  // become colorIndex: 0 (a real, specific color -- pure white) instead of
+  // "unknown", for any star VizieR has no B-V measurement for.
+  if (raw === '') return undefined
+  const n = Number(raw)
   return Number.isFinite(n) ? n : undefined
 }
 
@@ -187,9 +170,30 @@ async function loadSource() {
   }
 }
 
+// VizieR's Name column is generally a Bayer/Flamsteed designation (e.g.
+// "13Alp Aur"), not the common name a general audience would recognize
+// ("Capella") -- fine for most of a ~1,600-star catalog (most stars only
+// ever had catalog designations anyway), but a real regression for the
+// household-name stars this app already curated. Reuse that curated list
+// as a name override for exactly those stars, matched by position (same
+// physical star, same catalog) rather than by parsing designation strings.
+function withCommonNames(stars) {
+  const named = fallbackCatalog()
+  const RA_TOLERANCE_HOURS = 0.01
+  const DEC_TOLERANCE_DEG = 0.01
+  return stars.map((star) => {
+    const match = named.find(
+      (candidate) =>
+        Math.abs(candidate.raHours - star.raHours) < RA_TOLERANCE_HOURS &&
+        Math.abs(candidate.decDeg - star.decDeg) < DEC_TOLERANCE_DEG,
+    )
+    return match ? { ...star, id: match.id, name: match.name } : star
+  })
+}
+
 async function main() {
   const { text, source } = await loadSource()
-  const stars = text ? parseTsv(text) : fallbackCatalog()
+  const stars = text ? withCommonNames(parseTsv(text)) : fallbackCatalog()
   if (stars.length === 0) throw new Error('Generated catalog is empty')
   await writeFile(OUT_FILE, renderCatalog(stars, source))
   console.log(`Wrote ${stars.length} stars to ${path.relative(ROOT, OUT_FILE)}`)

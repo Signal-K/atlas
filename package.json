@@ -13,6 +13,7 @@
     "test:e2e": "playwright test",
     "test:e2e:writes": "E2E_WRITE_TESTS=1 playwright test e2e/pocketbase-write-actions.spec.ts",
     "stars": "node scripts/generate-bright-stars.mjs",
+    "messier": "node scripts/generate-messier-catalog.mjs",
     "ingest": "node scripts/ingest.mjs",
     "notify": "node scripts/notify.mjs",
     "moderate": "node scripts/moderate-photo-challenges.mjs",
