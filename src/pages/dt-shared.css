@@ -80,6 +80,21 @@
    of the page's normal padding. Higher specificity here wins outright regardless
    of load order, and the explicit resets below undo the properties mobile.css's
    rule declares that this one previously left unset. */
+/* .dt-page itself is deliberately transparent (below) so it doesn't paint
+   a second background over .mobile-shell's -- but mobile.css's `.mobile-shell`
+   rule paints its own decorative nebula/blotch gradient (--mobile-page-bg)
+   behind everything, which this stylesheet never neutralized. Cards inside
+   Events (.dt-feed-row, .atlas-hero, etc.) are opaque, so it stayed hidden
+   there, but the shared SkyEventBrowser's rows are intentionally
+   `background: none` and sit directly on top of it -- on Explore, which is
+   built entirely from that browser, the gradient shows through every row.
+   `.mobile-shell:has(.dt-page)` (0,2,0) is required, not `.mobile-shell`
+   alone, for the same reason as the rule below: it must outrank mobile.css's
+   own same-specificity `.mobile-shell` background regardless of load order. */
+.mobile-shell:has(.dt-page) {
+  background: var(--color-bg);
+}
+
 .mobile-shell .dt-page {
   background: transparent;
   color: var(--color-text);
@@ -87,6 +102,17 @@
   padding: 0;
   margin: 0;
   min-height: 0;
+  /* .mobile-shell is a fixed `height: 100svh` box (mobile.css), so its own
+     opaque background above only ever paints that one screen's worth of
+     height. Without an internal scroll boundary here, a page longer than
+     one screen (e.g. Explore's event list) just overflows past that box in
+     normal document flow -- past the first screen there's no backing at
+     all, exposing the fixed, viewport-pinned Starfield canvas (App.tsx)
+     behind every row as the page scrolls. flex: 1 (mobile-shell is a flex
+     column) plus overflow-y: auto makes .dt-page the actual scroll
+     container, clipped within .mobile-shell's own fixed, opaque box. */
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0;

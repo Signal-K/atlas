@@ -128,6 +128,15 @@ export function SettingsPage({
   // visitor is most likely to want to check or correct first, and it's
   // useful without an account. Every other section is one tap away.
   const [activeSection, setActiveSection] = useState<SettingsSection>('location')
+  // Below the settings-layout breakpoint (App.css), the list and the detail
+  // pane stack in one column instead of sitting side by side -- tapping a
+  // row swapped the detail pane's content in place, off-screen below the
+  // fold, with no scroll and no visual change at the tap point, so it read
+  // as completely unresponsive even though the state change did happen.
+  // This tracks whether to show the detail pane (full width, with a way
+  // back) in place of the list on that stacked layout; CSS gates all of it
+  // behind the same breakpoint so desktop's side-by-side view is untouched.
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
   const availableSections = SECTIONS.filter((section) => section.id !== 'devices' || Boolean(user))
   const section = availableSections.find((candidate) => candidate.id === activeSection) ?? availableSections[0]
 
@@ -167,7 +176,7 @@ export function SettingsPage({
         <span aria-hidden="true">◌</span><div><strong>{user?.email ?? 'Your Atlas account'}</strong><small>{user?.entitled ? 'SKY PASS · ACTIVE' : 'FREE ACCOUNT'}</small></div>
       </div>
 
-      <div className="settings-layout">
+      <div className={`settings-layout${mobileDetailOpen ? ' settings-layout--detail-open' : ''}`}>
         <nav className="settings-list" role="tablist" aria-label="Settings sections">
           {SECTION_GROUPS.map((group) => {
             const items = group.ids
@@ -185,7 +194,10 @@ export function SettingsPage({
                       role="tab"
                       aria-selected={section.id === item.id}
                       className={`settings-list-item${section.id === item.id ? ' is-active' : ''}`}
-                      onClick={() => setActiveSection(item.id)}
+                      onClick={() => {
+                        setActiveSection(item.id)
+                        setMobileDetailOpen(true)
+                      }}
                     >
                       <span className="settings-list-icon">{item.icon}</span>
                       <span className="settings-list-copy">
@@ -202,6 +214,9 @@ export function SettingsPage({
         </nav>
 
         <section className={`settings-detail${section.id === 'ask' ? ' settings-detail--ask' : ''}`}>
+          <button type="button" className="settings-back-row" onClick={() => setMobileDetailOpen(false)}>
+            <span aria-hidden="true">‹</span> Settings
+          </button>
           <div className="settings-detail-heading">
             <span className="settings-detail-icon">{section.icon}</span>
             <div>

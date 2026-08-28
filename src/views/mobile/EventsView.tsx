@@ -13,7 +13,6 @@ import { topVisibleTonight } from '../../lib/visiblePlanets'
 import { horizontalForEquatorial } from '../../lib/skyMapLayers'
 import { trackEvent } from '../../lib/analytics'
 import { useAuth } from '../../lib/auth'
-import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
 import { MobileIcon } from '../../components/mobile/MobileIcon'
 import { categoryForKind } from '../../lib/eventCategories'
 import { KIND_LABELS } from '../../widgets/EventRow'
@@ -501,11 +500,6 @@ export function EventsView({
           <p className="dt-browse-location-locked">Sky Pass unlocks browsing events in other locations.</p>
         )}
       </div>
-
-      <div className="dt-seam" />
-
-      {/* 4. All events: one chronological, date-grouped calendar feed. */}
-      <SkyEventBrowser events={events} onSelect={selectEvent} />
     </div>
   )
 }

@@ -189,34 +189,36 @@ export function SearchPage({ city, onLogAttempt }: SearchPageProps) {
     <div className="page">
       <h1 className="sr-only">Explore</h1>
       <div className="mobile-shell">
-        <div className="explore-tabs" role="tablist" aria-label="Explore sections">
-          <button type="button" role="tab" aria-selected={activeTab === 'events'} className={activeTab === 'events' ? 'is-active' : ''} onClick={() => setActiveTab('events')}>Find events</button>
-          <button type="button" role="tab" aria-selected={activeTab === 'standout'} className={activeTab === 'standout' ? 'is-active' : ''} onClick={() => setActiveTab('standout')}>Standout in a city</button>
+        <div className="dt-page">
+          <div className="explore-tabs" role="tablist" aria-label="Explore sections">
+            <button type="button" role="tab" aria-selected={activeTab === 'events'} className={activeTab === 'events' ? 'is-active' : ''} onClick={() => setActiveTab('events')}>Find events</button>
+            <button type="button" role="tab" aria-selected={activeTab === 'standout'} className={activeTab === 'standout' ? 'is-active' : ''} onClick={() => setActiveTab('standout')}>Standout in a city</button>
+          </div>
+          {activeTab === 'events' ? (
+            <SkyEventBrowser events={events} onSelect={selectEvent} timeZone={city.timeZone} autoFocusSearch />
+          ) : (
+            <section className="explore-standout" aria-label="Standout events in a city">
+              <div className="dt-feed-heading">
+                <span className="dt-kicker">Standout events</span>
+                <p>See what is genuinely observable from another city.</p>
+              </div>
+              {hasPremium ? (
+                <label className="explore-city-picker">
+                  <span>City</span>
+                  <select value={exploreCity.name} onChange={(event) => {
+                    const next = CITIES.find((candidate) => candidate.name === event.currentTarget.value)
+                    if (next) setExploreCity(next)
+                  }}>
+                    {CITIES.map((candidate) => <option key={candidate.name} value={candidate.name}>{cityLabel(candidate)}</option>)}
+                  </select>
+                </label>
+              ) : (
+                <p className="dt-browse-location-locked">Sky Pass unlocks browsing events in other locations. Showing {city.name}.</p>
+              )}
+              <SkyEventBrowser events={standoutEvents} onSelect={(event) => selectEvent(event, exploreLocation)} timeZone={exploreLocation.timeZone} />
+            </section>
+          )}
         </div>
-        {activeTab === 'events' ? (
-          <SkyEventBrowser events={events} onSelect={selectEvent} timeZone={city.timeZone} autoFocusSearch />
-        ) : (
-          <section className="explore-standout" aria-label="Standout events in a city">
-            <div className="dt-feed-heading">
-              <span className="dt-kicker">Standout events</span>
-              <p>See what is genuinely observable from another city.</p>
-            </div>
-            {hasPremium ? (
-              <label className="explore-city-picker">
-                <span>City</span>
-                <select value={exploreCity.name} onChange={(event) => {
-                  const next = CITIES.find((candidate) => candidate.name === event.currentTarget.value)
-                  if (next) setExploreCity(next)
-                }}>
-                  {CITIES.map((candidate) => <option key={candidate.name} value={candidate.name}>{cityLabel(candidate)}</option>)}
-                </select>
-              </label>
-            ) : (
-              <p className="dt-browse-location-locked">Sky Pass unlocks browsing events in other locations. Showing {city.name}.</p>
-            )}
-            <SkyEventBrowser events={standoutEvents} onSelect={(event) => selectEvent(event, exploreLocation)} timeZone={exploreLocation.timeZone} />
-          </section>
-        )}
       </div>
 
       {entryDetail && (
