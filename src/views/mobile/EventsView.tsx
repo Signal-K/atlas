@@ -10,6 +10,7 @@ import { fetchViewingForecast, localDateKey, type DailyViewingAdvisory } from '.
 import { moonIlluminationPctAt, moonPhaseNameAt } from '../../lib/moonPhase'
 import { scoreTonight, tonightRatingLabel } from '../../lib/tonightScore'
 import { topVisibleTonight } from '../../lib/visiblePlanets'
+import { horizontalForEquatorial } from '../../lib/skyMapLayers'
 import { trackEvent } from '../../lib/analytics'
 import { useAuth } from '../../lib/auth'
 import { SkyEventBrowser } from '../../components/mobile/SkyEventBrowser'
@@ -71,11 +72,12 @@ export function EventsView({
   const lookaheadDays = eventLookaheadDays(hasPremium)
   const forecastDays = forecastLookaheadDays(hasPremium)
 
-  async function refresh() {
+  async function refresh(cancelled: () => boolean) {
     await pullSkyEvents()
     const now = new Date()
     const lookaheadEnd = new Date(now.getTime() + lookaheadDays * 86_400_000)
     const [upcoming, watched, tagged] = await Promise.all([getEventsInRange(now, lookaheadEnd), getWatchlist(), getTaggedEventIds()])
+    if (cancelled()) return
     const localUpcoming = upcoming.filter((event) => isVisibleLocalEvent(event, viewLocation.lat, viewLocation.lon))
     const daysWithEvents = new Set(localUpcoming.map((event) => localDateKey(event.startsAt, viewLocation.timeZone)))
     const guides = buildDailySkyGuideEvents(
@@ -91,13 +93,21 @@ export function EventsView({
   }
 
   useEffect(() => {
-    refresh()
+    // Without this guard, switching location twice in quick succession could
+    // let the first (now-stale) location's response resolve after the
+    // second's and silently overwrite it -- the user ends up looking at the
+    // wrong city's events/forecast with no indication anything's wrong.
+    let cancelled = false
+    refresh(() => cancelled)
     fetchViewingForecast(viewLocation.lat, viewLocation.lon, forecastDays)
       .then((forecast) => {
+        if (cancelled) return
         setAdvisory(forecast.days)
         setAdvisoryTimeZone(viewLocation.timeZone ?? forecast.timeZone)
       })
-      .catch(() => setAdvisory([]))
+      .catch(() => {
+        if (!cancelled) setAdvisory([])
+      })
     function refreshReminders() {
       setReminders(listGetReadyReminders())
     }
@@ -107,6 +117,7 @@ export function EventsView({
     window.addEventListener('atlas:get-ready-reminders-changed', refreshReminders)
     window.addEventListener('atlas:tagged-events-changed', refreshTags)
     return () => {
+      cancelled = true
       window.removeEventListener('atlas:get-ready-reminders-changed', refreshReminders)
       window.removeEventListener('atlas:tagged-events-changed', refreshTags)
     }
@@ -354,7 +365,20 @@ export function EventsView({
           ))}
         </section>
       )}
-      {instrument !== 'eye' && <section className="atlas-target-section"><div className="atlas-section-label"><span>{instrument === 'binoculars' ? 'Reachable with 10×50s' : 'Deep sky, 6″ reflector'}</span><b>{deepTargets.length}</b></div>{deepTargets.map((target) => <article className={`atlas-target-row ${target.difficulty === 'challenging' ? 'is-dim' : ''}`} key={target.id}><i /><div><small>{target.kind.toUpperCase()} · MAG {target.magnitude ?? '—'}</small><strong>{target.name}</strong><p>{target.notes}</p></div><b>{Math.round(20 + ((target.raHours ?? 0) * 3) % 65)}°<br />NE</b></article>)}<p className="atlas-gear-note">Your saved gear: Nikon 10×50. Change in Settings → Device &amp; camera.</p></section>}
+      {instrument !== 'eye' && <section className="atlas-target-section"><div className="atlas-section-label"><span>{instrument === 'binoculars' ? 'Reachable with 10×50s' : 'Deep sky, 6″ reflector'}</span><b>{deepTargets.length}</b></div>{deepTargets.map((target) => {
+        // Real alt/az from the target's actual RA/Dec, not a formula stand-in
+        // -- this used to fabricate an "altitude" from RA alone and hardcode
+        // every direction as "NE", which pointed users at the wrong patch of
+        // sky regardless of date, time, or location.
+        const position = horizontalForEquatorial(new Date(), viewLocation.lat, viewLocation.lon, target.raHours ?? 0, target.decDeg ?? 0)
+        return (
+          <article className={`atlas-target-row ${target.difficulty === 'challenging' || !position.visible ? 'is-dim' : ''}`} key={target.id}>
+            <i />
+            <div><small>{target.kind.toUpperCase()} · MAG {target.magnitude ?? '—'}</small><strong>{target.name}</strong><p>{target.notes}</p></div>
+            <b>{position.visible ? `${Math.round(position.altitudeDeg)}°` : 'Below horizon'}<br />{position.compassLabel}</b>
+          </article>
+        )
+      })}<p className="atlas-gear-note">Your saved gear: Nikon 10×50. Change in Settings → Device &amp; camera.</p></section>}
       <div className="dt-masthead">
         <span className="dt-kicker">Today · {viewLocation.name}</span>
         <h2 className="dt-h2">Tonight&rsquo;s sky</h2>

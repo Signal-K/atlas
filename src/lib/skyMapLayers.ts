@@ -94,7 +94,7 @@ function phaseLabel(phaseDeg: number): string {
   return 'Waning crescent'
 }
 
-function horizontalForEquatorial(date: Date, lat: number, lon: number, raHours: number, decDeg: number) {
+export function horizontalForEquatorial(date: Date, lat: number, lon: number, raHours: number, decDeg: number) {
   const observer = new Astronomy.Observer(lat, lon, 0)
   const horizontal = Astronomy.Horizon(date, observer, raHours, decDeg, 'normal')
   return {
