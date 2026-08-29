@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import '../pages/dt-shared.css'
 import { SkyEventBrowser } from '../components/mobile/SkyEventBrowser'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'

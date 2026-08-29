@@ -128,7 +128,7 @@ export function SettingsPage({
   // visitor is most likely to want to check or correct first, and it's
   // useful without an account. Every other section is one tap away.
   const [activeSection, setActiveSection] = useState<SettingsSection>('location')
-  // Below the settings-layout breakpoint (App.css), the list and the detail
+  // Below the settings-layout breakpoint, the list and the detail
   // pane stack in one column instead of sitting side by side -- tapping a
   // row swapped the detail pane's content in place, off-screen below the
   // fold, with no scroll and no visual change at the tap point, so it read

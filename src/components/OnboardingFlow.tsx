@@ -248,7 +248,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
         {step === 'location' && (
           <>
             <p className="atlas-onboarding-kicker">Step one of four</p>
-            <h2>Where do you<br />look up from?</h2>
+            <h2>Where are you observing from?</h2>
             <p>Atlas needs a location to work out your darkness window and what&rsquo;s actually above you.</p>
             <p className="onboarding-flow-hint">Current Atlas location: {city.name}</p>
             <LocationSearchInput

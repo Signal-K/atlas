@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Starfield } from './components/Starfield'
 import { useIsMobile } from './lib/useIsMobile'
 import { LandingPage } from './views/LandingPage'
 import { AppShell } from './AppShell'
@@ -17,7 +16,6 @@ import { useEntitlementSync } from './providers/useEntitlementSync'
 import { useOnboardingGate } from './providers/useOnboardingGate'
 import { useAppLocation } from './providers/useAppLocation'
 import type { ObservationDraft } from './lib/observationDraft'
-import './App.css'
 
 const APP_HOME = '/app/events'
 
@@ -93,19 +91,16 @@ function App() {
   if (!user) {
     return (
       <>
-        <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
         <AuthGate defaultMode={accountDefaultMode} onSignedIn={handleSignedIn} onSignedUp={handleSignedUp} />
         <DevPreviewPanel />
       </>
     )
   }
 
-  // One shell for every viewport -- NavShell is responsive by itself (see
-  // src/ui/ui.css), which is what replaces the old Sidebar/MobileShell
-  // split and its two competing CSS themes.
+  // One shell for every viewport -- NavShell is responsive by itself, with
+  // the neutral headless baseline supplied by styles/headless.css.
   return (
     <>
-      <Starfield locationSeed={location.seed} targetRef={motion.targetRef} />
       <OfflineBanner />
       {showOnboardingFlow && (
         <OnboardingFlow

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import '../mobile.css'
 import { useAuth } from '../lib/auth'
 import {
   addComment,

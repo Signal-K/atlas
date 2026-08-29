@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import '../../pages/dt-shared.css'
 import { CAMERA_PROFILES, getDefaultDevice } from '../../lib/cameraProfiles'
 import { isVisibleLocalEvent } from '../../lib/eventFilters'
 import { addGetReadyReminder, ensureNotificationPermission, listGetReadyReminders, type GetReadyReminder } from '../../lib/getReadyReminders'

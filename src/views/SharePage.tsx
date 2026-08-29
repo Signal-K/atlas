@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { ShareCard } from '../components/ShareCard'
 import { getPublicObservation, type PublicObservationCard } from '../lib/sharing'
 import { trackEvent } from '../lib/analytics'
-import '../App.css'
 
 // Standalone public route (STS-175), rendered by main.tsx in place of the
 // full app shell for /p/:id -- no Sidebar, no auth-gated views, just the one

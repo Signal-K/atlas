@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { getPublicCityStamp, type PublicCityStamp } from '../lib/cityStamps'
-import '../App.css'
 
 export function CityStampSharePage({ slug }: { slug: string }) {
   const [stamp, setStamp] = useState<PublicCityStamp | null | 'loading'>('loading')

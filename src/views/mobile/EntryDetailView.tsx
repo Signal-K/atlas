@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import '../../mobile.css'
 import { CameraRecipe } from '../../components/CameraRecipe'
 import { BackIcon, MobileIcon } from '../../components/mobile/MobileIcon'
 import { formatTimeLabel, type EntryDetailSubject } from '../../lib/entryDetail'

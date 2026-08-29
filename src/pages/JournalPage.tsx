@@ -5,16 +5,12 @@ import { CommunityView } from '../views/mobile/CommunityView'
 import { Tabs } from '../ui/Tabs'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { CurrentLocation } from '../lib/currentLocation'
-import './dt-shared.css'
 
 // Journal merges private capture (Scrapbook), objective history (Archive),
 // and public sharing + photo challenges (Community/Feed) into one area --
 // this is already the intended shape per design.md, previously split
-// across separate desktop tabs. ScrapbookView/ArchiveView render on the
-// app's shared design tokens already (global App.css classes); Community
-// (Feed + Photo Challenges) still carries its own mobile.css-based
-// styling, scoped locally via `.mobile-shell` rather than fully reskinned
-// -- same trade as Plan's workspace tab. See KES-131 phase 9 follow-up.
+// across separate desktop tabs. The shared headless baseline supplies the
+// layout for each view while the behavior-owned components remain unchanged.
 
 type JournalMode = 'private' | 'archive' | 'public'
 

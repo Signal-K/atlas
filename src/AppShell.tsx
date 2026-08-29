@@ -9,7 +9,6 @@ import { SearchPage } from './pages/SearchPage'
 import { SettingsPage, type SettingsPageProps } from './pages/SettingsPage'
 import type { CurrentLocation } from './lib/currentLocation'
 import type { ObservationDraft } from './lib/observationDraft'
-import './ui/ui.css'
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/app/events', label: 'Events', icon: <EventsIcon /> },
@@ -63,10 +62,6 @@ export function AppShell({
       topBar={
         showGenericTopBar ? (
           <div className="app-topbar">
-            <div className="app-brand">
-              <img src="/atlas-icon.png" alt="" width={24} height={24} />
-              <span className="app-brand-name">Atlas</span>
-            </div>
             {pageTitle && <span className="app-page-title">{pageTitle}</span>}
           </div>
         ) : undefined
