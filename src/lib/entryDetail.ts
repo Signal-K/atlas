@@ -11,7 +11,7 @@ import type { TargetDifficulty, TonightTarget } from './tonightTargets'
 import { metaFor } from './tonightTargets'
 import { getPrimarySkyMapObjectForEvent } from './skyMapLayers'
 import { moonIlluminationPctAt } from './moonPhase'
-import { categoryForKind, GUIDE_KIND_IDS } from './eventCategories'
+import { GUIDE_KIND_IDS } from './eventCategories'
 import { recipeKeyForEventKind, type RecipeKey } from './cameraRecipes'
 import { buildEventGuide, type GuideStep } from './eventGuide'
 import { KIND_LABELS } from '../widgets/EventRow'
@@ -35,8 +35,6 @@ export interface EntryDetailSubject {
   title: string
   isGuide: boolean
   subtitleLine: string
-  swatch: string
-  accent: string
   bestTimeIso: string | null
   bestTimeLabel: string
   direction: { compassLabel: string; altitudeDeg: number } | null
@@ -73,10 +71,6 @@ const MOON_RELEVANT_EVENT_KINDS = new Set(['moon_phase', 'eclipse', 'meteor_show
 export function formatTimeLabel(iso: string | null, timeZone?: string): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
-}
-
-function swatchFromAccent(hex: string): string {
-  return `radial-gradient(circle at 35% 30%, #ffffff, ${hex}66 55%, ${hex} 100%)`
 }
 
 function markerPctFor(bestTimeIso: string | null, window: DarknessWindow): number {
@@ -131,7 +125,6 @@ interface EventDetailInput {
 }
 
 export function buildEventDetail(input: EventDetailInput, advisory: DailyViewingAdvisory | null): EntryDetailSubject {
-  const accent = categoryForKind(input.kind)?.accent ?? '#0a82b3'
   const suitability = eventSuitability(input.kind, input.phoneFriendly, input.nakedEyeVisible)
   const guideSteps = input.sourceEvent && input.location ? buildEventGuide(input.sourceEvent, input.location) : null
   return {
@@ -142,8 +135,6 @@ export function buildEventDetail(input: EventDetailInput, advisory: DailyViewing
     subtitleLine: `${KIND_LABELS[input.kind] ?? input.kind} · ${DIFFICULTY_LABEL[input.difficulty]} · ${
       input.phoneFriendly ? 'phone-friendly' : input.nakedEyeVisible ? 'naked-eye' : 'needs optics'
     }`,
-    swatch: swatchFromAccent(accent),
-    accent,
     bestTimeIso: input.bestTimeIso,
     bestTimeLabel: formatTimeLabel(input.bestTimeIso),
     direction: input.direction ? { compassLabel: input.direction.compassLabel, altitudeDeg: input.direction.altitudeDeg } : null,
@@ -213,37 +204,6 @@ export function detailInputFromEvent(event: SkyEvent, location: EntryDetailLocat
 
 // --- Stars -----------------------------------------------------------
 
-// B-V color index -> a display swatch color. Rough blackbody-tinted
-// interpolation, tuned for legible UI swatches rather than colorimetric
-// accuracy -- real data (astronomy-engine + the bundled Bright Star
-// Catalogue subset), not a hand-picked mockup palette.
-const BV_STOPS: Array<{ t: number; rgb: [number, number, number] }> = [
-  { t: -0.4, rgb: [155, 176, 255] },
-  { t: 0, rgb: [202, 215, 255] },
-  { t: 0.3, rgb: [248, 247, 255] },
-  { t: 0.6, rgb: [255, 244, 214] },
-  { t: 1.0, rgb: [255, 210, 161] },
-  { t: 1.5, rgb: [255, 165, 116] },
-  { t: 2.0, rgb: [255, 110, 90] },
-]
-
-export function bvToHex(bv: number): string {
-  const clamped = Math.max(BV_STOPS[0].t, Math.min(BV_STOPS[BV_STOPS.length - 1].t, bv))
-  let lo = BV_STOPS[0]
-  let hi = BV_STOPS[BV_STOPS.length - 1]
-  for (let i = 0; i < BV_STOPS.length - 1; i++) {
-    if (clamped >= BV_STOPS[i].t && clamped <= BV_STOPS[i + 1].t) {
-      lo = BV_STOPS[i]
-      hi = BV_STOPS[i + 1]
-      break
-    }
-  }
-  const span = hi.t - lo.t || 1
-  const f = (clamped - lo.t) / span
-  const rgb = lo.rgb.map((channel, i) => Math.round(channel + (hi.rgb[i] - channel) * f))
-  return '#' + rgb.map((channel) => channel.toString(16).padStart(2, '0')).join('')
-}
-
 export function colorLabelForBv(bv: number): string {
   if (bv < -0.1) return 'blue-white'
   if (bv < 0.3) return 'white'
@@ -288,7 +248,6 @@ export function buildStarDetail(
 ): EntryDetailSubject {
   const bv = star.colorIndex ?? 0
   const colorLabel = colorLabelForBv(bv)
-  const accent = bvToHex(bv)
   const from = darknessWindow.astronomicalDuskAt ? new Date(darknessWindow.astronomicalDuskAt) : new Date()
   const bestTime = starTransitTime(star.raHours, lon, from)
   const suitability = starSuitability(star.magnitude)
@@ -298,8 +257,6 @@ export function buildStarDetail(
     title: star.name,
     isGuide: false,
     subtitleLine: `${position.constellation ? position.constellation + ' · ' : ''}mag ${star.magnitude.toFixed(2)} · ${colorLabel}`,
-    swatch: swatchFromAccent(accent),
-    accent,
     bestTimeIso: bestTime.toISOString(),
     bestTimeLabel: formatTimeLabel(bestTime.toISOString()),
     direction: { compassLabel: position.compassLabel, altitudeDeg: position.altitudeDeg },

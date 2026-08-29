@@ -503,11 +503,10 @@ export function ScrapbookView({ draft, onDraftConsumed, currentLocation }: Scrap
               onCreateShareLink={createShareLink}
             />
           ))}
-          {standaloneEntries.map((entry, index) => (
+          {standaloneEntries.map((entry) => (
             <li
               key={entry.id}
               className="scrapbook-entry"
-              style={{ '--scrapbook-tilt': `${index % 2 === 0 ? -0.6 : 0.6}deg` } as React.CSSProperties}
             >
               <ObservationCard entry={entry} />
               <div className="scrapbook-entry-footer">

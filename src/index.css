@@ -1,21 +1,12 @@
-:root {
-  /* The bootstrap recovery check uses this marker to tell a real stylesheet
-     from a stale service-worker response. Keep it in the global stylesheet. */
-  --atlas-style-revision: atlas-2026-08-12c;
-  font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #1f2933;
-  background: #fff;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-}
+/* The bootstrap recovery check uses this marker to tell a real stylesheet
+   from a stale service-worker response. Keep it in the global stylesheet. */
+:root { --atlas-style-revision: atlas-2026-08-12c; }
 
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
 body { margin: 0; }
 button, input, select, textarea { font: inherit; }
 button, a, select, summary { touch-action: manipulation; }
-button, input, select, textarea { color: inherit; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;

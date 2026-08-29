@@ -20,20 +20,7 @@ export function DevPreviewPanel() {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 8,
-        left: 8,
-        zIndex: 999,
-        display: 'flex',
-        gap: 6,
-        alignItems: 'center',
-        padding: '6px 8px',
-        borderRadius: 8,
-        background: 'rgba(20, 20, 20, 0.85)',
-        color: '#fff',
-        font: '600 11px/1 monospace',
-      }}
+      className="dev-preview-panel"
     >
       <span>DEV PREVIEW</span>
       {!previewing ? (

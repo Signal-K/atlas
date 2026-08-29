@@ -1,126 +1,17 @@
 /* Atlas headless framework.
- * This is a behavior-supporting baseline, not a product theme. It supplies
- * layout, readable controls, focus states, and responsive navigation so the
- * existing route/page modules remain usable until a new design brief lands.
+ *
+ * This file intentionally contains structure only. It keeps the application
+ * usable while a product design system is supplied: routing and interaction
+ * modules get sensible layout, overlays remain operable, and the responsive
+ * navigation contract stays intact. Typography, colour, surfaces, controls,
+ * decorative treatments, and component appearance belong to the next kit.
  */
-
-:root {
-  --headless-bg: #fff;
-  --headless-surface: #fff;
-  --headless-text: #1f2933;
-  --headless-muted: #52606d;
-  --headless-border: #cbd2d9;
-  --headless-accent: #145da0;
-  --headless-accent-soft: #e7f1fb;
-  --headless-danger: #a61b1b;
-  --headless-success: #176b42;
-  --color-bg: var(--headless-bg);
-  --color-surface: var(--headless-surface);
-  --color-surface-raised: var(--headless-surface);
-  --color-border: var(--headless-border);
-  --color-text: var(--headless-text);
-  --color-text-muted: var(--headless-muted);
-  --color-accent: var(--headless-accent);
-  --color-accent-text: #fff;
-  --color-accent-bg: var(--headless-accent-soft);
-  --color-good: var(--headless-success);
-  --color-warn: #8a5a00;
-  --color-bad: var(--headless-danger);
-  --text: var(--headless-muted);
-  --text-h: var(--headless-text);
-  --border: var(--headless-border);
-  --bg: var(--headless-bg);
-  --accent: var(--headless-accent);
-  --accent-bg: var(--headless-accent-soft);
-  --accent-border: var(--headless-accent);
-  --status-good: var(--headless-success);
-  --status-warn: #8a5a00;
-  --status-bad: var(--headless-danger);
-  --space-1: .25rem;
-  --space-2: .5rem;
-  --space-3: .75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --text-xs: .75rem;
-  --text-sm: .875rem;
-  --text-base: 1rem;
-  --text-md: 1.125rem;
-  --text-lg: 1.25rem;
-  --text-xl: 1.75rem;
-  --text-2xl: 2.25rem;
-  --radius-sm: 2px;
-  --radius-md: 2px;
-  --radius-lg: 2px;
-  --radius-pill: 999px;
-  --shadow-sm: none;
-  --font-sans: inherit;
-  --font-display: inherit;
-  --font-data: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --mono: var(--font-data);
-  color: var(--headless-text);
-  background: var(--headless-bg);
-  color-scheme: light;
-}
-
-:root[data-theme='dark'] {
-  --headless-bg: #111827;
-  --headless-surface: #111827;
-  --headless-text: #f3f4f6;
-  --headless-muted: #cbd5e1;
-  --headless-border: #64748b;
-  --headless-accent: #93c5fd;
-  --headless-accent-soft: #1e3a5f;
-  --headless-danger: #fca5a5;
-  --headless-success: #86efac;
-  color-scheme: dark;
-}
-
-body {
-  min-width: 320px;
-  background: var(--headless-bg);
-  color: var(--headless-text);
-}
-
-a { color: var(--headless-accent); }
-button, input, select, textarea { max-width: 100%; }
-
-button {
-  min-height: 2.5rem;
-  padding: .5rem .75rem;
-  border: 1px solid var(--headless-border);
-  border-radius: var(--radius-md);
-  background: var(--headless-surface);
-  color: var(--headless-text);
-  cursor: pointer;
-}
-
-button:hover:not(:disabled),
-button[aria-pressed='true'],
-button[aria-selected='true'] {
-  border-color: var(--headless-accent);
-  background: var(--headless-accent-soft);
-}
-
-button:disabled { cursor: not-allowed; opacity: .55; }
-
-input, select, textarea {
-  width: 100%;
-  padding: .55rem .65rem;
-  border: 1px solid var(--headless-border);
-  border-radius: var(--radius-md);
-  background: var(--headless-surface);
-}
-
-textarea { min-height: 7rem; resize: vertical; }
-label { display: block; }
-main { min-width: 0; }
 
 /* Application shell and route navigation. */
 .nav-shell {
   display: grid;
   grid-template-columns: 11rem minmax(0, 1fr);
   min-height: 100svh;
-  background: var(--headless-bg);
 }
 
 .nav-shell-nav {
@@ -132,7 +23,6 @@ main { min-width: 0; }
   height: 100svh;
   padding: 1rem .75rem;
   overflow-y: auto;
-  border-right: 1px solid var(--headless-border);
 }
 
 .nav-shell-item,
@@ -142,17 +32,6 @@ main { min-width: 0; }
   gap: .55rem;
   min-height: 2.5rem;
   padding: .55rem .65rem;
-  border: 1px solid transparent;
-  color: var(--headless-text);
-  text-decoration: none;
-}
-
-.nav-shell-item:hover,
-.nav-shell-item-active,
-.atlas-tab:hover,
-.atlas-tab.is-active {
-  border-color: var(--headless-border);
-  background: var(--headless-accent-soft);
 }
 
 .nav-shell-icon,
@@ -166,17 +45,26 @@ main { min-width: 0; }
 }
 
 .nav-shell-icon svg,
-.atlas-tab svg { width: 1.1rem; height: 1.1rem; }
+.atlas-tab svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
 
-.nav-shell-body { display: flex; min-width: 0; flex-direction: column; }
+.nav-shell-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
 
 .nav-shell-topbar {
   padding: .75rem max(1rem, env(safe-area-inset-right)) .75rem max(1rem, env(safe-area-inset-left));
-  border-bottom: 1px solid var(--headless-border);
 }
 
-.app-topbar { display: flex; align-items: center; min-height: 1.5rem; }
-.app-page-title { font-size: 1rem; font-weight: 650; }
+.app-topbar {
+  display: flex;
+  align-items: center;
+  min-height: 1.5rem;
+}
 
 .nav-shell-main {
   flex: 1;
@@ -187,7 +75,27 @@ main { min-width: 0; }
 
 .atlas-tab-bar { display: none; }
 
-/* Shared page primitives. */
+.dev-preview-panel {
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.root-error-boundary {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.root-error-boundary-content { max-width: 32rem; }
+
+/* Shared layout primitives. */
 .page {
   display: flex;
   width: 100%;
@@ -200,19 +108,22 @@ main { min-width: 0; }
 .page-header {
   display: grid;
   gap: .4rem;
-  border-bottom: 1px solid var(--headless-border);
-  padding-bottom: 1rem;
 }
 
 .page-header h1,
 .page-header p,
 .settings-page-title { margin-bottom: 0; }
 
-.page-header p,
-.trip-hint,
-.settings-help,
-.account-form-help,
-.account-form-note { color: var(--headless-muted); }
+.mobile-shell,
+.mobile-content,
+.dt-page,
+.dt-entry-scroll { min-width: 0; }
+
+.mobile-content,
+.dt-page,
+.dt-entry-scroll { max-width: 100%; }
+
+.nav-shell-main main { min-width: 0; }
 
 .widget-section,
 .ui-card,
@@ -224,171 +135,12 @@ main { min-width: 0; }
 .scrapbook-section,
 .archive-section,
 .community-section {
-  border: 1px solid var(--headless-border);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  background: var(--headless-surface);
-  box-shadow: none;
+  min-width: 0;
 }
-
-.ui-card-raised { box-shadow: none; }
-
-.ui-tabs,
-.filter-tabs,
-.explore-tabs,
-.account-mode-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .25rem;
-  border-bottom: 1px solid var(--headless-border);
-  padding-bottom: .25rem;
-}
-
-.ui-tab,
-.filter-tabs button,
-.explore-tabs button,
-.account-mode-tabs button {
-  min-height: 2.25rem;
-  border-color: transparent;
-  background: transparent;
-}
-
-.ui-tab-active,
-.filter-tabs button.is-active,
-.explore-tabs button.is-active,
-.account-mode-tabs button.is-active {
-  border-color: var(--headless-accent);
-  background: var(--headless-accent-soft);
-  color: var(--headless-text);
-}
-
-.row-list,
-.trip-itinerary,
-.trip-leg-list,
-.trip-leg-warnings,
-.settings-list-items,
-.dt-feed-list,
-.mobile-content ul,
-.mobile-content ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.row-list > li,
-.trip-itinerary-stop,
-.trip-leg-card,
-.dt-feed-row,
-.settings-list-item,
-.dt-entry-section,
-.scrapbook-entry,
-.archive-entry {
-  border-bottom: 1px solid var(--headless-border);
-  padding: .75rem 0;
-}
-
-.row-list > li:last-child,
-.dt-feed-row:last-child,
-.settings-list-item:last-child { border-bottom: 0; }
-
-.row-trigger,
-.row-trigger-main,
-.settings-list-item,
-.trip-leg-card-header,
-.trip-summary-header,
-.trip-builder-actions,
-.planner-topbar,
-.settings-detail-heading,
-.feedback-panel-head,
-.install-prompt-actions {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-}
-
-.row-trigger-main,
-.settings-list-item {
-  width: 100%;
-  justify-content: flex-start;
-  border: 0;
-  background: transparent;
-  text-align: left;
-}
-
-.row-text,
-.settings-list-copy,
-.trip-leg-guide,
-.trip-builder-step-content { min-width: 0; flex: 1; }
-
-.row-meta,
-.settings-list-copy small,
-.settings-detail-kicker,
-.trip-section-label,
-.dt-kicker,
-.eyebrow,
-.atlas-kicker {
-  color: var(--headless-muted);
-  font-size: .8rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-
-/* Existing functional modules: retain their layout without their old
-   decorative treatment. */
-.mobile-shell { min-height: 0; color: inherit; background: transparent; }
-.mobile-content, .dt-page, .dt-entry-scroll { max-width: 100%; padding: 0; }
-
-.mobile-header,
-.mobile-footer,
-.mobile-profile,
-.sync-strip,
-.dt-feed-header,
-.dt-feed-heading {
-  border-bottom: 1px solid var(--headless-border);
-  background: transparent;
-}
-
-.mobile-header, .dt-feed-header, .dt-feed-heading { padding: .75rem 0; }
-
-.dt-feed-row { width: 100%; background: transparent; text-align: left; }
-
-.dt-feed-tag-button,
-.dt-entry-instrument-choice button,
-.trip-builder-step,
-.trip-phone-picker-chip {
-  min-height: 2.25rem;
-  border: 1px solid var(--headless-border);
-  border-radius: var(--radius-md);
-  background: var(--headless-surface);
-  color: var(--headless-text);
-}
-
-.dt-feed-tag-button.is-active,
-.dt-entry-instrument-choice button.is-selected,
-.trip-phone-picker-chip.is-selected {
-  border-color: var(--headless-accent);
-  background: var(--headless-accent-soft);
-}
-
-.dt-entry-overlay {
-  position: fixed;
-  z-index: 10;
-  inset: 0;
-  overflow: auto;
-  padding: 1rem;
-  background: var(--headless-bg);
-}
-
-.dt-entry { max-width: 52rem; margin: 0 auto; }
 
 .trip-builder,
 .trip-summary,
-.planner-screen {
-  display: grid;
-  gap: 1rem;
-}
-
-.trip-builder-progress,
+.planner-screen,
 .trip-builder-steps,
 .trip-add-leg-dates,
 .trip-date-row,
@@ -400,56 +152,110 @@ main { min-width: 0; }
 .trip-phone-picker-sections,
 .settings-layout,
 .settings-list-group,
-.settings-detail {
+.settings-detail,
+.account-form,
+.account-form-shell,
+.account-form-field,
+.ask-atlas-form,
+.feedback-panel-body,
+.install-prompt,
+.post-share-dialog__content {
   display: grid;
   gap: .75rem;
 }
 
+.trip-builder-progress,
+.trip-builder-steps,
+.trip-builder-actions,
+.row-trigger,
+.row-trigger-main,
+.settings-list-item,
+.trip-leg-card-header,
+.trip-summary-header,
+.planner-topbar,
+.settings-detail-heading,
+.feedback-panel-head,
+.install-prompt-actions,
+.account-form-actions,
+.onboarding-flow-actions,
+.paywall-card-actions,
+.scrapbook-entry-footer,
+.dt-feed-card-footer,
+.dt-sighting-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+
 .trip-builder-progress { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-
-.trip-builder-progress-step {
-  min-height: 2rem;
-  padding: .35rem;
-  border-bottom: 2px solid var(--headless-border);
-  color: var(--headless-muted);
-  font-size: .8rem;
-}
-
-.trip-builder-progress-step.is-current,
-.trip-builder-progress-step.is-complete {
-  border-color: var(--headless-accent);
-  color: var(--headless-text);
-}
-
-.trip-builder-step-content { display: grid; gap: .75rem; }
-
-.trip-builder-actions {
-  justify-content: flex-end;
-  border-top: 1px solid var(--headless-border);
-  padding-top: 1rem;
-}
-
 .trip-date-row,
 .trip-review,
 .planner-gear-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
 .planner-model-grid,
 .trip-phone-models,
 .settings-list-items { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+
+.row-trigger-main,
+.settings-list-item {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.row-text,
+.settings-list-copy,
+.trip-leg-guide,
+.trip-builder-step-content { min-width: 0; flex: 1; }
+
+.mobile-header,
+.mobile-footer,
+.mobile-profile,
+.sync-strip,
+.dt-feed-header,
+.dt-feed-heading,
+.dt-feed-row {
+  width: 100%;
+}
+
+.mobile-header,
+.dt-feed-header,
+.dt-feed-heading { padding: .75rem 0; }
+
+.dt-feed-row,
+.dt-feed-tag-button,
+.dt-entry-instrument-choice button,
+.trip-builder-step,
+.trip-phone-picker-chip { min-height: 2.25rem; }
+
+.dt-entry-overlay {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.dt-entry { max-width: 52rem; margin: 0 auto; }
 
 .settings-layout {
   grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
   align-items: start;
 }
 
-.settings-list-group h2 { margin-bottom: 0; font-size: 1rem; }
+.settings-list-group h2 { margin-bottom: 0; }
 .settings-list-item { min-height: 3.5rem; }
-.settings-list-icon, .settings-detail-icon { display: inline-flex; width: 1.5rem; flex: 0 0 auto; }
+.settings-list-icon,
+.settings-detail-icon { display: inline-flex; width: 1.5rem; flex: 0 0 auto; }
 .settings-back-row { display: none; }
 
-/* Auth, onboarding, paywall, feedback, and install prompts remain real UI
-   entry points, but read as ordinary document controls. */
-.onboarding-overlay, .auth-gate-modal { display: grid; place-items: center; }
+/* Auth, onboarding, paywall, feedback, and install prompts remain real
+   interaction entry points. Positioning is structural; visual treatment is
+   deliberately left to the future design kit. */
+.onboarding-overlay,
+.auth-gate-modal {
+  display: grid;
+  place-items: center;
+}
 
 .onboarding-overlay {
   position: fixed;
@@ -457,10 +263,7 @@ main { min-width: 0; }
   inset: 0;
   overflow: auto;
   padding: 1rem;
-  background: rgb(255 255 255 / 92%);
 }
-
-:root[data-theme='dark'] .onboarding-overlay { background: rgb(17 24 39 / 95%); }
 
 .onboarding-modal,
 .auth-gate-modal,
@@ -468,53 +271,33 @@ main { min-width: 0; }
 .signup-welcome-beat {
   width: min(100%, 32rem);
   padding: 1.25rem;
-  border: 1px solid var(--headless-border);
-  border-radius: var(--radius-md);
-  background: var(--headless-surface);
-  box-shadow: none;
 }
 
-.account-form,
-.account-form-shell,
-.account-form-field,
-.ask-atlas-form,
-.feedback-panel-body,
-.install-prompt,
-.post-share-dialog__content { display: grid; gap: .75rem; }
-
 .account-form-actions,
-.onboarding-flow-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
-
-.account-form-error, .onboarding-flow-error { color: var(--headless-danger); }
-
-.paywall-card-cta,
-.account-form-submit,
-.onboarding-flow-primary,
-.feedback-submit,
-.install-prompt-cta { background: var(--headless-accent); color: var(--headless-bg); }
+.onboarding-flow-actions,
+.paywall-card-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 
 .feedback-dock,
-.install-prompt { position: fixed; z-index: 15; right: 1rem; bottom: 1rem; }
+.install-prompt {
+  position: fixed;
+  z-index: 15;
+  right: 1rem;
+  bottom: 1rem;
+}
 
 .feedback-panel,
 .install-prompt {
   width: min(calc(100vw - 2rem), 24rem);
   padding: 1rem;
-  border: 1px solid var(--headless-border);
-  border-radius: var(--radius-md);
-  background: var(--headless-surface);
-  box-shadow: none;
 }
 
-.offline-banner {
-  padding: .6rem 1rem;
-  border-bottom: 1px solid var(--headless-border);
-  background: var(--headless-accent-soft);
-  text-align: center;
-}
+.offline-banner { padding: .6rem 1rem; text-align: center; }
 
-/* Minimal public entry point. */
-.headless-public { min-height: 100svh; color: var(--headless-text); background: var(--headless-bg); }
+/* Public entry point layout. */
+.headless-public { min-height: 100svh; }
 
 .headless-public-header,
 .headless-public-footer {
@@ -525,10 +308,7 @@ main { min-width: 0; }
   width: min(100% - 2rem, 64rem);
   margin: 0 auto;
   padding: 1rem 0;
-  border-bottom: 1px solid var(--headless-border);
 }
-
-.headless-public-header a { color: inherit; font-weight: 700; text-decoration: none; }
 
 .headless-public-main {
   display: grid;
@@ -539,10 +319,6 @@ main { min-width: 0; }
 }
 
 .headless-public-main section { max-width: 48rem; }
-.headless-public-main h1 { max-width: 18ch; font-size: clamp(2rem, 6vw, 4rem); line-height: 1.05; }
-.headless-public-main ul { display: grid; gap: 1rem; padding-left: 1.25rem; }
-
-.headless-public-footer { border-top: 1px solid var(--headless-border); border-bottom: 0; color: var(--headless-muted); font-size: .875rem; }
 
 @media (max-width: 899px) {
   .nav-shell { display: block; }
@@ -559,22 +335,43 @@ main { min-width: 0; }
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: .25rem;
     padding: .35rem max(.35rem, env(safe-area-inset-right)) max(.35rem, env(safe-area-inset-bottom)) max(.35rem, env(safe-area-inset-left));
-    border-top: 1px solid var(--headless-border);
-    background: var(--headless-bg);
   }
 
-  .atlas-tab { min-width: 0; flex-direction: column; justify-content: center; gap: .15rem; padding: .35rem .15rem; font-size: .75rem; text-align: center; }
-  .atlas-tab small { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+  .atlas-tab {
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: .15rem;
+    padding: .35rem .15rem;
+    text-align: center;
+  }
+
+  .atlas-tab small {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .settings-layout { display: block; }
   .settings-layout.settings-layout--detail-open .settings-list { display: none; }
   .settings-back-row { display: inline-flex; margin-bottom: 1rem; }
   .settings-layout:not(.settings-layout--detail-open) .settings-detail { display: none; }
-  .trip-date-row, .trip-review, .planner-gear-strip { grid-template-columns: 1fr; }
+  .trip-date-row,
+  .trip-review,
+  .planner-gear-strip { grid-template-columns: 1fr; }
 
-  .feedback-dock, .install-prompt { right: .75rem; bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px)); }
+  .feedback-dock,
+  .install-prompt {
+    right: .75rem;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
 }

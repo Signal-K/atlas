@@ -346,7 +346,12 @@ export function EventsView({
         <div><h1>{tonight ? tonightRatingLabel(tonight.rating) : 'Checking'}</h1><strong>{todayAdvisory ? 'After dark tonight' : 'Checking tonight'}</strong></div>
         {tonight && tonight.reasons[0] && <p className="atlas-verdict-reason">{tonight.reasons[0]}</p>}
       </section>
-      {hero && <button type="button" className="atlas-hero" onClick={() => selectEvent(hero)} style={hero.imageUrl ? { backgroundImage: `linear-gradient(0deg, rgba(6,7,11,.96), rgba(6,7,11,.05)), url(${hero.imageUrl})` } : undefined}><span>FLAGSHIP · {KIND_LABELS[hero.kind] ?? hero.kind}</span><strong>{hero.title}</strong><small>{hero.description}</small></button>}
+      {hero && <button type="button" className="atlas-hero" onClick={() => selectEvent(hero)}>
+        {hero.imageUrl && <img src={hero.imageUrl} alt="" loading="lazy" />}
+        <span>FLAGSHIP · {KIND_LABELS[hero.kind] ?? hero.kind}</span>
+        <strong>{hero.title}</strong>
+        <small>{hero.description}</small>
+      </button>}
       {instrument === 'eye' && topVisible.length > 0 && (
         <section className="atlas-target-section">
           <div className="atlas-section-label"><span>Most visible tonight</span><b>{topVisible.length}</b></div>
@@ -393,7 +398,7 @@ export function EventsView({
               const eventCategory = categoryForKind(event.kind)
               return (
                 <button type="button" className="dt-feed-row dt-feed-row--listing" key={event.id} onClick={() => selectEvent(event)}>
-                  <span className="dt-feed-swatch" style={eventCategory ? { color: eventCategory.accent } : undefined}>
+                  <span className="dt-feed-swatch">
                     {event.imageUrl ? <img src={event.imageUrl} alt="" loading="lazy" /> : <MobileIcon name={eventCategory?.icon ?? 'zap'} />}
                   </span>
                   <span className="dt-feed-body">

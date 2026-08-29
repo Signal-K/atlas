@@ -186,7 +186,7 @@ export function SkyEventBrowser({
               return (
                 <div className="dt-feed-row-wrap" key={event.id}>
                   <button type="button" className="dt-feed-row dt-feed-row--listing" onClick={() => onSelect(event)}>
-                    <span className="dt-feed-swatch" style={eventCategory ? { color: eventCategory.accent } : undefined}>
+                    <span className="dt-feed-swatch">
                       {event.imageUrl && !failedImageIds.has(event.id) ? (
                         <img src={event.imageUrl} alt="" loading="lazy" onError={() => setFailedImageIds((prev) => new Set(prev).add(event.id))} />
                       ) : (

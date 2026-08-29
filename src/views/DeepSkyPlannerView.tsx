@@ -172,7 +172,7 @@ export function DeepSkyPlannerView({ lat, lon }: { lat: number; lon: number }) {
                   </p>
                 </div>
                 <div className="planner-frame-meter" aria-label={`${target.title} fills ${Math.round((target.angularSizeDeg / fovDeg) * 100)} percent of the frame`}>
-                  <span style={{ width: `${Math.min(100, Math.max(4, (target.angularSizeDeg / fovDeg) * 100))}%` }} />
+                  {Math.round((target.angularSizeDeg / fovDeg) * 100)}% of frame
                 </div>
               </div>
               <button type="button" className="planner-reminder-button" onClick={() => addReminder(target)}>

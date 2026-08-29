@@ -130,7 +130,6 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
 
   return (
     <div className="dt-entry atlas-entry-detail">
-      <div className="dt-entry-rule" style={{ background: subject.accent }} />
       <div className="dt-entry-scroll">
         <button type="button" className="dt-entry-back" onClick={onClose}>
           <BackIcon />
@@ -138,7 +137,6 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
         </button>
 
         <div className="dt-entry-head">
-          <span className="dt-entry-swatch" style={{ background: subject.swatch }} />
           <div>
             <h2 className="dt-entry-title">{subject.title}</h2>
             <div className="dt-entry-subtitle">
@@ -203,7 +201,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt }: Ent
           <section className="dt-entry-section">
             <div className="dt-section-eyebrow">Best time tonight</div>
             <div className="dt-entry-timeline">
-              <span className="dt-entry-timeline-marker" style={{ left: `${subject.markerPct}%`, background: subject.accent }} />
+              <span>Best window: {subject.markerPct}% through the observing window.</span>
             </div>
             <div className="dt-entry-timeline-labels">
               <span>Dusk {duskLabel}</span>
