@@ -60,8 +60,20 @@ export async function recordWeeklyActivity(now = new Date()): Promise<StreakStat
         longest_weeks: next.longestWeeks,
         last_logged_week_start: next.lastLoggedWeekStart,
       }
-      if (remote) await pb.collection('atlas_streaks').update(remote.id, payload)
-      else await pb.collection('atlas_streaks').create(payload)
+      if (remote) {
+        await pb.collection('atlas_streaks').update(remote.id, payload)
+      } else {
+        try {
+          await pb.collection('atlas_streaks').create(payload)
+        } catch {
+          // Lost a create race to another concurrent tab/request -- the
+          // unique index on `atlas_streaks.user` rejected our insert, so
+          // the row now exists; fetch it and update instead of losing this
+          // write entirely.
+          const winner = await pb.collection('atlas_streaks').getFirstListItem(`user = "${pb.authStore.record?.id}"`)
+          await pb.collection('atlas_streaks').update(winner.id, payload)
+        }
+      }
     } catch {
       // Offline race or transient failure — local state stands, retried next activity.
     }

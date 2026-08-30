@@ -5,6 +5,31 @@ export const pocketBaseUrl = import.meta.env.VITE_PB_URL ?? 'http://127.0.0.1:80
 
 export const pb = new PocketBase(pocketBaseUrl)
 
+// Atlas's Polar billing routes (checkout, entitlement refresh) were
+// extracted out of the shared backend into their own service -- see
+// documentation/star-sailors-platform/08-backend-consolidation-audit.md,
+// item 3 -- so a Polar outage or bug no longer shares a failure domain
+// with shared identity. That service has no local `users` collection of
+// its own, so it can't be called through `pb.send` (which expects a
+// PocketBase-shaped auth flow against this same instance); it verifies the
+// caller's bearer token against the shared backend instead. This just
+// forwards the same token this app already holds.
+export const atlasBillingUrl = import.meta.env.VITE_ATLAS_BILLING_URL ?? 'http://127.0.0.1:8093'
+
+export async function atlasBillingFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${atlasBillingUrl}${path}`, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      ...(pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {}),
+    },
+  })
+  if (!response.ok) {
+    throw new Error(`atlas-billing request to ${path} failed: ${response.status}`)
+  }
+  return response.json() as Promise<T>
+}
+
 // Auth state is persisted by the SDK's default authStore (localStorage).
 // Every collection read/write in this app should go through src/lib/db.ts
 // instead of calling `pb` directly, so it works offline.
