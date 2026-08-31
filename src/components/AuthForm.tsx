@@ -322,6 +322,13 @@ function ClerkSignInPanel({
         setFormError('Incorrect email or password.')
         return
       }
+      // The signIn.password() attempt above failed and left its identifier/
+      // strategy state on this same signIn resource -- calling .ticket() on
+      // top of that stale state (instead of a fresh attempt) is what Clerk
+      // rejects with "The verification strategy is not valid for this
+      // account" (strategy_for_user_invalid). reset() clears local state
+      // without an API call so the ticket attempt starts clean.
+      await signIn.reset()
       const { error: ticketError } = await signIn.ticket({ ticket: claimResult.token })
       if (ticketError) {
         setFormError('Incorrect email or password.')
