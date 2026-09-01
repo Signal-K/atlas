@@ -323,13 +323,13 @@ function ClerkSignInPanel({
         return
       }
       // The signIn.password() attempt above failed and left its identifier/
-      // strategy state on this same signIn resource -- calling .ticket() on
-      // top of that stale state (instead of a fresh attempt) is what Clerk
-      // rejects with "The verification strategy is not valid for this
-      // account" (strategy_for_user_invalid). reset() clears local state
-      // without an API call so the ticket attempt starts clean.
+      // strategy state on this sign-in resource. reset() clears local state,
+      // but the current async closure still holds the old resource; calling
+      // .ticket() on it is what Clerk rejects with "The verification strategy
+      // is not valid for this account" (strategy_for_user_invalid). Create a
+      // fresh ticket-based sign-in attempt explicitly instead.
       await signIn.reset()
-      const { error: ticketError } = await signIn.ticket({ ticket: claimResult.token })
+      const { error: ticketError } = await signIn.create({ strategy: 'ticket', ticket: claimResult.token })
       if (ticketError) {
         setFormError('Incorrect email or password.')
         return
