@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const BILLING_URL = process.env.VITE_ATLAS_BILLING_URL || 'http://127.0.0.1:8093'
 const APP_URL = `http://localhost:${process.env.PLAYWRIGHT_PORT || '5173'}`
 const E2E_TOKEN = makeAuthToken()
 
@@ -65,7 +66,7 @@ test('trusts a paid reconciliation result when auth-refresh returns a stale enti
   await page.setViewportSize({ width: 1440, height: 900 })
   await seedSignedInUser(page, false)
 
-  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -124,7 +125,7 @@ test('desktop settings shows one page heading and grouped account status', async
 test('falls back when dynamic Polar checkout creation fails', async ({ page }) => {
   await seedSignedInUser(page, false)
 
-  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -159,7 +160,7 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
 test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailable', async ({ page }) => {
   await seedSignedInUser(page, false)
 
-  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
