@@ -6,6 +6,7 @@ import { LocationSettings } from '../components/LocationSettings'
 import { PushSettings } from '../components/PushSettings'
 import { LeaderboardSettings } from '../components/LeaderboardSettings'
 import { DeviceSettings } from '../components/DeviceSettings'
+import { AuroraTracker } from '../components/AuroraTracker'
 import { AskAtlasIcon } from '../ui/icons'
 import { useAuth } from '../lib/auth'
 import type { LocationStatus } from '../lib/geo'
@@ -23,11 +24,11 @@ export interface SettingsPageProps {
   accountDefaultMode?: 'sign-in' | 'sign-up'
 }
 
-type SettingsSection = 'location' | 'notifications' | 'appearance' | 'devices' | 'ask' | 'leaderboard' | 'account'
+type SettingsSection = 'location' | 'notifications' | 'aurora' | 'appearance' | 'devices' | 'ask' | 'leaderboard' | 'account'
 
 const SECTION_GROUPS: Array<{ title: string; ids: SettingsSection[] }> = [
   { title: 'Personal', ids: ['location', 'appearance', 'devices'] },
-  { title: 'Atlas', ids: ['notifications', 'ask', 'leaderboard'] },
+  { title: 'Atlas', ids: ['notifications', 'aurora', 'ask', 'leaderboard'] },
   { title: 'Account', ids: ['account'] },
 ]
 
@@ -63,6 +64,12 @@ const SECTIONS: Array<{ id: SettingsSection; title: string; shortTitle: string; 
         <path d="M10 19a2 2 0 0 0 4 0" />
       </svg>
     ),
+  },
+  {
+    id: 'aurora',
+    title: 'Aurora tracker',
+    shortTitle: 'Aurora',
+    icon: <span aria-hidden="true">✦</span>,
   },
   {
     id: 'appearance',
@@ -162,6 +169,8 @@ export function SettingsPage({
         )
       case 'notifications':
         return <PushSettings />
+      case 'aurora':
+        return <AuroraTracker location={currentLocation} />
       case 'leaderboard':
         return <LeaderboardSettings />
       case 'ask':
@@ -202,7 +211,7 @@ export function SettingsPage({
                       <span className="settings-list-icon">{item.icon}</span>
                       <span className="settings-list-copy">
                         <strong>{item.title}</strong>
-                        <small>{item.id === 'location' ? currentLocation.name : item.id === 'appearance' ? 'Dark / light' : item.id === 'devices' ? 'Device & camera' : 'Manage in Atlas'}</small>
+                        <small>{item.id === 'location' ? currentLocation.name : item.id === 'appearance' ? 'Dark / light' : item.id === 'devices' ? 'Device & camera' : item.id === 'aurora' ? 'GO / MAYBE / QUIET' : 'Manage in Atlas'}</small>
                       </span>
                       <span className="settings-list-chevron" aria-hidden="true">›</span>
                     </button>

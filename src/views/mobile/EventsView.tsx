@@ -28,6 +28,7 @@ import { ensurePushSubscription, queueWatchConfirmation } from '../../lib/push'
 import type { CurrentLocation } from '../../lib/currentLocation'
 import type { SkyEvent } from '../../lib/db'
 import { CELESTIAL_CATALOG } from '../../data/celestialCatalog'
+import { auroraAlertsEnabled } from '../../lib/auroraTracker'
 
 // How far out an eclipse/meteor shower still counts as "coming up" rather
 // than just another list entry.
@@ -195,6 +196,21 @@ export function EventsView({
     return { reminderActive: true, message }
   }
 
+  // Aurora alerts are opt-in from Settings. Once enabled, a later NOAA sync
+  // can surface a newly visible forecast without making the user revisit the
+  // tracker panel; arm its existing local/push reminder path automatically.
+  useEffect(() => {
+    if (!auroraAlertsEnabled() || !events) return
+    const nextAurora = events
+      .filter((event) => event.kind === 'aurora')
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0]
+    if (!nextAurora || reminders.some((reminder) => reminder.eventId === nextAurora.id)) return
+    addReminder(nextAurora).catch(() => undefined)
+    // The reminder list is intentionally excluded: addReminder updates it,
+    // and this effect only needs to react to new event/location data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, viewLocation.lat, viewLocation.lon])
+
   function selectBrowseCity(cityName: string) {
     if (!hasPremium) return
     if (!cityName) {
@@ -230,7 +246,7 @@ export function EventsView({
   const majorEvents = useMemo(() => {
     const windowEnd = Date.now() + MAJOR_EVENT_WINDOW_DAYS * 86_400_000
     return (events ?? [])
-      .filter((event) => (event.kind === 'eclipse' || event.kind === 'meteor_shower') && new Date(event.startsAt).getTime() <= windowEnd)
+      .filter((event) => (event.kind === 'eclipse' || event.kind === 'meteor_shower' || event.kind === 'aurora') && new Date(event.startsAt).getTime() <= windowEnd)
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
       .slice(0, 2)
   }, [events])
@@ -453,7 +469,7 @@ export function EventsView({
                       {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" />}
                       <div className="dt-major-event-body">
                         <span className="dt-major-event-badge">
-                          {event.kind === 'eclipse' ? 'ECLIPSE' : 'METEOR SHOWER'} · {inProgress ? 'HAPPENING NOW' : daysUntil(event.startsAt)}
+                          {event.kind === 'eclipse' ? 'ECLIPSE' : event.kind === 'aurora' ? 'AURORA' : 'METEOR SHOWER'} · {inProgress ? 'HAPPENING NOW' : daysUntil(event.startsAt)}
                         </span>
                         <strong>{event.title}</strong>
                         <span className="dt-major-event-desc">{event.description}</span>
