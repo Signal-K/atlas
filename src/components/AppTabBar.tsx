@@ -10,15 +10,15 @@ import type { NavItem } from '../ui/NavShell'
 // nothing but a mount/unmount flash. Never make this bar conditional again.
 export function AppTabBar({ items }: { items: NavItem[] }) {
   return (
-    <nav className="atlas-tab-bar" aria-label="Primary">
+    <nav className="atlas-tab-bar az-tabbar" aria-label="Primary">
       {items.map((item) => (
         <NavLink
           key={item.path}
           to={item.path}
-          className={({ isActive }) => `atlas-tab${isActive ? ' is-active' : ''}`}
+          className={({ isActive }) => `atlas-tab az-tab${isActive ? ' is-active' : ''}`}
         >
           <span aria-hidden="true">{item.icon}</span>
-          <small>{item.path.endsWith('/events') ? 'Tonight' : item.label}</small>
+          <small>{item.label}</small>
         </NavLink>
       ))}
     </nav>

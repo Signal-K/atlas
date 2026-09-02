@@ -25,7 +25,6 @@ export function InterestsPicker({
             className={`interests-picker-chip${active ? ' is-active' : ''}`}
             onClick={() => onToggleCategory(category.kinds)}
             aria-pressed={active}
-            style={active ? { borderColor: category.accent, color: category.accent } : undefined}
           >
             {category.label}
           </button>

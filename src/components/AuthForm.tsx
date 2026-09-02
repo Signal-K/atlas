@@ -29,76 +29,26 @@ const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
 // own internal view; it has no way to also flip our `mode` tab) would just
 // reintroduce that bug in a different spot.
 //
-// Clerk's <SignUp> also ships as its own fully-chromed card (background,
-// border, shadow, fixed max-width, its own "Create your account" header) --
-// dropped straight into account-form-shell's 360px column, that second card
-// doesn't share a coordinate system with the AuthGate/Settings card around
-// it, so it renders as a visually separate, misaligned sheet stacked on top
-// of ours instead of just being the form fields. Stripping the card/header
-// chrome here makes it lay out as plain fields inside our own card, the
-// same way the hand-rolled ClerkSignInPanel already does for sign-in.
+// Clerk's widgets are embedded as fields inside Atlas-owned flows. Remove
+// their surrounding chrome so the future design kit has one clear ownership
+// boundary for authentication presentation.
 const clerkAppearance = {
   elements: {
     rootBox: { width: '100%' },
-    cardBox: { width: '100%', boxShadow: 'none' },
-    card: { width: '100%', boxShadow: 'none', border: 'none', padding: 0, backgroundColor: 'transparent' },
+    cardBox: { width: '100%' },
+    card: { width: '100%', border: 'none', padding: 0, backgroundColor: 'transparent' },
     header: { display: 'none' },
     footer: { display: 'none' },
     footerAction: { display: 'none' },
     main: { width: '100%', padding: 0 },
     form: { width: '100%', gap: '28px' },
     formFieldRow: { width: '100%' },
-    formField: { width: '100%', gap: '10px' },
-    formFieldLabel: { fontSize: '20px', fontWeight: '500', color: 'var(--text-h)' },
-    formFieldInput: {
-      width: '100%',
-      minHeight: '76px',
-      boxSizing: 'border-box',
-      padding: '16px 22px',
-      borderRadius: '14px',
-      border: '1px solid var(--border)',
-      background: 'var(--bg)',
-      color: 'var(--text-h)',
-      fontSize: '22px',
-    },
-    formFieldInputShowPasswordButton: { color: 'var(--text)', marginRight: '12px' },
-    formButtonPrimary: {
-      width: '100%',
-      minHeight: '86px',
-      borderRadius: '18px',
-      background: 'var(--text-h)',
-      color: 'var(--bg)',
-      fontSize: '22px',
-      fontWeight: '700',
-    },
-    otpCodeField: {
-      width: '100%',
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '10px',
-    },
-    otpCodeFieldInput: {
-      width: '48px',
-      minWidth: '0',
-      height: '62px',
-      boxSizing: 'border-box',
-      padding: 0,
-      borderRadius: '12px',
-      border: '1px solid var(--border)',
-      background: 'var(--bg)',
-      color: 'var(--text-h)',
-      fontSize: '22px',
-      textAlign: 'center',
-    },
-    alert: {
-      width: '100%',
-      boxSizing: 'border-box',
-      margin: 0,
-      borderRadius: '12px',
-      padding: '14px 18px',
-      fontSize: '15px',
-      lineHeight: '1.45',
-    },
+    formField: { width: '100%' },
+    formFieldInput: { width: '100%', boxSizing: 'border-box' },
+    formButtonPrimary: { width: '100%' },
+    otpCodeField: { width: '100%' },
+    otpCodeFieldInput: { boxSizing: 'border-box' },
+    alert: { width: '100%', boxSizing: 'border-box', margin: 0 },
     // Authentication providers remain configured in Clerk, but Atlas is
     // temporarily email-and-password only. Hide the whole block, plus the
     // "or" divider Clerk renders between it and the email/password fields,

@@ -49,8 +49,8 @@ test('demo access link grants Sky Pass after signup without checkout', async ({ 
     await fillClerkSignUp(page, email, password)
 
     await expect.poll(() => redeemedCode).toBe('demo-floor')
-    await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('button', { name: 'Get the Sky Pass' })).toHaveCount(0)
+    await expect(page.locator('.az-pill', { hasText: 'SKY PASS · ACTIVE' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: /Get Sky Pass/ })).toHaveCount(0)
     await expect(page.evaluate(() => window.localStorage.getItem('atlas-demo-access-code'))).resolves.toBeNull()
   } finally {
     await deleteClerkTestUser({ email })

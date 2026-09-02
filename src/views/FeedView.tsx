@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import '../mobile.css'
 import { useAuth } from '../lib/auth'
 import {
   addComment,
@@ -28,25 +27,6 @@ function metaForDiscovery(discovery: Discovery): string {
   const time = new Date(discovery.created).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
   const gear = [discovery.camera, discovery.telescope, discovery.filters].filter(Boolean).join(' · ')
   return [discovery.target, time, gear].filter(Boolean).join(' · ')
-}
-
-// Small deterministic per-card hash so the "pinned photo" tilt and pin
-// color read as hand-placed instead of jittering on every re-render.
-function hashOf(id: string): number {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 10_000
-  return hash
-}
-
-const PIN_COLORS = ['#d9bce1', '#6ec0e3', '#f5b094', '#c9dfb8', '#fbd680']
-
-function rotationFor(id: string): string {
-  const deg = (hashOf(id) / 10_000) * 1.6 - 0.8
-  return `${deg.toFixed(2)}deg`
-}
-
-function pinColorFor(id: string): string {
-  return PIN_COLORS[hashOf(id) % PIN_COLORS.length]
 }
 
 function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: () => void }) {
@@ -85,14 +65,14 @@ function DiscoveryCard({ discovery, onVoted }: { discovery: Discovery; onVoted: 
   }
 
   return (
-    <li className="dt-feed-card" style={{ transform: `rotate(${rotationFor(discovery.id)})` }}>
+    <li className="dt-feed-card">
       <div className="dt-feed-card-photo-wrap">
         {discovery.imageUrl ? (
           <img className="dt-feed-card-photo" src={discovery.imageUrl} alt={discovery.caption} loading="lazy" />
         ) : (
           <div className="dt-feed-card-photo dt-feed-card-photo--empty">No photo yet</div>
         )}
-        <span className="dt-feed-card-pin" style={{ background: pinColorFor(discovery.id) }}>
+        <span className="dt-feed-card-pin">
           {(discovery.target ?? discovery.authorName).slice(0, 3).toUpperCase()}
         </span>
       </div>

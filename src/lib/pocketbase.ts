@@ -5,6 +5,31 @@ export const pocketBaseUrl = import.meta.env.VITE_PB_URL ?? 'http://127.0.0.1:80
 
 export const pb = new PocketBase(pocketBaseUrl)
 
+// Atlas's Polar billing routes (checkout, entitlement refresh) were
+// extracted out of the shared backend into their own service -- see
+// documentation/star-sailors-platform/08-backend-consolidation-audit.md,
+// item 3 -- so a Polar outage or bug no longer shares a failure domain
+// with shared identity. That service has no local `users` collection of
+// its own, so it can't be called through `pb.send` (which expects a
+// PocketBase-shaped auth flow against this same instance); it verifies the
+// caller's bearer token against the shared backend instead. This just
+// forwards the same token this app already holds.
+export const atlasBillingUrl = import.meta.env.VITE_ATLAS_BILLING_URL ?? 'http://127.0.0.1:8093'
+
+export async function atlasBillingFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${atlasBillingUrl}${path}`, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      ...(pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {}),
+    },
+  })
+  if (!response.ok) {
+    throw new Error(`atlas-billing request to ${path} failed: ${response.status}`)
+  }
+  return response.json() as Promise<T>
+}
+
 // Auth state is persisted by the SDK's default authStore (localStorage).
 // Every collection read/write in this app should go through src/lib/db.ts
 // instead of calling `pb` directly, so it works offline.
@@ -18,4 +43,16 @@ export const pb = new PocketBase(pocketBaseUrl)
 pb.beforeSend = (url, options) => {
   if (isDemoMode()) throw new Error('Atlas demo mode: PocketBase calls are disabled locally.')
   return { url, options }
+}
+
+// Fly's PocketBase machines run with min_machines_running=0 and stop when
+// idle -- a cold start takes ~10-15s (see Landnam/web/lib/contexts/
+// useAuthSync.ts, which measured the same backend topology). Firing a
+// cheap health check as soon as this module loads means the machine is
+// already waking by the time real auth/sync requests go out, instead of
+// the user's first genuine action eating the full cold-start latency.
+// Best-effort: offline/demo mode/backend-down all fail silently here,
+// same as every other best-effort PocketBase call in this app.
+if (!isDemoMode()) {
+  pb.health.check().catch(() => {})
 }

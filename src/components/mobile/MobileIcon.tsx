@@ -1,6 +1,8 @@
-// Shared tactical/outline icon set for mobile chrome. One place so Plan,
-// Events, and any future mobile view draw the same glyphs instead of each
-// hand-rolling their own <svg> per icon.
+// Shared tactical/outline icon set for mobile chrome. One place so Hub,
+// Events, Planner, Journal, Profile, and their overlays/sheets all draw the
+// same glyphs instead of each hand-rolling their own <svg> per icon. Path
+// data for the newer names is copied verbatim from the Atlas Mobile Claude
+// Design mockup's icon set so the app matches it exactly.
 export type MobileIconName =
   | 'zap'
   | 'orbit'
@@ -12,12 +14,30 @@ export type MobileIconName =
   | 'chevron'
   | 'pin'
   | 'moon'
+  | 'sun'
   | 'aurora'
   | 'asteroid'
   | 'plane'
   | 'search'
+  | 'eye'
+  | 'binoculars'
+  | 'calendar'
+  | 'route'
+  | 'journal'
+  | 'person'
+  | 'bell'
+  | 'sparkle'
+  | 'trophy'
+  | 'users'
+  | 'plus'
+  | 'close'
+  | 'back'
+  | 'check'
+  | 'cloud'
+  | 'lock'
+  | 'gear'
 
-export function MobileIcon({ name }: { name: MobileIconName | string }) {
+export function MobileIcon({ name, size = 18 }: { name: MobileIconName | string; size?: number }) {
   const common = {
     viewBox: '0 0 24 24',
     fill: 'none',
@@ -25,6 +45,8 @@ export function MobileIcon({ name }: { name: MobileIconName | string }) {
     strokeWidth: 1.8,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
+    width: size,
+    height: size,
     'aria-hidden': true,
   }
   switch (name) {
@@ -102,6 +124,13 @@ export function MobileIcon({ name }: { name: MobileIconName | string }) {
           <path d="M18.5 15.5A7 7 0 0 1 8.5 5.5 8 8 0 1 0 18.5 15.5Z" />
         </svg>
       )
+    case 'sun':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="4.2" />
+          <path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7" />
+        </svg>
+      )
     case 'aurora':
       return (
         <svg {...common}>
@@ -121,6 +150,122 @@ export function MobileIcon({ name }: { name: MobileIconName | string }) {
       return (
         <svg {...common}>
           <path d="M10.5 3.5 12 2l1.5 1.5-.5 6L19 13v2l-6-2-1 5 2 1.5V21l-2.5-1L9 21v-1.5l2-1.5-1-5-6 2v-2l5.5-3.5-.5-6Z" />
+        </svg>
+      )
+    case 'eye':
+      return (
+        <svg {...common}>
+          <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" />
+          <circle cx="12" cy="12" r="2.6" />
+        </svg>
+      )
+    case 'binoculars':
+      return (
+        <svg {...common}>
+          <path d="M6 4h3l1 5v5a2.5 2.5 0 0 1-5 0V9Z" />
+          <path d="M18 4h-3l-1 5v5a2.5 2.5 0 0 0 5 0V9Z" />
+          <path d="M10 10h4" />
+        </svg>
+      )
+    case 'calendar':
+      return (
+        <svg {...common}>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M3 10h18M8 3v4M16 3v4" />
+        </svg>
+      )
+    case 'route':
+      return (
+        <svg {...common}>
+          <path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" />
+          <path d="M9 4v14M15 6v14" />
+        </svg>
+      )
+    case 'journal':
+      return (
+        <svg {...common}>
+          <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5Z" />
+          <path d="M4 4.5v16" />
+        </svg>
+      )
+    case 'person':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="3.6" />
+          <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+        </svg>
+      )
+    case 'bell':
+      return (
+        <svg {...common}>
+          <path d="M6 9a6 6 0 0 1 12 0c0 4.2 1.2 5.8 2 6.8H4c.8-1 2-2.6 2-6.8Z" />
+          <path d="M10 19a2 2 0 0 0 4 0" />
+        </svg>
+      )
+    case 'sparkle':
+      return (
+        <svg {...common}>
+          <path d="M12 3.5c.5 2.4 1.2 3.9 2.6 5.3 1.4 1.4 2.9 2.1 5.3 2.6-2.4.5-3.9 1.2-5.3 2.6-1.4 1.4-2.1 2.9-2.6 5.3-.5-2.4-1.2-3.9-2.6-5.3C8 12.6 6.5 11.9 4.1 11.4c2.4-.5 3.9-1.2 5.3-2.6C10.8 7.4 11.5 5.9 12 3.5Z" />
+        </svg>
+      )
+    case 'trophy':
+      return (
+        <svg {...common}>
+          <path d="M7 4h10v5.5a5 5 0 0 1-10 0V4Z" />
+          <path d="M7 6H4.5a2.5 2.5 0 0 0 2.5 3.5M17 6h2.5a2.5 2.5 0 0 1-2.5 3.5" />
+          <path d="M12 14.5v3M9 21h6l-.6-3.5H9.6Z" />
+        </svg>
+      )
+    case 'users':
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3.2" />
+          <path d="M3 20a6 6 0 0 1 12 0" />
+          <path d="M16 5.5a3.2 3.2 0 0 1 0 5M17 20a6 6 0 0 0-2-4.4" />
+        </svg>
+      )
+    case 'plus':
+      return (
+        <svg {...common}>
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      )
+    case 'close':
+      return (
+        <svg {...common}>
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      )
+    case 'back':
+      return (
+        <svg {...common}>
+          <path d="M14.5 5 8 12l6.5 7" />
+        </svg>
+      )
+    case 'check':
+      return (
+        <svg {...common}>
+          <path d="m5 12.5 4.5 4.5L19 7" />
+        </svg>
+      )
+    case 'cloud':
+      return (
+        <svg {...common}>
+          <path d="M7 18a4 4 0 0 1 .6-7.96A5 5 0 0 1 17 10.5a3.75 3.75 0 0 1-.2 7.5Z" />
+        </svg>
+      )
+    case 'lock':
+      return (
+        <svg {...common}>
+          <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+          <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+        </svg>
+      )
+    case 'gear':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9" />
         </svg>
       )
     default:

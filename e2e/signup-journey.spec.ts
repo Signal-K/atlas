@@ -123,21 +123,15 @@ test('signup happens via the auth gate before onboarding, then observations save
     await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
 
     await page.getByRole('button', { name: 'Full Moon' }).click()
-    await page.locator('.dt-entry').getByRole('button', { name: 'Log attempt' }).click()
+    await page.locator('.az-overlay').getByRole('button', { name: 'Log attempt' }).click()
 
     await expect(page).toHaveURL('/app/journal')
-    await expect(page.getByText('Logging attempt for')).toBeVisible()
-    await page.getByPlaceholder(/What did you see tonight|How did/).fill('Saw the Moon through thin cloud.')
+    await expect(page.getByText('Logging for')).toBeVisible()
+    await page.getByPlaceholder('What did you see tonight?').fill('Saw the Moon through thin cloud.')
     await page.getByRole('button', { name: 'Good' }).click()
-    await page.getByRole('button', { name: 'Save observation' }).click()
+    await page.getByRole('button', { name: 'Save session' }).click()
 
-    // A logged attempt carries the event it was logged against, so it lands
-    // inside that event's collapsed thread (see EventObservationThread) --
-    // has to be opened before its note text is on screen.
-    const moonThread = page.locator('.event-thread', { hasText: 'Full Moon' })
-    await expect(moonThread.getByRole('button', { name: /Open portfolio/ })).toBeVisible()
-    await moonThread.getByRole('button', { name: /Open portfolio/ }).click()
-    await expect(moonThread.getByText('Saw the Moon through thin cloud.')).toBeVisible()
+    await expect(page.locator('.az-row-group').getByText('Saw the Moon through thin cloud.')).toBeVisible()
   } finally {
     await deleteClerkTestUser({ email })
   }

@@ -99,21 +99,23 @@ test('mobile signed-out visitor is blocked by the auth gate before reaching the 
 
 test('mobile primary navigation uses the Atlas tab bar', async ({ page }) => {
   await seedSignedInUser(page, { entitled: false })
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'atlas-manual-location',
+      JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278, admin1: 'England', country: 'United Kingdom', timeZone: 'Europe/London' }),
+    )
+  })
   await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
   const tabBar = page.locator('.atlas-tab-bar')
   await expect(tabBar.getByRole('link')).toHaveCount(5)
-  await expect(tabBar.getByRole('link', { name: 'Tonight', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Explore', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Hub', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
+  await expect(tabBar.getByRole('link', { name: 'Planner', exact: true })).toBeVisible()
   await expect(tabBar.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
-  const tagButton = page.locator('.dt-feed-tag-button').first()
-  await tagButton.click()
-  await expect(page.locator('.dt-feed-tag-button.is-active')).toHaveCount(1)
-  await page.locator('.dt-feed-tag-button.is-active').click()
-  await expect(page.locator('.dt-feed-tag-button.is-active')).toHaveCount(0)
+  await expect(tabBar.getByRole('link', { name: 'You', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Full Moon' })).toBeVisible()
 })
 
 test('opening an event covers the tab bar with the detail overlay and retains back control', async ({ page }) => {
@@ -132,23 +134,20 @@ test('opening an event covers the tab bar with the detail overlay and retains ba
   await page.goto('/app/events')
 
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-  // Use the local-guide preview for the detail-shell contract. The mocked
-  // Full Moon is intentionally subject to the new observer-time visibility
-  // gate and is not the thing this navigation test needs to exercise.
-  await page.getByRole('button', { name: /Night guide/ }).first().click()
-  await expect(page.locator('.dt-entry-title')).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Full Moon' }).first().click()
+  await expect(page.locator('.az-overlay').getByRole('heading', { name: 'Full Moon' })).toBeVisible({ timeout: 15_000 })
 
   // The tab bar stays mounted (it no longer unmounts on detail open -- that
   // was causing the flicker/disappear bug) but the full-screen overlay
-  // (z-index 90) fully covers it (z-index 20), so it isn't interactable.
+  // fully covers it, so it isn't interactable.
   await expect(page.locator('.atlas-tab-bar')).toBeVisible()
-  await expect(page.locator('.dt-entry-overlay')).toBeVisible()
+  await expect(page.locator('.az-overlay')).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Event navigation' })).toHaveCount(0)
   // The fixed shell has a known top-layer hit-test quirk in headless
   // Chromium; invoke the real DOM handler so this still verifies the route
   // state transition without pretending the browser's pointer geometry is
   // visually verified here.
   await page.getByRole('button', { name: 'Back' }).evaluate((element) => (element as HTMLButtonElement).click())
-  await expect(page.locator('.dt-entry-overlay')).toHaveCount(0)
+  await expect(page.locator('.az-overlay')).toHaveCount(0)
   await expect(page).toHaveURL('/app/events')
 })

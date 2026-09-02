@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ClientResponseError } from 'pocketbase'
-import { pb } from './pocketbase'
+import { pb, atlasBillingFetch } from './pocketbase'
 
 const entitlementListeners = new Set<() => void>()
 let entitlementRefreshCount = 0
@@ -145,7 +145,7 @@ export function refreshEntitlement(): Promise<AuthUser | null> {
     try {
       // Webhooks are the fast path, but reconciliation makes paid access
       // self-healing if Polar's asynchronous delivery was missed or delayed.
-      const result = await pb.send<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
+      const result = await atlasBillingFetch<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
       reconciledAsEntitled = result.entitled === true
     } catch {
       // Best-effort. authRefresh below still picks up a webhook-applied change.

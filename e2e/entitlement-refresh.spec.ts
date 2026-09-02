@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const BILLING_URL = process.env.VITE_ATLAS_BILLING_URL || 'http://127.0.0.1:8093'
 const APP_URL = `http://localhost:${process.env.PLAYWRIGHT_PORT || '5173'}`
 const E2E_TOKEN = makeAuthToken()
 
@@ -56,16 +57,16 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
 
   await page.goto('/app/settings')
 
-  await page.getByRole('tab', { name: 'Account' }).click()
+  await page.getByRole('button', { name: /^Account/ }).click()
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible({ timeout: 10_000 })
-  await expect(page.locator('#primary-navigation').getByRole('link', { name: 'Plan', exact: true })).toBeVisible()
+  await expect(page.locator('#primary-navigation').getByRole('link', { name: 'Planner', exact: true })).toBeVisible()
 })
 
 test('trusts a paid reconciliation result when auth-refresh returns a stale entitlement field', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await seedSignedInUser(page, false)
 
-  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -88,7 +89,7 @@ test('trusts a paid reconciliation result when auth-refresh returns a stale enti
   })
   await page.goto('/app/settings')
 
-  await page.getByRole('tab', { name: 'Account' }).click()
+  await page.getByRole('button', { name: /^Account/ }).click()
   await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com', { timeout: 10_000 })
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible()
 })
@@ -114,9 +115,9 @@ test('desktop settings shows one page heading and grouped account status', async
 
   await page.goto('/app/settings')
 
-  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toHaveCount(1)
-  await page.getByRole('tab', { name: 'Account' }).click()
-  await expect(page.locator('.settings-detail').filter({ has: page.getByRole('heading', { name: 'Account', exact: true }) })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'You', exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: /^Account/ }).click()
+  await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible()
   await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com')
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toHaveClass(/settings-status--pill/)
 })
@@ -124,7 +125,7 @@ test('desktop settings shows one page heading and grouped account status', async
 test('falls back when dynamic Polar checkout creation fails', async ({ page }) => {
   await seedSignedInUser(page, false)
 
-  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -149,7 +150,7 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
     await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'checkout unavailable' }) })
   })
   await page.goto('/app/settings')
-  await page.getByRole('tab', { name: 'Account' }).click()
+  await page.getByRole('button', { name: /^Account/ }).click()
   await expect(page.getByRole('button', { name: 'Already paid? Check purchase' })).toBeVisible()
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
@@ -159,7 +160,7 @@ test('falls back when dynamic Polar checkout creation fails', async ({ page }) =
 test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailable', async ({ page }) => {
   await seedSignedInUser(page, false)
 
-  await page.route(`${PB_URL}/entitlement/polar/refresh`, async (route) => {
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -185,7 +186,7 @@ test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailabl
   })
 
   await page.goto('/app/settings')
-  await page.getByRole('tab', { name: 'Account' }).click()
+  await page.getByRole('button', { name: /^Account/ }).click()
   await page.getByRole('button', { name: 'Get the Sky Pass' }).click()
 
   await expect(page).toHaveURL(`${APP_URL}/fallback-checkout`)

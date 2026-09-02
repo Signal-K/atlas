@@ -39,7 +39,7 @@ run headless Playwright checks, and maintain the build. It was especially
 useful where the work crossed several layers at once:
 
 - Rebuilt the mobile experience around a Today hub, compact local Events flow,
-  Plan, Journal, persistent starfield header, profile menu, and settings.
+  Plan, Journal, responsive navigation shell, profile menu, and settings.
 - Replaced the decorative sky graphic with astronomy-engine positions for
   stars, planets, the Moon, and curated deep-sky objects, plus compass and
   accelerometer pointing in the full-screen map.

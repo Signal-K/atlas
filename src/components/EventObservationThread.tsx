@@ -2,7 +2,6 @@ import { useEffect, useId, useState } from 'react'
 import type { ObservationLogEntry } from '../lib/db'
 import { ObservationCard } from './ObservationCard'
 import { PostShareDialog } from './PostShareDialog'
-import './EventObservationThread.css'
 
 export interface EventObservationThreadProps {
   eventId: string

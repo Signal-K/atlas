@@ -6,6 +6,8 @@ import { getPreferredEventTypes, savePreferredEventTypes } from '../lib/eventPre
 import { LocationSearchInput } from './LocationSearchInput'
 import { ensureNotificationPermission } from '../lib/getReadyReminders'
 import { trackEvent } from '../lib/analytics'
+import { Starfield } from './mobile/Starfield'
+import { useThemeState } from '../lib/theme'
 import type { AuthUser } from '../lib/auth'
 import type { City } from '../lib/cities'
 import type { CurrentLocation } from '../lib/currentLocation'
@@ -192,65 +194,69 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
     }
   }
 
+  const [theme] = useThemeState()
+
   return (
-    <div className="onboarding-overlay">
-      <div className="onboarding-modal onboarding-flow-modal atlas-onboarding-flow">
-        <div className="onboarding-flow-progress" aria-hidden="true">
-          {STEPS.map((s, i) => (
-            <span key={s} className={`onboarding-flow-dot${i <= stepIndex ? ' is-active' : ''}`} />
-          ))}
-        </div>
+    <div className="onboarding-overlay az-overlay" style={{ padding: 'max(3.5rem, env(safe-area-inset-top)) 1.5rem 1.75rem', flexDirection: 'column', alignItems: 'stretch' }}>
+      <div className="az-overlay-bg">
+        <Starfield dark={theme === 'dark'} />
+      </div>
+      <div className="az-onboard-bars" style={{ position: 'relative', zIndex: 1 }}>
+        {STEPS.map((s, i) => (
+          <span key={s} className={`az-onboard-bar${i <= stepIndex ? ' is-done' : ''}`} />
+        ))}
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, overflowY: 'auto', paddingTop: '2.125rem' }}>
+        <span className="az-kicker">
+          STEP {stepIndex + 1} OF {STEPS.length}
+        </span>
 
         {step === 'name' && (
           <>
-            <h2>What should Atlas call you?</h2>
-            <p>Used for your feed greeting — nothing else.</p>
+            <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
+              What should Atlas call you?
+            </h1>
+            <p className="az-muted" style={{ margin: '0 0 1.25rem', fontSize: '0.90625rem' }}>
+              Used for your feed greeting — nothing else.
+            </p>
             <input
               type="text"
-              className="onboarding-flow-input"
+              className="az-input"
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Your name"
               maxLength={40}
               autoFocus
             />
-            <div className="onboarding-flow-actions">
-              <button type="button" className="onboarding-flow-skip" onClick={advance}>
-                Skip
-              </button>
-              <button type="button" className="onboarding-flow-primary" onClick={handleNameContinue}>
-                Continue
-              </button>
-            </div>
           </>
         )}
 
         {step === 'interests' && (
           <>
-            <h2>What do you want to see?</h2>
-            <p>
+            <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
+              What do you want to see?
+            </h1>
+            <p className="az-muted" style={{ margin: '0 0 1.25rem', fontSize: '0.90625rem' }}>
               {hasSavedInterests
                 ? 'Pre-filled from what you already follow — tap any you want to remove.'
                 : 'Atlas will prioritise these in your feed and week strip.'}
             </p>
             <InterestsPicker selected={interests} onToggleCategory={toggleInterest} />
-            <div className="onboarding-flow-actions">
-              <button type="button" className="onboarding-flow-skip" onClick={advance}>
-                Skip
-              </button>
-              <button type="button" className="onboarding-flow-primary" onClick={handleInterestsContinue}>
-                Continue
-              </button>
-            </div>
           </>
         )}
 
         {step === 'location' && (
           <>
-            <p className="atlas-onboarding-kicker">Step one of four</p>
-            <h2>Where do you<br />look up from?</h2>
-            <p>Atlas needs a location to work out your darkness window and what&rsquo;s actually above you.</p>
-            <p className="onboarding-flow-hint">Current Atlas location: {city.name}</p>
+            <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
+              Where are you observing from?
+            </h1>
+            <p className="az-muted" style={{ margin: '0 0 0.5rem', fontSize: '0.90625rem' }}>
+              Atlas needs a location to work out your darkness window and what&rsquo;s actually above you.
+            </p>
+            <p className="az-muted" style={{ margin: '0 0 1rem', fontSize: '0.8125rem' }}>
+              Current Atlas location: {city.name}
+            </p>
             <LocationSearchInput
               id="onboarding-location"
               value={locationQuery}
@@ -262,50 +268,85 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
               placeholder="Search for your town or city"
             />
             {requestLocation && !chosenCity && (
-              <button type="button" className="onboarding-flow-location-button" onClick={handleUseCurrentLocation}>
+              <button type="button" className="az-btn az-btn-outline az-btn-block" style={{ marginTop: '0.75rem' }} onClick={handleUseCurrentLocation}>
                 Use my current location
               </button>
             )}
-            <div className="onboarding-flow-actions">
-              <button
-                type="button"
-                className="onboarding-flow-primary"
-                onClick={chosenCity ? handleLocationContinue : advance}
-              >
-                {chosenCity ? 'Use this location' : 'Looks good'}
-              </button>
-            </div>
           </>
         )}
 
         {step === 'notifications' && (
           <>
-            <h2>Stay in the loop</h2>
+            <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
+              Stay in the loop
+            </h1>
             {!localNotificationsSupported ? (
-              <p>Notifications aren&apos;t available on this device/browser — you can still check Atlas any time.</p>
+              <p className="az-muted" style={{ fontSize: '0.90625rem' }}>
+                Notifications aren&apos;t available on this device/browser — you can still check Atlas any time.
+              </p>
             ) : (
               <>
-                <p>Get a nudge when watchlisted events and great conditions come up — works right away, no account needed.</p>
-                {!user && <p className="onboarding-flow-hint">Sign in later to also get notified on other devices.</p>}
-                {pushError && <p className="onboarding-flow-error">{pushError}</p>}
-                {pushEnabled && <p className="onboarding-flow-success">Notifications enabled.</p>}
+                <p className="az-muted" style={{ margin: '0 0 0.5rem', fontSize: '0.90625rem' }}>
+                  Get a nudge when watchlisted events and great conditions come up — works right away, no account needed.
+                </p>
+                {!user && (
+                  <p className="az-muted" style={{ fontSize: '0.8125rem' }}>
+                    Sign in later to also get notified on other devices.
+                  </p>
+                )}
+                {pushError && (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--az-flagship)' }}>{pushError}</p>
+                )}
+                {pushEnabled && (
+                  <p style={{ fontSize: '0.8125rem', color: 'oklch(var(--az-pill-l) 0.13 145)' }}>Notifications enabled.</p>
+                )}
               </>
             )}
-            <div className="onboarding-flow-actions">
-              <button type="button" className="onboarding-flow-skip" onClick={finish}>
-                {pushEnabled ? 'Done' : 'Not now'}
+          </>
+        )}
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 1, flex: 'none', display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
+        {step === 'name' && (
+          <>
+            <button type="button" className="az-text-btn" onClick={advance}>
+              Skip
+            </button>
+            <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleNameContinue}>
+              Continue
+            </button>
+          </>
+        )}
+        {step === 'interests' && (
+          <>
+            <button type="button" className="az-text-btn" onClick={advance}>
+              Skip
+            </button>
+            <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleInterestsContinue}>
+              Continue
+            </button>
+          </>
+        )}
+        {step === 'location' && (
+          <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={chosenCity ? handleLocationContinue : advance}>
+            {chosenCity ? 'Use this location' : 'Looks good'}
+          </button>
+        )}
+        {step === 'notifications' && (
+          <>
+            <button type="button" className="az-text-btn" onClick={finish}>
+              {pushEnabled ? 'Done' : 'Not now'}
+            </button>
+            {!pushEnabled && (
+              <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={enableNotifications} disabled={pushBusy || !localNotificationsSupported}>
+                {pushBusy ? 'Enabling…' : 'Enable notifications'}
               </button>
-              {localNotificationsSupported && !pushEnabled && (
-                <button type="button" className="onboarding-flow-primary" onClick={enableNotifications} disabled={pushBusy}>
-                  {pushBusy ? 'Enabling…' : 'Enable notifications'}
-                </button>
-              )}
-              {pushEnabled && (
-                <button type="button" className="onboarding-flow-primary" onClick={finish}>
-                  Finish
-                </button>
-              )}
-            </div>
+            )}
+            {pushEnabled && (
+              <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={finish}>
+                Finish
+              </button>
+            )}
           </>
         )}
       </div>

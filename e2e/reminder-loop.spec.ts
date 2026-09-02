@@ -131,6 +131,12 @@ test.beforeEach(async ({ page }) => {
 
 test('mobile signed-in user can arm an event reminder', async ({ page }) => {
   await seedSignedInUser(page)
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'atlas-manual-location',
+      JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278, admin1: 'England', country: 'United Kingdom', timeZone: 'Europe/London' }),
+    )
+  })
   await page.goto('/app/events')
 
   // The Events redesign replaced the old "reported" dashboard heading.
@@ -140,7 +146,6 @@ test('mobile signed-in user can arm an event reminder', async ({ page }) => {
   // events" preview, once in the full "All events" list below it -- so
   // match whichever "Full Moon" renders first rather than assuming one.
   await expect(page.getByRole('button', { name: /Full Moon/ }).first()).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: /Moon & eclipses/ }).click()
   await page.getByRole('button', { name: /Full Moon/ }).first().click()
   await page.getByRole('button', { name: 'Remind' }).click()
 

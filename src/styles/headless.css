@@ -1,0 +1,396 @@
+/* Atlas headless framework.
+ *
+ * This file intentionally contains structure only. It keeps the application
+ * usable while a product design system is supplied: routing and interaction
+ * modules get sensible layout, overlays remain operable, and the responsive
+ * navigation contract stays intact. Typography, colour, surfaces, controls,
+ * decorative treatments, and component appearance belong to the next kit.
+ */
+
+/* Application shell and route navigation. */
+.nav-shell {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  min-height: 100svh;
+}
+
+.nav-shell-nav {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  height: 100svh;
+  padding: 1rem .75rem;
+  overflow-y: auto;
+}
+
+.nav-shell-item,
+.atlas-tab {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  min-height: 2.5rem;
+  padding: .55rem .65rem;
+}
+
+.nav-shell-icon,
+.atlas-tab > span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-shell-icon svg,
+.atlas-tab svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.nav-shell-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.nav-shell-topbar {
+  padding: .75rem max(1rem, env(safe-area-inset-right)) .75rem max(1rem, env(safe-area-inset-left));
+}
+
+.app-topbar {
+  display: flex;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+.nav-shell-main {
+  flex: 1;
+  width: 100%;
+  max-width: 72rem;
+  padding: 1.5rem max(1rem, env(safe-area-inset-right)) 3rem max(1rem, env(safe-area-inset-left));
+}
+
+.atlas-tab-bar { display: none; }
+
+.dev-preview-panel {
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.root-error-boundary {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.root-error-boundary-content { max-width: 32rem; }
+
+/* Shared layout primitives. */
+.page {
+  display: flex;
+  width: 100%;
+  max-width: 64rem;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: grid;
+  gap: .4rem;
+}
+
+.page-header h1,
+.page-header p,
+.settings-page-title { margin-bottom: 0; }
+
+.mobile-shell,
+.mobile-content,
+.dt-page,
+.dt-entry-scroll { min-width: 0; }
+
+.mobile-content,
+.dt-page,
+.dt-entry-scroll { max-width: 100%; }
+
+.nav-shell-main main { min-width: 0; }
+
+.widget-section,
+.ui-card,
+.trip-summary,
+.planner-screen,
+.settings-section,
+.paywall-card,
+.dt-preference-prompt,
+.scrapbook-section,
+.archive-section,
+.community-section {
+  min-width: 0;
+}
+
+.trip-builder,
+.trip-summary,
+.planner-screen,
+.trip-builder-steps,
+.trip-add-leg-dates,
+.trip-date-row,
+.trip-city-selection,
+.trip-review,
+.planner-control-panel,
+.planner-gear-strip,
+.planner-model-grid,
+.trip-phone-picker-sections,
+.settings-layout,
+.settings-list-group,
+.settings-detail,
+.account-form,
+.account-form-shell,
+.account-form-field,
+.ask-atlas-form,
+.feedback-panel-body,
+.install-prompt,
+.post-share-dialog__content {
+  display: grid;
+  gap: .75rem;
+}
+
+.trip-builder-progress,
+.trip-builder-steps,
+.trip-builder-actions,
+.row-trigger,
+.row-trigger-main,
+.settings-list-item,
+.trip-leg-card-header,
+.trip-summary-header,
+.planner-topbar,
+.settings-detail-heading,
+.feedback-panel-head,
+.install-prompt-actions,
+.account-form-actions,
+.onboarding-flow-actions,
+.paywall-card-actions,
+.scrapbook-entry-footer,
+.dt-feed-card-footer,
+.dt-sighting-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+
+.trip-builder-progress { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.trip-date-row,
+.trip-review,
+.planner-gear-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.planner-model-grid,
+.trip-phone-models,
+.settings-list-items { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+
+.row-trigger-main,
+.settings-list-item {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.row-text,
+.settings-list-copy,
+.trip-leg-guide,
+.trip-builder-step-content { min-width: 0; flex: 1; }
+
+.mobile-header,
+.mobile-footer,
+.mobile-profile,
+.sync-strip,
+.dt-feed-header,
+.dt-feed-heading,
+.dt-feed-row {
+  width: 100%;
+}
+
+.mobile-header,
+.dt-feed-header,
+.dt-feed-heading { padding: .75rem 0; }
+
+.dt-feed-row,
+.dt-feed-tag-button,
+.dt-entry-instrument-choice button,
+.trip-builder-step,
+.trip-phone-picker-chip { min-height: 2.25rem; }
+
+.dt-entry-overlay {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.dt-entry { max-width: 52rem; margin: 0 auto; }
+
+.settings-layout {
+  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+  align-items: start;
+}
+
+.aurora-tracker {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.35rem;
+}
+.aurora-tracker-head,
+.aurora-tracker-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.aurora-tracker h3 { margin: 0.15rem 0 0; }
+.aurora-tracker-call { font-size: 1.2rem; letter-spacing: 0.08em; }
+.aurora-tracker--go { color: #2c7a55; }
+.aurora-tracker--maybe { color: #8a671d; }
+.aurora-tracker--quiet,
+.aurora-tracker--unknown { color: inherit; }
+.aurora-tracker-reason,
+.aurora-tracker-event,
+.aurora-tracker .settings-help { margin: 0; }
+
+.settings-list-group h2 { margin-bottom: 0; }
+.settings-list-item { min-height: 3.5rem; }
+.settings-list-icon,
+.settings-detail-icon { display: inline-flex; width: 1.5rem; flex: 0 0 auto; }
+.settings-back-row { display: none; }
+
+/* Auth, onboarding, paywall, feedback, and install prompts remain real
+   interaction entry points. Positioning is structural; visual treatment is
+   deliberately left to the future design kit. */
+.onboarding-overlay,
+.auth-gate-modal {
+  display: grid;
+  place-items: center;
+}
+
+.onboarding-overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.onboarding-modal,
+.auth-gate-modal,
+.onboarding-flow-modal,
+.signup-welcome-beat {
+  width: min(100%, 32rem);
+  padding: 1.25rem;
+}
+
+.account-form-actions,
+.onboarding-flow-actions,
+.paywall-card-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.feedback-dock,
+.install-prompt {
+  position: fixed;
+  z-index: 15;
+  right: 1rem;
+  bottom: 1rem;
+}
+
+.feedback-panel,
+.install-prompt {
+  width: min(calc(100vw - 2rem), 24rem);
+  padding: 1rem;
+}
+
+.offline-banner { padding: .6rem 1rem; text-align: center; }
+
+/* Public entry point layout. */
+.headless-public { min-height: 100svh; }
+
+.headless-public-header,
+.headless-public-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(100% - 2rem, 64rem);
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+
+.headless-public-main {
+  display: grid;
+  gap: 3rem;
+  width: min(100% - 2rem, 64rem);
+  margin: 0 auto;
+  padding: 4rem 0;
+}
+
+.headless-public-main section { max-width: 48rem; }
+
+@media (max-width: 899px) {
+  .nav-shell { display: block; }
+  .nav-shell-nav { display: none; }
+  .nav-shell-main { padding-top: 1rem; padding-bottom: 5.5rem; }
+
+  .atlas-tab-bar {
+    position: fixed;
+    z-index: 12;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .25rem;
+    padding: .35rem max(.35rem, env(safe-area-inset-right)) max(.35rem, env(safe-area-inset-bottom)) max(.35rem, env(safe-area-inset-left));
+  }
+
+  .atlas-tab {
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: .15rem;
+    padding: .35rem .15rem;
+    text-align: center;
+  }
+
+  .atlas-tab small {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-layout { display: block; }
+  .settings-layout.settings-layout--detail-open .settings-list { display: none; }
+  .settings-back-row { display: inline-flex; margin-bottom: 1rem; }
+  .settings-layout:not(.settings-layout--detail-open) .settings-detail { display: none; }
+  .trip-date-row,
+  .trip-review,
+  .planner-gear-strip { grid-template-columns: 1fr; }
+
+  .feedback-dock,
+  .install-prompt {
+    right: .75rem;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}

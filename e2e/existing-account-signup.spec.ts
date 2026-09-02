@@ -27,9 +27,10 @@ test('an existing PocketBase account links to Clerk on first sign-in instead of 
 
     // Clerk's own "Verify your email" step also renders the email as plain
     // text, so `getByText(email)` alone would pass before the exchange ever
-    // runs -- `.settings-account-email` is Settings' own post-exchange
-    // element, not present until AuthForm has actually handed off to it.
-    await expect(page.locator('.settings-account-email')).toHaveText(email, { timeout: 15_000 })
+    // runs -- the Profile page's own Account row value is the app's
+    // post-exchange element, not present until AuthForm has actually handed
+    // off to it.
+    await expect(page.locator('.az-row-value', { hasText: email })).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('.account-form-error')).toHaveCount(0)
 
     const linkedId = await page.evaluate(() => {
