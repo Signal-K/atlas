@@ -148,8 +148,8 @@ test('manual city entry reaches tonight feed with selected city', async ({ page 
   await page.getByRole('button', { name: 'Use this location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/app/events')
-  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page).toHaveURL('/app/hub')
+  await expect(page.locator('.az-kicker', { hasText: 'after dark' })).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Zurich')).toBeVisible()
 })
 
@@ -175,8 +175,8 @@ test('browser geolocation entry reaches tonight feed', async ({ page, context })
   await page.getByRole('button', { name: 'Use my current location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/app/events')
-  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page).toHaveURL('/app/hub')
+  await expect(page.locator('.az-kicker', { hasText: 'after dark' })).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Zurich')).toBeVisible()
 })
 
@@ -212,13 +212,13 @@ test('location search disambiguates cities by region and country', async ({ page
 
   await reachOnboardingLocationStep(page)
   await page.getByPlaceholder('Search for your town or city').fill('London')
-  await expect(page.getByRole('option', { name: /London Ontario, Canada/ })).toBeVisible()
-  await page.getByRole('option', { name: /London Ontario, Canada/ }).click()
+  await expect(page.getByRole('option', { name: /London.*Ontario, Canada/ })).toBeVisible()
+  await page.getByRole('option', { name: /London.*Ontario, Canada/ }).click()
   await page.getByRole('button', { name: 'Use this location' }).click()
   await page.getByRole('button', { name: 'Not now' }).click()
 
-  await expect(page).toHaveURL('/app/events')
-  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page).toHaveURL('/app/hub')
+  await expect(page.locator('.az-kicker', { hasText: 'after dark' })).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('London, Ontario, Canada')).toBeVisible()
 })
 
@@ -237,11 +237,13 @@ test('location switching stays reachable via Settings after onboarding', async (
   // Old route, unmatched post-rebuild -- AppShell's catch-all sends it to
   // the new home area instead of erroring.
   await page.goto('/app/today')
-  await expect(page).toHaveURL('/app/events')
+  await expect(page).toHaveURL('/app/hub')
 
-  await page.locator('.atlas-tab-bar').getByRole('link', { name: 'Settings', exact: true }).click()
-  await expect(page).toHaveURL('/app/settings')
+  await page.locator('.atlas-tab-bar').getByRole('link', { name: 'You', exact: true }).click()
+  await expect(page).toHaveURL('/app/profile')
+  await page.getByRole('button', { name: /^Location & sensors/ }).click()
   await expect(page.getByPlaceholder('Search city, region, or country')).toHaveValue('London, England, United Kingdom')
+  await page.getByRole('button', { name: 'Close' }).click()
 
   await page.locator('.atlas-tab-bar').getByRole('link', { name: 'Events', exact: true }).click()
   await expect(page).toHaveURL('/app/events')

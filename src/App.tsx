@@ -17,7 +17,7 @@ import { useOnboardingGate } from './providers/useOnboardingGate'
 import { useAppLocation } from './providers/useAppLocation'
 import type { ObservationDraft } from './lib/observationDraft'
 
-const APP_HOME = '/app/events'
+const APP_HOME = '/app/hub'
 
 function App() {
   const routerLocation = useLocation()
@@ -115,7 +115,7 @@ function App() {
         currentLocation={currentLocation}
         onLogAttempt={logAttempt}
         journalProps={{ draft: observationDraft, onDraftConsumed: () => setObservationDraft(null), currentLocation }}
-        settingsProps={{
+        profileProps={{
           locationStatus: location.status,
           requestLocation: location.requestLocation,
           currentLocation,

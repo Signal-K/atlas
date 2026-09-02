@@ -118,7 +118,7 @@ test.skip('opened entry detail has facts, best-time timeline, and weather sectio
   await expect(page.getByText('82% cloud cover forecast · 12% rain chance for the viewing window.')).toBeVisible()
 
   await expect(page.getByRole('button', { name: 'Camera recipe' })).toBeVisible()
-  await expect(page.locator('.dt-entry').getByRole('button', { name: 'Log attempt' })).toBeVisible()
+  await expect(page.locator('.az-overlay').getByRole('button', { name: 'Log attempt' })).toBeVisible()
 })
 
 test('camera recipe is gated behind Sky Pass for a free account', async ({ page }) => {
@@ -126,7 +126,7 @@ test('camera recipe is gated behind Sky Pass for a free account', async ({ page 
 
   await page.getByRole('button', { name: 'Camera recipe' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Unlock Deep camera setup with Sky Pass' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Plan the whole trip, not just tonight' })).toBeVisible()
   await expect(page.getByText('Your first walkthrough still includes the essential camera settings for free.')).toBeVisible()
   await expect(page.locator('.camera-recipe-facts')).toHaveCount(0)
 })
@@ -142,7 +142,7 @@ test('camera recipe reveals device setup and a downloadable preset for an entitl
   await openFullMoonEntry(page)
   await page.getByRole('button', { name: 'Camera recipe' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Unlock Deep camera setup with Sky Pass' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Plan the whole trip, not just tonight' })).toHaveCount(0)
   await expect(page.locator('.camera-recipe-facts').getByText('Mode', { exact: true })).toBeVisible()
   await expect(page.locator('.camera-recipe-facts').getByText('Lens', { exact: true })).toBeVisible()
   await expect(page.locator('.camera-recipe-facts').getByText('Exposure', { exact: true })).toBeVisible()

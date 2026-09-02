@@ -27,7 +27,7 @@ export function NavShell({ items, children, topBar }: NavShellProps) {
           <NavLink
             key={item.path}
             to={item.path}
-            className={({ isActive }) => `nav-shell-item${isActive ? ' nav-shell-item-active' : ''}`}
+            className={({ isActive }) => `nav-shell-item az-rail-item${isActive ? ' nav-shell-item-active' : ''}`}
           >
             <span className="nav-shell-icon" aria-hidden="true">
               {item.icon}

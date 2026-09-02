@@ -1,0 +1,1271 @@
+/* Atlas design system -- the "next kit" headless.css was left waiting for.
+ * Layers on top of headless.css's structural rules: this file owns colour,
+ * type, and every component surface built for the Atlas Mobile design
+ * (Hub/Events/Planner/Journal/Profile, Search overlay, Event Detail overlay,
+ * sheets, onboarding). Class names are prefixed `az-` throughout so nothing
+ * here collides with any not-yet-rebuilt legacy surface during the rollout.
+ */
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('../assets/fonts/Oxanium-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------- tokens */
+
+:root {
+  --bg: #f6f4ef;
+  --surface: #fffefb;
+  --surface2: #f1eee7;
+  --ink: #16151c;
+  --muted: #6b6875;
+  --line: rgba(22, 21, 28, 0.1);
+  --line2: rgba(22, 21, 28, 0.22);
+  --chip: rgba(22, 21, 28, 0.05);
+  --sheet: #fffefb;
+
+  --az-violet: oklch(0.62 0.13 288);
+  --az-violet-strong: oklch(0.55 0.13 288);
+  --az-violet-hover: oklch(0.45 0.13 288);
+  --az-violet-wash: oklch(0.62 0.13 288 / 0.12);
+  --az-teal: oklch(0.62 0.13 200);
+  --az-flagship: oklch(0.62 0.13 15);
+  --az-amber: oklch(0.62 0.13 70);
+  --az-amber-strong: oklch(0.55 0.13 70);
+  --az-green: oklch(0.62 0.13 145);
+
+  --az-pill-l: 0.45;
+  --az-font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --az-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --az-font-display: 'Oxanium', 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0a0a11;
+  --surface: #14141e;
+  --surface2: #1c1c28;
+  --ink: #f1efe9;
+  --muted: #9b98a8;
+  --line: rgba(241, 239, 233, 0.13);
+  --line2: rgba(241, 239, 233, 0.26);
+  --chip: rgba(241, 239, 233, 0.07);
+  --sheet: #12121b;
+  --az-pill-l: 0.78;
+}
+
+/* ------------------------------------------------------------ base type */
+
+.az-root,
+.nav-shell {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--az-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.nav-shell,
+.headless-public {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--az-font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100svh;
+}
+
+.az-root a,
+.nav-shell a {
+  color: var(--az-violet-strong);
+  text-decoration: none;
+}
+.az-root a:hover,
+.nav-shell a:hover {
+  color: var(--az-violet-hover);
+}
+
+.az-h1 {
+  margin: 0;
+  font-family: var(--az-font-display);
+  font-weight: 700;
+  font-size: 2.1rem;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+
+.az-kicker {
+  margin: 0;
+  font: 500 0.6875rem/1 var(--az-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.az-muted {
+  color: var(--muted);
+}
+
+.az-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 1.6rem 0 0.6rem;
+}
+.az-section-head .az-kicker {
+  margin: 0;
+}
+.az-section-head .az-link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--az-violet-strong);
+  font: 500 0.75rem var(--az-font-sans);
+  cursor: pointer;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes atlasDrift {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-14px, -26px, 0);
+    }
+  }
+}
+
+/* --------------------------------------------------------------- top bar */
+
+.az-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  padding: 0.375rem 0 0.75rem;
+  flex: none;
+}
+
+.az-location-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  background: var(--chip);
+  border: 1px solid var(--line);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.4375rem 0.75rem 0.4375rem 0.625rem;
+  cursor: pointer;
+  font: 500 0.8125rem var(--az-font-sans);
+  min-height: 2.25rem;
+}
+.az-location-chip .az-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--az-teal);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--az-teal) 22%, transparent);
+}
+.az-location-chip .az-caret {
+  opacity: 0.4;
+  font-size: 0.6875rem;
+}
+
+.az-topbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.az-icon-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--chip);
+  border: 1px solid var(--line);
+  color: inherit;
+  cursor: pointer;
+  flex: none;
+}
+
+.az-clock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 0 0.25rem;
+  font: 500 0.6875rem var(--az-font-mono);
+  letter-spacing: 0.04em;
+  flex: none;
+}
+.az-battery {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+  opacity: 0.75;
+}
+
+/* ------------------------------------------------------------- tab bar */
+
+.atlas-tab-bar.az-tabbar {
+  display: flex;
+  gap: 2px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(18px);
+  border-top: 1px solid var(--line);
+}
+
+.atlas-tab.az-tab {
+  color: var(--muted);
+  border-radius: 0.75rem;
+}
+
+.atlas-tab.az-tab.is-active {
+  color: var(--ink);
+  box-shadow: inset 0 2px 0 var(--ink);
+}
+
+.az-tab svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.az-tab small {
+  text-transform: uppercase;
+}
+
+.nav-shell-item.az-rail-item {
+  border-radius: 0.75rem;
+  color: var(--muted);
+}
+.nav-shell-item.az-rail-item.nav-shell-item-active {
+  color: var(--ink);
+  background: var(--chip);
+}
+
+/* ----------------------------------------------------------------- page */
+
+.az-page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.az-hero-title {
+  margin: 0.125rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------------- cards */
+
+.az-card {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.az-card-body {
+  padding: 0.8125rem 0.9375rem 0.9375rem;
+}
+
+.az-hero-media,
+.az-thumb-lg {
+  height: 7.375rem;
+  background: linear-gradient(160deg, #191a2b, #2c2140 55%, #4a2d4f);
+  display: grid;
+  place-items: center;
+  font: 500 0.625rem var(--az-font-mono);
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.az-thumb {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.625rem;
+  display: grid;
+  place-items: center;
+  font: 500 0.5rem var(--az-font-mono);
+  color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(150deg, #15161f, #2a2338);
+}
+.az-thumb.az-thumb-empty {
+  background: var(--chip);
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------------- rows */
+
+.az-row-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  overflow: hidden;
+}
+
+.az-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 0;
+  padding: 0.75rem 0.875rem;
+  cursor: pointer;
+  color: inherit;
+  min-height: 3.5rem;
+}
+
+.az-row-icon {
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 0.5625rem;
+  background: var(--chip);
+  color: var(--az-violet);
+}
+
+.az-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.az-row-kind {
+  display: block;
+  font: 500 0.59375rem var(--az-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.az-row-title {
+  display: block;
+  font-weight: 500;
+  font-size: 0.90625rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.az-row-trail {
+  flex: none;
+  text-align: right;
+}
+
+.az-row-time {
+  display: block;
+  font: 500 0.75rem var(--az-font-mono);
+}
+
+.az-row-note {
+  display: block;
+  font-size: 0.625rem;
+  color: var(--az-teal);
+}
+
+.az-row-chevron {
+  flex: none;
+  opacity: 0.3;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.az-row-value {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------- chips */
+
+.az-chip-row {
+  display: flex;
+  gap: 0.4375rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.az-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.8125rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font: 500 0.78125rem var(--az-font-sans);
+  min-height: 2.25rem;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.az-chip.is-active {
+  border-color: transparent;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.az-chip-dashed {
+  border-style: dashed;
+  border-color: var(--line2);
+  background: none;
+  color: var(--muted);
+}
+
+.az-chip-count {
+  opacity: 0.5;
+  margin-left: 0.3125rem;
+  font-family: var(--az-font-mono);
+  font-size: 0.6875rem;
+}
+
+/* --------------------------------------------------------- segmented ui */
+
+.az-seg {
+  display: flex;
+  background: var(--chip);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.az-seg-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.375rem 0.9375rem;
+  cursor: pointer;
+  font: 500 0.78125rem var(--az-font-sans);
+  background: none;
+  color: var(--muted);
+  flex: 1;
+}
+
+.az-seg-btn.is-active {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* -------------------------------------------------------------- toggle */
+
+.az-toggle {
+  flex: none;
+  width: 2.625rem;
+  height: 1.5625rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  background: var(--line2);
+  justify-content: flex-start;
+  border: 0;
+  cursor: pointer;
+}
+
+.az-toggle.is-on {
+  background: var(--az-green);
+  justify-content: flex-end;
+}
+
+.az-toggle-knob {
+  width: 1.3125rem;
+  height: 1.3125rem;
+  border-radius: 50%;
+  background: #fff;
+  display: block;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* --------------------------------------------------------------- pills */
+
+.az-pill {
+  --pill-hue: 288;
+  display: inline-flex;
+  font: 500 0.59375rem var(--az-font-mono);
+  letter-spacing: 0.06em;
+  padding: 0.1875rem 0.375rem;
+  border-radius: 5px;
+  background: oklch(0.62 0.13 var(--pill-hue) / 0.16);
+  color: oklch(var(--az-pill-l) 0.13 var(--pill-hue));
+}
+
+.az-badge-flagship {
+  color: var(--az-flagship);
+  letter-spacing: 0.08em;
+  font-size: 0.6875rem;
+}
+
+.az-badge-guide {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 0.53125rem;
+  letter-spacing: 0.08em;
+}
+
+/* ---------------------------------------------------------------- btns */
+
+.az-btn {
+  min-height: 2.75rem;
+  border-radius: 0.6875rem;
+  border: 0;
+  cursor: pointer;
+  font: 500 0.8125rem var(--az-font-sans);
+  padding: 0 0.875rem;
+}
+
+.az-btn-block {
+  width: 100%;
+}
+
+.az-btn-primary {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.az-btn-outline {
+  background: none;
+  color: inherit;
+  border: 1px solid var(--line2);
+}
+
+.az-btn-dashed {
+  background: none;
+  color: var(--muted);
+  border: 1px dashed var(--line2);
+}
+
+.az-btn-positive {
+  background: oklch(0.62 0.13 145 / 0.18);
+  color: oklch(var(--az-pill-l) 0.13 145);
+}
+
+.az-btn-info {
+  background: oklch(0.62 0.13 200 / 0.18);
+  color: oklch(var(--az-pill-l) 0.13 200);
+}
+
+.az-btn-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.az-btn-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* --------------------------------------------------------------- stats */
+
+.az-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--az-stat-cols, 4), 1fr);
+  gap: 1px;
+  border-radius: 0.875rem;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.az-stat {
+  background: var(--surface);
+  padding: 0.6875rem 0.5rem;
+  text-align: center;
+}
+
+.az-stat strong {
+  display: block;
+  font-family: var(--az-font-display);
+  font-size: 1.1875rem;
+}
+
+.az-stat small {
+  font: 500 0.625rem var(--az-font-mono);
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------ calendar */
+
+.az-calendar {
+  margin: 0.5rem 0 0;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  padding: 0.875rem;
+}
+
+.az-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.625rem;
+}
+
+.az-calendar-head strong {
+  font-family: var(--az-font-display);
+  font-size: 1rem;
+}
+
+.az-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.az-calendar-cell {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font: 500 0.75rem var(--az-font-mono);
+  color: var(--ink);
+}
+.az-calendar-cell.is-empty {
+  visibility: hidden;
+}
+.az-calendar-cell.has-event {
+  background: var(--chip);
+}
+.az-calendar-cell.is-today {
+  background: var(--ink);
+  color: var(--bg);
+}
+.az-calendar-cell .az-cal-dot {
+  position: absolute;
+  bottom: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.az-calendar-legend {
+  display: flex;
+  gap: 0.875rem;
+  margin-top: 0.75rem;
+  font: 500 0.625rem var(--az-font-mono);
+  color: var(--muted);
+}
+.az-calendar-legend span {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+}
+.az-calendar-legend i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* --------------------------------------------------------------- sheet */
+
+.az-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(8, 7, 16, 0.44);
+  backdrop-filter: blur(2px);
+}
+
+.az-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  max-height: 88svh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.375rem 1.375rem 0 0;
+  background: var(--sheet);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -16px 44px rgba(8, 7, 16, 0.22);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (min-width: 640px) {
+  .az-sheet {
+    left: 50%;
+    right: auto;
+    bottom: 2rem;
+    width: min(30rem, calc(100vw - 2rem));
+    transform: translateX(-50%);
+    border-radius: 1.375rem;
+    max-height: 80svh;
+  }
+}
+
+.az-sheet-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.625rem;
+}
+.az-sheet-header strong {
+  font-family: var(--az-font-display);
+  font-size: 1.1875rem;
+}
+
+.az-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 1.25rem 1.625rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .az-sheet {
+    animation: azSheetIn 0.22s ease-out;
+  }
+  .az-sheet-backdrop {
+    animation: azFadeIn 0.22s ease-out;
+  }
+  @keyframes azSheetIn {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  @media (min-width: 640px) {
+    @keyframes azSheetIn {
+      from {
+        transform: translate(-50%, 12px);
+        opacity: 0;
+      }
+      to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+      }
+    }
+  }
+  @keyframes azFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* --------------------------------------------------------------- toast */
+
+.az-toast-stack {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+@media (min-width: 900px) {
+  .az-toast-stack {
+    left: auto;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    width: min(22rem, calc(100vw - 3rem));
+  }
+}
+
+.az-toast {
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.75rem;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.8125rem;
+  box-shadow: 0 10px 30px rgba(8, 7, 16, 0.28);
+}
+
+/* ---------------------------------------------------------- onboarding */
+
+.az-onboard-bars {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+
+.az-onboard-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.az-onboard-bar.is-done {
+  background: var(--ink);
+}
+
+/* -------------------------------------------------------------- inputs */
+
+.az-input,
+.az-textarea {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: inherit;
+  outline: none;
+  font: 400 0.875rem var(--az-font-sans);
+}
+
+.az-input {
+  min-height: 3.125rem;
+  padding: 0 0.875rem;
+}
+
+.az-textarea {
+  min-height: 5.5rem;
+  padding: 0.75rem;
+  resize: none;
+}
+
+.az-search-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5625rem;
+  padding: 0 0.75rem;
+  min-height: 2.625rem;
+  border-radius: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.az-search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  outline: none;
+  font: 400 0.90625rem var(--az-font-sans);
+}
+
+/* ---------------------------------------------------------------------
+ * Generic form styling for reused legacy settings components (Location,
+ * Device, Push, Leaderboard, Account, Ask Atlas) mounted inside az-sheet /
+ * az-page without a full markup rewrite -- keeps them legible in the new
+ * theme instead of unstyled browser defaults.
+ * ------------------------------------------------------------------- */
+
+.az-page button,
+.az-sheet-body button {
+  font: 500 0.8125rem var(--az-font-sans);
+}
+
+.az-page input:not([type='checkbox']):not([type='radio']),
+.az-sheet-body input:not([type='checkbox']):not([type='radio']),
+.az-page select,
+.az-sheet-body select,
+.az-page textarea,
+.az-sheet-body textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: 0.625rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: inherit;
+  font: 400 0.875rem var(--az-font-sans);
+  outline: none;
+}
+
+.az-page button:not([class]),
+.az-sheet-body button:not([class]) {
+  min-height: 2.5rem;
+  padding: 0 0.9375rem;
+  border-radius: 0.625rem;
+  border: 1px solid var(--line2);
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.settings-row:last-child {
+  border-bottom: 0;
+}
+.settings-label {
+  display: block;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+.settings-help {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.settings-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+}
+.settings-status {
+  font: 500 0.75rem var(--az-font-mono);
+  color: var(--muted);
+}
+.settings-status--positive {
+  color: oklch(var(--az-pill-l) 0.13 145);
+}
+.settings-status--warning {
+  color: oklch(var(--az-pill-l) 0.13 70);
+}
+.settings-location-choice {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+/* ---------------------------------------------------------------------
+ * Generic layout for reused legacy Scrapbook/Community/widget surfaces
+ * mounted inside the new Journal tab -- same bridge strategy as the
+ * settings block above: real logic untouched, just made legible.
+ * ------------------------------------------------------------------- */
+
+.widget-section {
+  margin-top: 1.125rem;
+}
+.widget-section h2,
+.widget-section h3 {
+  margin: 0 0 0.625rem;
+  font-family: var(--az-font-display);
+  font-size: 1.0625rem;
+}
+
+.scrapbook-header,
+.mobile-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.625rem;
+}
+.mobile-card-eyebrow {
+  font: 500 0.6875rem var(--az-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.scrapbook-draft-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--chip);
+  font-size: 0.8125rem;
+}
+
+.scrapbook-form {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.scrapbook-event-results {
+  list-style: none;
+  margin: 0.375rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.scrapbook-event-results button,
+.scrapbook-date-event-list button {
+  width: 100%;
+  text-align: left;
+}
+
+.scrapbook-backdate summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.scrapbook-backdate summary span {
+  margin-left: 0.375rem;
+  font: 500 0.625rem var(--az-font-mono);
+  color: var(--az-violet-strong);
+}
+.scrapbook-backdate-fields {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.scrapbook-backdate-fields label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.scrapbook-date-events {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.scrapbook-date-event-list {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+}
+
+.scrapbook-caption-hint {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: var(--az-violet-strong);
+}
+
+.scrapbook-rating-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.375rem;
+}
+.scrapbook-rating-picker button {
+  min-height: 2.5rem;
+  border-radius: 0.625rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+}
+.scrapbook-rating-picker button.is-active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: transparent;
+}
+
+.scrapbook-photo-input {
+  display: block;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  border-radius: 0.625rem;
+  border: 1px dashed var(--line2);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.scrapbook-photo-storage-note {
+  margin: 0;
+  font-size: 0.71875rem;
+  color: var(--muted);
+}
+.scrapbook-photo-storage-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--az-flagship);
+}
+.scrapbook-submit {
+  min-height: 2.75rem;
+  border-radius: 0.6875rem;
+  border: 0;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 500;
+  cursor: pointer;
+}
+.scrapbook-export {
+  background: none;
+  border: 0;
+  color: var(--az-violet-strong);
+  font: 500 0.75rem var(--az-font-sans);
+  cursor: pointer;
+  padding: 0;
+}
+
+.city-stamp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.625rem;
+}
+.city-stamp {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+.city-stamp span {
+  font: 700 0.625rem var(--az-font-mono);
+  color: var(--az-violet);
+}
+.city-stamp strong {
+  font-size: 0.875rem;
+}
+.city-stamp small {
+  color: var(--muted);
+  font-size: 0.6875rem;
+}
+.scrapbook-share-card {
+  justify-self: start;
+}
+
+.row-list {
+  list-style: none;
+  margin: 0.875rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.625rem;
+}
+.scrapbook-entry {
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  padding: 0.75rem;
+  background: var(--surface);
+}
+.scrapbook-entry-footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+}
+.scrapbook-share {
+  background: none;
+  border: 1px solid var(--line2);
+  border-radius: 0.625rem;
+  padding: 0.4375rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: inherit;
+}
+.scrapbook-share:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mobile-community-tabs {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+.mobile-community-tabs button {
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.mobile-community-tabs button.is-active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: transparent;
+}
+.mobile-community-panel {
+  margin-top: 1rem;
+}
+
+/* ---------------------------------------------------------- starfield */
+
+.az-starfield {
+  position: absolute;
+  inset: -8%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.az-starfield.is-drift {
+  animation: atlasDrift 42s linear infinite alternate;
+}
+.az-starfield-dot {
+  position: absolute;
+  border-radius: 50%;
+}
+.az-starfield-wash {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+}
+
+/* ------------------------------------------------------------- overlay */
+
+.az-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.az-overlay-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.az-overlay-header {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  padding: max(0.875rem, env(safe-area-inset-top)) 1rem 0.75rem;
+}
+
+.az-overlay-body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.875rem 1.25rem 2.5rem;
+}
+
+.az-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: 500 0.8125rem var(--az-font-sans);
+  cursor: pointer;
+  padding: 0.375rem 0.125rem;
+}
+
+.az-text-btn {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: 500 0.8125rem var(--az-font-sans);
+  cursor: pointer;
+  padding: 0.5rem 0.125rem;
+}

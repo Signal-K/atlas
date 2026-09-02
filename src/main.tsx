@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom'
 import './index.css'
 import './styles/headless.css'
+import './styles/atlas.css'
 import App from './App.tsx'
 import { RootErrorBoundary } from './components/RootErrorBoundary.tsx'
 // Share pages are their own entry points -- someone opening the app never

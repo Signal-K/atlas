@@ -25,22 +25,21 @@ test.describe('PocketBase-backed write actions', () => {
 
       await page.getByRole('tab', { name: 'Create account' }).click()
       await fillClerkSignUp(page, email, password)
-      // Settings intentionally opens on Location. Account remains available
-      // as a tab after sign-up without taking over the initial screen.
-      await page.getByRole('tab', { name: 'Account' }).click()
+      // Profile opens on the row list, Account is a sub-page reached by row.
+      await page.getByRole('button', { name: /^Account/ }).click()
       // Clerk's own "Verify your email" step also renders the email as
       // plain text, so `getByText(email)` alone would pass before the
-      // exchange has actually run -- wait for Settings' own post-exchange
-      // element instead.
+      // exchange has actually run -- wait for the Account sub-page's own
+      // post-exchange element instead.
       await expect(page.locator('.settings-account-email')).toHaveText(email, { timeout: 15_000 })
 
       const auth = await readPocketBaseAuth(page)
       if (!auth) throw new Error('Expected pb.authStore to hold a token after the Clerk exchange completed.')
 
       await page.goto('/app/journal')
-      await page.getByRole('tab', { name: 'Private' }).click()
+      await page.getByRole('button', { name: "+ Log tonight's session" }).click()
       await page.locator('textarea').fill(note)
-      await page.getByRole('button', { name: 'Save observation' }).click()
+      await page.getByRole('button', { name: 'Save session' }).click()
       await expect(page.getByText(note)).toBeVisible({ timeout: 10_000 })
 
       // The push to PocketBase is a best-effort, fire-and-forget background
