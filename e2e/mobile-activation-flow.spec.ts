@@ -1,5 +1,25 @@
 import { test, expect, type Page } from '@playwright/test'
+import * as Astronomy from 'astronomy-engine'
 import { seedSignedInUser } from './support/auth'
+
+// London coordinates used by every test in this file via the
+// atlas-manual-location override below.
+const LONDON = new Astronomy.Observer(51.5074, -0.1278, 0)
+
+// Real-sky visibility (src/lib/eventVisibility.mjs) hides a moon_phase
+// event unless the Moon is actually above the horizon in London during
+// its start/end window. A fixed now+N-hour offset drifts in and out of
+// that window as the real moonrise/moonset times shift day to day, which
+// made this fixture flaky depending on wall-clock time at CI run. Instead,
+// search for the next real moonrise in London and anchor the mocked event
+// there so it is above the horizon for the whole test run.
+function nextMoonriseWindow(from: Date) {
+  const rise = Astronomy.SearchRiseSet(Astronomy.Body.Moon, LONDON, +1, from, 2)
+  if (!rise) throw new Error('could not find an upcoming moonrise for London')
+  const startsAt = new Date(rise.date.getTime() + 15 * 60_000)
+  const endsAt = new Date(startsAt.getTime() + 60 * 60_000)
+  return { startsAt, endsAt }
+}
 
 async function mockTonightData(page: Page) {
   await page.route('https://api.open-meteo.com/**', async (route) => {
@@ -51,12 +71,10 @@ async function mockTonightData(page: Page) {
   })
 
   await page.route('**/api/collections/sky_events/records**', async (route) => {
-    const now = new Date()
-    // Keep the mocked full moon in Melbourne's night sky. The production
-    // feed now correctly hides a global lunar event when its local peak is
-    // daytime, which is exactly the regression this fixture must avoid.
-    const startsAt = new Date(now.getTime() + 30 * 3_600_000)
-    const endsAt = new Date(now.getTime() + 31 * 3_600_000)
+    // Anchor the mocked full moon to a real upcoming moonrise in London so
+    // the observer-time visibility gate keeps it above the horizon no
+    // matter when in the day this test runs.
+    const { startsAt, endsAt } = nextMoonriseWindow(new Date())
 
     await route.fulfill({
       status: 200,
@@ -72,7 +90,7 @@ async function mockTonightData(page: Page) {
             content: 'The Moon reaches its fullest point tonight.',
             starts_at: startsAt.toISOString(),
             ends_at: endsAt.toISOString(),
-            updated: now.toISOString(),
+            updated: new Date().toISOString(),
           },
         ],
         page: 1,
