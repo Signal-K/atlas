@@ -1269,3 +1269,143 @@
   cursor: pointer;
   padding: 0.5rem 0.125rem;
 }
+
+/* ------------------------------------------------------------- landing */
+
+.az-landing-header {
+  position: relative;
+  z-index: 1;
+}
+
+.az-landing-wordmark {
+  font-family: var(--az-font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--ink) !important;
+}
+
+.az-landing-main {
+  padding-top: 0 !important;
+  gap: 4.5rem !important;
+}
+
+.az-landing-hero {
+  position: relative;
+  max-width: none !important;
+  padding: 4rem 0 3rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+}
+
+.az-landing-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.az-landing-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 40rem;
+}
+
+.az-landing-title {
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  margin: 0.625rem 0 1rem;
+}
+
+.az-landing-lede {
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  max-width: 34rem;
+  margin: 0 0 1.5rem;
+}
+
+.az-landing-signed-in {
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+}
+
+.az-landing-signed-in-email {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.az-landing-cta {
+  padding: 0 1.75rem;
+}
+
+.az-landing-section {
+  max-width: none !important;
+}
+
+.az-landing-section-kicker {
+  margin: 0 0 1rem;
+}
+
+.az-landing-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.az-landing-feature {
+  padding: 1.125rem 1.125rem 1.25rem;
+}
+
+.az-landing-feature-icon {
+  margin-bottom: 0.75rem;
+}
+
+.az-landing-feature-title {
+  display: block;
+  font-family: var(--az-font-display);
+  font-size: 1.0625rem;
+  margin-bottom: 0.4375rem;
+}
+
+.az-landing-feature-body {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.az-landing-presets {
+  max-width: none !important;
+}
+
+.az-landing-presets-title {
+  margin: 0 0 0.5rem;
+  font-family: var(--az-font-display);
+  font-size: 1.375rem;
+}
+
+.az-landing-presets-link {
+  display: inline-block;
+  margin-top: 0.875rem;
+  font-weight: 500;
+}
+
+.az-landing-final {
+  text-align: center;
+  max-width: none !important;
+  padding: 1rem 0 3rem;
+}
+
+.az-landing-final-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  margin-bottom: 0.625rem;
+}
+
+.az-landing-final .az-landing-cta {
+  margin-top: 1.5rem;
+}
+
+.az-landing-footer {
+  position: relative;
+  z-index: 1;
+  font: 500 0.8125rem var(--az-font-mono);
+}
