@@ -141,6 +141,34 @@
 
 /* --------------------------------------------------------------- top bar */
 
+.nav-shell-body {
+  position: relative;
+}
+
+/* Decorative starfield behind every app tab, matching the overlay surfaces
+   (Search, Event Detail, onboarding) that already carry it. Fixed +
+   pointer-events:none so it never affects layout or intercepts taps; the
+   topbar/main below it opt into position+z-index so they paint above it. */
+.az-shell-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.nav-shell-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+}
+
+.nav-shell-main {
+  position: relative;
+  z-index: 1;
+}
+
 .az-topbar {
   display: flex;
   align-items: center;
@@ -211,8 +239,9 @@
 
 /* ------------------------------------------------------------- tab bar */
 
+/* display/layout (block on desktop, 5-column grid on mobile) is owned by
+   headless.css's responsive .atlas-tab-bar rules -- this only adds colour. */
 .atlas-tab-bar.az-tabbar {
-  display: flex;
   gap: 2px;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(18px);

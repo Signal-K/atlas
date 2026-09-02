@@ -49,6 +49,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
     <ToastProvider>
       <NavShell
         items={NAV_ITEMS}
+        dark={theme === 'dark'}
         topBar={
           <TopBar
             locationName={currentLocation.name}

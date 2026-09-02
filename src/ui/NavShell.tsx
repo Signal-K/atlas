@@ -1,4 +1,5 @@
 import { AppTabBar } from '../components/AppTabBar'
+import { Starfield } from '../components/mobile/Starfield'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -12,6 +13,7 @@ interface NavShellProps {
   items: NavItem[]
   children: ReactNode
   topBar?: ReactNode
+  dark?: boolean
 }
 
 /**
@@ -19,7 +21,7 @@ interface NavShellProps {
  * narrow ones -- matches the Atlas Mobile design canvas exactly (Turn 2,
  * frame 2a): persistent 5-item tab bar, no hamburger/drawer.
  */
-export function NavShell({ items, children, topBar }: NavShellProps) {
+export function NavShell({ items, children, topBar, dark = false }: NavShellProps) {
   return (
     <div className="nav-shell">
       <nav id="primary-navigation" className="nav-shell-nav" aria-label="Primary">
@@ -37,6 +39,9 @@ export function NavShell({ items, children, topBar }: NavShellProps) {
         ))}
       </nav>
       <div className="nav-shell-body">
+        <div className="az-shell-bg">
+          <Starfield dark={dark} />
+        </div>
         {topBar && <div className="nav-shell-topbar">{topBar}</div>}
         <main className="nav-shell-main">{children}</main>
       </div>
