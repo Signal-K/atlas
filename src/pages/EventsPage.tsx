@@ -15,7 +15,7 @@ import { metaFor } from '../lib/tonightTargets'
 import { getDarknessWindow } from '../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../lib/timeZone'
 import { eventLookaheadDays } from '../lib/entitlementLimits'
-import { localDateKey } from '../lib/weather'
+import { fetchViewingForecast, localDateKey } from '../lib/weather'
 import { ensurePushSubscription, queueWatchConfirmation } from '../lib/push'
 import { useThemeState } from '../lib/theme'
 import type { CurrentLocation } from '../lib/currentLocation'
@@ -171,6 +171,19 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
 
   async function addReminder(event: SkyEvent): Promise<QuickActionOutcome> {
     const hasPermission = await ensureNotificationPermission()
+    let cloudCoverPct: number | undefined
+    let precipitationChancePct: number | undefined
+    try {
+      const forecast = await fetchViewingForecast(city.lat, city.lon, 7)
+      const day = forecast.days.find((item) => item.date === localDateKey(event.startsAt, forecast.timeZone))
+      if (day) {
+        cloudCoverPct = day.cloudCoverPct
+        precipitationChancePct = day.precipitationChancePct
+      }
+    } catch {
+      // Arm the reminder without a weather snapshot; the fire-time check
+      // in getReadyReminders re-fetches live conditions anyway.
+    }
     await addGetReadyReminder({
       eventId: event.id,
       title: event.title,
@@ -181,6 +194,8 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
       deviceName: CAMERA_PROFILES[getDefaultDevice()].name,
       lat: city.lat,
       lon: city.lon,
+      cloudCoverPct,
+      precipitationChancePct,
     })
     setReminders(listGetReadyReminders())
     const message = hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.'

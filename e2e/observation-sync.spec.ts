@@ -65,31 +65,25 @@ test('Journal hydrates private PocketBase observations in a fresh browser', asyn
 
   await page.goto('/app/journal')
 
-  const eclipseThread = page.locator('.event-thread', { hasText: 'Total Solar Eclipse' })
-  await expect(eclipseThread.getByText('Event thread')).toBeVisible()
-  await expect(eclipseThread.getByText('2 posts')).toBeVisible()
-  await expect(eclipseThread.getByRole('button', { name: /Open portfolio/ })).toBeVisible()
+  // The Journal redesign replaced the grouped "event thread" portfolio with
+  // a flat Mine/Community entry list -- each PocketBase observation is its
+  // own row, so hydration is verified per row rather than per thread.
+  const rows = page.locator('.az-row').filter({ hasText: 'Total Solar Eclipse' })
+  await expect(rows).toHaveCount(2)
 
-  const preview = eclipseThread.locator('.event-thread-preview').first()
-  await expect(preview.locator('img')).toBeVisible()
-  const previewBox = await preview.boundingBox()
-  expect(previewBox?.width).toBeLessThanOrEqual(72)
-  expect(previewBox?.height).toBeLessThanOrEqual(72)
+  const firstRow = rows.filter({ hasText: 'Apple iPhone 16' })
+  const secondRow = rows.filter({ hasText: 'Nothing Phone (3a)' })
+  await expect(firstRow).toHaveCount(1)
+  await expect(secondRow).toHaveCount(1)
 
-  await eclipseThread.getByRole('button', { name: /Open portfolio/ }).click()
-  await expect(eclipseThread.getByText('Imported eclipse observation from another device.')).toBeVisible()
-  await expect(eclipseThread.getByText('Second eclipse photo in the same event thread.')).toBeVisible()
-  await expect(eclipseThread.getByText('Apple iPhone 16')).toBeVisible()
-  await expect(eclipseThread.locator('.event-thread-title')).toHaveText('Total Solar Eclipse')
-  const shareButton = eclipseThread.getByRole('button', { name: 'Share this check-in' }).first()
-  await expect(shareButton).toBeVisible()
-  await shareButton.click()
-  await expect(page.getByRole('heading', { name: 'A link to this post' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Create share link' })).toBeVisible()
-  await page.getByRole('button', { name: 'Close share dialog' }).click()
+  // A hydrated photo replaces the empty-thumb placeholder with a background
+  // image; an unhydrated or failed pull would leave the "NOTE" placeholder.
+  await expect(firstRow.locator('.az-thumb-empty')).toHaveCount(0)
+  await expect(secondRow.locator('.az-thumb-empty')).toHaveCount(0)
 
-  await page.getByText('Check in for a past date').click()
-  await expect(page.getByLabel('Date')).toBeVisible()
-  await expect(page.getByLabel('Location')).toBeVisible()
-  await expect(page.getByText(/date-only check-in/)).toBeVisible()
+  await firstRow.click()
+  const detailSheet = page.getByRole('dialog', { name: 'Total Solar Eclipse' })
+  await expect(detailSheet.getByText('Imported eclipse observation from another device.')).toBeVisible()
+  await expect(detailSheet.getByText('Apple iPhone 16')).toBeVisible()
+  await expect(detailSheet.getByRole('button', { name: /Share publicly/ })).toBeVisible()
 })

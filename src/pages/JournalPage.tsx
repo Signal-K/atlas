@@ -5,6 +5,7 @@ import { CaptureSheet, RATING_HUE, RATING_LABEL } from '../components/mobile/Cap
 import { EntryDetailSheet } from '../components/mobile/JournalSheets'
 import { JournalCommunity } from '../components/mobile/JournalCommunity'
 import { useEntryPhotoUrl } from '../lib/useEntryPhotoUrl'
+import { pullObservations } from '../lib/sync'
 import { db, type ObservationLogEntry } from '../lib/db'
 import { cityStampsFromObservations } from '../lib/cityStamps'
 import { categoryForKind } from '../lib/eventCategories'
@@ -89,7 +90,21 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
   }
 
   useEffect(() => {
-    refresh()
+    let cancelled = false
+
+    void (async () => {
+      // Render the browser cache immediately, then reconcile the signed-in
+      // account's private PocketBase history. This makes a fresh install
+      // show existing check-ins instead of an empty journal.
+      await refresh()
+      if (scopeId === LOCAL_USER_ID) return
+      await pullObservations()
+      if (!cancelled) await refresh()
+    })()
+
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeId])
 
