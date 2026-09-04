@@ -20,4 +20,9 @@ export interface ObservationDraft {
   // ordinary sky event -- carried through to the saved entry so it counts
   // toward that project's badge.
   citizenScienceProject?: string
+  // Real coordinates for a citizen-science submission -- see the matching
+  // comment on ObservationLogEntry in db.ts for why this is separate from
+  // locationLabel.
+  latitude?: number
+  longitude?: number
 }

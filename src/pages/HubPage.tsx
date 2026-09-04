@@ -186,6 +186,8 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
       eventId: event.id,
       targetName: event.title,
       locationLabel: city.name,
+      latitude: city.lat,
+      longitude: city.lon,
       ...(project ? { citizenScienceProject: project } : {}),
     })
   }

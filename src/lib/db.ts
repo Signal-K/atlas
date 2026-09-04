@@ -67,6 +67,12 @@ export interface ObservationLogEntry {
   // flow when the entry is logged against a citizen-science campaign event;
   // absent on an ordinary Journal entry. See citizenScienceBadges.ts.
   citizenScienceProject?: string
+  // Real coordinates, distinct from the free-text locationLabel -- only
+  // populated when the capture flow already has one on hand (currently:
+  // citizen-science submissions, which the skybrightness processor needs
+  // an actual lat/lon for to constrain its plate-solve).
+  latitude?: number
+  longitude?: number
   // The remaining sky_brightness* fields are processor output -- written
   // back asynchronously by the atlas-extensions skybrightness service after
   // it plate-solves the submitted photo, not by the client at submit time.

@@ -111,6 +111,8 @@ export function CaptureSheet({ open, onClose, draft, onDraftConsumed, currentLoc
             cameraRecipeUsed: draft.cameraRecipeUsed,
             locationLabel: draft.locationLabel ?? currentLocation.name,
             ...(draft.citizenScienceProject ? { citizenScienceProject: draft.citizenScienceProject } : {}),
+            ...(draft.latitude != null ? { latitude: draft.latitude } : {}),
+            ...(draft.longitude != null ? { longitude: draft.longitude } : {}),
           }
         : { locationLabel: currentLocation.name }),
       ...(rating ? { attemptRating: rating } : {}),

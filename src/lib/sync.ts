@@ -299,6 +299,8 @@ async function pullObservationsNow(): Promise<void> {
           ? { skyBrightnessSourceFormat: skyBrightnessSourceFormat(record.sky_brightness_source_format) }
           : {}),
         ...(record.sky_brightness_flagged_for_review === true ? { skyBrightnessFlaggedForReview: true } : {}),
+        ...(Number.isFinite(Number(record.latitude)) ? { latitude: Number(record.latitude) } : {}),
+        ...(Number.isFinite(Number(record.longitude)) ? { longitude: Number(record.longitude) } : {}),
         ...(downloadedPhoto ? { photo: downloadedPhoto } : cachedPhoto ? { photo: cachedPhoto } : {}),
       }
 
@@ -431,6 +433,8 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
       // processor once it has actually plate-solved the photo.
       citizen_science_project: entry.citizenScienceProject,
       ...(entry.citizenScienceProject ? { sky_brightness_source_format: entry.skyBrightnessSourceFormat ?? 'unknown' } : {}),
+      ...(entry.latitude != null ? { latitude: entry.latitude } : {}),
+      ...(entry.longitude != null ? { longitude: entry.longitude } : {}),
       ...(!useR2 && entry.photo ? { photo: entry.photo } : {}),
     })
     await db.observations.update(entry.id, { remoteId: record.id })
