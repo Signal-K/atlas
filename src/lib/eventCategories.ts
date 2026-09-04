@@ -23,6 +23,7 @@ export const EVENT_CATEGORIES: EventCategory[] = [
   { id: 'aurora', label: 'Aurora & space weather', icon: 'aurora', kinds: ['aurora', 'solar_flare'] },
   { id: 'deep-sky', label: 'Deep sky', icon: 'telescope', kinds: ['deep_sky'] },
   { id: 'asteroids', label: 'Asteroids', icon: 'asteroid', kinds: ['asteroid_approach'] },
+  { id: 'citizen-science', label: 'Citizen science', icon: 'trophy', kinds: ['light_pollution_campaign'] },
   { id: 'guides', label: 'Guides', icon: 'book', kinds: ['comet', 'night_sky_guide', 'local_night_sky'] },
 ]
 

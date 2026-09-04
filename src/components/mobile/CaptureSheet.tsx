@@ -4,6 +4,7 @@ import { useToast } from './Toast'
 import { db, type AttemptRating, type ObservationLogEntry } from '../../lib/db'
 import { pushObservation } from '../../lib/sync'
 import { pushCityStampFromObservation } from '../../lib/cityStamps'
+import { pushCitizenScienceBadgeFromObservation, PROJECT_LABELS } from '../../lib/citizenScienceBadges'
 import { recordWeeklyActivity } from '../../lib/streaks'
 import { requestPhotoCaption } from '../../lib/photoCaption'
 import { suggestObservationCaption } from '../../lib/observationCaptionSuggestion'
@@ -76,6 +77,10 @@ export function CaptureSheet({ open, onClose, draft, onDraftConsumed, currentLoc
     event.preventDefault()
     const trimmed = note.trim()
     if (!trimmed || saving) return
+    if (draft?.citizenScienceProject && !photo) {
+      setPhotoError('Add a sky photo to submit this observation.')
+      return
+    }
     setSaving(true)
 
     let entryPhoto = photo
@@ -105,6 +110,7 @@ export function CaptureSheet({ open, onClose, draft, onDraftConsumed, currentLoc
             deviceUsed: draft.deviceUsed,
             cameraRecipeUsed: draft.cameraRecipeUsed,
             locationLabel: draft.locationLabel ?? currentLocation.name,
+            ...(draft.citizenScienceProject ? { citizenScienceProject: draft.citizenScienceProject } : {}),
           }
         : { locationLabel: currentLocation.name }),
       ...(rating ? { attemptRating: rating } : {}),
@@ -126,6 +132,7 @@ export function CaptureSheet({ open, onClose, draft, onDraftConsumed, currentLoc
       setPhotoError(error instanceof Error ? error.message : 'We couldn’t add this photo right now.')
     }
     await pushCityStampFromObservation(entry)
+    await pushCitizenScienceBadgeFromObservation(entry)
     await recordWeeklyActivity()
 
     // Sky Pass-only, best-effort AI caption -- never blocks the save, and
@@ -153,6 +160,11 @@ export function CaptureSheet({ open, onClose, draft, onDraftConsumed, currentLoc
           <div style={{ background: 'var(--chip)', borderRadius: '0.75rem', padding: '0.625rem 0.75rem' }}>
             <span className="az-kicker">Logging for</span>
             <strong style={{ display: 'block', fontSize: '0.9375rem', marginTop: '0.125rem' }}>{draft.targetName}</strong>
+            {draft.citizenScienceProject && (
+              <p className="az-muted" style={{ margin: '0.25rem 0 0', fontSize: '0.75rem' }}>
+                A sky photo is required — Atlas processes it into a {PROJECT_LABELS[draft.citizenScienceProject] ?? draft.citizenScienceProject} submission automatically.
+              </p>
+            )}
           </div>
         )}
 
@@ -209,7 +221,11 @@ export function CaptureSheet({ open, onClose, draft, onDraftConsumed, currentLoc
           </p>
         )}
 
-        <button type="submit" className="az-btn az-btn-primary az-btn-block" disabled={!note.trim() || saving}>
+        <button
+          type="submit"
+          className="az-btn az-btn-primary az-btn-block"
+          disabled={!note.trim() || saving || Boolean(draft?.citizenScienceProject && !photo)}
+        >
           {photoPreparing ? 'Preparing photo…' : saving ? 'Saving…' : 'Save session'}
         </button>
       </form>

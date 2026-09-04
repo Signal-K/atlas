@@ -12,6 +12,15 @@ import { ensurePushSubscription, queueWatchConfirmation } from '../lib/push'
 import { categoryForKind } from '../lib/eventCategories'
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
 import { listDiscoveries, type Discovery } from '../lib/discoveries'
+import { getSignedUpEventsDueSoon } from '../lib/eventTags'
+import { SignedUpEventsWidget } from '../widgets/SignedUpEventsWidget'
+import {
+  citizenScienceBadgesFromObservations,
+  nextTierProgress,
+  projectForEventKind,
+  PROJECT_LABELS,
+  type CitizenScienceBadge,
+} from '../lib/citizenScienceBadges'
 import { db } from '../lib/db'
 import { useAuth } from '../lib/auth'
 import { useThemeState } from '../lib/theme'
@@ -38,6 +47,8 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
   const [topDiscovery, setTopDiscovery] = useState<Discovery | null>(null)
   const [reminders, setReminders] = useState(() => listGetReadyReminders())
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
+  const [campaignsDueSoon, setCampaignsDueSoon] = useState<SkyEvent[]>([])
+  const [citizenScienceBadges, setCitizenScienceBadges] = useState<CitizenScienceBadge[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -57,7 +68,16 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
 
       const scopeId = user?.id ?? LOCAL_USER_ID
       const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
-      if (!cancelled) setRecentEntries(entries.filter((e) => e.photo).slice(0, 3))
+      if (!cancelled) {
+        setRecentEntries(entries.filter((e) => e.photo).slice(0, 3))
+        setCitizenScienceBadges(citizenScienceBadgesFromObservations(entries))
+      }
+
+      // Signed-up campaigns that are ongoing or starting within 48h -- the
+      // only reason a tagged event needs a Hub slot at all, per eventTags.ts.
+      const dueSoon = await getSignedUpEventsDueSoon(now)
+      const dueSoonCampaigns = dueSoon.filter((e) => categoryForKind(e.kind)?.id === 'citizen-science')
+      if (!cancelled) setCampaignsDueSoon(dueSoonCampaigns)
 
       try {
         const discoveries = await listDiscoveries()
@@ -160,6 +180,16 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     }
   }
 
+  function submitCampaign(event: SkyEvent) {
+    const project = projectForEventKind(event.kind)
+    onLogAttempt({
+      eventId: event.id,
+      targetName: event.title,
+      locationLabel: city.name,
+      ...(project ? { citizenScienceProject: project } : {}),
+    })
+  }
+
   function logEntryDetailAttempt() {
     if (!entryDetail) return
     const { subject } = entryDetail
@@ -250,6 +280,40 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
                 </span>
               </button>
             ))}
+          </div>
+        </>
+      )}
+
+      {campaignsDueSoon.length > 0 && (
+        <>
+          <div className="az-section-head">
+            <span className="az-kicker">Citizen science — due now</span>
+          </div>
+          <SignedUpEventsWidget events={campaignsDueSoon} onSubmit={submitCampaign} />
+        </>
+      )}
+
+      {citizenScienceBadges.length > 0 && (
+        <>
+          <div className="az-section-head">
+            <span className="az-kicker">Your contributions</span>
+          </div>
+          <div className="az-row-group">
+            {citizenScienceBadges.map((badge) => {
+              const progress = nextTierProgress(badge.count)
+              return (
+                <div key={badge.project} className="az-card-body" style={{ background: 'var(--surface)' }}>
+                  <strong style={{ display: 'block', fontSize: '0.90625rem', fontWeight: 500 }}>
+                    {PROJECT_LABELS[badge.project] ?? badge.project}
+                  </strong>
+                  <p className="az-muted" style={{ margin: '0.1875rem 0 0', fontSize: '0.78125rem' }}>
+                    {badge.count} submission{badge.count === 1 ? '' : 's'}
+                    {badge.tier ? ` · ${badge.tier[0].toUpperCase()}${badge.tier.slice(1)} badge` : ''}
+                    {progress ? ` · ${progress.remaining} more for ${progress.tier}` : ' · top tier reached'}
+                  </p>
+                </div>
+              )
+            })}
           </div>
         </>
       )}

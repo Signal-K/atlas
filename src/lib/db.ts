@@ -5,7 +5,7 @@ import Dexie, { type EntityTable } from 'dexie'
 
 export interface SkyEvent {
   id: string
-  kind: string // e.g. 'meteor_shower' | 'moon_phase' | 'iss_pass' | 'eclipse' | 'conjunction'
+  kind: string // e.g. 'meteor_shower' | 'moon_phase' | 'iss_pass' | 'eclipse' | 'conjunction' | 'light_pollution_campaign'
   target: string // e.g. 'moon', 'perseids'
   title: string
   description: string
@@ -63,6 +63,23 @@ export interface ObservationLogEntry {
   // the object key is intentionally not put in any public page URL.
   photoR2Key?: string
   photoR2Size?: number
+  // Citizen-science submission (e.g. 'globe_at_night'). Set by the capture
+  // flow when the entry is logged against a citizen-science campaign event;
+  // absent on an ordinary Journal entry. See citizenScienceBadges.ts.
+  citizenScienceProject?: string
+  // The remaining sky_brightness* fields are processor output -- written
+  // back asynchronously by the atlas-extensions skybrightness service after
+  // it plate-solves the submitted photo, not by the client at submit time.
+  skyBrightnessLimitingMagnitude?: number
+  skyBrightnessConfidence?: 'estimated' | 'modelled' | 'measured'
+  skyBrightnessBortleEstimate?: number
+  skyBrightnessStarsDetected?: number
+  // Whether the uploaded photo was RAW or a processed/denoised JPEG -- a
+  // phone's computational "night mode" breaks the linear photon-count
+  // relationship photometry depends on, so the processor records what it
+  // actually got rather than silently claiming RAW-grade precision.
+  skyBrightnessSourceFormat?: 'raw' | 'jpeg' | 'unknown'
+  skyBrightnessFlaggedForReview?: boolean
 }
 
 export interface StreakState {

@@ -187,6 +187,14 @@ function attemptRating(value: unknown): ObservationLogEntry['attemptRating'] {
   return value === 'poor' || value === 'ok' || value === 'good' || value === 'great' ? value : undefined
 }
 
+function skyBrightnessConfidence(value: unknown): ObservationLogEntry['skyBrightnessConfidence'] {
+  return value === 'estimated' || value === 'modelled' || value === 'measured' ? value : undefined
+}
+
+function skyBrightnessSourceFormat(value: unknown): ObservationLogEntry['skyBrightnessSourceFormat'] {
+  return value === 'raw' || value === 'jpeg' || value === 'unknown' ? value : undefined
+}
+
 async function pullObservationPhoto(record: Parameters<typeof pb.files.getURL>[0]): Promise<Blob | undefined> {
   const r2Key = optionalText((record as { photo_r2_key?: unknown }).photo_r2_key)
   if (r2Key && isAtlasMediaEnabled()) return fetchPrivateObservationPhoto(r2Key)
@@ -274,6 +282,23 @@ async function pullObservationsNow(): Promise<void> {
         ...(optionalText(record.photo_r2_key) ? { photoR2Key: record.photo_r2_key } : {}),
         ...(Number.isFinite(Number(record.photo_r2_size)) && Number(record.photo_r2_size) > 0 ? { photoR2Size: Number(record.photo_r2_size) } : {}),
         ...(record.public === true ? { isPublic: true } : {}),
+        ...(optionalText(record.citizen_science_project) ? { citizenScienceProject: record.citizen_science_project } : {}),
+        ...(Number.isFinite(Number(record.sky_brightness_limiting_magnitude))
+          ? { skyBrightnessLimitingMagnitude: Number(record.sky_brightness_limiting_magnitude) }
+          : {}),
+        ...(skyBrightnessConfidence(record.sky_brightness_confidence)
+          ? { skyBrightnessConfidence: skyBrightnessConfidence(record.sky_brightness_confidence) }
+          : {}),
+        ...(Number.isFinite(Number(record.sky_brightness_bortle_estimate))
+          ? { skyBrightnessBortleEstimate: Number(record.sky_brightness_bortle_estimate) }
+          : {}),
+        ...(Number.isFinite(Number(record.sky_brightness_stars_detected))
+          ? { skyBrightnessStarsDetected: Number(record.sky_brightness_stars_detected) }
+          : {}),
+        ...(skyBrightnessSourceFormat(record.sky_brightness_source_format)
+          ? { skyBrightnessSourceFormat: skyBrightnessSourceFormat(record.sky_brightness_source_format) }
+          : {}),
+        ...(record.sky_brightness_flagged_for_review === true ? { skyBrightnessFlaggedForReview: true } : {}),
         ...(downloadedPhoto ? { photo: downloadedPhoto } : cachedPhoto ? { photo: cachedPhoto } : {}),
       }
 
@@ -401,6 +426,11 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
       location_label: entry.locationLabel,
       condition_summary: entry.conditionSummary,
       attempt_rating: entry.attemptRating,
+      // Only the tag + capture format are client-settable; the sky_brightness_*
+      // measurement fields are written back later by the extension-side
+      // processor once it has actually plate-solved the photo.
+      citizen_science_project: entry.citizenScienceProject,
+      ...(entry.citizenScienceProject ? { sky_brightness_source_format: entry.skyBrightnessSourceFormat ?? 'unknown' } : {}),
       ...(!useR2 && entry.photo ? { photo: entry.photo } : {}),
     })
     await db.observations.update(entry.id, { remoteId: record.id })
