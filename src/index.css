@@ -4,7 +4,10 @@
 
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
-body { margin: 0; }
+/* Backstop: only .nav-shell/.az-root paint the theme background, so any
+   layout gap that exposes raw body -- fixed-panel offset bugs included --
+   falls through to browser-default white instead of the current theme. */
+body { margin: 0; background: var(--bg, #0a0a11); }
 button, input, select, textarea { font: inherit; }
 button, a, select, summary { touch-action: manipulation; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {

@@ -349,13 +349,12 @@
     position: fixed;
     z-index: 12;
     right: 0;
-    bottom: var(--az-keyboard-inset, 0px);
+    bottom: 0;
     left: 0;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: .25rem;
     padding: .35rem max(.35rem, env(safe-area-inset-right)) max(.35rem, env(safe-area-inset-bottom)) max(.35rem, env(safe-area-inset-left));
-    transition: bottom 0.1s ease-out;
   }
 
   .atlas-tab {
