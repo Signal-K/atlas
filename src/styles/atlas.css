@@ -40,6 +40,11 @@
   --az-font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   --az-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --az-font-display: 'Oxanium', 'IBM Plex Sans', system-ui, sans-serif;
+
+  /* Live gap between the layout and visual viewport (i.e. on-screen
+     keyboard height), kept in sync by lib/viewportInset.ts. Default 0
+     covers browsers without visualViewport support. */
+  --az-keyboard-inset: 0px;
 }
 
 :root[data-theme='dark'] {
@@ -718,7 +723,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--az-keyboard-inset);
   z-index: 41;
   max-height: 88svh;
   display: flex;
@@ -728,13 +733,14 @@
   border-top: 1px solid var(--line);
   box-shadow: 0 -16px 44px rgba(8, 7, 16, 0.22);
   padding-bottom: env(safe-area-inset-bottom);
+  transition: bottom 0.1s ease-out;
 }
 
 @media (min-width: 640px) {
   .az-sheet {
     left: 50%;
     right: auto;
-    bottom: 2rem;
+    bottom: calc(2rem + var(--az-keyboard-inset));
     width: min(30rem, calc(100vw - 2rem));
     transform: translateX(-50%);
     border-radius: 1.375rem;

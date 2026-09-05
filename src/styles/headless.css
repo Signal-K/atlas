@@ -304,7 +304,8 @@
   position: fixed;
   z-index: 15;
   right: 1rem;
-  bottom: 1rem;
+  bottom: calc(1rem + var(--az-keyboard-inset, 0px));
+  transition: bottom 0.1s ease-out;
 }
 
 .feedback-panel,
@@ -348,12 +349,13 @@
     position: fixed;
     z-index: 12;
     right: 0;
-    bottom: 0;
+    bottom: var(--az-keyboard-inset, 0px);
     left: 0;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: .25rem;
     padding: .35rem max(.35rem, env(safe-area-inset-right)) max(.35rem, env(safe-area-inset-bottom)) max(.35rem, env(safe-area-inset-left));
+    transition: bottom 0.1s ease-out;
   }
 
   .atlas-tab {
@@ -383,7 +385,7 @@
   .feedback-dock,
   .install-prompt {
     right: .75rem;
-    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px) + var(--az-keyboard-inset, 0px));
   }
 }
 
