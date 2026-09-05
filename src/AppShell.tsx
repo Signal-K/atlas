@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
 import { TopBar } from './ui/TopBar'
 import { MobileIcon } from './components/mobile/MobileIcon'
 import { ToastProvider } from './components/mobile/Toast'
 import { LocationSheet } from './components/mobile/LocationSheet'
+import { MobileNavDrawer } from './components/mobile/MobileNavDrawer'
 import { SearchOverlay } from './components/mobile/SearchOverlay'
 import { HubPage } from './pages/HubPage'
 import { EventsPage } from './pages/EventsPage'
@@ -31,22 +32,48 @@ interface AppShellProps {
   currentLocation: CurrentLocation
 }
 
+// The tab bar is position:fixed, so it never moves -- but nothing here
+// ever told the window to scroll back to the top on tab switches. Land on
+// Events scrolled halfway down, tap over to Planner, and the browser kept
+// that same scroll offset: Planner's own heading and hero card render
+// above it, off the top of the screen, and whatever content sits at that
+// leftover scroll depth is what's visible instead. That reads as "the
+// whole screen jumped up" the moment you tap a tab.
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
 /**
  * One responsive shell for the app's areas: Hub (home), Events, Planner,
- * Journal, Profile -- the tab structure of the Atlas Mobile Claude Design
- * kit. Search is not a tab; it's a full-screen overlay opened from the
- * TopBar's search icon, reachable from every tab. The TopBar (location
- * chip, search, theme toggle) and the Location sheet are mounted once here
- * rather than per-page, since every tab shares them.
+ * Journal, Profile. Search is not a tab; it's a full-screen overlay opened
+ * from the TopBar's search icon, reachable from every area. The TopBar
+ * (nav drawer trigger, location chip, search, theme toggle) and the
+ * Location sheet are mounted once here rather than per-page, since every
+ * area shares them.
+ *
+ * Primary nav is a side rail on wide viewports and a hamburger + slide-in
+ * drawer on narrow ones (MobileNavDrawer) -- a deliberate divergence from
+ * the Atlas Mobile Claude Design canvas, which specifies a persistent
+ * bottom tab bar. That bar had a recurring, unfixed-by-rewrites WebKit
+ * glitch in the installed PWA (phantom keyboard-avoidance space opening
+ * under it on tap); this is a product decision to move off it rather than
+ * chase the platform bug further. See AppTabBar's git history before
+ * reintroducing a persistent bottom bar here.
  */
 export function AppShell({ onLogAttempt, profileProps, journalProps, currentLocation }: AppShellProps) {
   const navigate = useNavigate()
   const [theme, toggleTheme] = useThemeState()
   const [locationSheetOpen, setLocationSheetOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false)
 
   return (
     <ToastProvider>
+      <ScrollToTop />
       <NavShell
         items={NAV_ITEMS}
         dark={theme === 'dark'}
@@ -57,6 +84,8 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
             onOpenSearch={() => setSearchOpen(true)}
             theme={theme}
             onToggleTheme={toggleTheme}
+            navDrawerOpen={navDrawerOpen}
+            onOpenNavDrawer={() => setNavDrawerOpen(true)}
           />
         }
       >
@@ -75,6 +104,8 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
           <Route path="*" element={<Navigate to="/app/hub" replace />} />
         </Routes>
       </NavShell>
+
+      <MobileNavDrawer items={NAV_ITEMS} open={navDrawerOpen} onClose={() => setNavDrawerOpen(false)} />
 
       <LocationSheet
         open={locationSheetOpen}

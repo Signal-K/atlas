@@ -40,6 +40,11 @@
   --az-font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   --az-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --az-font-display: 'Oxanium', 'IBM Plex Sans', system-ui, sans-serif;
+
+  /* Live gap between the layout and visual viewport (i.e. on-screen
+     keyboard height), kept in sync by lib/viewportInset.ts. Default 0
+     covers browsers without visualViewport support. */
+  --az-keyboard-inset: 0px;
 }
 
 :root[data-theme='dark'] {
@@ -161,7 +166,15 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--bg);
+  /* A flat var(--bg) fill here (kept content legible while scrolling
+     underneath it) cut a hard, visible seam against the starfield wash
+     that's supposed to run continuously behind the whole page. Frosting
+     it instead -- same treatment the tab bar and sheet backdrops already
+     use -- keeps the topbar readable while letting the wash bleed through
+     softly, so the boundary reads as glass, not a stripe. */
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .nav-shell-main {
@@ -176,6 +189,13 @@
   gap: 0.625rem;
   padding: 0.375rem 0 0.75rem;
   flex: none;
+}
+
+.az-topbar-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .az-location-chip {
@@ -237,35 +257,7 @@
   opacity: 0.75;
 }
 
-/* ------------------------------------------------------------- tab bar */
-
-/* display/layout (block on desktop, 5-column grid on mobile) is owned by
-   headless.css's responsive .atlas-tab-bar rules -- this only adds colour. */
-.atlas-tab-bar.az-tabbar {
-  gap: 2px;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(18px);
-  border-top: 1px solid var(--line);
-}
-
-.atlas-tab.az-tab {
-  color: var(--muted);
-  border-radius: 0.75rem;
-}
-
-.atlas-tab.az-tab.is-active {
-  color: var(--ink);
-  box-shadow: inset 0 2px 0 var(--ink);
-}
-
-.az-tab svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.az-tab small {
-  text-transform: uppercase;
-}
+/* ---------------------------------------------------------- side rail */
 
 .nav-shell-item.az-rail-item {
   border-radius: 0.75rem;
@@ -274,6 +266,56 @@
 .nav-shell-item.az-rail-item.nav-shell-item-active {
   color: var(--ink);
   background: var(--chip);
+}
+
+/* ----------------------------------------------------- mobile nav drawer */
+
+.az-nav-trigger-lines i {
+  background: currentColor;
+}
+
+.az-nav-drawer-backdrop {
+  background: rgba(8, 7, 16, 0.44);
+  backdrop-filter: blur(2px);
+  z-index: 44;
+}
+
+.az-nav-drawer {
+  z-index: 45;
+  background: var(--sheet);
+  border-right: 1px solid var(--line);
+  box-shadow: 16px 0 44px rgba(8, 7, 16, 0.22);
+}
+
+.az-nav-drawer-head strong {
+  font-family: var(--az-font-display);
+  font-size: 1.1875rem;
+}
+
+.az-nav-drawer-link {
+  color: var(--muted);
+}
+
+.az-nav-drawer-link.is-active {
+  color: var(--ink);
+  background: var(--chip);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .az-nav-drawer {
+    animation: azDrawerIn 0.22s ease-out;
+  }
+  .az-nav-drawer-backdrop {
+    animation: azFadeIn 0.22s ease-out;
+  }
+  @keyframes azDrawerIn {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
 }
 
 /* ----------------------------------------------------------------- page */
@@ -418,6 +460,116 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* -------------------------------------------- leaderboard/digest widgets */
+
+/* Both only ever surface inside a Sheet (JournalCommunity), so text colour
+   and font already inherit correctly from body -- but neither widget had
+   any layout CSS anywhere, structural or otherwise, so their lists
+   rendered as plain stacked text. Matching the .az-row-group look used
+   everywhere else lists like this appear. */
+
+.leaderboard-list,
+.digest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  padding: 0.75rem 0.875rem;
+  min-height: 3rem;
+}
+.leaderboard-rank {
+  flex: none;
+  width: 1.75rem;
+  text-align: center;
+  font: 600 0.8125rem var(--az-font-mono);
+  color: var(--muted);
+}
+.leaderboard-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 0.90625rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.leaderboard-weeks {
+  flex: none;
+  font: 500 0.75rem var(--az-font-mono);
+  color: var(--muted);
+}
+
+.digest-item {
+  display: flex;
+  gap: 0.75rem;
+  background: var(--surface);
+  padding: 0.75rem 0.875rem;
+}
+.digest-image {
+  flex: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.625rem;
+  object-fit: cover;
+}
+.digest-body {
+  min-width: 0;
+  flex: 1;
+}
+.digest-caption {
+  margin: 0;
+  font-size: 0.84375rem;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.digest-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.71875rem;
+  color: var(--muted);
+}
+
+.digest-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 1.5rem 1rem;
+}
+.digest-empty-mark {
+  font-size: 1.5rem;
+  color: var(--az-violet-strong);
+}
+.digest-empty-state p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.84375rem;
+}
+
+.scrapbook-hint {
+  color: var(--muted);
+  font-size: 0.84375rem;
+  text-align: center;
+  padding: 1rem;
 }
 
 /* --------------------------------------------------------------- chips */
@@ -718,7 +870,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--az-keyboard-inset);
   z-index: 41;
   max-height: 88svh;
   display: flex;
@@ -728,13 +880,14 @@
   border-top: 1px solid var(--line);
   box-shadow: 0 -16px 44px rgba(8, 7, 16, 0.22);
   padding-bottom: env(safe-area-inset-bottom);
+  transition: bottom 0.1s ease-out;
 }
 
 @media (min-width: 640px) {
   .az-sheet {
     left: 50%;
     right: auto;
-    bottom: 2rem;
+    bottom: calc(2rem + var(--az-keyboard-inset));
     width: min(30rem, calc(100vw - 2rem));
     transform: translateX(-50%);
     border-radius: 1.375rem;
@@ -796,6 +949,172 @@
       opacity: 1;
     }
   }
+}
+
+/* ------------------------------------------ install prompt & feedback */
+
+/* These two were still running on headless.css's structure-only scaffold
+   -- no colour, radius, or type ever got applied when the rest of the kit
+   did, so they rendered as bare bordered boxes with default browser
+   buttons/inputs inside. (Text colour/font-family are now handled at the
+   body level in index.css, since every surface here -- and several
+   others -- renders as a sibling of .nav-shell/.az-root, not a
+   descendant, and never inherited either from it.) */
+
+.install-prompt {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  box-shadow: 0 16px 44px rgba(8, 7, 16, 0.18);
+  font-size: 0.84375rem;
+}
+
+.install-prompt p {
+  margin: 0;
+}
+
+.install-prompt-icon {
+  display: inline-block;
+  padding: 0 0.125rem;
+}
+
+.install-prompt-cta,
+.install-prompt-dismiss {
+  min-height: 2.5rem;
+  border-radius: 0.6875rem;
+  font: 500 0.8125rem var(--az-font-sans);
+  cursor: pointer;
+}
+
+.install-prompt-cta {
+  border: 0;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.install-prompt-dismiss {
+  background: none;
+  color: var(--muted);
+  border: 1px solid var(--line2);
+}
+
+.feedback-dock-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--chip);
+  color: inherit;
+  cursor: pointer;
+  font: 500 0.8125rem var(--az-font-sans);
+  padding: 0.5625rem 0.9375rem 0.5625rem 0.75rem;
+  box-shadow: 0 10px 28px rgba(8, 7, 16, 0.16);
+}
+
+.feedback-dock-trigger-icon {
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--az-violet-strong);
+  color: var(--bg);
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+.feedback-panel {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  box-shadow: 0 16px 44px rgba(8, 7, 16, 0.18);
+}
+
+.feedback-panel-head {
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--line);
+}
+.feedback-panel-head strong {
+  font-family: var(--az-font-display);
+  font-size: 1.0625rem;
+}
+.feedback-panel-head button {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.feedback-field {
+  display: grid;
+  gap: 0.375rem;
+  font-size: 0.78125rem;
+  color: var(--muted);
+}
+
+.feedback-field textarea,
+.feedback-field input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: inherit;
+  outline: none;
+  font: 400 0.875rem var(--az-font-sans);
+  padding: 0.625rem 0.75rem;
+}
+.feedback-field textarea {
+  resize: none;
+}
+
+.feedback-score-row,
+.feedback-option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.feedback-score-row button,
+.feedback-option-row button {
+  min-height: 2.25rem;
+  min-width: 2.25rem;
+  border-radius: 0.625rem;
+  border: 1px solid var(--line);
+  background: var(--chip);
+  color: inherit;
+  cursor: pointer;
+  font: 500 0.8125rem var(--az-font-sans);
+}
+.feedback-score-row button.is-selected {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+.feedback-submit {
+  min-height: 2.75rem;
+  border-radius: 0.6875rem;
+  border: 0;
+  background: var(--ink);
+  color: var(--bg);
+  cursor: pointer;
+  font: 500 0.8125rem var(--az-font-sans);
+}
+.feedback-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.offline-banner {
+  /* Same gap as the rest: headless.css only ever gave this padding and
+     centering, no colour -- an actual "you're offline" notice needs to
+     read as a banner, not blend into whatever's behind it. */
+  background: color-mix(in oklch, var(--az-amber) 18%, var(--surface));
+  color: var(--az-amber-strong);
+  font: 500 0.78125rem var(--az-font-sans);
+  border-bottom: 1px solid var(--line);
 }
 
 /* --------------------------------------------------------------- toast */
@@ -1237,6 +1556,96 @@
   position: absolute;
   border-radius: 50%;
   filter: blur(60px);
+}
+
+/* ---------------------------------------------------- centered modals */
+
+/* AuthGate and SignupWelcomeBeat use the older centered-card overlay
+   pattern (.onboarding-overlay + .onboarding-modal), not the full-screen
+   .az-overlay takeover OnboardingFlow itself uses -- .onboarding-modal
+   never got a card treatment at all, rendering as an invisible-backdrop,
+   unstyled box. */
+.onboarding-overlay:not(.az-overlay) {
+  background: rgba(8, 7, 16, 0.44);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.onboarding-modal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  box-shadow: 0 24px 60px rgba(8, 7, 16, 0.28);
+}
+
+.onboarding-modal h2 {
+  font-family: var(--az-font-display);
+  font-size: 1.375rem;
+  margin: 0 0 0.5rem;
+}
+
+.onboarding-modal p {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0 0 1rem;
+}
+
+.onboarding-skip {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: 500 0.8125rem var(--az-font-sans);
+  cursor: pointer;
+  padding: 0.625rem 0 0;
+}
+
+.signup-welcome-beat {
+  text-align: center;
+}
+.signup-welcome-beat small {
+  display: block;
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.78125rem;
+}
+
+.signup-welcome-orbit {
+  position: relative;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1rem;
+}
+.signup-welcome-orbit span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--line2);
+  border-top-color: var(--az-violet-strong);
+}
+.signup-welcome-orbit span:nth-child(2) {
+  inset: 0.4375rem;
+  border-top-color: var(--az-teal);
+}
+.signup-welcome-orbit span:nth-child(3) {
+  inset: 0.875rem;
+  border-top-color: var(--az-amber);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .signup-welcome-orbit span {
+    animation: azOrbitSpin 1.6s linear infinite;
+  }
+  .signup-welcome-orbit span:nth-child(2) {
+    animation-duration: 2.1s;
+    animation-direction: reverse;
+  }
+  .signup-welcome-orbit span:nth-child(3) {
+    animation-duration: 2.6s;
+  }
+  @keyframes azOrbitSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }
 
 /* ------------------------------------------------------------- overlay */

@@ -36,6 +36,7 @@ export type MobileIconName =
   | 'cloud'
   | 'lock'
   | 'gear'
+  | 'menu'
 
 export function MobileIcon({ name, size = 18 }: { name: MobileIconName | string; size?: number }) {
   const common = {
@@ -234,6 +235,12 @@ export function MobileIcon({ name, size = 18 }: { name: MobileIconName | string;
       return (
         <svg {...common}>
           <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      )
+    case 'menu':
+      return (
+        <svg {...common}>
+          <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
       )
     case 'back':

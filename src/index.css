@@ -4,7 +4,19 @@
 
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
-body { margin: 0; }
+/* Backstop: only .nav-shell/.az-root ever set background/color/font, so
+   anything rendered as their sibling rather than their descendant --
+   FeedbackDock, InstallPrompt, AuthGate, the nav drawer, any overlay
+   mounted straight off App() -- fell through to the browser's own
+   defaults: white background, black text, serif font, regardless of
+   theme. Setting them here instead means every one of those surfaces is
+   correct by default, with no per-component patch needed. */
+body {
+  margin: 0;
+  background: var(--bg, #0a0a11);
+  color: var(--ink, #16151c);
+  font-family: var(--az-font-sans, system-ui, -apple-system, sans-serif);
+}
 button, input, select, textarea { font: inherit; }
 button, a, select, summary { touch-action: manipulation; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
