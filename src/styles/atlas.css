@@ -462,6 +462,116 @@
   text-overflow: ellipsis;
 }
 
+/* -------------------------------------------- leaderboard/digest widgets */
+
+/* Both only ever surface inside a Sheet (JournalCommunity), so text colour
+   and font already inherit correctly from body -- but neither widget had
+   any layout CSS anywhere, structural or otherwise, so their lists
+   rendered as plain stacked text. Matching the .az-row-group look used
+   everywhere else lists like this appear. */
+
+.leaderboard-list,
+.digest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  padding: 0.75rem 0.875rem;
+  min-height: 3rem;
+}
+.leaderboard-rank {
+  flex: none;
+  width: 1.75rem;
+  text-align: center;
+  font: 600 0.8125rem var(--az-font-mono);
+  color: var(--muted);
+}
+.leaderboard-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 0.90625rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.leaderboard-weeks {
+  flex: none;
+  font: 500 0.75rem var(--az-font-mono);
+  color: var(--muted);
+}
+
+.digest-item {
+  display: flex;
+  gap: 0.75rem;
+  background: var(--surface);
+  padding: 0.75rem 0.875rem;
+}
+.digest-image {
+  flex: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.625rem;
+  object-fit: cover;
+}
+.digest-body {
+  min-width: 0;
+  flex: 1;
+}
+.digest-caption {
+  margin: 0;
+  font-size: 0.84375rem;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.digest-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.71875rem;
+  color: var(--muted);
+}
+
+.digest-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 1.5rem 1rem;
+}
+.digest-empty-mark {
+  font-size: 1.5rem;
+  color: var(--az-violet-strong);
+}
+.digest-empty-state p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.84375rem;
+}
+
+.scrapbook-hint {
+  color: var(--muted);
+  font-size: 0.84375rem;
+  text-align: center;
+  padding: 1rem;
+}
+
 /* --------------------------------------------------------------- chips */
 
 .az-chip-row {
@@ -995,6 +1105,16 @@
 .feedback-submit:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.offline-banner {
+  /* Same gap as the rest: headless.css only ever gave this padding and
+     centering, no colour -- an actual "you're offline" notice needs to
+     read as a banner, not blend into whatever's behind it. */
+  background: color-mix(in oklch, var(--az-amber) 18%, var(--surface));
+  color: var(--az-amber-strong);
+  font: 500 0.78125rem var(--az-font-sans);
+  border-bottom: 1px solid var(--line);
 }
 
 /* --------------------------------------------------------------- toast */
