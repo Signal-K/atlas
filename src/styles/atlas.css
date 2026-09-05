@@ -166,7 +166,15 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--bg);
+  /* A flat var(--bg) fill here (kept content legible while scrolling
+     underneath it) cut a hard, visible seam against the starfield wash
+     that's supposed to run continuously behind the whole page. Frosting
+     it instead -- same treatment the tab bar and sheet backdrops already
+     use -- keeps the topbar readable while letting the wash bleed through
+     softly, so the boundary reads as glass, not a stripe. */
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .nav-shell-main {
@@ -838,17 +846,10 @@
 /* These two were still running on headless.css's structure-only scaffold
    -- no colour, radius, or type ever got applied when the rest of the kit
    did, so they rendered as bare bordered boxes with default browser
-   buttons/inputs inside. */
-
-.feedback-dock,
-.install-prompt {
-  /* Both render as siblings of .nav-shell/.az-root (see App.tsx), not
-     descendants -- .az-root's `color: var(--ink)` never reaches them, so
-     every bit of text here was inheriting the browser's default black
-     regardless of theme, unreadable the moment dark mode painted the
-     surface underneath it dark too. */
-  color: var(--ink);
-}
+   buttons/inputs inside. (Text colour/font-family are now handled at the
+   body level in index.css, since every surface here -- and several
+   others -- renders as a sibling of .nav-shell/.az-root, not a
+   descendant, and never inherited either from it.) */
 
 .install-prompt {
   border: 1px solid var(--line);
@@ -1435,6 +1436,96 @@
   position: absolute;
   border-radius: 50%;
   filter: blur(60px);
+}
+
+/* ---------------------------------------------------- centered modals */
+
+/* AuthGate and SignupWelcomeBeat use the older centered-card overlay
+   pattern (.onboarding-overlay + .onboarding-modal), not the full-screen
+   .az-overlay takeover OnboardingFlow itself uses -- .onboarding-modal
+   never got a card treatment at all, rendering as an invisible-backdrop,
+   unstyled box. */
+.onboarding-overlay:not(.az-overlay) {
+  background: rgba(8, 7, 16, 0.44);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.onboarding-modal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  box-shadow: 0 24px 60px rgba(8, 7, 16, 0.28);
+}
+
+.onboarding-modal h2 {
+  font-family: var(--az-font-display);
+  font-size: 1.375rem;
+  margin: 0 0 0.5rem;
+}
+
+.onboarding-modal p {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0 0 1rem;
+}
+
+.onboarding-skip {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: 500 0.8125rem var(--az-font-sans);
+  cursor: pointer;
+  padding: 0.625rem 0 0;
+}
+
+.signup-welcome-beat {
+  text-align: center;
+}
+.signup-welcome-beat small {
+  display: block;
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.78125rem;
+}
+
+.signup-welcome-orbit {
+  position: relative;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1rem;
+}
+.signup-welcome-orbit span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--line2);
+  border-top-color: var(--az-violet-strong);
+}
+.signup-welcome-orbit span:nth-child(2) {
+  inset: 0.4375rem;
+  border-top-color: var(--az-teal);
+}
+.signup-welcome-orbit span:nth-child(3) {
+  inset: 0.875rem;
+  border-top-color: var(--az-amber);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .signup-welcome-orbit span {
+    animation: azOrbitSpin 1.6s linear infinite;
+  }
+  .signup-welcome-orbit span:nth-child(2) {
+    animation-duration: 2.1s;
+    animation-direction: reverse;
+  }
+  .signup-welcome-orbit span:nth-child(3) {
+    animation-duration: 2.6s;
+  }
+  @keyframes azOrbitSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }
 
 /* ------------------------------------------------------------- overlay */
