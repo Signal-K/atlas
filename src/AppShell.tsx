@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { NavShell, type NavItem } from './ui/NavShell'
 import { TopBar } from './ui/TopBar'
 import { MobileIcon } from './components/mobile/MobileIcon'
@@ -31,6 +31,21 @@ interface AppShellProps {
   currentLocation: CurrentLocation
 }
 
+// The tab bar is position:fixed, so it never moves -- but nothing here
+// ever told the window to scroll back to the top on tab switches. Land on
+// Events scrolled halfway down, tap over to Planner, and the browser kept
+// that same scroll offset: Planner's own heading and hero card render
+// above it, off the top of the screen, and whatever content sits at that
+// leftover scroll depth is what's visible instead. That reads as "the
+// whole screen jumped up" the moment you tap a tab.
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
 /**
  * One responsive shell for the app's areas: Hub (home), Events, Planner,
  * Journal, Profile -- the tab structure of the Atlas Mobile Claude Design
@@ -47,6 +62,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
 
   return (
     <ToastProvider>
+      <ScrollToTop />
       <NavShell
         items={NAV_ITEMS}
         dark={theme === 'dark'}
