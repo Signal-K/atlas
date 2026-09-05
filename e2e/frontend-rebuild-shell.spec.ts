@@ -102,19 +102,30 @@ test('legacy routes redirect to their new homes', async ({ page }) => {
   await expect(page).toHaveURL('/app/hub')
 })
 
-test('narrow viewport uses the persistent Atlas tab bar for primary navigation', async ({ page }) => {
+test('narrow viewport uses a hamburger + slide-in drawer for primary navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/events')
-  const tabBar = page.locator('.atlas-tab-bar')
-  await expect(tabBar.getByRole('link', { name: 'Hub', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Planner', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'You', exact: true })).toBeVisible()
-  // The old compact menu was removed; secondary actions remain available
-  // through the floating feedback trigger.
-  await expect(page.getByRole('button', { name: 'Open menu' })).toHaveCount(0)
+
+  // No persistent bottom tab bar on mobile -- primary nav lives behind the
+  // TopBar's hamburger trigger instead (deliberate divergence from the
+  // Atlas Mobile design canvas; see AppShell's doc comment).
+  await expect(page.locator('.atlas-tab-bar')).toHaveCount(0)
+  const trigger = page.getByRole('button', { name: 'Open menu' })
+  await expect(trigger).toBeVisible()
   await expect(page.getByRole('button', { name: 'Request feature' })).toBeVisible()
+
+  await trigger.click()
+  const drawer = page.getByRole('dialog', { name: 'Primary navigation' })
+  await expect(drawer.getByRole('link', { name: 'Hub', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'Planner', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'You', exact: true })).toBeVisible()
+
+  await drawer.getByRole('link', { name: 'Planner', exact: true }).click()
+  await expect(page).toHaveURL('/app/planner')
+  // Navigating closes the drawer instead of leaving it open over the new area.
+  await expect(page.getByRole('dialog', { name: 'Primary navigation' })).toHaveCount(0)
 })
 
 test('wide viewport renders the nav as a side nav, not a mobile dock', async ({ page }) => {

@@ -25,8 +25,7 @@
   overflow-y: auto;
 }
 
-.nav-shell-item,
-.atlas-tab {
+.nav-shell-item {
   display: flex;
   align-items: center;
   gap: .55rem;
@@ -34,8 +33,7 @@
   padding: .55rem .65rem;
 }
 
-.nav-shell-icon,
-.atlas-tab > span {
+.nav-shell-icon {
   display: inline-flex;
   flex: 0 0 auto;
   width: 1.25rem;
@@ -44,8 +42,7 @@
   justify-content: center;
 }
 
-.nav-shell-icon svg,
-.atlas-tab svg {
+.nav-shell-icon svg {
   width: 1.1rem;
   height: 1.1rem;
 }
@@ -73,7 +70,70 @@
   padding: 1.5rem max(1rem, env(safe-area-inset-right)) 3rem max(1rem, env(safe-area-inset-left));
 }
 
-.atlas-tab-bar { display: none; }
+button.az-nav-trigger { display: none; }
+
+.az-nav-trigger-lines {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  width: 1.1rem;
+}
+
+.az-nav-trigger-lines i {
+  display: block;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.az-nav-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+}
+
+.az-nav-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(80vw, 20rem);
+  display: flex;
+  flex-direction: column;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  overflow-y: auto;
+}
+
+.az-nav-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.az-nav-drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+
+.az-nav-drawer-link {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-height: 2.75rem;
+  padding: .6rem .75rem;
+  border-radius: .75rem;
+  text-decoration: none;
+}
+
+.az-nav-drawer-link > span:first-child {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+}
 
 .dev-preview-panel {
   position: fixed;
@@ -343,35 +403,9 @@
 @media (max-width: 899px) {
   .nav-shell { display: block; }
   .nav-shell-nav { display: none; }
-  .nav-shell-main { padding-top: 1rem; padding-bottom: 5.5rem; }
+  .nav-shell-main { padding-top: 1rem; padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
 
-  .atlas-tab-bar {
-    position: fixed;
-    z-index: 12;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: .25rem;
-    padding: .35rem max(.35rem, env(safe-area-inset-right)) max(.35rem, env(safe-area-inset-bottom)) max(.35rem, env(safe-area-inset-left));
-  }
-
-  .atlas-tab {
-    min-width: 0;
-    flex-direction: column;
-    justify-content: center;
-    gap: .15rem;
-    padding: .35rem .15rem;
-    text-align: center;
-  }
-
-  .atlas-tab small {
-    overflow: hidden;
-    max-width: 100%;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  button.az-nav-trigger { display: grid; }
 
   .settings-layout { display: block; }
   .settings-layout.settings-layout--detail-open .settings-list { display: none; }
@@ -384,7 +418,7 @@
   .feedback-dock,
   .install-prompt {
     right: .75rem;
-    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px) + var(--az-keyboard-inset, 0px));
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + var(--az-keyboard-inset, 0px));
   }
 }
 

@@ -1,4 +1,3 @@
-import { AppTabBar } from '../components/AppTabBar'
 import { Starfield } from '../components/mobile/Starfield'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -17,9 +16,11 @@ interface NavShellProps {
 }
 
 /**
- * One responsive shell: a side rail on wide viewports, a bottom tab bar on
- * narrow ones -- matches the Atlas Mobile design canvas exactly (Turn 2,
- * frame 2a): persistent 5-item tab bar, no hamburger/drawer.
+ * One responsive shell: an always-visible side rail on wide viewports. On
+ * narrow ones the rail is hidden and primary nav moves into the TopBar's
+ * hamburger trigger + MobileNavDrawer instead (rendered by AppShell,
+ * alongside this component, since the drawer needs to portal above
+ * everything and the trigger lives inside the topBar slot).
  */
 export function NavShell({ items, children, topBar, dark = false }: NavShellProps) {
   return (
@@ -45,7 +46,6 @@ export function NavShell({ items, children, topBar, dark = false }: NavShellProp
         {topBar && <div className="nav-shell-topbar">{topBar}</div>}
         <main className="nav-shell-main">{children}</main>
       </div>
-      <AppTabBar items={items} />
     </div>
   )
 }

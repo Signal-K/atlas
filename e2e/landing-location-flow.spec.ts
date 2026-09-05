@@ -239,12 +239,14 @@ test('location switching stays reachable via Settings after onboarding', async (
   await page.goto('/app/today')
   await expect(page).toHaveURL('/app/hub')
 
-  await page.locator('.atlas-tab-bar').getByRole('link', { name: 'You', exact: true }).click()
+  await page.getByRole('button', { name: 'Open menu' }).click()
+  await page.getByRole('dialog', { name: 'Primary navigation' }).getByRole('link', { name: 'You', exact: true }).click()
   await expect(page).toHaveURL('/app/profile')
   await page.getByRole('button', { name: /^Location & sensors/ }).click()
   await expect(page.getByPlaceholder('Search city, region, or country')).toHaveValue('London, England, United Kingdom')
   await page.getByRole('button', { name: 'Close' }).click()
 
-  await page.locator('.atlas-tab-bar').getByRole('link', { name: 'Events', exact: true }).click()
+  await page.getByRole('button', { name: 'Open menu' }).click()
+  await page.getByRole('dialog', { name: 'Primary navigation' }).getByRole('link', { name: 'Events', exact: true }).click()
   await expect(page).toHaveURL('/app/events')
 })
