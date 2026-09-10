@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
-import { EVENT_CATEGORIES, categoryForKind } from '../lib/eventCategories'
+import { EVENT_CATEGORIES, GUIDE_KIND_IDS, categoryForKind } from '../lib/eventCategories'
 import { isVisibleLocalEvent } from '../lib/eventFilters'
 import { addGetReadyReminder, ensureNotificationPermission, listGetReadyReminders } from '../lib/getReadyReminders'
 import { getEventsInRange, pullSkyEvents } from '../lib/sync'
@@ -106,14 +106,23 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
     if (!events) return ''
     const todayKey = localDateKey(new Date().toISOString(), city.timeZone)
     const tonight = events.filter((e) => localDateKey(e.startsAt, city.timeZone) === todayKey)
-    const reachable = tonight.filter((e) => {
+    // Guides (comet tracker, generic night-sky primers) are reference cards,
+    // not a specific reachable target, and they're always shown below
+    // regardless of instrument -- counting them here made this line read as
+    // contradicting the list right underneath it (e.g. "0 targets reachable"
+    // printed directly above four guide cards that were still visibly there).
+    const targetsToday = tonight.filter((e) => !GUIDE_KIND_IDS.has(e.kind))
+    const reachable = targetsToday.filter((e) => {
       const meta = metaFor(e.kind)
       if (instrument === 'eye') return meta.nakedEyeVisible
       if (instrument === 'binoculars') return meta.nakedEyeVisible || meta.phoneFriendly
       return true
     })
     const label = INSTRUMENTS.find((i) => i.id === instrument)?.label ?? ''
-    return `${label} · ${reachable.length} target${reachable.length === 1 ? '' : 's'} reachable tonight from ${city.name}.`
+    if (targetsToday.length === 0) {
+      return `${label} · No specific targets tonight from ${city.name} — see today's guides below.`
+    }
+    return `${label} · ${reachable.length} of ${targetsToday.length} target${targetsToday.length === 1 ? '' : 's'} reachable tonight from ${city.name}.`
   }, [events, instrument, city.timeZone, city.name])
 
   const calendarDays = useMemo(() => {
