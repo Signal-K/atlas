@@ -38,26 +38,40 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
   const [topDiscovery, setTopDiscovery] = useState<Discovery | null>(null)
   const [reminders, setReminders] = useState(() => listGetReadyReminders())
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [retryTick, setRetryTick] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      await pullSkyEvents()
-      const now = new Date()
-      const end = new Date(now.getTime() + 14 * 86_400_000)
-      const [tonightPlan, upcoming, watched] = await Promise.all([
-        getTonightPlan(city.lat, city.lon, now, city.timeZone),
-        getEventsInRange(now, end),
-        getWatchlist(),
-      ])
-      if (cancelled) return
-      setPlan(tonightPlan)
-      setEvents(upcoming)
-      setWatchlist(watched)
+      setLoadError(false)
+      try {
+        await pullSkyEvents()
+        const now = new Date()
+        const end = new Date(now.getTime() + 14 * 86_400_000)
+        const [tonightPlan, upcoming, watched] = await Promise.all([
+          getTonightPlan(city.lat, city.lon, now, city.timeZone),
+          getEventsInRange(now, end),
+          getWatchlist(),
+        ])
+        if (cancelled) return
+        setPlan(tonightPlan)
+        setEvents(upcoming)
+        setWatchlist(watched)
 
-      const scopeId = user?.id ?? LOCAL_USER_ID
-      const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
-      if (!cancelled) setRecentEntries(entries.filter((e) => e.photo).slice(0, 3))
+        const scopeId = user?.id ?? LOCAL_USER_ID
+        const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
+        if (!cancelled) setRecentEntries(entries.filter((e) => e.photo).slice(0, 3))
+      } catch {
+        // Without this, a single rejected fetch (flaky signal, which is the
+        // norm for this app's actual outdoor/nighttime use case) left the
+        // page stuck on a bare "Loading tonight..." string forever, with no
+        // error, no retry, and no analytics signal that it had happened.
+        if (cancelled) return
+        setLoadError(true)
+        trackEvent('Tonight plan load failed', { source: 'mobile_hub' })
+        return
+      }
 
       try {
         const discoveries = await listDiscoveries()
@@ -72,7 +86,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     return () => {
       cancelled = true
     }
-  }, [city.lat, city.lon, city.timeZone, user?.id])
+  }, [city.lat, city.lon, city.timeZone, user?.id, retryTick])
 
   async function toggleWatch(target: string): Promise<QuickActionOutcome> {
     if (!user?.entitled) {
@@ -184,7 +198,17 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
       <p className="az-kicker">
         {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} · after dark
       </p>
-      <h1 className="az-h1">{plan ? headlineFor(plan) : 'Loading tonight…'}</h1>
+      <h1 className="az-h1">{plan ? headlineFor(plan) : loadError ? "Couldn't load tonight" : 'Loading tonight…'}</h1>
+      {!plan && loadError && (
+        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <p className="az-muted" style={{ margin: 0 }}>
+            Check your connection and try again.
+          </p>
+          <button type="button" className="az-btn az-btn-outline" onClick={() => setRetryTick((n) => n + 1)}>
+            Try again
+          </button>
+        </div>
+      )}
       {plan?.todayAdvisory && (
         <p className="az-hero-title">
           {Math.round(100 - plan.todayAdvisory.cloudCoverPct)}% clear skies expected. Dark window{' '}

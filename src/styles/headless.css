@@ -368,10 +368,35 @@ button.az-nav-trigger { display: none; }
   transition: bottom 0.1s ease-out;
 }
 
-.feedback-panel,
-.install-prompt {
+.feedback-panel {
   width: min(calc(100vw - 2rem), 24rem);
   padding: 1rem;
+}
+
+/* Slim single-row toast rather than a full card -- this used to take up
+   ~180px pinned over every screen in the app shell until dismissed, hiding
+   whatever list item or settings row happened to sit at the bottom. */
+.install-prompt {
+  width: min(calc(100vw - 2rem), 26rem);
+  padding: .625rem .75rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: .625rem;
+}
+
+.install-prompt p {
+  flex: 1;
+  min-width: 0;
+}
+
+.install-prompt-actions { flex: none; }
+
+/* Reserve room at the bottom of the scrollable app content for the install
+   toast while it's visible, so it sits below the last row instead of
+   covering it. Toggled by InstallPrompt itself via a body class. */
+body.has-install-prompt .nav-shell-main {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .offline-banner { padding: .6rem 1rem; text-align: center; }
