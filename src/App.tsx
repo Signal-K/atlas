@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useIsMobile } from './lib/useIsMobile'
 import { LandingPage } from './views/LandingPage'
 import { AppShell } from './AppShell'
 import { useParallax } from './lib/motion'
@@ -34,7 +33,6 @@ function App() {
   } = useOnboardingGate({ user, isAppRoute })
   const { location, currentLocation, manualCity, setManualLocation } = useAppLocation()
   const motion = useParallax()
-  const isMobile = useIsMobile()
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
 
   function logAttempt(draft: ObservationDraft) {
@@ -72,7 +70,7 @@ function App() {
   }
 
   if (showLanding) {
-    return <LandingPage authenticatedEmail={user?.email} isMobile={isMobile} onEnter={enterApp} />
+    return <LandingPage authenticatedEmail={user?.email} city={currentLocation} onEnter={enterApp} />
   }
 
   // Not "/", not "/landing", not an /app/* route -- the redirect effect

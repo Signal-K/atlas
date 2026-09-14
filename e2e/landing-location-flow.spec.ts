@@ -78,9 +78,11 @@ test('index stays on the landing page for a returning signed-out visitor', async
   await page.goto('/')
 
   await expect(page).toHaveURL('/')
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Get started' })).toBeVisible()
-  await expect(page.getByText('You’re signed in as')).toHaveCount(0)
+  await expect(
+    page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' }),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Get started' }).first()).toBeVisible()
+  await expect(page.getByText('Signed in as')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
@@ -114,8 +116,10 @@ test('index stays on the landing page for a signed-in visitor and identifies the
   await page.goto('/')
 
   await expect(page).toHaveURL('/')
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-  await expect(page.getByText('You’re signed in as')).toContainText('signed-in@example.com')
+  await expect(
+    page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' }),
+  ).toBeVisible()
+  await expect(page.getByText('Signed in as')).toContainText('signed-in@example.com')
   await expect(page.getByRole('button', { name: 'Open Atlas' }).first()).toBeVisible()
 })
 
