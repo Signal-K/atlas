@@ -59,7 +59,16 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         setPlan(tonightPlan)
         setEvents(upcoming)
         setWatchlist(watched)
-        trackEvent('Tonight plan generation succeeded', { source: 'mobile_hub', targetCount: tonightPlan.targets.length })
+        // Canonical Atlas "value moment" event (ASV-23): a Tonight plan
+        // generated with a real location set. city/rating ride along so
+        // funnels and insights can segment without a second lookup.
+        trackEvent('Tonight plan generation succeeded', {
+          source: 'mobile_hub',
+          targetCount: tonightPlan.targets.length,
+          city: city.name,
+          rating: tonightPlan.rating,
+          hasLocation: city.source !== 'default',
+        })
 
         const scopeId = user?.id ?? LOCAL_USER_ID
         const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
@@ -89,6 +98,11 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     return () => {
       cancelled = true
     }
+    // city.name/city.source are read only inside the analytics call and
+    // always change in lockstep with city.lat/lon (same CurrentLocation
+    // object) -- depending on them too would just duplicate this effect's
+    // existing re-run trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city.lat, city.lon, city.timeZone, user?.id, retryTick])
 
   async function toggleWatch(target: string): Promise<QuickActionOutcome> {

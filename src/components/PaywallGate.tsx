@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { hasValidSession, refreshEntitlement, type AuthUser, useAuth } from '../lib/auth'
 import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { trackEvent } from '../lib/analytics'
@@ -38,6 +38,16 @@ export function PaywallGate({
   const [isCheckingPurchase, setIsCheckingPurchase] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
   const [purchaseStatus, setPurchaseStatus] = useState('')
+
+  // ASV-27: which gated feature people actually reach for is the whole
+  // point of this event -- fire it once per gate shown, not per render,
+  // so a re-render from an unrelated state change doesn't inflate counts.
+  useEffect(() => {
+    if (user?.entitled) return
+    if (user && isEntitlementRefreshing) return
+    trackEvent('Paywall viewed', { feature })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-fire when the gated feature or entitlement outcome changes
+  }, [feature, user?.entitled, isEntitlementRefreshing])
 
   if (user?.entitled) return <>{children}</>
 
