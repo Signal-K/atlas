@@ -239,7 +239,7 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
   const finalLabel = authenticatedEmail ? 'Return to Atlas' : 'See this week’s sky'
   const heroNote = authenticatedEmail
     ? `Signed in as ${authenticatedEmail}.`
-    : 'Free to start. Sky Pass is a one-time £24 upgrade, never a subscription.'
+    : 'Free to start. Sky Pass from CHF 4/month, or CHF 55 once for life.'
 
   return (
     <div className="atlas-almanac">
@@ -498,7 +498,7 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
         <section id="membership" className="am-section am-membership" aria-labelledby="am-membership-title">
           <div className="am-section-head">
             <h2 id="am-membership-title">Membership</h2>
-            <span className="am-section-note">One purchase. No recurring charge.</span>
+            <span className="am-section-note">Pay monthly, yearly, or once for life.</span>
           </div>
           <div className="am-plans">
             <div className="am-plan">
@@ -520,8 +520,21 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
             <div className="am-plan am-plan--paid">
               <div className="am-plan-head">
                 <span>Sky Pass</span>
-                <span>£24 once</span>
               </div>
+              <ul className="am-plan-tiers">
+                <li>
+                  <span>Monthly</span>
+                  <span>CHF 4/mo</span>
+                </li>
+                <li>
+                  <span>Yearly</span>
+                  <span>CHF 40/yr</span>
+                </li>
+                <li>
+                  <span>Lifetime (founding member)</span>
+                  <span>CHF 55 once</span>
+                </li>
+              </ul>
               <ul>
                 <li>90-day forward planning</li>
                 <li>Saved targets &amp; reminders</li>
@@ -557,7 +570,7 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
 
         <section className="am-final" aria-labelledby="am-final-title">
           <h2 id="am-final-title">Find your reason to step outside.</h2>
-          <p>Free to start. Sky Pass is a one-time upgrade when you want the rest.</p>
+          <p>Free to start. Sky Pass from CHF 4/month, or CHF 55 once for life.</p>
           <button type="button" className="am-btn am-btn-primary" onClick={() => handleEnter('final')}>
             {finalLabel}
           </button>

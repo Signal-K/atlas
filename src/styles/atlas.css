@@ -2311,6 +2311,26 @@
   color: var(--am-rust);
 }
 
+.am-plan-tiers {
+  width: 100%;
+  border-bottom: 1px solid var(--am-line);
+  padding-bottom: 1rem !important;
+}
+
+.am-plan-tiers li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-left: 0 !important;
+  font: 400 0.9375rem var(--am-mono);
+  color: var(--am-ink);
+}
+
+.am-plan-tiers li::before {
+  content: none !important;
+}
+
 /* ---- faq ---- */
 
 .am-faq-grid {
