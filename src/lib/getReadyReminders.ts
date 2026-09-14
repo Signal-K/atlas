@@ -53,7 +53,8 @@ function readRaw(): GetReadyReminder[] {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as GetReadyReminder[]
     return Array.isArray(parsed) ? parsed : []
-  } catch {
+  } catch (err) {
+    trackEvent('sync_failed', { stage: 'get_ready_reminders_read_local', error: String(err) })
     return []
   }
 }
@@ -217,9 +218,10 @@ export async function ensureNotificationPermission(options?: { force?: boolean }
   if (pb.authStore.isValid && isPushSupported()) {
     try {
       await withTimeout(subscribeToPush(), PUSH_SYNC_TIMEOUT_MS)
-    } catch {
+    } catch (err) {
       // Browser notifications are still available as a local fallback --
       // covers both a real subscribeToPush() failure and this timeout.
+      trackEvent('sync_failed', { stage: 'notification_permission_push_subscribe', error: String(err) })
     }
   }
 
@@ -243,7 +245,8 @@ export function getSightingProfile(): SightingProfile {
       kinds: parsed.kinds ?? {},
       harderTargetsUnlockedAt: parsed.harderTargetsUnlockedAt,
     }
-  } catch {
+  } catch (err) {
+    trackEvent('sync_failed', { stage: 'sighting_profile_read', error: String(err) })
     return { targets: {}, kinds: {} }
   }
 }
@@ -285,9 +288,10 @@ async function pushReminder(reminder: GetReadyReminder): Promise<boolean> {
     try {
       await pb.collection('atlas_get_ready_reminders').create(payload)
       return true
-    } catch {
+    } catch (err) {
       // Local reminder remains armed even if the server-side worker record
       // cannot be written yet.
+      trackEvent('sync_failed', { stage: 'push_reminder_create', error: String(err) })
       return false
     }
   }
@@ -359,8 +363,9 @@ async function currentConditionForReminder(reminder: GetReadyReminder): Promise<
         cloudCoverPct = day.cloudCoverPct
         precipitationChancePct = day.precipitationChancePct
       }
-    } catch {
+    } catch (err) {
       // Use the stored advisory snapshot when the live weather check fails.
+      trackEvent('sync_failed', { stage: 'get_ready_reminder_weather_check', error: String(err) })
     }
   }
 

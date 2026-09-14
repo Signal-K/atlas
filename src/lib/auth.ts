@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ClientResponseError } from 'pocketbase'
 import { pb, atlasBillingFetch } from './pocketbase'
+import { trackEvent } from './analytics'
 
 const entitlementListeners = new Set<() => void>()
 let entitlementRefreshCount = 0
@@ -147,14 +148,16 @@ export function refreshEntitlement(): Promise<AuthUser | null> {
       // self-healing if Polar's asynchronous delivery was missed or delayed.
       const result = await atlasBillingFetch<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
       reconciledAsEntitled = result.entitled === true
-    } catch {
+    } catch (err) {
       // Best-effort. authRefresh below still picks up a webhook-applied change.
+      trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err) })
     }
     try {
       await pb.collection('users').authRefresh()
-    } catch {
+    } catch (err) {
       // Best-effort -- e.g. offline or PocketBase unreachable; the cached
       // snapshot stays as-is until the next successful refresh.
+      trackEvent('sync_failed', { stage: 'auth_refresh', error: String(err) })
     }
     // The reconciliation endpoint is authoritative. Some older PocketBase
     // auth responses omit a newly-added custom field and would otherwise
@@ -206,8 +209,9 @@ export async function syncOnboardingToAccount(): Promise<void> {
     if (pb.authStore.record) {
       pb.authStore.save(pb.authStore.token, { ...pb.authStore.record, onboarded: true })
     }
-  } catch {
+  } catch (err) {
     // Best-effort, see comment above.
+    trackEvent('sync_failed', { stage: 'onboarding_account_sync', error: String(err) })
   }
 }
 

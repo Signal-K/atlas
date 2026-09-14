@@ -1,6 +1,9 @@
-import { CAMERA_PROFILES, type DeviceId } from './cameraProfiles'
+import { CAMERA_PROFILES, EXPORT_CAPABILITY_BY_MAKER, type DeviceId, type PresetExportCapability } from './cameraProfiles'
 import { CAMERA_RECIPES, deviceRecipeFor, type RecipeKey } from './cameraRecipes'
-import type { CameraPresetSettings } from './db'
+import { CAMERA_PRESET_SCHEMA_VERSION, type CameraPresetSettings } from './db'
+import { generateCubeLut } from './presetExport/cube'
+import { generateXmpPreset } from './presetExport/xmp'
+import { RECIPE_LOOK_PRESETS } from './presetExport/lookPresets'
 
 export interface AtlasPresetBundle {
   format: 'atlas-camera-preset-bundle'
@@ -13,52 +16,15 @@ export interface AtlasPresetBundle {
     model: string
   }
   settings: CameraPresetSettings
-  install: {
-    nativeInstall: boolean
-    method: 'atlas-json' | 'manual-copy' | 'shortcut-or-manual'
-    notes: string
-    steps: string[]
-  }
+  install: PresetExportCapability
   createdAt: string
 }
 
+// Per-maker capability (method/notes/steps) lives in cameraProfiles.ts
+// (KES-299) so adding a maker's export path means adding one table row
+// there, not another branch here.
 function installInfo(device: DeviceId): AtlasPresetBundle['install'] {
-  const profile = CAMERA_PROFILES[device]
-  if (profile.maker === 'nothing') {
-    return {
-      nativeInstall: false,
-      method: 'manual-copy',
-      notes: 'Nothing exposes camera looks/presets in its camera experience, but a stable public user-preset file install format is not documented. This bundle is installable in Atlas and copyable into Camera setup.',
-      steps: [
-        'Download the Atlas preset bundle.',
-        'Open Atlas on the phone before the event.',
-        'Follow the mode, lens, exposure, and focus steps shown in the event configuration.',
-        'If Nothing later exposes a preset import format, this bundle can be mapped by the PocketBase extension.',
-      ],
-    }
-  }
-  if (profile.maker === 'samsung') {
-    return {
-      nativeInstall: false,
-      method: 'manual-copy',
-      notes: 'Samsung settings should be copied into Camera Pro mode or Expert RAW where available.',
-      steps: ['Download the bundle.', 'Open Camera Pro mode or Expert RAW.', 'Copy ISO/exposure/focus guidance from Atlas.'],
-    }
-  }
-  if (profile.maker === 'apple') {
-    return {
-      nativeInstall: false,
-      method: 'shortcut-or-manual',
-      notes: 'iPhone camera styles/settings are not installable as a generic web preset file. Use this as an Atlas bundle plus setup checklist.',
-      steps: ['Download the bundle.', 'Open Atlas or a Shortcut built around the bundle.', 'Copy the setup values before shooting.'],
-    }
-  }
-  return {
-    nativeInstall: false,
-    method: 'manual-copy',
-    notes: 'Use this as an Atlas preset bundle and copy the values into the best camera controls available on the device.',
-    steps: ['Download the bundle.', 'Open your camera app.', 'Copy the setup values.'],
-  }
+  return EXPORT_CAPABILITY_BY_MAKER[CAMERA_PROFILES[device].maker]
 }
 
 export function createPresetBundle(recipeKey: RecipeKey, device: DeviceId): AtlasPresetBundle {
@@ -76,21 +42,65 @@ export function createPresetBundle(recipeKey: RecipeKey, device: DeviceId): Atla
       model: profile.name,
     },
     settings: {
-      mode: deviceRecipe.mode,
-      lens: deviceRecipe.lens,
+      schemaVersion: CAMERA_PRESET_SCHEMA_VERSION,
+      capture: {
+        mode: deviceRecipe.mode,
+        lens: deviceRecipe.lens,
+      },
+      look: RECIPE_LOOK_PRESETS[recipeKey],
     },
     install: installInfo(device),
     createdAt: new Date().toISOString(),
   }
 }
 
-export function downloadPresetBundle(recipeKey: RecipeKey, device: DeviceId) {
-  const bundle = createPresetBundle(recipeKey, device)
-  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `atlas-${recipeKey}-${device}.atlas-preset.json`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// On mobile, a plain download drops the preset in the Downloads folder --
+// one more manual step before it reaches Nothing Camera/Lightroom Mobile.
+// Web Share hands the file straight to the "Open in..." / "Share to..."
+// sheet instead, so the OS can offer the right app directly. Desktop
+// browsers, and older/unsupported mobile ones, don't support sharing files
+// (or `canShare` says no for this file), so this always has the download as
+// a fallback.
+async function shareOrDownload(blob: Blob, filename: string, mimeType: string) {
+  const file = new File([blob], filename, { type: mimeType })
+  const canShareFile = typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
+
+  if (canShareFile) {
+    try {
+      await navigator.share({ files: [file] })
+      return
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return // user dismissed the share sheet
+      // Any other share failure (e.g. no compatible target app) falls through to a plain download.
+    }
+  }
+
+  triggerDownload(blob, filename)
+}
+
+export async function downloadPresetBundle(recipeKey: RecipeKey, device: DeviceId) {
+  const bundle = createPresetBundle(recipeKey, device)
+
+  if (bundle.install.method === 'cube-lut' && bundle.settings.look) {
+    const cube = generateCubeLut(bundle.settings.look, { title: `Atlas ${bundle.targetTitle}` })
+    await shareOrDownload(new Blob([cube], { type: 'text/plain' }), `atlas-${recipeKey}-${device}.cube`, 'text/plain')
+    return
+  }
+
+  if (bundle.install.method === 'xmp-preset' && bundle.settings.look) {
+    const xmp = generateXmpPreset(bundle.settings.look, { name: `Atlas ${bundle.targetTitle}` })
+    await shareOrDownload(new Blob([xmp], { type: 'application/rdf+xml' }), `atlas-${recipeKey}-${device}.xmp`, 'application/rdf+xml')
+    return
+  }
+
+  await shareOrDownload(new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' }), `atlas-${recipeKey}-${device}.atlas-preset.json`, 'application/json')
 }

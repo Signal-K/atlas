@@ -151,8 +151,9 @@ export function ItineraryBuilderSheet({
       trackEvent('Saved trip plan', { legs: legs.length, equipment: equipment.length, interests: interests.length })
       onSaved(trip)
       onClose()
-    } catch {
+    } catch (err) {
       setError('Could not save your trip. Please try again.')
+      trackEvent('sync_failed', { stage: 'save_trip_plan', error: String(err) })
     } finally {
       setSaving(false)
     }

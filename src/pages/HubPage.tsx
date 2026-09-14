@@ -45,6 +45,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     let cancelled = false
     async function load() {
       setLoadError(false)
+      trackEvent('Tonight plan generation started', { source: 'mobile_hub' })
       try {
         await pullSkyEvents()
         const now = new Date()
@@ -58,18 +59,19 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         setPlan(tonightPlan)
         setEvents(upcoming)
         setWatchlist(watched)
+        trackEvent('Tonight plan generation succeeded', { source: 'mobile_hub', targetCount: tonightPlan.targets.length })
 
         const scopeId = user?.id ?? LOCAL_USER_ID
         const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
         if (!cancelled) setRecentEntries(entries.filter((e) => e.photo).slice(0, 3))
-      } catch {
+      } catch (err) {
         // Without this, a single rejected fetch (flaky signal, which is the
         // norm for this app's actual outdoor/nighttime use case) left the
         // page stuck on a bare "Loading tonight..." string forever, with no
         // error, no retry, and no analytics signal that it had happened.
         if (cancelled) return
         setLoadError(true)
-        trackEvent('Tonight plan load failed', { source: 'mobile_hub' })
+        trackEvent('Tonight plan generation failed', { source: 'mobile_hub', error: String(err) })
         return
       }
 
@@ -78,7 +80,8 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         const weekAgo = Date.now() - 7 * 86_400_000
         const best = discoveries.filter((d) => new Date(d.created).getTime() >= weekAgo).sort((a, b) => b.voteCount - a.voteCount)[0]
         if (!cancelled) setTopDiscovery(best ?? null)
-      } catch {
+      } catch (err) {
+        if (!cancelled) trackEvent('sync_failed', { stage: 'community_feed_discoveries', error: String(err) })
         // Community feed is best-effort context on Hub -- never blocks the page.
       }
     }
@@ -96,19 +99,22 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     const nowWatching = !isWatching(watchlist, 'target', target)
     if (nowWatching) {
       await addToWatchlist('target', target)
+      trackEvent('watchlist_item_added', { source: 'mobile_hub' })
       let message = 'Watching. Atlas will notify you about good viewing windows.'
       try {
         const pushReady = await ensurePushSubscription()
         const confirmed = pushReady ? await queueWatchConfirmation({ id: target, title: target }) : false
         if (confirmed) message = 'Watching. A confirmation notification is queued.'
         else if (!pushReady) message = 'Watching saved, but push is not enabled. Enable it in Profile to receive notifications.'
-      } catch {
+      } catch (err) {
         message = 'Watching saved, but push setup needs attention in Profile.'
+        trackEvent('sync_failed', { stage: 'watch_confirmation_push', error: String(err) })
       }
       setWatchlist(await getWatchlist())
       return { watching: true, message }
     }
     await removeFromWatchlist('target', target)
+    trackEvent('watchlist_item_removed', { source: 'mobile_hub' })
     setWatchlist(await getWatchlist())
     return { watching: false, message: 'Removed from your watchlist.' }
   }
@@ -135,7 +141,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     if (!plan) return
     const target = plan.targets.find((t) => t.eventId === event.id) ?? syntheticTarget(event)
     const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, event, city), plan.todayAdvisory)
-    openSubject(subject, event)
+    openSubject(subject, event, 'list_item')
   }
 
   function openHeroTarget() {
@@ -143,10 +149,11 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     const target = plan.targets[0]
     const sourceEvent = events.find((e) => e.id === target.eventId)
     const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, sourceEvent, city), plan.todayAdvisory)
-    openSubject(subject, sourceEvent)
+    openSubject(subject, sourceEvent, 'hero_target')
   }
 
-  function openSubject(subject: EntryDetailSubject, sourceEvent?: SkyEvent) {
+  function openSubject(subject: EntryDetailSubject, sourceEvent?: SkyEvent, source: 'list_item' | 'hero_target' | 'subject' = 'subject') {
+    trackEvent('detail_sheet_opened', { source, kind: sourceEvent?.kind })
     const reminder = sourceEvent ? reminders.find((r) => r.eventId === sourceEvent.id) : undefined
     setEntryDetail({
       subject,
@@ -177,6 +184,11 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
   function logEntryDetailAttempt() {
     if (!entryDetail) return
     const { subject } = entryDetail
+    trackEvent('Logged observation', {
+      hasTarget: true,
+      hasPhoto: false,
+      source: 'detail_sheet',
+    })
     onLogAttempt({
       eventId: subject.id,
       targetName: subject.title,

@@ -1,4 +1,5 @@
 import { pb } from './pocketbase'
+import { trackEvent } from './analytics'
 import { db, type ObservationLogEntry, type SkyEvent } from './db'
 import { parsePbDate } from './pocketbaseDate'
 import { categoryForKind } from './eventCategories'
@@ -157,7 +158,8 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
       if (staleIds.length > 0) await db.skyEvents.bulkDelete(staleIds)
       await db.skyEvents.bulkPut(mergedEvents)
     })
-  } catch {
+  } catch (err) {
+    trackEvent('sync_failed', { stage: 'pull_sky_events', error: String(err) })
     await db.skyEvents.bulkPut(localNightSkyFallbackEvents(now))
   }
 }
@@ -205,9 +207,10 @@ async function pullObservationPhoto(record: Parameters<typeof pb.files.getURL>[0
     const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
     if (!response.ok || !contentType.startsWith('image/')) return undefined
     return await response.blob()
-  } catch {
+  } catch (err) {
     // Metadata still belongs in the journal even if a large file is slow or
     // temporarily unavailable. A later Journal visit retries this pull.
+    trackEvent('sync_failed', { stage: 'pull_observation_photo', error: String(err) })
     return undefined
   }
 }
@@ -250,8 +253,9 @@ async function pullObservationsNow(): Promise<void> {
           await pb.collection('atlas_observations').update(record.id, { photo_r2_key: uploaded.key, photo_r2_size: uploaded.size })
           record.photo_r2_key = uploaded.key
           record.photo_r2_size = uploaded.size
-        } catch {
+        } catch (err) {
           // Keep the local image and retry on a later Journal sync.
+          trackEvent('sync_failed', { stage: 'r2_photo_reupload_retry', error: String(err) })
         }
       }
       // Re-fetch cached non-images from earlier versions. Do not let a bad
@@ -294,6 +298,7 @@ async function pullObservationsNow(): Promise<void> {
     // The Journal continues to show its local cache offline or when the
     // private collection is temporarily unavailable.
     console.error('pullObservationsNow failed', err)
+    trackEvent('sync_failed', { stage: 'pull_observations', error: String(err) })
   }
 }
 
@@ -347,7 +352,8 @@ export async function getEventsForDate(date: string): Promise<SkyEvent[]> {
     const events = records.map(skyEventFromRecord)
     if (events.length > 0) await db.skyEvents.bulkPut(events)
     return events
-  } catch {
+  } catch (err) {
+    trackEvent('sync_failed', { stage: 'get_events_for_date', error: String(err) })
     return cached
   }
 }
@@ -418,12 +424,14 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
         // A capacity block is actionable, though: let the visible Journal
         // form show the opaque support reference instead of swallowing it.
         if (isAtlasMediaUploadBlockedError(error)) throw error
+        trackEvent('sync_failed', { stage: 'push_observation_r2_upload', error: String(error) })
       }
     }
     return record.id
   } catch (error) {
     // Stays local-only; the user still sees it in their Scrapbook.
     if (isAtlasMediaUploadBlockedError(error)) throw error
+    trackEvent('sync_failed', { stage: 'push_observation', error: String(error) })
     return null
   }
 }

@@ -41,7 +41,8 @@ export function AccountSettings({
       if (refreshedUser?.entitled) return
       const url = await startPolarCheckout()
       window.location.href = url
-    } catch {
+    } catch (err) {
+      trackEvent('checkout_start_failed', { feature: 'settings', error: String(err), fellBackToStaticLink: Boolean(POLAR_CHECKOUT_URL) })
       if (POLAR_CHECKOUT_URL) {
         window.location.href = POLAR_CHECKOUT_URL
       } else {

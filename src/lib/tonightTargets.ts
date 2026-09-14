@@ -12,6 +12,7 @@ import { getPrimarySkyMapObjectForEvent } from './skyMapLayers'
 import { haversineKm } from './cities'
 import { tonightWindowForTimeZone } from './timeZone'
 import { getDarknessWindow, type DarknessWindow } from './darknessWindow'
+import { trackEvent } from './analytics'
 
 export { getDarknessWindow }
 export type { DarknessWindow }
@@ -353,7 +354,10 @@ function rankTargets(
 }
 
 export async function getTonightPlan(lat: number, lon: number, now = new Date(), locationTimeZone?: string): Promise<TonightPlan> {
-  const forecast = await fetchViewingForecast(lat, lon, 7).catch(() => ({ days: [], timeZone: undefined }))
+  const forecast = await fetchViewingForecast(lat, lon, 7).catch((err) => {
+    trackEvent('sync_failed', { stage: 'tonight_plan_forecast', error: String(err) })
+    return { days: [], timeZone: undefined }
+  })
   const advisory = forecast.days
   const { start, end } = tonightWindowForTimeZone(now, locationTimeZone ?? forecast.timeZone)
   const allEvents = await getEventsInRange(start, end)

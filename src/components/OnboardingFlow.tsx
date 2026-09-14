@@ -90,6 +90,14 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
 
   const step = STEPS[stepIndex]
 
+  // Fires on every step transition (including the first) so the funnel can
+  // show view->advance vs. view->abandon per step, not just which steps were
+  // ultimately completed.
+  useEffect(() => {
+    trackEvent('Onboarding step viewed', { step })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once per step index change only
+  }, [stepIndex])
+
   function finish() {
     markOnboardingComplete()
     // Signed-in accounts also get this persisted on the account itself (not
@@ -112,8 +120,14 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
     })
   }
 
+  function skipStep(step: Step) {
+    trackEvent('Onboarding step skipped', { step })
+    advance()
+  }
+
   async function handleNameContinue() {
     if (name.trim()) saveDisplayName(name)
+    trackEvent('Onboarding step advanced', { step: 'name', hasName: Boolean(name.trim()) })
     advance()
   }
 
@@ -123,11 +137,13 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
     // re-shows on every dashboard visit.
     await savePreferredEventTypes(interests)
     if (interests.length > 0) trackEvent('Set event preferences', { kinds: interests, source: 'onboarding' })
+    trackEvent('Onboarding step advanced', { step: 'interests', interestCount: interests.length })
     advance()
   }
 
   function handleLocationContinue() {
     if (chosenCity) setManualLocation?.(chosenCity)
+    trackEvent('Onboarding step advanced', { step: 'location', chosenLocation: Boolean(chosenCity) })
     advance()
   }
 
@@ -187,7 +203,13 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
       setPushEnabled(true)
       trackEvent('Enabled notifications', { source: 'onboarding', signedIn: Boolean(user) })
     } catch (err) {
-      setPushError(err instanceof Error ? err.message : 'Could not enable notifications.')
+      const message = err instanceof Error ? err.message : 'Could not enable notifications.'
+      setPushError(message)
+      trackEvent('Enable notifications failed', {
+        source: 'onboarding',
+        denied: 'Notification' in window && Notification.permission === 'denied',
+        error: message,
+      })
     } finally {
       setPushBusy(false)
       requestingPermissionRef.current = false
@@ -309,7 +331,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
       <div style={{ position: 'relative', zIndex: 1, flex: 'none', display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
         {step === 'name' && (
           <>
-            <button type="button" className="az-text-btn" onClick={advance}>
+            <button type="button" className="az-text-btn" onClick={() => skipStep('name')}>
               Skip
             </button>
             <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleNameContinue}>
@@ -319,7 +341,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
         )}
         {step === 'interests' && (
           <>
-            <button type="button" className="az-text-btn" onClick={advance}>
+            <button type="button" className="az-text-btn" onClick={() => skipStep('interests')}>
               Skip
             </button>
             <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleInterestsContinue}>
@@ -328,7 +350,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
           </>
         )}
         {step === 'location' && (
-          <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={chosenCity ? handleLocationContinue : advance}>
+          <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={chosenCity ? handleLocationContinue : () => skipStep('location')}>
             {chosenCity ? 'Use this location' : 'Looks good'}
           </button>
         )}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { askAtlas } from '../lib/ai'
 import { Card } from '../ui/Card'
+import { trackEvent } from '../lib/analytics'
 
 export interface AskAtlasProps {
   entitled: boolean
@@ -35,8 +36,9 @@ export function AskAtlas({ entitled, context }: AskAtlasProps) {
     try {
       const result = await askAtlas(trimmed, context)
       setAnswer(result)
-    } catch {
+    } catch (err) {
       setError('Could not reach Atlas right now. Try again shortly.')
+      trackEvent('ask_atlas_failed', { error: String(err) })
     } finally {
       setBusy(false)
     }

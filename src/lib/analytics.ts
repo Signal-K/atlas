@@ -22,15 +22,25 @@ export function initAnalytics() {
       // requiring a manual $pageview capture() on every navigate() call.
       capture_pageview: 'history_change',
       persistence: 'localStorage',
-      // Session recording's beacon endpoint is blocked in some production
-      // browsers/networks and only creates console noise; product analytics
-      // events and surveys do not require replay recording.
-      disable_session_recording: true,
-      // Mask all form input by default (unknown recording audience); the
-      // feedback/email fields get an explicit second mask since they're
-      // the most likely place free-text PII shows up.
+      // Autocapture unhandled JS errors/promise rejections as PostHog
+      // exception events. Atlas has plan generation, camera-recipe imports,
+      // location lookups, and paywall/entitlement checks that can all fail
+      // silently client-side -- without this, a broken build ships and the
+      // only signal is a support message (or nothing at all).
+      capture_exceptions: true,
+      // Session replay was fully disabled while this project only carried
+      // product-analytics events and surveys. The product owner now wants to
+      // see *why* users get stuck (confusing UI, dead-end flows), which event
+      // properties alone can't show. Sampling at 20% keeps replay coverage
+      // useful for triage (rage clicks, abandoned onboarding/paywall flows)
+      // while keeping the always-on recording/upload cost off 4 in 5
+      // sessions, on a project that already shares its event quota with
+      // other Star Sailors apps.
       session_recording: {
         maskAllInputs: true,
+        sampleRate: 0.2,
+        // Mask the feedback/email fields explicitly since they're the most
+        // likely place free-text PII shows up even with inputs masked.
         maskTextSelector: '.feedback-panel textarea, input[type="email"]',
       },
     })

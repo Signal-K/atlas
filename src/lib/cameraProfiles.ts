@@ -47,6 +47,67 @@ export const MAKER_LABELS: Record<DeviceMaker, string> = {
 
 export const MAKER_ORDER: DeviceMaker[] = ['google', 'nothing', 'apple', 'samsung', 'other']
 
+// Per-maker preset export capability (KES-299). Centralizes what
+// downloadPresetBundle() actually produces for each maker so presetBundles.ts
+// doesn't need a maker if/else chain -- adding a maker means adding one row
+// here. `nativeInstall` means the downloaded file installs directly into a
+// maker's own camera/editing app (Nothing Camera's Import LUT, Lightroom
+// Mobile's Import Preset); everywhere else the file is a copy-the-values
+// checklist. See cube.ts (Nothing) and xmp.ts (Apple/Lightroom) for the two
+// real generators; every other maker still falls back to the plain JSON
+// bundle in presetBundles.ts.
+export type PresetExportMethod = 'atlas-json' | 'manual-copy' | 'cube-lut' | 'xmp-preset'
+
+export interface PresetExportCapability {
+  nativeInstall: boolean
+  method: PresetExportMethod
+  notes: string
+  steps: string[]
+}
+
+export const EXPORT_CAPABILITY_BY_MAKER: Record<DeviceMaker, PresetExportCapability> = {
+  nothing: {
+    nativeInstall: true,
+    method: 'cube-lut',
+    notes: 'This downloads a .cube LUT file that Nothing Camera imports directly as a preset.',
+    steps: [
+      'Download the Atlas LUT.',
+      'Open Nothing Camera, open the Filter menu, and choose Import LUT.',
+      'Select the downloaded .cube file to install it as a Nothing Camera preset.',
+      'The mode/lens steps below still apply -- the LUT covers color grading, not capture settings like ISO or exposure.',
+    ],
+  },
+  apple: {
+    nativeInstall: true,
+    method: 'xmp-preset',
+    notes: 'This downloads a Lightroom (.xmp) preset -- iOS Camera has no third-party import, but Lightroom Mobile imports .xmp Develop presets directly.',
+    steps: [
+      'Download the Atlas .xmp preset.',
+      'Open Lightroom Mobile, go to Presets, and choose Import Preset (or tap + and select the file from Files).',
+      'Apply the imported preset when editing your capture.',
+      'The mode/lens steps below still apply -- the preset covers color grading, not capture settings like ISO or exposure.',
+    ],
+  },
+  samsung: {
+    nativeInstall: false,
+    method: 'manual-copy',
+    notes: 'Samsung settings should be copied into Camera Pro mode or Expert RAW where available.',
+    steps: ['Download the bundle.', 'Open Camera Pro mode or Expert RAW.', 'Copy ISO/exposure/focus guidance from Atlas.'],
+  },
+  google: {
+    nativeInstall: false,
+    method: 'manual-copy',
+    notes: 'Use this as an Atlas preset bundle and copy the values into Pixel Camera Pro controls.',
+    steps: ['Download the bundle.', 'Open Pixel Camera and enable Pro controls if available.', 'Copy the setup values.'],
+  },
+  other: {
+    nativeInstall: false,
+    method: 'manual-copy',
+    notes: 'Use this as an Atlas preset bundle and copy the values into the best camera controls available on the device.',
+    steps: ['Download the bundle.', 'Open your camera app.', 'Copy the setup values.'],
+  },
+}
+
 export const CAMERA_PROFILES: Record<DeviceId, CameraProfile> = {
   iphone: {
     id: 'iphone',

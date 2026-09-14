@@ -60,10 +60,11 @@ export function PaywallGate({
       if (refreshedUser?.entitled) return
       const url = await startPolarCheckout()
       window.location.href = url
-    } catch {
+    } catch (err) {
       // Dynamic checkout unavailable (PocketBase unreachable, not
       // configured, etc.) -- fall back to the static checkout link rather
       // than stranding the user on a spinner.
+      trackEvent('checkout_start_failed', { feature, error: String(err), fellBackToStaticLink: Boolean(POLAR_CHECKOUT_URL) })
       if (POLAR_CHECKOUT_URL) {
         window.location.href = POLAR_CHECKOUT_URL
       } else {

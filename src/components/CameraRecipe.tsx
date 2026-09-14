@@ -24,7 +24,7 @@ const LOCAL_USER_ID = 'local'
 const SETUP_STEPS: Record<DeviceMaker, string[]> = {
   apple: [
     'Open Camera and choose the lens listed below before the target rises.',
-    'iOS does not install generic web preset files into Camera, so use the downloaded Atlas bundle as a setup card.',
+    'Download the Atlas Lightroom preset, then open Lightroom Mobile and import it under Presets to apply the color grade to your shots.',
     'Lock the phone on a tripod, start the capture early, and avoid touching the screen during exposure.',
   ],
   google: [
@@ -35,7 +35,7 @@ const SETUP_STEPS: Record<DeviceMaker, string[]> = {
   nothing: [
     'Open Nothing Camera before the event and select the lens below. Use the main camera for dark sky, ISS, meteors, and Milky Way attempts.',
     'For Moon or bright planets, use the telephoto lens if your model has one, then reduce exposure until highlights stop blooming.',
-    'Download the Atlas preset bundle now; native Nothing Camera installation needs a confirmed import format or backend mapper.',
+    'Download the Atlas LUT, then open Nothing Camera\'s Filter menu and choose Import LUT to install the color grade directly.',
   ],
   samsung: [
     'Open Camera Pro mode or Expert RAW if available.',
@@ -205,26 +205,18 @@ export function CameraRecipe({ recipeKey, liveConditions }: { recipeKey: RecipeK
               <li key={preset.id} className={preset.source === 'builtin' ? 'is-builtin' : 'is-custom'}>
                 <span className="camera-recipe-preset-name">{preset.name}</span>
                 <span className="camera-recipe-preset-source">{preset.source}</span>
-                {preset.settings.mode && <span className="camera-recipe-preset-detail">Mode: {preset.settings.mode}</span>}
-                {preset.settings.iso && <span className="camera-recipe-preset-detail">ISO {preset.settings.iso}</span>}
-                {preset.settings.exposureSec && <span className="camera-recipe-preset-detail">{preset.settings.exposureSec}s</span>}
+                {preset.settings.capture?.mode && <span className="camera-recipe-preset-detail">Mode: {preset.settings.capture.mode}</span>}
+                {preset.settings.capture?.iso && <span className="camera-recipe-preset-detail">ISO {preset.settings.capture.iso}</span>}
+                {preset.settings.capture?.exposureSec && <span className="camera-recipe-preset-detail">{preset.settings.capture.exposureSec}s</span>}
               </li>
             ))}
           </ul>
 
-          {maker !== 'nothing' ? (
-            <>
-              <label className="camera-recipe-import">
-                Import an Atlas preset file
-                <input type="file" accept="application/json,.json,.atlas-preset" onChange={(e) => handleImportFile(e.target.files)} />
-              </label>
-              {importError && <p className="camera-recipe-import-error">{importError}</p>}
-            </>
-          ) : (
-            <p className="camera-recipe-import-error">
-              Nothing preset bundles download from Atlas now. Native Nothing Camera install requires a confirmed import format or a PocketBase mapper.
-            </p>
-          )}
+          <label className="camera-recipe-import">
+            Import an Atlas preset file
+            <input type="file" accept="application/json,.json,.atlas-preset" onChange={(e) => handleImportFile(e.target.files)} />
+          </label>
+          {importError && <p className="camera-recipe-import-error">{importError}</p>}
         </div>
       </div>
     </PaywallGate>

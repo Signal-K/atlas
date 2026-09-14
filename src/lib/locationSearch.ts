@@ -1,4 +1,5 @@
 import { CITIES, cityLabel, type City } from './cities'
+import { trackEvent } from './analytics'
 
 interface GeocodingResult {
   id?: number
@@ -27,10 +28,13 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
   url.searchParams.set('format', 'json')
 
   const response = await fetch(url, { signal })
-  if (!response.ok) throw new Error(`Location search failed: ${response.status}`)
+  if (!response.ok) {
+    trackEvent('location_search_performed', { resultCount: 0, error: `status_${response.status}` })
+    throw new Error(`Location search failed: ${response.status}`)
+  }
   const payload = (await response.json()) as { results?: GeocodingResult[] }
 
-  return (payload.results ?? []).flatMap((result) => {
+  const results = (payload.results ?? []).flatMap((result) => {
     if (!result.name || !Number.isFinite(result.latitude) || !Number.isFinite(result.longitude)) return []
     return [{
       name: result.name,
@@ -41,4 +45,6 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
       timeZone: result.timezone,
     }]
   })
+  trackEvent('location_search_performed', { resultCount: results.length })
+  return results
 }

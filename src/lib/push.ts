@@ -1,4 +1,5 @@
 import { pb } from './pocketbase'
+import { trackEvent } from './analytics'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
@@ -120,8 +121,9 @@ export async function unsubscribeFromPush(): Promise<void> {
     try {
       const record = await pb.collection('atlas_push_subscriptions').getFirstListItem(`endpoint = "${endpoint}"`)
       await pb.collection('atlas_push_subscriptions').delete(record.id)
-    } catch {
+    } catch (err) {
       // Already gone server-side, or offline — nothing further to clean up.
+      trackEvent('sync_failed', { stage: 'push_unsubscribe_cleanup', error: String(err) })
     }
   }
 }

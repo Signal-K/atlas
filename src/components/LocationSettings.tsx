@@ -55,7 +55,13 @@ export function LocationSettings({
         <div className="settings-choice">
           <span className={`settings-status ${locationStatusClass}`}>{LOCATION_LABEL[locationStatus]}</span>
           {(locationStatus === 'idle' || locationStatus === 'denied' || locationStatus === 'pending') && (
-            <button type="button" onClick={requestLocation}>
+            <button
+              type="button"
+              onClick={() => {
+                trackEvent('Location permission requested', { source: 'settings', priorStatus: locationStatus })
+                requestLocation()
+              }}
+            >
               {locationStatus === 'denied' ? 'Retry' : 'Enable'}
             </button>
           )}

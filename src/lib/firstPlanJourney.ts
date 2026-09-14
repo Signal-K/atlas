@@ -1,3 +1,4 @@
+import { trackEvent } from './analytics'
 import type { TonightTarget } from './tonightTargets'
 
 export type EquipmentChoice = 'eyes' | 'phone' | 'binoculars' | 'telescope'
@@ -55,6 +56,7 @@ export function recordLocalTargetTap(target: TonightTarget, source: LocalTargetT
   })
   writeJson(TARGET_TAPS_KEY, taps.slice(-100))
   window.dispatchEvent(new Event('atlas:first-plan-local-data-changed'))
+  trackEvent('first_plan_target_tapped', { kind: target.kind, source })
 }
 
 export function getEquipmentChoice(): EquipmentChoice | null {
@@ -66,10 +68,12 @@ export function saveEquipmentChoice(choice: EquipmentChoice) {
   localStorage.setItem(EQUIPMENT_KEY, choice)
   localStorage.setItem(EQUIPMENT_PROMPT_DISMISSED_KEY, '1')
   window.dispatchEvent(new Event('atlas:first-plan-local-data-changed'))
+  trackEvent('first_plan_equipment_selected', { choice })
 }
 
 export function dismissEquipmentPrompt() {
   localStorage.setItem(EQUIPMENT_PROMPT_DISMISSED_KEY, '1')
+  trackEvent('first_plan_equipment_prompt_dismissed')
 }
 
 export function shouldAskForEquipment(): boolean {

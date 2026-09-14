@@ -101,9 +101,47 @@ export interface TaggedEvent {
 
 export type PresetSource = 'builtin' | 'imported' | 'community'
 
-// A single device's settings within a preset (mirrors DeviceRecipe's shape
-// in cameraRecipes.ts but as structured, matchable data rather than prose).
+export const CAMERA_PRESET_SCHEMA_VERSION = 2
+
+// Capture parameters (mirrors DeviceRecipe's shape in cameraRecipes.ts but as
+// structured, matchable data rather than prose). No OS lets a third-party
+// app inject these into a stock camera app without native code, so this half
+// of a preset stays a manual checklist for now (see KES-295/KES-302).
+export interface CaptureSettings {
+  mode?: string
+  lens?: string
+  iso?: number
+  whiteBalanceKelvin?: number
+  exposureSec?: number
+  focusDistance?: string
+}
+
+// Color-grade parameters. Unlike `capture`, these can be computed into a
+// real importable file today -- a .cube 3D LUT (Nothing Camera) or a
+// Lightroom .xmp preset (iOS) -- since color grading is just a pixel
+// transform, not a camera-hardware control (see KES-297/KES-298).
+export interface LookSettings {
+  contrast?: number // -100..100
+  saturation?: number // -100..100
+  highlights?: number // -100..100
+  shadows?: number // -100..100
+  temperatureShiftKelvin?: number
+  tint?: number // -100..100, green/magenta
+  toneCurve?: Array<[number, number]> // [input, output] control points, 0-255
+  filters?: string[]
+}
+
 export interface CameraPresetSettings {
+  schemaVersion: typeof CAMERA_PRESET_SCHEMA_VERSION
+  capture?: CaptureSettings
+  look?: LookSettings
+}
+
+// Pre-v2 shape: flat capture fields at the top level, no schemaVersion.
+// Preserved so callers holding older CameraPreset records (Dexie rows saved
+// before this split, or a re-imported bundle) can be normalized -- see
+// normalizePresetSettings() in cameraPresets.ts.
+export interface LegacyCameraPresetSettingsV1 {
   mode?: string
   lens?: string
   iso?: number

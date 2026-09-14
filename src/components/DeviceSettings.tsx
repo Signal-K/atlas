@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { updateDeviceModels } from '../lib/auth'
 import { DEVICE_PRESETS, devicePresetFor } from '../lib/devicePresets'
+import { trackEvent } from '../lib/analytics'
 
 export interface DeviceSettingsProps {
   deviceModels: string[]
@@ -19,9 +20,10 @@ export function DeviceSettings({ deviceModels, entitled }: DeviceSettingsProps) 
     setError('')
     try {
       await updateDeviceModels(next)
-    } catch {
+    } catch (err) {
       setSelected(selected)
       setError('Could not save your device. Try again shortly.')
+      trackEvent('device_settings_save_failed', { error: String(err) })
     } finally {
       setSaving(false)
     }
