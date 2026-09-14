@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test'
 
 test('recovers once from a stale Vite chunk and never leaves a blank screen', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' }),
+  ).toBeVisible()
 
   await page
     .evaluate(() => {
@@ -17,7 +19,9 @@ test('recovers once from a stale Vite chunk and never leaves a blank screen', as
     })
 
   await page.waitForURL(/_atlas_recovery=/)
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' }),
+  ).toBeVisible()
 
   await page.evaluate(() => {
     const staleChunk = document.createElement('script')
