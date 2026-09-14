@@ -184,13 +184,24 @@ production. Both run the full deterministic test suite (`npm test`) before
 deploying. Write-action E2E is explicit and only targets an already-provisioned
 non-production backend — see `ci.yml`/`deploy.yml` for the exact gate.
 
+The one edge-side piece is `functions/uplink/[[path]].ts`, a Cloudflare Pages
+Function that proxies PostHog capture through the Atlas domain so ad blockers
+can't drop analytics by matching PostHog's hostname. Wrangler bundles the
+root-level `functions/` directory automatically on every Pages deploy (preview
+included), so it needs no separate pipeline, DNS record, or config. The client
+points at it by default (`api_host: '/uplink'` in `src/lib/analytics.ts`);
+`VITE_POSTHOG_HOST` only needs setting to override that. Confirm proxied events
+land by checking that the `$lib_custom_api_host` property is populated in
+PostHog — it was null on every event while capture went direct.
+
 Needs, in this repo's GitHub settings:
 
 - Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit permission), `CLOUDFLARE_ACCOUNT_ID`.
 - Variables (Settings &rarr; Secrets and variables &rarr; Actions &rarr;
   Variables, not secrets — these end up in the public client bundle):
-  `VITE_PB_URL`, `VITE_ATLAS_MEDIA_URL`, `VITE_VAPID_PUBLIC_KEY`, `VITE_POSTHOG_KEY`,
-  `VITE_POSTHOG_HOST`.
+  `VITE_PB_URL`, `VITE_ATLAS_MEDIA_URL`, `VITE_VAPID_PUBLIC_KEY`, `VITE_POSTHOG_KEY`.
+  `VITE_POSTHOG_HOST` is optional — leave it unset to use the first-party
+  `/uplink` proxy (above).
 - Optional repository/environment secrets for server-side analytics tooling:
   `POSTHOG_PROJECT_ID`, `POSTHOG_PERSONAL_API_KEY`. Do not add the personal
   API key as a `VITE_*` variable.
