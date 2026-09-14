@@ -68,6 +68,33 @@ const SURVEYS = [
       },
     ],
   },
+  {
+    // ASV-26: shown once after a user's first generated Tonight plan, while
+    // the value moment (or the friction that almost prevented it) is fresh.
+    envVar: 'VITE_POSTHOG_POSTPLAN_SURVEY_ID',
+    name: 'Atlas post-plan product survey',
+    type: 'api',
+    questions: [
+      { type: 'open', question: 'What almost stopped you?', optional: true },
+      { type: 'open', question: "What's missing for tomorrow night?", optional: true },
+    ],
+  },
+  {
+    // ASV-27: shown once a user reaches the paywall. Pairs with the
+    // "Paywall checkout clicked" / "Paywall viewed" feature-property
+    // breakdown -- this is the stated-preference half.
+    envVar: 'VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID',
+    name: 'Atlas paywall WTP survey',
+    type: 'api',
+    questions: [
+      { type: 'open', question: 'What would make this worth paying for?', optional: true },
+      {
+        type: 'single_choice',
+        question: 'What would you expect to pay?',
+        choices: ['Free only', '$3-5', '$6-10', 'Tours only'],
+      },
+    ],
+  },
 ]
 
 async function posthogFetch(path, options = {}) {

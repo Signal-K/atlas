@@ -60,6 +60,11 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+          # ASV-26/ASV-27: PostHog Survey object IDs (scripts/posthog-surveys-setup.mjs).
+          # Blank is fine -- FeedbackDock falls back to its local trigger/dedup
+          # logic without a PostHog-attributed survey ID.
+          VITE_POSTHOG_POSTPLAN_SURVEY_ID: ${{ vars.VITE_POSTHOG_POSTPLAN_SURVEY_ID }}
+          VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID: ${{ vars.VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID }}
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
       - uses: cloudflare/pages-action@v1
         with:
