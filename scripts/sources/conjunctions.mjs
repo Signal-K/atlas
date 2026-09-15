@@ -22,6 +22,16 @@ const PLANET_PAIR_BODIES = [
 // the wider, still-notable pairings.
 const CONJUNCTION_THRESHOLD_DEG = 5
 const STEP_DAYS = 1
+// The Moon moves ~13deg/day against the background sky -- roughly 3deg
+// every 6 hours -- so a 1-day grid can jump clean over a Moon-planet
+// conjunction: two consecutive midnight samples can both sit above
+// CONJUNCTION_THRESHOLD_DEG even though the true closest approach between
+// them dipped well under it (ASV-34: this is exactly what silently dropped
+// the 2026-09-14 Moon-Venus conjunction -- 5.87deg at 00:00 UTC and 6.26deg
+// at the next midnight, either side of a 0.5deg minimum around 10:30 UTC).
+// Planet-planet pairs move slowly enough that the coarser daily grid is
+// still safe for them.
+const MOON_STEP_DAYS = 0.25
 
 // PairLongitude returns [0, 360) -- the angular separation is whichever of
 // the two arcs around the circle is shorter.
@@ -30,12 +40,12 @@ function angularDiff(body1, body2, date) {
   return lon > 180 ? 360 - lon : lon
 }
 
-// The daily grid is intentionally only used to find a candidate minimum.
+// The coarse grid is intentionally only used to find a candidate minimum.
 // Refine that point deterministically so the published time means closest
-// approach, rather than an arbitrary midnight that happens to be nearby.
-function refineMinimum(body1, body2, center) {
-  let lo = center.getTime() - STEP_DAYS * 86_400_000
-  let hi = center.getTime() + STEP_DAYS * 86_400_000
+// approach, rather than an arbitrary grid point that happens to be nearby.
+function refineMinimum(body1, body2, center, stepDays) {
+  let lo = center.getTime() - stepDays * 86_400_000
+  let hi = center.getTime() + stepDays * 86_400_000
   for (let i = 0; i < 36; i += 1) {
     const left = lo + (hi - lo) / 3
     const right = hi - (hi - lo) / 3
@@ -46,7 +56,7 @@ function refineMinimum(body1, body2, center) {
   return { date, separation: angularDiff(body1, body2, date) }
 }
 
-function findConjunctions(body1, body2, now, end) {
+function findConjunctions(body1, body2, now, end, stepDays = STEP_DAYS) {
   // Stepped from a fixed UTC-midnight grid, not from `now` itself: anchoring
   // to the wall-clock time the ingest happens to run at means each run
   // computes a slightly different local-minimum timestamp for the same
@@ -54,10 +64,11 @@ function findConjunctions(body1, body2, now, end) {
   // outside the ingest upsert's +/-10 minute dedup window and silently
   // creates a duplicate record every time the workflow runs.
   const gridStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const stepMs = stepDays * 86_400_000
   const points = []
-  for (let t = gridStart; t <= end; t += STEP_DAYS * 86_400_000) {
+  for (let t = gridStart; t <= end; t += stepMs) {
     const date = new Date(t)
-    if (date.getTime() < now.getTime() - STEP_DAYS * 86_400_000) continue
+    if (date.getTime() < now.getTime() - stepMs) continue
     points.push({ date, diff: angularDiff(body1, body2, date) })
   }
 
@@ -65,7 +76,7 @@ function findConjunctions(body1, body2, now, end) {
   for (let i = 1; i < points.length - 1; i += 1) {
     const { date, diff } = points[i]
     if (diff < CONJUNCTION_THRESHOLD_DEG && diff <= points[i - 1].diff && diff <= points[i + 1].diff) {
-      conjunctions.push(refineMinimum(body1, body2, date))
+      conjunctions.push(refineMinimum(body1, body2, date, stepDays))
     }
   }
   return conjunctions
@@ -76,7 +87,7 @@ export async function fetchEvents({ now = new Date(), windowDays = 365 } = {}) {
   const events = []
 
   for (const bodyName of MOON_CONJUNCTION_BODIES) {
-    for (const { date, separation } of findConjunctions(Astronomy.Body.Moon, Astronomy.Body[bodyName], now, end)) {
+    for (const { date, separation } of findConjunctions(Astronomy.Body.Moon, Astronomy.Body[bodyName], now, end, MOON_STEP_DAYS)) {
       events.push({
         kind: 'conjunction',
         target: `moon_${bodyName.toLowerCase()}`,
