@@ -62,13 +62,17 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         // Canonical Atlas "value moment" event (ASV-23): a Tonight plan
         // generated with a real location set. city/rating ride along so
         // funnels and insights can segment without a second lookup.
-        trackEvent('Tonight plan generation succeeded', {
+        const planProperties = {
           source: 'mobile_hub',
           targetCount: tonightPlan.targets.length,
           city: city.name,
           rating: tonightPlan.rating,
           hasLocation: city.source !== 'default',
-        })
+        }
+        trackEvent('Tonight plan generation succeeded', planProperties)
+        // Alias kept for the PostHog replay event trigger, which is still
+        // configured as "Generated tonight plan" (the pre-rebuild name).
+        trackEvent('Generated tonight plan', planProperties)
 
         const scopeId = user?.id ?? LOCAL_USER_ID
         const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')

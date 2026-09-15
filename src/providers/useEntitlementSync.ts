@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { refreshEntitlement, refreshEntitlementAfterCheckout, useAuth } from '../lib/auth'
-import { identifyAnalyticsUser } from '../lib/analytics'
+import { identifyAnalyticsUser, startProductSessionRecording } from '../lib/analytics'
 import { captureDemoAccessCodeFromUrl } from '../lib/demoAccess'
 
 /**
@@ -63,4 +63,13 @@ export function useEntitlementSync() {
   useEffect(() => {
     identifyAnalyticsUser(user)
   }, [user])
+
+  // identifyAnalyticsUser only re-runs when `user` changes. A signed-in
+  // visitor who identifies on `/` and then enters `/app` still needs a
+  // startSessionRecording() check once the URL matches the product trigger.
+  useEffect(() => {
+    if (!user) return
+    startProductSessionRecording()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- id + path, not the authStore object identity
+  }, [user?.id, routerLocation.pathname])
 }
