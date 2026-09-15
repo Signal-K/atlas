@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MobileIcon } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
 import { CaptureSheet, RATING_HUE, RATING_LABEL } from '../components/mobile/CaptureSheet'
 import { EntryDetailSheet } from '../components/mobile/JournalSheets'
 import { JournalCommunity } from '../components/mobile/JournalCommunity'
+import { PhotoSkyIdSheet } from '../components/mobile/PhotoSkyIdSheet'
 import { useEntryPhotoUrl } from '../lib/useEntryPhotoUrl'
 import { pullObservations } from '../lib/sync'
 import { db, type ObservationLogEntry } from '../lib/db'
@@ -69,11 +71,13 @@ function JournalEntryRow({ entry, kindLabel, onOpen }: { entry: ObservationLogEn
 // into Community's header rather than kept as separate tabs.
 export function JournalPage({ draft, onDraftConsumed, currentLocation }: JournalPageProps) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const scopeId = user?.id ?? LOCAL_USER_ID
   const [tab, setTab] = useState<'mine' | 'community'>('mine')
   const [entries, setEntries] = useState<ObservationLogEntry[]>([])
   const [eventKindById, setEventKindById] = useState<Map<string, string>>(new Map())
   const [captureOpen, setCaptureOpen] = useState(false)
+  const [photoIdOpen, setPhotoIdOpen] = useState(false)
   const [openEntry, setOpenEntry] = useState<ObservationLogEntry | null>(null)
 
   async function refresh() {
@@ -154,6 +158,9 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
           <button type="button" className="az-btn az-btn-dashed az-btn-block" style={{ marginTop: '0.875rem' }} onClick={() => setCaptureOpen(true)}>
             + Log tonight's session
           </button>
+          <button type="button" className="az-btn az-btn-outline az-btn-block" style={{ marginTop: '0.5rem' }} onClick={() => setPhotoIdOpen(true)}>
+            What's in this photo?
+          </button>
 
           <div className="az-section-head">
             <span className="az-kicker">Your entries</span>
@@ -187,6 +194,13 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
       />
 
       <EntryDetailSheet entry={openEntry} onClose={() => setOpenEntry(null)} onShared={refresh} />
+
+      <PhotoSkyIdSheet
+        open={photoIdOpen}
+        onClose={() => setPhotoIdOpen(false)}
+        currentLocation={currentLocation}
+        onSignInClick={() => navigate('/app/profile')}
+      />
     </div>
   )
 }
