@@ -155,7 +155,7 @@ test('an existing account signs in without being sent through onboarding again',
     await page.getByRole('button', { name: 'Get started' }).click()
     await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
     await page.getByRole('tab', { name: 'Sign in' }).click()
-    await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 
     await fillClerkSignIn(page, email, password)
 
