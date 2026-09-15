@@ -89,7 +89,12 @@ function App() {
   if (!user) {
     return (
       <>
-        <AuthGate defaultMode={accountDefaultMode} onSignedIn={handleSignedIn} onSignedUp={handleSignedUp} />
+        <AuthGate
+          defaultMode={accountDefaultMode}
+          onSignedIn={handleSignedIn}
+          onSignedUp={handleSignedUp}
+          currentLocation={currentLocation}
+        />
         <DevPreviewPanel />
       </>
     )

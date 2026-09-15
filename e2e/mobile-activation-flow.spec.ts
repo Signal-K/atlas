@@ -110,7 +110,7 @@ test.beforeEach(async ({ page }) => {
 test('mobile signed-out visitor is blocked by the auth gate before reaching the feed', async ({ page }) => {
   await page.goto('/app/events')
 
-  await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
   await expect(page.getByRole('heading', { name: /Tonight is live|Hold for a better window/ })).toHaveCount(0)
   await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0)
 })
