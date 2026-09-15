@@ -41,14 +41,52 @@ const clerkAppearance = {
     footer: { display: 'none' },
     footerAction: { display: 'none' },
     main: { width: '100%', padding: 0 },
-    form: { width: '100%', gap: '28px' },
+    form: { width: '100%', gap: '18px' },
     formFieldRow: { width: '100%' },
     formField: { width: '100%' },
-    formFieldInput: { width: '100%', boxSizing: 'border-box' },
-    formButtonPrimary: { width: '100%' },
+    formFieldLabel: { fontSize: '13px', color: '#9a9aa4' },
+    formFieldInput: {
+      width: '100%',
+      boxSizing: 'border-box',
+      height: '48px',
+      borderRadius: '12px',
+      border: '1px solid #2c2d36',
+      background: '#0b0c10',
+      color: '#f1f1f3',
+      fontSize: '16px',
+    },
+    formButtonPrimary: {
+      width: '100%',
+      height: '50px',
+      marginTop: '6px',
+      borderRadius: '12px',
+      border: '1px solid oklch(0.78 0.12 200)',
+      background: 'oklch(0.78 0.12 200)',
+      color: '#08171c',
+      fontSize: '16px',
+      fontWeight: 600,
+      boxShadow: 'none',
+      '&:hover': { filter: 'brightness(1.06)' },
+    },
     otpCodeField: { width: '100%' },
-    otpCodeFieldInput: { boxSizing: 'border-box' },
-    alert: { width: '100%', boxSizing: 'border-box', margin: 0 },
+    otpCodeFieldInput: {
+      boxSizing: 'border-box',
+      background: '#0b0c10',
+      borderColor: '#2c2d36',
+      color: '#f1f1f3',
+    },
+    alert: {
+      width: '100%',
+      boxSizing: 'border-box',
+      margin: '0 0 18px',
+      borderRadius: '12px',
+      border: '1px solid rgba(240,104,91,.42)',
+      background: 'rgba(240,104,91,.10)',
+      color: '#f1f1f3',
+    },
+    identityPreviewText: { color: '#f1f1f3' },
+    identityPreviewEditButton: { color: 'oklch(0.78 0.12 200)' },
+    footerActionLink: { color: 'oklch(0.78 0.12 200)' },
     // Authentication providers remain configured in Clerk, but Atlas is
     // temporarily email-and-password only. Hide the whole block, plus the
     // "or" divider Clerk renders between it and the email/password fields,
@@ -222,6 +260,9 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
           {exchanging && <p className="settings-help">Finishing sign-in…</p>}
           {error && <p className="account-form-error">{error}</p>}
         </div>
+        <p className="account-form-trust">
+          <span aria-hidden="true" /> Sign-in is handled by Clerk. Atlas never sees your password.
+        </p>
       </div>
     </div>
   )
@@ -245,12 +286,22 @@ function ClerkSignInPanel({
   const { signIn, fetchStatus } = useSignIn()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [claiming, setClaiming] = useState(false)
   const [showStandardSignIn, setShowStandardSignIn] = useState(false)
   const busy = fetchStatus === 'fetching' || claiming || exchanging
 
   if (showStandardSignIn) {
     return <SignIn routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
+  }
+
+  // Our hand-rolled fields don't model a reset flow of their own -- Clerk's
+  // own widget already resumes from wherever a sign-in attempt left off
+  // (see the needs_second_factor/needs_client_trust handoff below), and its
+  // "forgot password" link is one of the paths it knows how to drive.
+  function handleForgotPassword(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    setShowStandardSignIn(true)
   }
 
   async function finalizeSignIn() {
@@ -354,15 +405,29 @@ function ClerkSignInPanel({
         />
       </div>
       <div className="account-form-field">
-        <label htmlFor="clerk-sign-in-password">Password</label>
-        <input
-          id="clerk-sign-in-password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
+        <div className="account-form-field-label-row">
+          <label htmlFor="clerk-sign-in-password">Password</label>
+          <a href="#reset" onClick={handleForgotPassword}>
+            Forgot?
+          </a>
+        </div>
+        <div className="account-form-password-wrap">
+          <input
+            id="clerk-sign-in-password"
+            type={passwordVisible ? 'text' : 'password'}
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+          <button
+            type="button"
+            className="account-form-password-toggle"
+            onClick={() => setPasswordVisible((visible) => !visible)}
+          >
+            {passwordVisible ? 'Hide' : 'Show'}
+          </button>
+        </div>
       </div>
       <div className="account-form-actions">
         <button type="submit" className="account-form-submit" disabled={busy}>

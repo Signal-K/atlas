@@ -1635,6 +1635,362 @@
   inset: 0.875rem;
   border-top-color: var(--az-amber);
 }
+
+/* ---------------------------------------------------------- auth gate */
+
+/* ASV-32: the sign-in/sign-up gate at /app, previously the bare
+   headless.css layout with no visual treatment at all. Dark by design --
+   Atlas is a night-sky app -- with the form fixed-width and a sky panel
+   carrying the value pitch beside it on wide viewports. Scoped under
+   .auth-gate-modal throughout so AccountSettings' embedded reuse of the
+   same .account-form-* classes (a plain settings row, themed light/dark
+   like the rest of Settings) is untouched. */
+
+.auth-gate-overlay {
+  background: rgba(4, 4, 8, 0.72);
+}
+
+.auth-gate-modal {
+  display: flex;
+  /* headless.css's `.onboarding-overlay, .auth-gate-modal { place-items:
+     center }` still sets align-items:center even now that this is a flex
+     container, not the grid it targeted -- collapsing .auth-gate-sky
+     (which has no in-flow content of its own) to 0 height. */
+  align-items: stretch;
+  width: min(96vw, 1080px);
+  max-height: min(94vh, 800px);
+  padding: 0;
+  overflow: hidden;
+  background: #0b0c10;
+  border: 0;
+  border-radius: 1.25rem;
+  box-shadow: 0 24px 60px rgba(8, 7, 16, 0.5);
+  color: #f1f1f3;
+}
+
+.auth-gate-form-panel {
+  display: flex;
+  flex: 1 1 26rem;
+  min-width: 0;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+  padding: 2.5rem 2.75rem;
+  background: #0b0c10;
+  overflow-y: auto;
+}
+
+.auth-gate-wordmark {
+  font: 700 1.1rem/1 var(--az-font-display);
+  letter-spacing: 0.1em;
+  color: #f1f1f3;
+}
+
+.auth-gate-form-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1.75rem 0;
+}
+
+.auth-gate-form-body h1 {
+  margin: 0 0 0.5rem;
+  font: 700 2rem/1.15 var(--az-font-display);
+  letter-spacing: -0.01em;
+  color: #f1f1f3;
+}
+
+.auth-gate-subhead {
+  margin: 0 0 1.5rem;
+  max-width: 32rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #9a9aa4;
+}
+
+.auth-gate-back {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  height: 2.5rem;
+  margin-top: 0.5rem;
+  padding: 0 0.5rem !important;
+  color: #9a9aa4;
+  font-size: 0.875rem;
+}
+.auth-gate-back:hover {
+  color: #f1f1f3;
+}
+
+.auth-gate-sky {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 620px at 72% 22%, oklch(0.62 0.13 200 / 0.32), transparent 62%),
+    radial-gradient(760px 520px at 18% 86%, rgba(71, 191, 255, 0.16), transparent 60%),
+    #08090d;
+}
+
+.auth-gate-starfield {
+  position: absolute;
+  inset: -200px;
+  background-repeat: repeat;
+  background-size: 340px 340px;
+}
+.auth-gate-starfield--a {
+  background-image:
+    radial-gradient(1.3px 1.3px at 40px 60px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 180px 30px, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.5px 1.5px at 300px 140px, rgba(228, 246, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 90px 220px, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1.7px 1.7px at 250px 300px, rgba(255, 255, 255, 0.85), transparent),
+    radial-gradient(1.2px 1.2px at 150px 362px, rgba(255, 255, 255, 0.72), transparent),
+    radial-gradient(1.4px 1.4px at 196px 168px, rgba(228, 246, 255, 0.7), transparent),
+    radial-gradient(1.6px 1.6px at 76px 132px, rgba(255, 255, 255, 0.8), transparent);
+}
+.auth-gate-starfield--b {
+  background-size: 270px 270px;
+  background-image:
+    radial-gradient(1px 1px at 20px 120px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1.4px 1.4px at 130px 200px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 210px 40px, rgba(199, 238, 254, 0.6), transparent),
+    radial-gradient(1.1px 1.1px at 60px 250px, rgba(255, 255, 255, 0.4), transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .auth-gate-starfield--a {
+    animation: authGateTwinkle 7s ease-in-out infinite, authGateDrift 200s linear infinite;
+  }
+  .auth-gate-starfield--b {
+    animation: authGateTwinkle 11s ease-in-out infinite reverse;
+  }
+  @keyframes authGateTwinkle {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+  }
+  @keyframes authGateDrift {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-400px, -160px, 0); }
+  }
+}
+
+.auth-gate-sky-copy {
+  position: absolute;
+  left: 3.5rem;
+  right: 3.5rem;
+  bottom: 3.5rem;
+  z-index: 2;
+}
+.auth-gate-sky-copy p {
+  margin: 0 0 1rem;
+  max-width: 20ch;
+  font: 700 2rem/1.15 var(--az-font-display);
+  letter-spacing: -0.015em;
+  color: #eef8fb;
+}
+.auth-gate-sky-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  font-size: 0.8125rem;
+  color: rgba(238, 248, 251, 0.72);
+}
+.auth-gate-sky-divider {
+  width: 1px;
+  height: 0.75rem;
+  background: rgba(238, 248, 251, 0.28);
+}
+
+@media (max-width: 899px) {
+  .auth-gate-sky {
+    flex: none;
+    order: -1;
+    height: 11rem;
+  }
+  .auth-gate-sky-copy {
+    left: 1.5rem;
+    right: 1.5rem;
+    bottom: 1.25rem;
+  }
+  .auth-gate-sky-copy p {
+    font-size: 1.375rem;
+  }
+  .auth-gate-sky-stats {
+    flex-wrap: wrap;
+  }
+  .auth-gate-modal {
+    flex-direction: column;
+    width: min(100vw, 28rem);
+    max-height: 96vh;
+    border-radius: 1rem;
+  }
+  .auth-gate-form-panel {
+    padding: 1.5rem 1.5rem 1.75rem;
+  }
+  .auth-gate-form-body h1 {
+    font-size: 1.625rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-gate-overlay {
+    padding: 0;
+  }
+  .auth-gate-modal {
+    width: 100vw;
+    max-height: 100svh;
+    height: 100svh;
+    border-radius: 0;
+  }
+}
+
+/* Sign-in/sign-up mode pill, shared markup with AccountSettings' embedded
+   form but only restyled here -- the embedded copy stays whatever the
+   surrounding Settings surface looks like. */
+.auth-gate-modal .account-mode-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 1.5rem;
+  background: #16171d;
+  border: 1px solid #2c2d36;
+  border-radius: 999px;
+}
+.auth-gate-modal .account-mode-tabs button {
+  flex: 1;
+  height: 2.375rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #9a9aa4;
+  font: 500 0.875rem var(--az-font-sans);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.auth-gate-modal .account-mode-tabs button:hover {
+  color: #f1f1f3;
+}
+.auth-gate-modal .account-mode-tabs button.is-active {
+  background: oklch(0.78 0.12 200);
+  color: #08171c;
+}
+
+.auth-gate-modal .account-form-field label,
+.auth-gate-modal .account-form-field-label-row {
+  font-size: 0.8125rem;
+  color: #9a9aa4;
+}
+.auth-gate-modal .account-form-field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.auth-gate-modal .account-form-field-label-row a {
+  font-size: 0.8125rem;
+  color: oklch(0.78 0.12 200);
+}
+
+.auth-gate-modal .account-form-field input {
+  width: 100%;
+  height: 3rem;
+  padding: 0 0.875rem;
+  box-sizing: border-box;
+  border: 1px solid #2c2d36;
+  border-radius: 0.75rem;
+  background: #0b0c10;
+  color: #f1f1f3;
+  font-size: 1rem;
+}
+.auth-gate-modal .account-form-field input:focus-visible {
+  outline: 2px solid oklch(0.78 0.12 200);
+  outline-offset: -1px;
+}
+
+.auth-gate-modal .account-form-password-wrap {
+  position: relative;
+  display: block;
+}
+.auth-gate-modal .account-form-password-wrap input {
+  padding-right: 4.5rem;
+}
+.auth-gate-modal .account-form-password-toggle {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  height: 2rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #9a9aa4;
+  font: 500 0.8125rem var(--az-font-sans);
+  cursor: pointer;
+}
+.auth-gate-modal .account-form-password-toggle:hover {
+  background: #16171d;
+  color: #f1f1f3;
+}
+
+.auth-gate-modal .account-form-submit {
+  width: 100%;
+  height: 3.125rem;
+  margin-top: 0.375rem;
+  border: 1px solid oklch(0.78 0.12 200);
+  border-radius: 0.75rem;
+  background: oklch(0.78 0.12 200);
+  color: #08171c;
+  font: 600 1rem var(--az-font-sans);
+  cursor: pointer;
+}
+.auth-gate-modal .account-form-submit:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.auth-gate-modal .account-form-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.auth-gate-modal .account-form-actions {
+  justify-content: stretch;
+}
+
+.auth-gate-modal .account-form-error {
+  display: flex;
+  gap: 0.6875rem;
+  padding: 0.8125rem 0.875rem;
+  margin: 0 0 0.25rem;
+  border: 1px solid rgba(240, 104, 91, 0.42);
+  background: rgba(240, 104, 91, 0.1);
+  border-radius: 0.75rem;
+  font-size: 0.84375rem;
+  line-height: 1.5;
+  color: #f1f1f3;
+}
+
+.auth-gate-modal .settings-help {
+  color: #9a9aa4;
+}
+
+.auth-gate-modal .account-form-trust {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin: 0.75rem 0 0;
+  font-size: 0.78125rem;
+  color: #9a9aa4;
+}
+.auth-gate-modal .account-form-trust span[aria-hidden] {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: #3ddc97;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .signup-welcome-orbit span {
     animation: azOrbitSpin 1.6s linear infinite;
