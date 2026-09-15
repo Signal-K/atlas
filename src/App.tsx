@@ -120,7 +120,13 @@ function App() {
         journalProps={{ draft: observationDraft, onDraftConsumed: () => setObservationDraft(null), currentLocation }}
         profileProps={{
           locationStatus: location.status,
-          requestLocation: location.requestLocation,
+          // Force a fresh GPS fix here (never useLocationSeed's up-to-30-day
+          // cache) -- this is the settings/profile "Use current location"
+          // path, an explicit re-check the user reaches for specifically
+          // because their real position has likely moved since the last
+          // fix (ASV-35: reused a stale cached fix and silently stayed on
+          // wherever that old fix was, e.g. Melbourne after moving to Perth).
+          requestLocation: () => location.requestLocation(true),
           currentLocation,
           manualCity,
           setManualLocation,
