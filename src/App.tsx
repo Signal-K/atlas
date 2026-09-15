@@ -21,7 +21,8 @@ const APP_HOME = '/app/hub'
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
-  const isAppRoute = routerLocation.pathname.startsWith('/app')
+  const isTonightRoute = routerLocation.pathname === '/tonight' || routerLocation.pathname.startsWith('/tonight/')
+  const isAppRoute = routerLocation.pathname.startsWith('/app') || isTonightRoute
   const { user } = useAuth()
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const {
@@ -43,15 +44,18 @@ function App() {
   useThemeBootstrap()
   useEntitlementSync()
 
-  // Bare "/app" has no view of its own -- redirect to the app's home area,
-  // same target enterApp() below uses right after onboarding.
+  // Bare "/app" and the pre-rebuild "/tonight" alias have no view of their
+  // own -- redirect to the app's home area, same target enterApp() below
+  // uses right after onboarding. "/tonight" must stay a product route so
+  // PostHog's replay URL trigger (app|tonight) can match signed-in use
+  // instead of bouncing to the landing page.
   useEffect(() => {
-    if (routerLocation.pathname === '/app') navigate(APP_HOME, { replace: true })
-  }, [routerLocation.pathname, navigate])
+    if (routerLocation.pathname === '/app' || isTonightRoute) navigate(APP_HOME, { replace: true })
+  }, [routerLocation.pathname, isTonightRoute, navigate])
 
-  // Any path that isn't "/", "/landing", or under "/app" is not a real
-  // route. Unknown public URLs resolve to the landing-page alias rather
-  // than silently falling through to the app shell.
+  // Any path that isn't "/", "/landing", "/tonight", or under "/app" is
+  // not a real route. Unknown public URLs resolve to the landing-page alias
+  // rather than silently falling through to the app shell.
   useEffect(() => {
     if (routerLocation.pathname !== '/' && routerLocation.pathname !== '/landing' && !isAppRoute) {
       navigate('/landing', { replace: true })
@@ -73,8 +77,8 @@ function App() {
     return <LandingPage authenticatedEmail={user?.email} city={currentLocation} onEnter={enterApp} />
   }
 
-  // Not "/", not "/landing", not an /app/* route -- the redirect effect
-  // above is already sending this to "/"; render nothing in the meantime
+  // Not "/", not "/landing", not a product route -- the redirect effect
+  // above is already sending this to landing; render nothing in the meantime
   // rather than falling through to the app shell below.
   if (!isAppRoute) {
     return null

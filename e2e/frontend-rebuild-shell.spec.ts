@@ -100,6 +100,12 @@ test('legacy routes redirect to their new homes', async ({ page }) => {
 
   await page.goto('/app/search')
   await expect(page).toHaveURL('/app/hub')
+
+  await page.goto('/app/tonight')
+  await expect(page).toHaveURL('/app/hub')
+
+  await page.goto('/tonight')
+  await expect(page).toHaveURL('/app/hub')
 })
 
 test('narrow viewport uses a hamburger + slide-in drawer for primary navigation', async ({ page }) => {

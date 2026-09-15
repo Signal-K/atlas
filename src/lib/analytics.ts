@@ -1,4 +1,9 @@
 import type { PostHog } from 'posthog-js'
+import { pb } from './pocketbase'
+
+// posthog.init's `loaded` callback is typed as PostHogInterface, not the
+// PostHog class. Helpers only need identify + startSessionRecording.
+type SessionReplayClient = Pick<PostHog, 'identify' | 'startSessionRecording'>
 
 // No-ops when VITE_POSTHOG_KEY isn't set (local dev, CI) so nothing has to
 // guard every capture() call with an "is analytics configured" check.
@@ -11,9 +16,53 @@ const apiKey = import.meta.env.VITE_POSTHOG_KEY as string | undefined
 // still lands before the capture() that follows it).
 let loading: Promise<PostHog> | null = null
 
+type AnalyticsUser = { id: string; email: string; entitled: boolean }
+
+// Product surfaces the replay URL trigger is meant to cover. Landing (`/`,
+// `/landing`) is deliberately excluded so anonymous marketing traffic is
+// not specially started from the client.
+export function isProductAnalyticsPath(pathname = defaultPathname()): boolean {
+  return pathname === '/app' || pathname.startsWith('/app/') || pathname === '/tonight' || pathname.startsWith('/tonight/')
+}
+
+function defaultPathname(): string {
+  return typeof window === 'undefined' ? '' : window.location.pathname
+}
+
+// Read the persisted PocketBase session directly so identify can run in
+// posthog.init's `loaded` callback -- before React mounts, and before the
+// first `$pageview`. Importing `currentUser()` from auth.ts would cycle
+// (auth already imports this module).
+function persistedAnalyticsUser(): AnalyticsUser | null {
+  const model = pb.authStore.record
+  if (!model || !pb.authStore.isValid) return null
+  return {
+    id: model.id as string,
+    email: model.email as string,
+    entitled: Boolean(model.entitled),
+  }
+}
+
+function applyIdentifiedUser(posthog: SessionReplayClient, user: AnalyticsUser) {
+  posthog.identify(user.id, {
+    email: user.email,
+    atlas_user_id: user.id,
+    entitled: user.entitled,
+  })
+}
+
+// Starts recording only on product routes. Does not pass `true`, so PostHog
+// still honours the project's URL/event triggers, minimum duration, and
+// sampling. Landing-only sessions are left for those remote controls.
+function maybeStartProductSessionRecording(posthog: SessionReplayClient) {
+  if (!isProductAnalyticsPath()) return
+  posthog.startSessionRecording()
+}
+
 export function initAnalytics() {
   if (!apiKey || loading) return
   loading = import('posthog-js').then(({ default: posthog }) => {
+    const persistedUser = persistedAnalyticsUser()
     posthog.init(apiKey, {
       api_host: (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ?? 'https://us.i.posthog.com',
       // Atlas is a client-side-routed SPA (react-router), so a one-shot
@@ -28,20 +77,30 @@ export function initAnalytics() {
       // silently client-side -- without this, a broken build ships and the
       // only signal is a support message (or nothing at all).
       capture_exceptions: true,
-      // Session replay was fully disabled while this project only carried
-      // product-analytics events and surveys. The product owner now wants to
-      // see *why* users get stuck (confusing UI, dead-end flows), which event
-      // properties alone can't show. Sampling at 20% keeps replay coverage
-      // useful for triage (rage clicks, abandoned onboarding/paywall flows)
-      // while keeping the always-on recording/upload cost off 4 in 5
-      // sessions, on a project that already shares its event quota with
-      // other Star Sailors apps.
+      // Do not set disable_session_recording or a client sampleRate.
+      // Ingestion is owned by the PostHog project: URL trigger
+      // youratlas.cc/(app|tonight), event triggers (sign-in / plan / recipe /
+      // onboarding / device), and a 5s minimum duration. A client sampleRate
+      // of 0.2 previously marked most /app sessions `$recording_status:
+      // disabled` even when those remote triggers matched.
+      //
+      // Recording is not disabled at init, so startSessionRecording() below
+      // does not override sampling/triggers (never called with `true`).
       session_recording: {
         maskAllInputs: true,
-        sampleRate: 0.2,
         // Mask the feedback/email fields explicitly since they're the most
         // likely place free-text PII shows up even with inputs masked.
         maskTextSelector: '.feedback-panel textarea, input[type="email"]',
+      },
+      // Already-signed-in product users should not start as an anonymous
+      // distinct_id. Bootstrap + identify-in-loaded attaches email/person
+      // onto the recording that URL-triggers on /app or /tonight.
+      ...(persistedUser
+        ? { bootstrap: { distinctID: persistedUser.id, isIdentifiedID: true } }
+        : {}),
+      loaded: (loadedPosthog) => {
+        if (persistedUser) applyIdentifiedUser(loadedPosthog, persistedUser)
+        maybeStartProductSessionRecording(loadedPosthog)
       },
     })
     return posthog
@@ -62,15 +121,20 @@ export function trackEvent(name: string, properties?: Record<string, unknown>) {
   withPostHog((posthog) => posthog.capture(name, properties))
 }
 
-export function identifyAnalyticsUser(user: { id: string; email: string; entitled: boolean } | null) {
+export function identifyAnalyticsUser(user: AnalyticsUser | null) {
   if (!user) return
-  withPostHog((posthog) =>
-    posthog.identify(user.id, {
-      email: user.email,
-      atlas_user_id: user.id,
-      entitled: user.entitled,
-    }),
-  )
+  withPostHog((posthog) => {
+    applyIdentifiedUser(posthog, user)
+    maybeStartProductSessionRecording(posthog)
+  })
+}
+
+// SPA navigations from landing → /app (or a bookmarked /tonight) happen
+// after init. Re-check the path so an already-identified user actually
+// starts recording once they enter the product, without overriding
+// ingestion controls.
+export function startProductSessionRecording() {
+  withPostHog((posthog) => maybeStartProductSessionRecording(posthog))
 }
 
 // Analytics never having loaded (no key, blocked chunk) reads as "flag off"
