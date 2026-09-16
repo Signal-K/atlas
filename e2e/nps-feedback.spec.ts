@@ -51,7 +51,13 @@ const TONIGHT_HEADLINE = /Good night for it\.|Worth a look tonight\.|Slim chance
 
 async function gotoTonightWithCleanActivityBaseline(page: Page) {
   await page.goto('/app/tonight')
-  await expect(page.getByRole('heading', { name: TONIGHT_HEADLINE })).toBeVisible()
+  // HubPage's load effect awaits pullSkyEvents() first, which bounds its own
+  // PocketBase fetch with AbortSignal.timeout(8000) before falling back to
+  // cache (src/lib/sync.ts) -- Playwright's default 5000ms toBeVisible
+  // timeout is shorter than that, so this assertion raced the app's own
+  // documented worst case and failed intermittently against the real
+  // (unmocked) backend. Give it enough headroom to cover that 8s bound.
+  await expect(page.getByRole('heading', { name: TONIGHT_HEADLINE })).toBeVisible({ timeout: 15_000 })
   await page.evaluate(() => window.localStorage.setItem('atlas-feedback-activity-count', '0'))
 }
 
