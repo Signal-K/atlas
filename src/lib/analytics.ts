@@ -15,7 +15,17 @@ export function initAnalytics() {
   if (!apiKey || loading) return
   loading = import('posthog-js').then(({ default: posthog }) => {
     posthog.init(apiKey, {
-      api_host: (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ?? 'https://us.i.posthog.com',
+      // Capture is served first-party through the Atlas domain (see
+      // functions/uplink/[[path]].ts) so ad blockers can't drop events by
+      // matching PostHog's hostname. The relative default keeps this working on
+      // every deploy target -- production, pages.dev, and branch previews --
+      // with no extra config, since it resolves against whatever origin serves
+      // the app. VITE_POSTHOG_HOST still overrides it (e.g. a dedicated proxy
+      // subdomain); an empty value falls back to the built-in proxy.
+      api_host: (import.meta.env.VITE_POSTHOG_HOST as string | undefined) || '/uplink',
+      // With api_host pointing at the proxy, ui_host names the real PostHog app
+      // so the toolbar and in-app links resolve to the right place.
+      ui_host: 'https://us.posthog.com',
       // Atlas is a client-side-routed SPA (react-router), so a one-shot
       // pageview on init would miss every subsequent route change --
       // 'history_change' hooks the History API directly instead of

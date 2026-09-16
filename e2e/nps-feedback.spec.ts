@@ -43,9 +43,15 @@ function skipOtherFeedbackSurveys(page: Page) {
   })
 }
 
+// Matches every headline HubPage's headlineFor() can produce for a loaded
+// plan (rating-dependent, and rating comes from real, date/location-driven
+// astronomy data -- not mocked here) -- any one of them means the plan
+// loaded, which is all this helper needs to confirm.
+const TONIGHT_HEADLINE = /Good night for it\.|Worth a look tonight\.|Slim chances tonight\.|Skip it tonight\./
+
 async function gotoTonightWithCleanActivityBaseline(page: Page) {
   await page.goto('/app/tonight')
-  await expect(page.getByRole('heading', { name: /Worth a look tonight\.|Tonight is live|Hold for a better window/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: TONIGHT_HEADLINE })).toBeVisible()
   await page.evaluate(() => window.localStorage.setItem('atlas-feedback-activity-count', '0'))
 }
 
