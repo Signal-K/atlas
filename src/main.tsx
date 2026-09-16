@@ -12,6 +12,10 @@ const SharePage = lazy(() => import('./views/SharePage.tsx').then((m) => ({ defa
 const CityStampSharePage = lazy(() =>
   import('./views/CityStampSharePage.tsx').then((m) => ({ default: m.CityStampSharePage })),
 )
+// Standalone Atlas Minimal redesign -- self-contained, no shared components with the main app.
+const AtlasMinimalPage = lazy(() =>
+  import('./minimal-atlas/AtlasMinimalPage.tsx').then((m) => ({ default: m.AtlasMinimalPage })),
+)
 import { initAnalytics } from './lib/analytics.ts'
 import { startSyncQueue } from './lib/syncQueue.ts'
 import { startViewportInsetTracking } from './lib/viewportInset.ts'
@@ -44,6 +48,7 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path="/p/:remoteId" element={<SharePageRoute />} />
             <Route path="/stamps/:slug" element={<CityStampSharePageRoute />} />
+            <Route path="/minimal" element={<AtlasMinimalPage />} />
             <Route path="/*" element={<App />} />
           </Routes>
         </Suspense>
