@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
@@ -44,11 +45,17 @@ function dayGroupLabel(dateKey: string, todayKey: string, timeZone?: string) {
 
 export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const [theme] = useThemeState()
+  // The nav drawer's category browser (Claude Design's "Minimal Atlas with
+  // events" mockup) jumps straight here with a category preselected, via
+  // router state rather than a URL param -- it's a one-shot nav intent, not
+  // shareable/bookmarkable state.
+  const routerLocation = useLocation()
+  const initialCategory = (routerLocation.state as { category?: string } | null)?.category
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [taggedIds, setTaggedIds] = useState<Set<string>>(new Set())
   const [reminders, setReminders] = useState(() => listGetReadyReminders())
-  const [category, setCategory] = useState('all')
+  const [category, setCategory] = useState(initialCategory ?? 'all')
   const [instrument, setInstrument] = useState<'eye' | 'binoculars' | 'telescope'>('eye')
   const [view, setView] = useState<'list' | 'calendar'>('list')
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)

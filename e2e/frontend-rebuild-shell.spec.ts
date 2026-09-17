@@ -123,7 +123,7 @@ test('narrow viewport uses a hamburger + slide-in drawer for primary navigation'
   await trigger.click()
   const drawer = page.getByRole('dialog', { name: 'Primary navigation' })
   await expect(drawer.getByRole('link', { name: 'Hub', exact: true })).toBeVisible()
-  await expect(drawer.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'All events', exact: true })).toBeVisible()
   await expect(drawer.getByRole('link', { name: 'Planner', exact: true })).toBeVisible()
   await expect(drawer.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
   await expect(drawer.getByRole('link', { name: 'You', exact: true })).toBeVisible()

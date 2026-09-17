@@ -19,7 +19,7 @@ import type { ObservationDraft } from './lib/observationDraft'
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/app/hub', label: 'Hub', icon: <MobileIcon name="sparkle" /> },
-  { path: '/app/events', label: 'Events', icon: <MobileIcon name="calendar" /> },
+  { path: '/app/events', label: 'All events', icon: <MobileIcon name="calendar" /> },
   { path: '/app/planner', label: 'Planner', icon: <MobileIcon name="route" /> },
   { path: '/app/journal', label: 'Journal', icon: <MobileIcon name="journal" /> },
   { path: '/app/profile', label: 'You', icon: <MobileIcon name="person" /> },
