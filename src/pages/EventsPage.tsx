@@ -91,9 +91,21 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
 
   const filtered = useMemo(() => {
     if (!events) return []
-    if (category === 'all') return events
-    return events.filter((e) => categoryForKind(e.kind)?.id === category)
-  }, [events, category])
+    let list = events
+    if (category !== 'all') list = list.filter((e) => categoryForKind(e.kind)?.id === category)
+    // Guides (comet tracker, generic night-sky primers) are reference cards,
+    // not a specific reachable target -- always shown regardless of
+    // instrument, matching instrumentNote's carve-out below. Previously the
+    // instrument row only changed this summary line's text; the visible
+    // list itself never actually filtered by reachability.
+    return list.filter((e) => {
+      if (GUIDE_KIND_IDS.has(e.kind)) return true
+      const meta = metaFor(e.kind)
+      if (instrument === 'eye') return meta.nakedEyeVisible
+      if (instrument === 'binoculars') return meta.nakedEyeVisible || meta.phoneFriendly
+      return true
+    })
+  }, [events, category, instrument])
 
   const groups = useMemo(() => {
     if (!filtered.length) return []

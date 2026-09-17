@@ -1318,6 +1318,14 @@
   padding-right: 2.5rem !important;
   font-size: 1rem !important;
 }
+/* type="search" gets a native WebKit/Chromium clear icon on top of our own
+   .location-search-clear button -- two overlapping "x" controls at the same
+   corner, the more visible half of what read as "cramped". */
+.location-search input::-webkit-search-cancel-button,
+.location-search input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
 .location-search-clear {
   position: absolute;
   top: 0;
