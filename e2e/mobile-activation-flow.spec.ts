@@ -131,7 +131,7 @@ test('mobile primary navigation uses the hamburger + slide-in drawer', async ({ 
   const drawer = page.getByRole('dialog', { name: 'Primary navigation' })
   await expect(drawer.getByRole('link')).toHaveCount(5)
   await expect(drawer.getByRole('link', { name: 'Hub', exact: true })).toBeVisible()
-  await expect(drawer.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'All events', exact: true })).toBeVisible()
   await expect(drawer.getByRole('link', { name: 'Planner', exact: true })).toBeVisible()
   await expect(drawer.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
   await expect(drawer.getByRole('link', { name: 'You', exact: true })).toBeVisible()

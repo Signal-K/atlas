@@ -251,6 +251,6 @@ test('location switching stays reachable via Settings after onboarding', async (
   await page.getByRole('button', { name: 'Close' }).click()
 
   await page.getByRole('button', { name: 'Open menu' }).click()
-  await page.getByRole('dialog', { name: 'Primary navigation' }).getByRole('link', { name: 'Events', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Primary navigation' }).getByRole('link', { name: 'All events', exact: true }).click()
   await expect(page).toHaveURL('/app/events')
 })
