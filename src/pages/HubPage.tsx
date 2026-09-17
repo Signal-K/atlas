@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
@@ -16,12 +16,26 @@ import { db } from '../lib/db'
 import { useAuth } from '../lib/auth'
 import { useThemeState } from '../lib/theme'
 import { trackEvent } from '../lib/analytics'
+import { dayGroupLabel, localDateKey } from '../lib/weather'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { ObservationLogEntry, SkyEvent } from '../lib/db'
 import type { TonightPlan } from '../lib/tonightTargets'
 
 const LOCAL_USER_ID = 'local'
+
+// Filter-chip + day-grouped upcoming list, ported from the Claude Design
+// "Minimal Atlas with events" mockup's FocusScreen -- replaces the old
+// pre-filtered "On your watchlist" list with one feed that covers all four
+// of the mockup's views (All/Tonight/This week/Watching) against the same
+// 14-day window Hub already fetches for the tonight plan.
+type HubFilterKey = 'all' | 'tonight' | 'week' | 'watching'
+const HUB_FILTERS: Array<{ key: HubFilterKey; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'tonight', label: 'Tonight' },
+  { key: 'week', label: 'This week' },
+  { key: 'watching', label: 'Watching' },
+]
 
 export interface HubPageProps {
   city: CurrentLocation
@@ -40,6 +54,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [retryTick, setRetryTick] = useState(0)
+  const [upcomingFilter, setUpcomingFilter] = useState<HubFilterKey>('all')
 
   useEffect(() => {
     let cancelled = false
@@ -219,9 +234,37 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     setEntryDetail(null)
   }
 
-  const watchRows = plan ? events.filter((e) => matchesWatchlist(e, watchlist)).slice(0, 5) : []
   const spaceWeatherEvent = events.find((e) => e.kind === 'aurora' || e.kind === 'solar_flare')
   const now = new Date()
+
+  const todayKey = localDateKey(now.toISOString(), city.timeZone)
+  const weekEndKey = localDateKey(new Date(now.getTime() + 7 * 86_400_000).toISOString(), city.timeZone)
+  const upcomingFilterPredicates: Record<HubFilterKey, (e: SkyEvent) => boolean> = {
+    all: () => true,
+    tonight: (e) => localDateKey(e.startsAt, city.timeZone) === todayKey,
+    week: (e) => localDateKey(e.startsAt, city.timeZone) <= weekEndKey,
+    watching: (e) => matchesWatchlist(e, watchlist),
+  }
+  const upcomingCounts: Record<HubFilterKey, number> = {
+    all: events.length,
+    tonight: events.filter(upcomingFilterPredicates.tonight).length,
+    week: events.filter(upcomingFilterPredicates.week).length,
+    watching: events.filter(upcomingFilterPredicates.watching).length,
+  }
+  const upcomingShown = events.filter(upcomingFilterPredicates[upcomingFilter])
+  const upcomingGroups = useMemo(() => {
+    if (!upcomingShown.length) return []
+    const byDay = new Map<string, SkyEvent[]>()
+    for (const event of upcomingShown) {
+      const key = localDateKey(event.startsAt, city.timeZone)
+      if (!byDay.has(key)) byDay.set(key, [])
+      byDay.get(key)!.push(event)
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, dayEvents]) => ({ key, label: dayGroupLabel(key, todayKey, city.timeZone), events: dayEvents }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upcomingShown, city.timeZone, todayKey])
 
   return (
     <div className="az-page">
@@ -283,29 +326,59 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         </>
       )}
 
-      {watchRows.length > 0 && (
-        <>
-          <div className="az-section-head">
-            <span className="az-kicker">On your watchlist</span>
+      <div className="az-section-head" style={{ marginTop: '1.375rem' }}>
+        <span className="az-kicker">Upcoming</span>
+      </div>
+      <div className="az-chip-row">
+        {HUB_FILTERS.map((f) => (
+          <button
+            type="button"
+            key={f.key}
+            className={`az-chip${upcomingFilter === f.key ? ' is-active' : ''}`}
+            onClick={() => setUpcomingFilter(f.key)}
+          >
+            {f.label}
+            <span className="az-chip-count">{upcomingCounts[f.key]}</span>
+          </button>
+        ))}
+      </div>
+
+      {upcomingGroups.map((group) => (
+        <div key={group.key} style={{ marginTop: '1.125rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.5rem' }}>
+            <span className="az-kicker">{group.label}</span>
+            <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
           </div>
           <div className="az-row-group">
-            {watchRows.map((event) => (
+            {group.events.map((event) => (
               <button type="button" key={event.id} className="az-row" onClick={() => openEventDetail(event)}>
                 <span className="az-row-icon">
                   <MobileIcon name={(categoryForKind(event.kind)?.icon as MobileIconName) ?? 'zap'} />
                 </span>
                 <span className="az-row-main">
-                  <span className="az-row-kind">{categoryForKind(event.kind)?.label.toUpperCase() ?? event.kind} · WATCHING</span>
+                  <span className="az-row-kind">
+                    {categoryForKind(event.kind)?.label.toUpperCase() ?? event.kind}
+                    {matchesWatchlist(event, watchlist) ? ' · WATCHING' : ''}
+                  </span>
                   <span className="az-row-title">{event.title}</span>
                 </span>
                 <span className="az-row-trail">
-                  <span className="az-row-time">{new Date(event.startsAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
+                  <span className="az-row-time">{new Date(event.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
                   <span className="az-row-note">{reminders.some((r) => r.eventId === event.id) ? 'reminder armed' : ''}</span>
                 </span>
               </button>
             ))}
           </div>
-        </>
+        </div>
+      ))}
+
+      {upcomingGroups.length === 0 && (
+        <div className="az-card-body" style={{ marginTop: '1rem', textAlign: 'center', border: '1px dashed var(--line2)', background: 'none' }}>
+          <p style={{ margin: 0, fontWeight: 500, fontSize: '0.875rem' }}>Nothing in this filter</p>
+          <p className="az-muted" style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem' }}>
+            {upcomingFilter === 'watching' ? 'Open an event and tap Watch to add it here.' : 'Try a wider window.'}
+          </p>
+        </div>
       )}
 
       {recentEntries.length > 0 && (

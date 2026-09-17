@@ -16,7 +16,7 @@ import { metaFor } from '../lib/tonightTargets'
 import { getDarknessWindow } from '../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../lib/timeZone'
 import { eventLookaheadDays } from '../lib/entitlementLimits'
-import { fetchViewingForecast, localDateKey } from '../lib/weather'
+import { dayGroupLabel, fetchViewingForecast, localDateKey } from '../lib/weather'
 import { ensurePushSubscription, queueWatchConfirmation } from '../lib/push'
 import { useThemeState } from '../lib/theme'
 import type { CurrentLocation } from '../lib/currentLocation'
@@ -33,15 +33,6 @@ const INSTRUMENTS: Array<{ id: 'eye' | 'binoculars' | 'telescope'; label: string
   { id: 'binoculars', label: 'Binoculars', icon: 'binoculars' },
   { id: 'telescope', label: 'Telescope', icon: 'telescope' },
 ]
-
-function dayGroupLabel(dateKey: string, todayKey: string, timeZone?: string) {
-  if (dateKey === todayKey) return 'Today'
-  const date = new Date(dateKey + 'T12:00:00')
-  const tomorrow = new Date(todayKey + 'T12:00:00')
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  if (localDateKey(date.toISOString(), timeZone) === localDateKey(tomorrow.toISOString(), timeZone)) return 'Tomorrow'
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-}
 
 export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const [theme] = useThemeState()

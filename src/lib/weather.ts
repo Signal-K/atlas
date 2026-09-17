@@ -107,6 +107,16 @@ export function localDateKey(isoString: string, timeZone?: string): string {
   }).format(new Date(isoString))
 }
 
+// Shared by any day-grouped event list (Events, Hub's upcoming feed).
+export function dayGroupLabel(dateKey: string, todayKey: string, timeZone?: string): string {
+  if (dateKey === todayKey) return 'Today'
+  const date = new Date(dateKey + 'T12:00:00')
+  const tomorrow = new Date(todayKey + 'T12:00:00')
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (localDateKey(date.toISOString(), timeZone) === localDateKey(tomorrow.toISOString(), timeZone)) return 'Tomorrow'
+  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
 // STS-319: when tonight is cloudy, the plan screen's weather section offers
 // the nearest better night instead of just saying "skip" — the first
 // upcoming day (today excluded) that isn't fully clouded, or, failing that,
