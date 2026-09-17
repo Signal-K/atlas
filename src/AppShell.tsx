@@ -14,6 +14,7 @@ import { JournalPage, type JournalPageProps } from './pages/JournalPage'
 import { AskAtlasPage } from './pages/AskAtlasPage'
 import { ProfilePage, type ProfilePageProps } from './pages/ProfilePage'
 import { useThemeState } from './lib/theme'
+import { useAuth } from './lib/auth'
 import type { CurrentLocation } from './lib/currentLocation'
 import type { ObservationDraft } from './lib/observationDraft'
 
@@ -66,6 +67,7 @@ function ScrollToTop() {
  */
 export function AppShell({ onLogAttempt, profileProps, journalProps, currentLocation }: AppShellProps) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [theme, toggleTheme] = useThemeState()
   const [locationSheetOpen, setLocationSheetOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -117,6 +119,11 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
         setManualLocation={profileProps.setManualLocation}
         needsMotionPermission={profileProps.needsMotionPermission}
         requestMotionPermission={profileProps.requestMotionPermission}
+        entitled={Boolean(user?.entitled)}
+        onUpgrade={() => {
+          setLocationSheetOpen(false)
+          navigate('/app/profile')
+        }}
       />
 
       {searchOpen && (

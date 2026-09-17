@@ -13,6 +13,8 @@ interface LocationSettingsProps {
   setManualLocation: (city: City | null) => void
   needsMotionPermission: boolean
   requestMotionPermission: () => void
+  entitled: boolean
+  onUpgrade: () => void
 }
 
 const LOCATION_LABEL: Record<LocationStatus, string> = {
@@ -38,6 +40,8 @@ export function LocationSettings({
   setManualLocation,
   needsMotionPermission,
   requestMotionPermission,
+  entitled,
+  onUpgrade,
 }: LocationSettingsProps) {
   const [locationQuery, setLocationQuery] = useState(() => manualCity ? cityLabel(manualCity) : '')
   // ASV-35: clicking "Use current location" used to clear the manual pick
@@ -106,17 +110,34 @@ export function LocationSettings({
           </p>
         </div>
         <div className="settings-choice settings-location-choice">
-          <LocationSearchInput
-            id="settings-location"
-            value={locationQuery}
-            onChange={setLocationQuery}
-            onSelect={(city) => {
-              setManualLocation(city)
-              setLocationQuery(cityLabel(city))
-              trackEvent('Location changed', { source: 'settings', city: city.name, country: city.country, timeZone: city.timeZone })
-            }}
-            placeholder="Search city, region, or country"
-          />
+          {entitled ? (
+            <LocationSearchInput
+              id="settings-location"
+              value={locationQuery}
+              onChange={setLocationQuery}
+              onSelect={(city) => {
+                setManualLocation(city)
+                setLocationQuery(cityLabel(city))
+                trackEvent('Location changed', { source: 'settings', city: city.name, country: city.country, timeZone: city.timeZone })
+              }}
+              placeholder="Search city, region, or country"
+            />
+          ) : (
+            <p className="settings-help">
+              Free accounts keep the location Atlas detects for you.{' '}
+              <button
+                type="button"
+                className="settings-inline-link"
+                onClick={() => {
+                  trackEvent('Blocked free plan add', { action: 'location_search', source: 'settings' })
+                  onUpgrade()
+                }}
+              >
+                Get Sky Pass
+              </button>{' '}
+              to search and set any location manually.
+            </p>
+          )}
           {manualCity && (
             <button
               type="button"

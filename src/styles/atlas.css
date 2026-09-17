@@ -872,7 +872,14 @@
   right: 0;
   bottom: var(--az-keyboard-inset);
   z-index: 41;
-  max-height: 88svh;
+  /* ASV-40: max-height was a flat 88svh, measured against the full layout
+     viewport. The keyboard doesn't shrink that viewport -- only `bottom`
+     above tracked it (see viewportInset.ts) -- so once the keyboard opened
+     the sheet kept its full height while its bottom edge rose to sit above
+     the keyboard, pushing the top of the sheet (including the header) off
+     the top of the screen. Capping height at the remaining space above the
+     keyboard keeps the header on-screen instead. */
+  max-height: min(88svh, calc(100svh - var(--az-keyboard-inset)));
   display: flex;
   flex-direction: column;
   border-radius: 1.375rem 1.375rem 0 0;
@@ -891,7 +898,7 @@
     width: min(30rem, calc(100vw - 2rem));
     transform: translateX(-50%);
     border-radius: 1.375rem;
-    max-height: 80svh;
+    max-height: min(80svh, calc(100svh - 2rem - var(--az-keyboard-inset)));
   }
 }
 
@@ -1280,6 +1287,17 @@
 }
 .settings-help--warning {
   color: oklch(var(--az-pill-l) 0.13 70);
+}
+.settings-inline-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--az-violet-strong);
+  text-decoration: underline;
+  cursor: pointer;
 }
 .settings-choice {
   display: flex;
