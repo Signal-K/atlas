@@ -96,7 +96,7 @@ test('signup happens via the auth gate before onboarding, then observations save
     await page.goto('/')
 
     await expect(page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' })).toBeVisible()
-    await page.getByRole('button', { name: 'See tonight’s sky' }).click()
+    await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
 
     // Straight into the product as a guest -- no account demanded first.
     await expect(page).toHaveURL('/app/hub')
@@ -152,18 +152,25 @@ test('an existing account signs in without being sent through onboarding again',
   const email = clerkTestEmail('signup-journey-returning')
   const password = 'Correct-horse-battery1!'
   const clerkUser = await createClerkTestUser(email, password)
-  // Establishes the clerk_user_id <-> PocketBase link ahead of time, so the
-  // sign-in below is the account's *second* login (created:false) -- the
-  // actual "existing account" case this test is about, not a first-time
-  // signup that happens to use the sign-in tab.
-  await primeClerkPocketBaseLink(PB_URL, clerkUser.id)
 
-  await setupClerkTestingToken({ page })
-
+  // Everything after the user exists belongs inside the try: priming the link
+  // reaches PocketBase over the network, and when that throws (a stale
+  // VITE_PB_URL is enough) the account created a line above never reaches the
+  // finally below. That leak is what silently filled this Clerk development
+  // instance to its 100-user cap, at which point every spec that signs up
+  // fails for a reason that looks nothing like the real cause.
   try {
+    // Establishes the clerk_user_id <-> PocketBase link ahead of time, so the
+    // sign-in below is the account's *second* login (created:false) -- the
+    // actual "existing account" case this test is about, not a first-time
+    // signup that happens to use the sign-in tab.
+    await primeClerkPocketBaseLink(PB_URL, clerkUser.id)
+
+    await setupClerkTestingToken({ page })
+
     await page.goto('/')
 
-    await page.getByRole('button', { name: 'See tonight’s sky' }).click()
+    await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
     await expect(page).toHaveURL('/app/hub')
 
     // Guests get Hub; an account-owned area still puts up the gate (ASV-47).

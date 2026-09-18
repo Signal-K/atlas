@@ -26,7 +26,7 @@ test('captures product screenshots for the Atlas state-of-product doc', async ({
   await expect(page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' })).toBeVisible()
   await capture(page, '01-landing-location.png')
 
-  await page.getByRole('button', { name: 'See tonight’s sky' }).click()
+  await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
   await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
   await capture(page, '02-tonight-feed.png')
 

@@ -230,7 +230,12 @@ test('location switching stays reachable via Settings after onboarding', async (
   await page.setViewportSize({ width: 390, height: 844 })
   // Overrides the beforeEach's onboardingComplete: false -- this test is
   // about the already-onboarded shell, not the location step itself.
-  await seedSignedInUser(page, { onboardingComplete: true })
+  // ASV-40 put the Settings location search behind Sky Pass
+  // (LocationSettings.tsx renders an upgrade prompt in its place for a free
+  // account), so the search field this asserts on only exists for an
+  // entitled one. The free-account half of that boundary is covered by the
+  // test below rather than left implicit.
+  await seedSignedInUser(page, { onboardingComplete: true, entitled: true })
   await page.addInitScript(() => {
     localStorage.setItem(
       'atlas-manual-location',
@@ -248,9 +253,21 @@ test('location switching stays reachable via Settings after onboarding', async (
   await expect(page).toHaveURL('/app/profile')
   await page.getByRole('button', { name: /^Location & sensors/ }).click()
   await expect(page.getByPlaceholder('Search city, region, or country')).toHaveValue('London, England, United Kingdom')
-  await page.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
 
   await page.getByRole('button', { name: 'Open menu' }).click()
   await page.getByRole('dialog', { name: 'Primary navigation' }).getByRole('link', { name: 'All events', exact: true }).click()
   await expect(page).toHaveURL('/app/events')
+})
+
+test('a free account is offered Sky Pass instead of the Settings location search', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await seedSignedInUser(page, { onboardingComplete: true })
+
+  await page.goto('/app/profile')
+  await page.getByRole('button', { name: /^Location & sensors/ }).click()
+
+  await expect(page.getByPlaceholder('Search city, region, or country')).toHaveCount(0)
+  await expect(page.getByText('Free accounts keep the location Atlas detects for you.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Get Sky Pass', exact: true })).toBeVisible()
 })

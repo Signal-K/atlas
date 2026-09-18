@@ -70,24 +70,44 @@ export async function fillClerkSignUp(page: Page, email: string, password: strin
   }
 }
 
+// Sign-up still goes through Clerk's prebuilt <SignUp>, but KES-190 replaced
+// the prebuilt <SignIn> with a hand-rolled panel (AuthForm.tsx's
+// ClerkSignInPanel) so a pre-migration PocketBase account can be claimed on
+// its first Clerk sign-in. This helper was never updated and kept waiting for
+// `.cl-signIn-root`, which that panel does not render -- so every spec that
+// signed in sat on an untouched form until the 45s test timeout. Drive the
+// real fields, and fall back to the prebuilt widget only when the panel
+// escalates to it (`showStandardSignIn`, e.g. an already-linked account).
 export async function fillClerkSignIn(page: Page, email: string, password: string) {
-  await page.waitForSelector('.cl-signIn-root', { state: 'attached' })
-  await page.locator('input[name=identifier]').fill(email)
+  const emailField = page.locator('#clerk-sign-in-email')
+  await emailField.waitFor({ state: 'visible', timeout: 15_000 })
+  await emailField.fill(email)
+  await page.locator('#clerk-sign-in-password').fill(password)
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
-  await page.locator('input[name=password]').fill(password)
 
-  // A password match can still be followed by a second-factor/verification
-  // step (e.g. an unrecognized-device check) -- same race as sign-up above,
-  // waited out the same way rather than guessed at with a fixed timeout.
-  const secondFactorResponse = page
-    .waitForResponse((resp) => resp.url().includes('prepare_second_factor') || resp.url().includes('prepare_verification'), { timeout: 15_000 })
-    .catch(() => null)
-  await page.getByRole('button', { name: 'Continue', exact: true }).click()
-  await secondFactorResponse
+  if (await page.locator('.cl-signIn-root').isVisible({ timeout: 5_000 }).catch(() => false)) {
+    const identifier = page.locator('input[name=identifier]')
+    if (await identifier.isVisible().catch(() => false)) {
+      await identifier.fill(email)
+      await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    }
+    const passwordField = page.locator('input[name=password]')
+    if (await passwordField.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await passwordField.fill(password)
+      // A password match can still be followed by a second-factor/verification
+      // step (e.g. an unrecognized-device check) -- same race as sign-up above,
+      // waited out the same way rather than guessed at with a fixed timeout.
+      const secondFactorResponse = page
+        .waitForResponse((resp) => resp.url().includes('prepare_second_factor') || resp.url().includes('prepare_verification'), { timeout: 15_000 })
+        .catch(() => null)
+      await page.getByRole('button', { name: 'Continue', exact: true }).click()
+      await secondFactorResponse
+    }
 
-  const otpField = page.getByRole('textbox', { name: /verification code/i })
-  if (await otpField.isVisible({ timeout: 10_000 }).catch(() => false)) {
-    await otpField.pressSequentially(CLERK_TEST_OTP)
+    const otpField = page.getByRole('textbox', { name: /verification code/i })
+    if (await otpField.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await otpField.pressSequentially(CLERK_TEST_OTP)
+    }
   }
 }
 
