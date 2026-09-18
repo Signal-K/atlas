@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { setupClerkTestingToken } from '@clerk/testing/playwright'
 import { clerkTestEmail, createClerkTestUser, deleteClerkTestUser, fillClerkSignIn, fillClerkSignUp, primeClerkPocketBaseLink } from './support/clerk'
+import { resolvePbUrl } from './support/pbUrl'
 
-const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const PB_URL = resolvePbUrl()
 
 async function mockTonightData(page: Page) {
   await page.route('https://api.open-meteo.com/**', async (route) => {

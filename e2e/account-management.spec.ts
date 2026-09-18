@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
+import { resolvePbUrl } from './support/pbUrl'
 
-const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const PB_URL = resolvePbUrl()
 const E2E_USER_ID = 'e2e-account-mgmt-user'
 const E2E_EMAIL = 'atlas-account-mgmt-e2e@example.com'
 const E2E_TOKEN = makeAuthToken()

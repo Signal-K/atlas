@@ -1,5 +1,6 @@
 import { createClerkClient } from '@clerk/backend'
 import type { Page } from '@playwright/test'
+import { pocketBaseHelp } from './pbUrl'
 
 // `+clerk_test` makes Clerk skip sending a real email and accept the fixed
 // `424242` code for whichever verification strategy the SignIn/SignUp
@@ -156,10 +157,16 @@ export async function primeClerkPocketBaseLink(pbUrl: string, clerkUserId: strin
   const client = clerkClient()
   const session = await client.sessions.createSession({ userId: clerkUserId })
   const { jwt } = await client.sessions.getToken(session.id)
+  // A refused connection rejects here as a bare "fetch failed", which tells
+  // the reader nothing about which service or port was meant to answer.
+  // Since this is the first thing in the run that touches PocketBase, it is
+  // also the best place to say so.
   const response = await fetch(`${pbUrl}/auth/clerk-exchange`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: jwt }),
+  }).catch((cause) => {
+    throw new Error(`${pocketBaseHelp(pbUrl)}\n  Underlying error: ${cause instanceof Error ? cause.message : String(cause)}`)
   })
   if (!response.ok) throw new Error(`Priming the Clerk/PocketBase link failed: ${response.status} ${await response.text()}`)
   return (await response.json()) as { token: string; record: { id: string; email: string } }

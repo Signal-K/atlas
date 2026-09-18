@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
+import { resolvePbUrl } from './support/pbUrl'
 
-const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const PB_URL = resolvePbUrl()
 const BILLING_URL = process.env.VITE_ATLAS_BILLING_URL || 'http://127.0.0.1:8093'
 const APP_URL = `http://localhost:${process.env.PLAYWRIGHT_PORT || '5173'}`
 const E2E_TOKEN = makeAuthToken()
