@@ -87,8 +87,22 @@ function App() {
     navigate(APP_HOME, { replace: true })
   }
 
+  // ASV-51: the Sky Pass CTA must land somewhere that actually offers
+  // checkout. /app/planner is already wrapped in PaywallGate, so a visitor
+  // signs up (AuthGate gates any non-guest route) or, if already signed in,
+  // goes straight to the working "Get Sky Pass" checkout button there --
+  // instead of the free, guest-open Hub that enterApp() sends every other
+  // CTA to.
+  function enterPaidApp() {
+    markEntered()
+    setAccountDefaultMode('sign-up')
+    navigate('/app/planner', { replace: true })
+  }
+
   if (showLanding) {
-    return <LandingPage authenticatedEmail={user?.email} city={currentLocation} onEnter={enterApp} />
+    return (
+      <LandingPage authenticatedEmail={user?.email} city={currentLocation} onEnter={enterApp} onEnterPaid={enterPaidApp} />
+    )
   }
 
   // Not "/", not "/landing", not a product route -- the redirect effect

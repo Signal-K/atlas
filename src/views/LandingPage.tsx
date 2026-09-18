@@ -16,6 +16,11 @@ interface LandingPageProps {
   authenticatedEmail?: string
   city: CurrentLocation
   onEnter: () => void
+  // Sky Pass CTAs must land on a paywalled screen (not the free Hub), so the
+  // already-working checkout button in PaywallGate is what the visitor sees
+  // next -- see ASV-51: the landing page never wired "Get Sky Pass" to any
+  // checkout path at all.
+  onEnterPaid: () => void
 }
 
 type CtaSource = 'nav' | 'hero' | 'membership-free' | 'membership-paid' | 'footer'
@@ -161,7 +166,7 @@ function buildWeekRows(events: SkyEvent[], city: CurrentLocation, now: Date): We
   return built.map((entry) => ({ ...entry.row, isPick: entry.priority === bestPriority && Number.isFinite(entry.priority) }))
 }
 
-export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPageProps) {
+export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: LandingPageProps) {
   const [weekRows, setWeekRows] = useState<WeekRow[] | null>(null)
   const [tonight, setTonight] = useState<TonightSnapshot | null>(null)
   const [forecastDays, setForecastDays] = useState<DailyViewingAdvisory[] | null>(null)
@@ -228,7 +233,11 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
 
   function handleEnter(source: CtaSource) {
     trackEvent('Landing CTA clicked', { method: authenticatedEmail ? 'open_app' : 'get_started', source })
-    onEnter()
+    if (source === 'membership-paid') {
+      onEnterPaid()
+    } else {
+      onEnter()
+    }
   }
 
   const primaryLabel = authenticatedEmail ? 'Open Atlas' : 'See tonight’s sky'
