@@ -31,7 +31,12 @@ async function mockTonightData(page: Page) {
   await page.route('**/api/collections/sky_events/records**', async (route) => {
     const now = new Date()
     const startsAt = new Date(now.getTime() + 2 * 3_600_000)
-    const endsAt = new Date(now.getTime() + 3 * 3_600_000)
+    // Same trap as plan-screen: a moon_phase event only clears the
+    // visibility gate if the Moon is above London's horizon during the
+    // window, so a one-hour slot makes the Full Moon row appear or vanish
+    // according to what time of day the suite runs. A full day always
+    // contains a Moon-up sample.
+    const endsAt = new Date(startsAt.getTime() + 24 * 3_600_000)
 
     await route.fulfill({
       status: 200,

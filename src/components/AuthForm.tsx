@@ -310,16 +310,26 @@ function ClerkSignInPanel({
     // Calling finalize in those states throws "Cannot finalize sign-in
     // without a created session" and used to escape the submit handler.
     if (signIn.status !== 'complete' || !signIn.createdSessionId) {
-      if (signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust') {
-        // Clerk's own widget knows how to drive these follow-up steps
-        // (device-trust email code, MFA); our custom form does not model
-        // them. Hand off there instead of just telling the user to go find
-        // it themselves -- Clerk resumes the in-progress attempt rather
-        // than restarting it, so nothing already entered is lost.
-        setShowStandardSignIn(true)
-        return
-      }
-      setFormError('Sign-in could not be completed. Please try again.')
+      // Clerk's own widget knows how to drive every follow-up step a
+      // successful password can land in -- device trust, MFA, a forced
+      // password reset -- and our custom form models none of them. Hand off
+      // there rather than telling the user to go find it themselves: Clerk
+      // resumes the in-progress attempt rather than restarting it, so
+      // nothing already entered is lost.
+      //
+      // This deliberately does not enumerate statuses. It used to name only
+      // needs_second_factor and needs_client_trust, and fell through to a
+      // dead-end error otherwise -- but signIn.password() resolves to
+      // `{ error }` alone, with no refreshed resource, so the status read
+      // off the captured hook value here is not reliably the one the API
+      // just returned. A real returning user on an unrecognised device
+      // (needs_client_trust, which Clerk does return) therefore got
+      // "Sign-in could not be completed. Please try again." and had no way
+      // forward. Reaching this branch at all means the password was
+      // accepted -- a wrong one returns an error from password() and never
+      // gets here -- so an incomplete attempt is always a follow-up step,
+      // never a failure, and handing off is always the better answer.
+      setShowStandardSignIn(true)
       return
     }
 

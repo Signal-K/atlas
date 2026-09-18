@@ -85,29 +85,64 @@ export async function fillClerkSignIn(page: Page, email: string, password: strin
   await page.locator('#clerk-sign-in-password').fill(password)
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
 
-  if (await page.locator('.cl-signIn-root').isVisible({ timeout: 5_000 }).catch(() => false)) {
-    const identifier = page.locator('input[name=identifier]')
-    if (await identifier.isVisible().catch(() => false)) {
-      await identifier.fill(email)
-      await page.getByRole('button', { name: 'Continue', exact: true }).click()
-    }
-    const passwordField = page.locator('input[name=password]')
-    if (await passwordField.isVisible({ timeout: 10_000 }).catch(() => false)) {
-      await passwordField.fill(password)
-      // A password match can still be followed by a second-factor/verification
-      // step (e.g. an unrecognized-device check) -- same race as sign-up above,
-      // waited out the same way rather than guessed at with a fixed timeout.
-      const secondFactorResponse = page
-        .waitForResponse((resp) => resp.url().includes('prepare_second_factor') || resp.url().includes('prepare_verification'), { timeout: 15_000 })
-        .catch(() => null)
-      await page.getByRole('button', { name: 'Continue', exact: true }).click()
-      await secondFactorResponse
-    }
+  // The panel hands off to Clerk's prebuilt widget for any step it cannot
+  // finish itself -- device trust on an unrecognised device is the usual one,
+  // and every e2e run is an unrecognised device. The widget restarts the
+  // attempt at its own identifier+password screen, which renders both fields
+  // at once rather than as two steps, so fill whatever is on screen and press
+  // Continue once per screen instead of assuming an order.
+  // NB: locator.isVisible() is an immediate check -- it ignores a `timeout`
+  // option rather than polling for one. Using it to wait here is what made
+  // this helper give up the instant the custom form submitted, long before
+  // the widget mounted, and fill nothing at all.
+  const widget = page.locator('.cl-signIn-root')
+  const appeared = await widget.waitFor({ state: 'visible', timeout: 20_000 }).then(() => true).catch(() => false)
+  if (!appeared) return
 
-    const otpField = page.getByRole('textbox', { name: /verification code/i })
-    if (await otpField.isVisible({ timeout: 10_000 }).catch(() => false)) {
-      await otpField.pressSequentially(CLERK_TEST_OTP)
+  const identifier = widget.locator('input[name=identifier]')
+  const passwordField = widget.locator('input[name=password]')
+
+  // `.cl-signIn-root` mounts before the fields inside it do. Checking their
+  // visibility immediately loses that race and silently fills nothing, which
+  // then surfaces much later as an unrelated-looking assertion failure.
+  await identifier.or(passwordField).first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {})
+
+  let submittedPassword = false
+  if (await identifier.isVisible().catch(() => false)) {
+    await identifier.fill(email)
+    if (await passwordField.isVisible().catch(() => false)) {
+      await passwordField.fill(password)
+      submittedPassword = true
     }
+    await widget.getByRole('button', { name: 'Continue', exact: true }).click()
+  }
+
+  // Only for instances that split identifier and password across two screens.
+  // This has to be skipped when the combined screen already submitted both:
+  // the password field stays visible through the transition, so an
+  // unconditional check here fires, re-fills it and presses Continue a second
+  // time. That second submit restarts the attempt behind the device-trust
+  // screen, and the spec then sits on a code box that never accepts a code.
+  if (!submittedPassword && (await passwordField.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true).catch(() => false))) {
+    await passwordField.fill(password)
+    await widget.getByRole('button', { name: 'Continue', exact: true }).click()
+  }
+
+  // Device trust then asks for an emailed code -- every e2e run is a new
+  // device, so this is the normal path, not an edge case. `+clerk_test`
+  // addresses always accept the fixed test OTP.
+  const otpField = widget.getByRole('textbox', { name: /code|verification/i }).first()
+  if (await otpField.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true).catch(() => false)) {
+    // One <input maxlength=6> behind a segmented display. Typing into it
+    // without focusing first, or faster than it re-renders per character,
+    // leaves a partial code that never submits and hangs the spec until the
+    // test timeout with the code box still on screen.
+    await otpField.click()
+    await otpField.pressSequentially(CLERK_TEST_OTP, { delay: 120 })
+    // A complete code auto-submits and Clerk drops the button, so this is
+    // only for instances that still want an explicit confirmation.
+    const submit = widget.getByRole('button', { name: 'Continue', exact: true })
+    if (await submit.isVisible().catch(() => false)) await submit.click()
   }
 }
 
