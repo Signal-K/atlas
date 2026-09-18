@@ -32,6 +32,13 @@ jobs:
         env:
           VITE_PB_URL: ${{ vars.VITE_PB_URL }}
           VITE_ATLAS_MEDIA_URL: ${{ vars.VITE_ATLAS_MEDIA_URL }}
+          # ASV-42: without these two the bundle silently fell back to
+          # src/lib/pocketbase.ts's dev default (http://127.0.0.1:8093) and
+          # production shipped a checkout button that POSTed to the visitor's
+          # own machine. scripts/verify-build.mjs now fails the build rather
+          # than letting that reach Cloudflare again.
+          VITE_ATLAS_BILLING_URL: ${{ vars.VITE_ATLAS_BILLING_URL }}
+          VITE_POLAR_CHECKOUT_URL: ${{ vars.VITE_POLAR_CHECKOUT_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
@@ -57,6 +64,13 @@ jobs:
         env:
           VITE_PB_URL: ${{ vars.VITE_PB_URL }}
           VITE_ATLAS_MEDIA_URL: ${{ vars.VITE_ATLAS_MEDIA_URL }}
+          # ASV-42: without these two the bundle silently fell back to
+          # src/lib/pocketbase.ts's dev default (http://127.0.0.1:8093) and
+          # production shipped a checkout button that POSTed to the visitor's
+          # own machine. scripts/verify-build.mjs now fails the build rather
+          # than letting that reach Cloudflare again.
+          VITE_ATLAS_BILLING_URL: ${{ vars.VITE_ATLAS_BILLING_URL }}
+          VITE_POLAR_CHECKOUT_URL: ${{ vars.VITE_POLAR_CHECKOUT_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
@@ -66,6 +80,9 @@ jobs:
           VITE_POSTHOG_POSTPLAN_SURVEY_ID: ${{ vars.VITE_POSTHOG_POSTPLAN_SURVEY_ID }}
           VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID: ${{ vars.VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID }}
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
+      # Fails the deploy if dist/ contains a localhost service URL or still
+      # points analytics at PostHog directly instead of the /uplink proxy.
+      - run: node scripts/verify-build.mjs
       - uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

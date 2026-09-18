@@ -2624,37 +2624,10 @@
 
 /* ---- how it works ---- */
 
-.am-how-grid {
-  display: grid;
-  grid-template-columns: 1fr 1px 1fr 1px 1fr;
-  gap: 2.125rem;
-}
 
-.am-how-divider {
-  background: var(--am-line);
-}
 
-.am-how-step-head {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  border-bottom: 1px solid var(--am-ink);
-  padding-bottom: 0.625rem;
-  font: 500 0.6875rem var(--am-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
 
-.am-how-numeral {
-  font: 400 2.125rem var(--am-serif);
-}
 
-.am-how-step p {
-  margin: 0.75rem 0 0;
-  font: 400 0.875rem/1.65 system-ui, sans-serif;
-  color: var(--am-muted-soft);
-  text-wrap: pretty;
-}
 
 /* ---- strip ---- */
 
@@ -2840,25 +2813,9 @@
 
 /* ---- final ---- */
 
-.am-final {
-  text-align: center;
-  padding: 0.5rem 0 3.5rem;
-}
 
-.am-final h2 {
-  margin: 0 0 0.5rem;
-  font: 400 clamp(1.75rem, 4vw, 2.5rem) var(--am-serif);
-}
 
-.am-final p {
-  margin: 0;
-  font: 400 0.9375rem system-ui, sans-serif;
-  color: var(--am-muted);
-}
 
-.am-final .am-btn {
-  margin-top: 1.5rem;
-}
 
 /* ---- colophon ---- */
 
@@ -2953,14 +2910,7 @@
     display: none;
   }
 
-  .am-how-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
 
-  .am-how-divider {
-    display: none;
-  }
 
   .am-strip {
     grid-template-columns: 1fr;
@@ -3262,6 +3212,33 @@
   color: var(--muted);
   line-height: 1.4;
 }
+/* ASV-44: the gate quotes the real tiers from lib/pricing.ts instead of a
+   hardcoded figure baked into the CTA label. */
+.paywall-card-tiers {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  overflow: hidden;
+}
+.paywall-card-tiers li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  background: var(--surface);
+}
+.paywall-card-tiers li + li {
+  border-top: 1px solid var(--line);
+}
+.paywall-card-tiers li span:first-child {
+  color: var(--muted);
+}
+.paywall-card-tiers li span:last-child {
+  font-variant-numeric: tabular-nums;
+}
 .paywall-card-note {
   margin: 0 0 0.5rem;
   color: var(--muted);
@@ -3299,4 +3276,45 @@
   color: inherit;
   font: 500 0.8125rem var(--az-font-sans);
   cursor: pointer;
+}
+
+/* ASV-47: guest mode -- Hub is readable without an account, so the shell has
+   to say what is locked and what an account adds, without blocking the view. */
+.nav-shell-item-locked .nav-shell-label,
+.nav-shell-item-locked .nav-shell-icon {
+  opacity: 0.55;
+}
+.nav-shell-lock {
+  font-size: 0.5rem;
+  line-height: 1;
+  color: var(--muted);
+  margin-left: 0.25rem;
+}
+.guest-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  background: var(--surface);
+  font-size: 0.8125rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.guest-strip-cta {
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.3125rem 0.75rem;
+  cursor: pointer;
+}
+.guest-strip-cta:hover {
+  border-color: currentColor;
 }

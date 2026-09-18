@@ -5,8 +5,6 @@ import { parsePbDate } from './pocketbaseDate'
 import { categoryForKind } from './eventCategories'
 import { fetchPrivateObservationPhoto, isAtlasMediaEnabled, isAtlasMediaUploadBlockedError, uploadObservationPhoto } from './atlasMedia'
 
-const MELBOURNE = { lat: -37.8136, lon: 144.9631 }
-
 function eventAtLocalHour(now: Date, hour: number): Date {
   const date = new Date(now)
   date.setHours(hour, 0, 0, 0)
@@ -14,37 +12,47 @@ function eventAtLocalHour(now: Date, hour: number): Date {
   return date
 }
 
+// Seed content for the case where the catalogue genuinely has nothing for
+// this window -- an empty/unreachable backend should still leave the app
+// with something to look at rather than a blank week.
+//
+// These deliberately carry no latitude/longitude. Events without coordinates
+// are treated as globally visible (see eventFilters.ts and tonightTargets.ts),
+// which is right for naked-eye planets and a constellation: they are not tied
+// to one city the way an ISS pass is. They previously carried Melbourne's
+// coordinates and "from Melbourne" in every title, which put the sky over
+// Melbourne in front of every user regardless of where they actually were.
 function localNightSkyFallbackEvents(now = new Date()): SkyEvent[] {
   const updatedAt = now.toISOString()
   const evening = eventAtLocalHour(now, 19)
   const morning = eventAtLocalHour(now, 5)
   const items = [
     {
-      id: 'local-melbourne-jupiter',
-      target: 'melbourne_jupiter',
-      title: 'Jupiter from Melbourne tonight',
+      id: 'local-sky-jupiter',
+      target: 'jupiter',
+      title: 'Jupiter after sunset',
       description: 'Check Jupiter low in twilight when it is above the western horizon; clear horizon lines matter.',
       startsAt: evening,
     },
     {
-      id: 'local-melbourne-venus',
-      target: 'melbourne_venus',
-      title: 'Venus from Melbourne tonight',
+      id: 'local-sky-venus',
+      target: 'venus',
+      title: 'Venus in evening twilight',
       description: 'Look for Venus in evening twilight when it is separated enough from the Sun.',
       startsAt: evening,
     },
     {
-      id: 'local-melbourne-saturn',
-      target: 'melbourne_saturn',
-      title: 'Saturn from Melbourne late tonight',
-      description: 'Saturn is a late-night telescope target; steady seeing gives the best view of its thin ring presentation.',
+      id: 'local-sky-saturn',
+      target: 'saturn',
+      title: 'Saturn before dawn',
+      description: 'Saturn is a pre-dawn telescope target; steady seeing gives the best view of its thin ring presentation.',
       startsAt: morning,
     },
     {
-      id: 'local-melbourne-scorpius',
-      target: 'melbourne_scorpius',
+      id: 'local-sky-scorpius',
+      target: 'scorpius',
       title: 'Scorpius and the Milky Way core',
-      description: 'Scorpius anchors the southern winter sky and is a strong naked-eye and wide-field target from Melbourne.',
+      description: 'Scorpius sits against the brightest stretch of the Milky Way and is a strong naked-eye and wide-field target from dark skies.',
       startsAt: evening,
     },
   ]
@@ -58,8 +66,6 @@ function localNightSkyFallbackEvents(now = new Date()): SkyEvent[] {
     content: item.description,
     startsAt: item.startsAt.toISOString(),
     endsAt: new Date(item.startsAt.getTime() + 2 * 3_600_000).toISOString(),
-    latitude: MELBOURNE.lat,
-    longitude: MELBOURNE.lon,
     updatedAt,
   }))
 }
@@ -142,7 +148,12 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
     // this actually rejects instead of sitting pending indefinitely.
     const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', signal: AbortSignal.timeout(8000) })
     const events = records.map(skyEventFromRecord)
-    const mergedEvents = [...events, ...localNightSkyFallbackEvents(now)]
+    // Seed content is a fallback, not a supplement. Merging it into every
+    // successful pull put four fixed entries into the local cache alongside
+    // the real catalogue on every sync, so they competed with genuine events
+    // for space in the week table and the Tonight list. Only fall back when
+    // the catalogue truly has nothing for this window.
+    const mergedEvents = events.length > 0 ? events : localNightSkyFallbackEvents(now)
     const freshIds = new Set(mergedEvents.map((event) => event.id))
     // Reconcile, not just merge: drop cached events inside this window that
     // the server no longer returns (e.g. removed server-side duplicates),

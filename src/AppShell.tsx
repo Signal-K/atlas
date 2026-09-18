@@ -26,6 +26,13 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/app/profile', label: 'You', icon: <MobileIcon name="person" /> },
 ]
 
+// ASV-47: Hub is the only area a guest can open, so mark the rest rather
+// than letting a tap land on an unannounced signup form.
+function navItemsFor(signedIn: boolean): NavItem[] {
+  if (signedIn) return NAV_ITEMS
+  return NAV_ITEMS.map((item) => (item.path === '/app/hub' ? item : { ...item, locked: true }))
+}
+
 interface AppShellProps {
   onLogAttempt: (draft: ObservationDraft) => void
   profileProps: Omit<ProfilePageProps, 'onOpenLocation'>
@@ -72,12 +79,13 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
   const [locationSheetOpen, setLocationSheetOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [navDrawerOpen, setNavDrawerOpen] = useState(false)
+  const navItems = navItemsFor(Boolean(user))
 
   return (
     <ToastProvider>
       <ScrollToTop />
       <NavShell
-        items={NAV_ITEMS}
+        items={navItems}
         dark={theme === 'dark'}
         topBar={
           <TopBar
@@ -91,6 +99,19 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
           />
         }
       >
+        {!user && (
+          // Guests see tonight's sky without an account (ASV-47). This says
+          // what an account adds rather than blocking the view to ask for one.
+          <div className="guest-strip">
+            <span>
+              You're browsing as a guest. Tonight's sky is free — an account keeps your journal, watchlist and
+              reminders.
+            </span>
+            <button type="button" className="guest-strip-cta" onClick={() => navigate('/app/journal')}>
+              Create a free account
+            </button>
+          </div>
+        )}
         <Routes>
           <Route path="/app/hub" element={<HubPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
           <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
@@ -107,7 +128,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
         </Routes>
       </NavShell>
 
-      <MobileNavDrawer items={NAV_ITEMS} open={navDrawerOpen} onClose={() => setNavDrawerOpen(false)} />
+      <MobileNavDrawer items={navItems} open={navDrawerOpen} onClose={() => setNavDrawerOpen(false)} />
 
       <LocationSheet
         open={locationSheetOpen}

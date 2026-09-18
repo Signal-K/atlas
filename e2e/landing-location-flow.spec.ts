@@ -81,7 +81,7 @@ test('index stays on the landing page for a returning signed-out visitor', async
   await expect(
     page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' }),
   ).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Get started' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'See tonight’s sky' }).first()).toBeVisible()
   await expect(page.getByText('Signed in as')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })

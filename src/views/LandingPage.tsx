@@ -5,7 +5,9 @@ import type { SkyEvent } from '../lib/db'
 import { metaFor, type TargetDifficulty } from '../lib/tonightTargets'
 import { bodyForTarget, getHorizontalPosition } from '../lib/skyPosition'
 import { getDarknessWindow } from '../lib/darknessWindow'
-import { moonIlluminationPctAt, moonPhaseNameAt } from '../lib/moonPhase'
+import { isMoonWaxingAt, moonIlluminationPctAt, moonPhaseNameAt } from '../lib/moonPhase'
+import { moonLitPath } from '../lib/moonDisc.mjs'
+import { SKY_PASS_SUMMARY, SKY_PASS_TIERS } from '../lib/pricing'
 import { localDateKey, fetchViewingForecast, type DailyViewingAdvisory } from '../lib/weather'
 import { estimateLightPollution, rankDarkSkySites, skyQualityLabelForScore, type RankedDarkSkySite } from '../lib/darkSky'
 import type { CurrentLocation } from '../lib/currentLocation'
@@ -16,7 +18,7 @@ interface LandingPageProps {
   onEnter: () => void
 }
 
-type CtaSource = 'nav' | 'hero' | 'membership-free' | 'membership-paid' | 'final' | 'footer'
+type CtaSource = 'nav' | 'hero' | 'membership-free' | 'membership-paid' | 'footer'
 
 interface WeekRow {
   dateKey: string
@@ -36,6 +38,7 @@ interface TonightSnapshot {
   darkFromLabel: string
   moonLabel: string
   moonIlluminationPct: number
+  moonWaxing: boolean
 }
 
 const GEAR_META: Record<TargetDifficulty, { label: string; color: string }> = {
@@ -52,14 +55,6 @@ const FAQS = [
   {
     q: "I don't own a telescope.",
     a: 'Most weeks the best entry needs nothing but eyes and a coat. Set your gear to eyes only in Settings and the table shortens rather than fills with things you cannot reach.',
-  },
-  {
-    q: 'How does it know what I like?',
-    a: 'From what you mark as seen, what you skip, and the gear you tell it you own. Nothing you log leaves your account.',
-  },
-  {
-    q: 'Is this an app or a website?',
-    a: 'A website that works offline once it has loaded, and installs to your home screen like an app.',
   },
   {
     q: 'Can it help my photography?',
@@ -188,6 +183,7 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
       darkFromLabel: darkFromIso ? formatLocalTime(darkFromIso, city.timeZone) : '—',
       moonLabel: `${moonPhaseNameAt(now)} · ${Math.round(moonIlluminationPctAt(now))}%`,
       moonIlluminationPct: moonIlluminationPctAt(now),
+      moonWaxing: isMoonWaxingAt(now),
     })
     setNearestSite(rankDarkSkySites(city.lat, city.lon, 1)[0] ?? null)
 
@@ -235,11 +231,10 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
     onEnter()
   }
 
-  const primaryLabel = authenticatedEmail ? 'Open Atlas' : 'Get started'
-  const finalLabel = authenticatedEmail ? 'Return to Atlas' : 'See this week’s sky'
+  const primaryLabel = authenticatedEmail ? 'Open Atlas' : 'See tonight’s sky'
   const heroNote = authenticatedEmail
     ? `Signed in as ${authenticatedEmail}.`
-    : 'Free to start. Sky Pass from CHF 4/month, or CHF 55 once for life.'
+    : `No account needed for tonight. ${SKY_PASS_SUMMARY}`
 
   return (
     <div className="atlas-almanac">
@@ -259,7 +254,6 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
         <nav className="am-nav" aria-label="Primary">
           <div className="am-nav-links">
             <a href="#week">This week</a>
-            <a href="#how">How it works</a>
             <a href="#membership">Membership</a>
             <a href="#ask">Questions</a>
           </div>
@@ -298,21 +292,22 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
 
           <div className="am-tonight">
             <div className="am-tonight-label">Tonight over {city.name}</div>
+            {/* The unlit disc is the base and the lit region is painted on top,
+                so new moon (an empty path) and full moon (the whole disc) need
+                no special cases. See lib/moonDisc.mjs for the geometry. */}
             <svg viewBox="0 0 200 120" className="am-moon-chart" role="img" aria-label={tonight ? `Moon: ${tonight.moonLabel}` : 'Moon phase'}>
-              <defs>
-                <clipPath id="am-moon-clip">
-                  <circle cx="100" cy="60" r="42" />
-                </clipPath>
-              </defs>
-              <circle cx="100" cy="60" r="42" fill="#e4dfd3" />
+              <circle cx="100" cy="60" r="42" fill="#1c1b19" />
               {tonight && (
-                <ellipse
-                  cx={100 + (84 * (0.5 - tonight.moonIlluminationPct / 100))}
-                  cy="60"
-                  rx="42"
-                  ry="42"
-                  fill="#1c1b19"
-                  clipPath="url(#am-moon-clip)"
+                <path
+                  d={moonLitPath({
+                    cx: 100,
+                    cy: 60,
+                    r: 42,
+                    illuminatedFraction: tonight.moonIlluminationPct / 100,
+                    waxing: tonight.moonWaxing,
+                    southernHemisphere: city.lat < 0,
+                  })}
+                  fill="#e4dfd3"
                 />
               )}
               <circle cx="100" cy="60" r="42" fill="none" stroke="#d8d2c4" strokeWidth="1" />
@@ -410,52 +405,6 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
           </div>
         </section>
 
-        <section id="how" className="am-section am-how" aria-labelledby="am-how-title">
-          <div className="am-section-head">
-            <h2 id="am-how-title">How the almanac is made</h2>
-          </div>
-          <div className="am-how-grid">
-            <div className="am-how-step">
-              <div className="am-how-step-head">
-                <span className="am-how-numeral" style={{ color: '#5b87a8' }}>
-                  I
-                </span>
-                <span>Say where you stand</span>
-              </div>
-              <p>
-                An address is enough. Atlas works out your light pollution, your horizon and the weather rolling in,
-                then throws out everything that won't clear your neighbour's roof.
-              </p>
-            </div>
-            <div className="am-how-divider" />
-            <div className="am-how-step">
-              <div className="am-how-step-head">
-                <span className="am-how-numeral" style={{ color: '#7ea888' }}>
-                  II
-                </span>
-                <span>Say what you look through</span>
-              </div>
-              <p>
-                Nothing is aspirational. Entries are written for the instrument you actually own, down to how to hold
-                it steady, and a beginner's week never opens with something they'd fail to find.
-              </p>
-            </div>
-            <div className="am-how-divider" />
-            <div className="am-how-step">
-              <div className="am-how-step-head">
-                <span className="am-how-numeral" style={{ color: '#c4685c' }}>
-                  III
-                </span>
-                <span>Go out, log it, get better</span>
-              </div>
-              <p>
-                Mark what you saw and Atlas keeps a private journal of it. Photographers get exposure notes for that
-                object at that altitude, and a nudge when a trip is worth the drive.
-              </p>
-            </div>
-          </div>
-        </section>
-
         <section className="am-strip" aria-label="This week at a glance">
           <div className="am-strip-item">
             <div className="am-strip-label">Nearest dark sky</div>
@@ -507,7 +456,7 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
                 <span>Free</span>
               </div>
               <ul>
-                <li>Tonight's plan for your location</li>
+                <li>Tonight's plan for your location, no account needed</li>
                 <li>14-day event browsing</li>
                 <li>Check-ins on what you saw</li>
                 <li>A private observing journal</li>
@@ -522,18 +471,12 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
                 <span>Sky Pass</span>
               </div>
               <ul className="am-plan-tiers">
-                <li>
-                  <span>Monthly</span>
-                  <span>CHF 4/mo</span>
-                </li>
-                <li>
-                  <span>Yearly</span>
-                  <span>CHF 40/yr</span>
-                </li>
-                <li>
-                  <span>Lifetime (founding member)</span>
-                  <span>CHF 55 once</span>
-                </li>
+                {SKY_PASS_TIERS.map((tier) => (
+                  <li key={tier.id}>
+                    <span>{tier.label}</span>
+                    <span>{tier.price}</span>
+                  </li>
+                ))}
               </ul>
               <ul>
                 <li>90-day forward planning</li>
@@ -568,13 +511,6 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
           </div>
         </section>
 
-        <section className="am-final" aria-labelledby="am-final-title">
-          <h2 id="am-final-title">Find your reason to step outside.</h2>
-          <p>Free to start. Sky Pass from CHF 4/month, or CHF 55 once for life.</p>
-          <button type="button" className="am-btn am-btn-primary" onClick={() => handleEnter('final')}>
-            {finalLabel}
-          </button>
-        </section>
       </main>
 
       <footer className="am-colophon">
@@ -589,7 +525,6 @@ export function LandingPage({ authenticatedEmail, city, onEnter }: LandingPagePr
           <div className="am-colophon-col">
             <span>The app</span>
             <a href="#week">This week</a>
-            <a href="#how">How it works</a>
             <a href="#membership">Membership</a>
             <a href="#ask">Questions</a>
           </div>

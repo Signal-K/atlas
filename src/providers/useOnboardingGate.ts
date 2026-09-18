@@ -5,7 +5,7 @@ import {
   markOnboardingRequired,
   requiresOnboardingFlow,
 } from '../components/OnboardingFlow'
-import type { AuthUser } from '../lib/auth'
+import { syncOnboardingToAccount, type AuthUser } from '../lib/auth'
 
 // Set once a visitor enters the product from the landing page. The public
 // index remains the landing page on every visit; the product lives at /app.
@@ -29,7 +29,12 @@ export function useOnboardingGate({ user, isAppRoute }: UseOnboardingGateArgs) {
   // started," they haven't given a location or finished onboarding yet, so
   // gating onboarding's own visibility on that stricter signal would hide
   // onboarding the instant it's supposed to appear.
-  const hasClickedIntoApp = Boolean(user) || localStorage.getItem(ENTERED_KEY) === '1'
+  // ASV-47: being *on* a product route is itself proof of having entered.
+  // Gating solely on the click-through flag meant a guest who deep-linked or
+  // reloaded straight into /app/hub never saw onboarding, and therefore never
+  // got the location step -- leaving them on the hardcoded Melbourne default,
+  // which is the exact failure this work exists to remove.
+  const hasClickedIntoApp = Boolean(user) || isAppRoute || localStorage.getItem(ENTERED_KEY) === '1'
 
   // A returning authenticated account should not be treated like a
   // brand-new signup just because this browser has no local
@@ -56,6 +61,17 @@ export function useOnboardingGate({ user, isAppRoute }: UseOnboardingGateArgs) {
   }
 
   function handleSignedUp() {
+    // ASV-47: guests now reach Hub without an account, and onboarding runs
+    // when they enter rather than after sign-up. Someone who set their
+    // location, gear and interests as a guest and only then created an
+    // account has already answered all of it -- re-requiring the flow would
+    // walk them through the same four steps a second time. Treat a completed
+    // guest onboarding as done and sync it onto the new account instead.
+    if (hasCompletedOnboardingFlow()) {
+      void syncOnboardingToAccount()
+      setOnboardingFlowDismissed(true)
+      return
+    }
     markOnboardingRequired()
     setOnboardingFlowDismissed(false)
   }

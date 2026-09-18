@@ -10,6 +10,11 @@ interface AuthGateProps {
   onSignedIn: () => void
   onSignedUp: () => void
   currentLocation?: CurrentLocation
+  // Where "back" goes. Defaults to the landing page, but a guest who hit
+  // this by tapping a locked tab (ASV-47) came from Hub and should land
+  // back there instead of being ejected from the product.
+  backTo?: string
+  backLabel?: string
 }
 
 interface TonightSnapshot {
@@ -32,7 +37,14 @@ function formatLocalTime(iso: string, timeZone?: string): string {
 // either -- someone who didn't want to sign in right now was simply stuck.
 // "Back to Atlas" at least returns to the landing page rather than trapping
 // them here.
-export function AuthGate({ defaultMode, onSignedIn, onSignedUp, currentLocation }: AuthGateProps) {
+export function AuthGate({
+  defaultMode,
+  onSignedIn,
+  onSignedUp,
+  currentLocation,
+  backTo = '/',
+  backLabel = 'Back to Atlas',
+}: AuthGateProps) {
   const [mode, setMode] = useState(defaultMode)
   const [tonight, setTonight] = useState<TonightSnapshot | null>(null)
   const navigate = useNavigate()
@@ -71,8 +83,8 @@ export function AuthGate({ defaultMode, onSignedIn, onSignedUp, currentLocation 
             />
           </div>
 
-          <button type="button" className="onboarding-skip auth-gate-back" onClick={() => navigate('/')}>
-            <span aria-hidden="true">←</span>Back to Atlas
+          <button type="button" className="onboarding-skip auth-gate-back" onClick={() => navigate(backTo)}>
+            <span aria-hidden="true">←</span>{backLabel}
           </button>
         </div>
 

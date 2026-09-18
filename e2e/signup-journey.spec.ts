@@ -77,12 +77,12 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-// "Get started" now requires an account before onboarding or the app shell
-// render at all (see AuthGate in App.tsx) -- signup no longer happens
-// after a guest has already saved something locally (that whole flow,
-// SignupWallModal, was removed as dead code). This proves the new order:
-// landing -> auth gate -> account created -> onboarding -> the feature that
-// used to require a signup wall (logging an observation) just works.
+// ASV-47: the landing CTA opens tonight's sky as a guest -- no account, no
+// signup form. Onboarding runs on entry (that is where a guest sets their
+// location), and the auth gate is reached by asking for something an account
+// actually owns. This proves the order: landing -> guest Hub -> onboarding ->
+// gated feature -> account created -> the gated feature works, without
+// dragging the new account back through onboarding a second time.
 //
 // KES-189: AuthGate now renders Clerk's own <SignUp>, exchanged for a
 // PocketBase session via /auth/clerk-exchange -- both real, per Clerk's
@@ -95,9 +95,26 @@ test('signup happens via the auth gate before onboarding, then observations save
   try {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Get started' }).click()
+    await expect(page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' })).toBeVisible()
+    await page.getByRole('button', { name: 'See tonight’s sky' }).click()
 
+    // Straight into the product as a guest -- no account demanded first.
+    await expect(page).toHaveURL('/app/hub')
+
+    // Onboarding runs on entry now, so a guest can set a location.
+    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: 'Skip' }).click()
+    await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
+    await page.getByRole('button', { name: 'Skip' }).click()
+    await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
+    await page.getByRole('button', { name: 'Looks good' }).click()
+    await page.getByRole('button', { name: 'Not now' }).click()
+
+    // Tonight's sky is readable without an account.
+    await expect(page.getByText("You're browsing as a guest.")).toBeVisible()
+
+    // The gate appears only when the guest asks for something an account owns.
+    await page.getByRole('link', { name: /All events/ }).click()
     await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
     await fillClerkSignUp(page, email, password)
 
@@ -110,16 +127,10 @@ test('signup happens via the auth gate before onboarding, then observations save
       )
       .toBe(email)
 
-    // Onboarding runs right after account creation, not before it.
-    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
-    await page.getByRole('button', { name: 'Skip' }).click()
-    await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Skip' }).click()
-    await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Looks good' }).click()
-    await page.getByRole('button', { name: 'Not now' }).click()
+    // Onboarding was already finished as a guest, so signing up must not
+    // replay it.
+    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
 
-    await expect(page).toHaveURL('/app/events')
     await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
 
     await page.getByRole('button', { name: 'Full Moon' }).click()
@@ -152,9 +163,13 @@ test('an existing account signs in without being sent through onboarding again',
   try {
     await page.goto('/')
 
-    await page.getByRole('button', { name: 'Get started' }).click()
-    await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
-    await page.getByRole('tab', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: 'See tonight’s sky' }).click()
+    await expect(page).toHaveURL('/app/hub')
+
+    // Guests get Hub; an account-owned area still puts up the gate (ASV-47).
+    // Navigated directly rather than via the rail, since onboarding is
+    // covering the shell at this point in the journey.
+    await page.goto('/app/events')
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 
     await fillClerkSignIn(page, email, password)

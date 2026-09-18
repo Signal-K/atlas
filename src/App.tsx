@@ -18,6 +18,20 @@ import type { ObservationDraft } from './lib/observationDraft'
 
 const APP_HOME = '/app/hub'
 
+// Routes a visitor can use without an account (ASV-47).
+//
+// Tonight's sky is the entire promise of the product, and it used to sit
+// behind a signup form: every landing CTA -- including "Set your location" --
+// navigated here and hit AuthGate, so the free tier's advertised "Tonight's
+// plan for your location" was unreachable without registering, and anyone who
+// declined got Melbourne's twilight times instead of their own.
+//
+// Hub is safe to open to guests because it is today-only and computed
+// client-side from a location the browser already has; nothing on it needs a
+// server-side identity. Everything that persists across devices (journal,
+// watchlist, saved plans), costs money, or writes to the account stays gated.
+const GUEST_ROUTES = new Set([APP_HOME])
+
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -84,13 +98,11 @@ function App() {
     return null
   }
 
-  // "Get started" (or a direct link into /app/*) no longer drops a visitor
-  // straight into onboarding/the app shell as a guest -- an account is
-  // required before anything past this renders. Existing local-first data
-  // (favourites/watchlist/observations saved before an account existed)
-  // still gets merged in on sign-up via mergeLocalDataIntoAccount, same as
-  // before; this just moves *when* that account has to exist.
-  if (!user) {
+  // Guests get Hub and nothing else. Any other product route still requires
+  // an account before it renders. Local-first data (favourites/watchlist/
+  // observations saved while browsing as a guest) is merged in on sign-up via
+  // mergeLocalDataIntoAccount, so nothing gathered here is lost by waiting.
+  if (!user && !GUEST_ROUTES.has(routerLocation.pathname)) {
     return (
       <>
         <AuthGate
@@ -98,6 +110,11 @@ function App() {
           onSignedIn={handleSignedIn}
           onSignedUp={handleSignedUp}
           currentLocation={currentLocation}
+          // A guest who taps a locked tab came from Hub, not the landing
+          // page -- send them back where they were rather than all the way
+          // out of the product.
+          backTo={APP_HOME}
+          backLabel="Back to tonight"
         />
         <DevPreviewPanel />
       </>

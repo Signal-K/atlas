@@ -285,8 +285,8 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
       {plan?.todayAdvisory && (
         <p className="az-hero-title">
           {Math.round(100 - plan.todayAdvisory.cloudCoverPct)}% clear skies expected. Dark window{' '}
-          {timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt)}–
-          {timeLabel(plan.darknessWindow.astronomicalDawnAt ?? plan.darknessWindow.civilDawnAt)}.
+          {timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)}–
+          {timeLabel(plan.darknessWindow.astronomicalDawnAt ?? plan.darknessWindow.civilDawnAt, city.timeZone)}.
         </p>
       )}
 
@@ -308,7 +308,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
           <div className="az-section-head">
             <span className="az-kicker">Highlight tonight</span>
             <span style={{ font: '500 0.6875rem var(--az-font-mono)', color: 'var(--az-flagship)' }}>
-              {timeLabel(plan.targets[0].bestTime)}
+              {timeLabel(plan.targets[0].bestTime, city.timeZone)}
             </span>
           </div>
           <button type="button" className="az-card" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', border: '1px solid var(--line)' }} onClick={openHeroTarget}>
@@ -363,7 +363,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
                   <span className="az-row-title">{event.title}</span>
                 </span>
                 <span className="az-row-trail">
-                  <span className="az-row-time">{new Date(event.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                  <span className="az-row-time">{timeLabel(event.startsAt, city.timeZone)}</span>
                   <span className="az-row-note">{reminders.some((r) => r.eventId === event.id) ? 'reminder armed' : ''}</span>
                 </span>
               </button>
@@ -456,7 +456,12 @@ function headlineFor(plan: TonightPlan): string {
   return 'Skip it tonight.'
 }
 
-function timeLabel(iso: string | null | undefined): string {
+// Times belong to the place being observed, not the device doing the looking.
+// Defaulting to the browser's zone meant picking a city in another country
+// showed its darkness window shifted by the offset between the two -- Zurich's
+// 21:16 dusk read as "03:16" on a device set to Melbourne. TonightPlan already
+// carries the location's zone; this just has to use it.
+function timeLabel(iso: string | null | undefined, timeZone?: string): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone })
 }

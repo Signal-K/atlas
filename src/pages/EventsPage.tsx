@@ -349,7 +349,16 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
                     <span className="az-row-title">{event.title}</span>
                   </span>
                   <span className="az-row-trail">
-                    <span className="az-row-time">{new Date(event.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                    <span className="az-row-time">
+                      {new Date(event.startsAt).toLocaleTimeString(undefined, {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                        // The event happens over the observing location, so
+                        // show it in that zone rather than the device's.
+                        timeZone: city.timeZone,
+                      })}
+                    </span>
                   </span>
                   <span className="az-row-chevron">
                     <MobileIcon name="chevron" size={14} />

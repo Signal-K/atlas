@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { hasValidSession, refreshEntitlement, type AuthUser, useAuth } from '../lib/auth'
 import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { trackEvent } from '../lib/analytics'
+import { SKY_PASS_SUMMARY, SKY_PASS_TIERS } from '../lib/pricing'
 
 interface PaywallGateProps {
   user: AuthUser | null
@@ -105,7 +106,7 @@ export function PaywallGate({
 
   return (
     <div className="paywall-card">
-      <span className="paywall-card-badge">One-time Sky Pass</span>
+      <span className="paywall-card-badge">Sky Pass</span>
       <h2>Plan the whole trip, not just tonight</h2>
       <p className="paywall-card-description">{description}</p>
       <div className="paywall-card-breakdown">
@@ -118,9 +119,17 @@ export function PaywallGate({
           <span>{paidBullets}</span>
         </div>
       </div>
-      <p className="paywall-card-note">One purchase works on desktop and mobile when you sign in with the same email.</p>
+      <ul className="paywall-card-tiers">
+        {SKY_PASS_TIERS.map((tier) => (
+          <li key={tier.id}>
+            <span>{tier.label}</span>
+            <span>{tier.price}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="paywall-card-note">Your Sky Pass works on desktop and mobile when you sign in with the same email.</p>
       {freeNote && <p className="paywall-card-note">{freeNote}</p>}
-      {!user && <p className="paywall-card-note">Create a free account first, then upgrade.</p>}
+      {!user && <p className="paywall-card-note">{SKY_PASS_SUMMARY} Create a free account first, then upgrade.</p>}
       {user && <p className="paywall-card-account">Signed in as <strong>{user.email}</strong> · no Sky Pass found on this account.</p>}
       <div className="paywall-card-actions">
         {!user ? (
@@ -135,7 +144,7 @@ export function PaywallGate({
               onClick={handleCheckoutClick}
               disabled={isStartingCheckout || isCheckingPurchase}
             >
-              {isStartingCheckout ? 'Starting checkout…' : 'Get Sky Pass · £24 once'}
+              {isStartingCheckout ? 'Starting checkout…' : 'Get Sky Pass'}
             </button>
             <button
               type="button"
