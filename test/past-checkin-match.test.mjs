@@ -18,15 +18,36 @@ import { rankPastEventCandidates } from '../src/lib/pastCheckInMatch.mjs'
 const PERTH = { lat: -31.9523, lon: 115.8613 }
 const LONDON = { lat: 51.5074, lon: -0.1278 }
 
+// The full-moon fixture day, chosen for two timezone reasons rather than an
+// astronomy one.
+//
+// First, `fetchPastEventsForDay` pads its window either side of *local* midnight,
+// and local midnight can only be produced in the zone the process happens to be
+// running in -- so what the generated day contains depends on that zone. A full
+// moon appears at every offset only when it falls inside
+// [dayKeyT00:00Z - 12h, dayKeyT00:00Z + 16h], the intersection of the windows
+// that every offset from -12 to +14 builds. The original fixture, 2026-07-01,
+// read fine in AWST and failed in CI: its full moon is 2026-06-29T23:57:17.744Z,
+// three minutes *before* the UTC window opens.
+//
+// Second, gate B only passes a moon_phase when the Moon clears the horizon at
+// some hourly sample in [peak - 6h, peak + 6h] as seen from the observer, so the
+// peak has to land in Perth's night as well as in that band. 2026-10-26 sits
+// inside the band and still ranks `none` here for exactly this reason.
+//
+// 2026-04-02 is the one day found that satisfies both with room to spare: its
+// peak, 02:12:36.809Z, is 2.21h into a band centred on +2h, and the full moon is
+// the day's only generated event at all 29 whole-hour offsets from -12 to +14 --
+// so candidates[0] below is unambiguous wherever this runs.
+const FULL_MOON_DAY = '2026-04-02'
+
 /** identifySky()'s result shape, built by hand to control which bodies are "seen". */
 function identified({ aboveHorizon = [], objects = [], closestPair = null } = {}) {
   return { aboveHorizon, objects, closestPair }
 }
 
 test('a Moon-pointed photo on a full-moon night is a strong match', async () => {
-  // There is exactly one event on this day, because a full moon is a new-moon
-  // fortnight away from every eclipse and conjunction.
-  const events = await fetchPastEventsForDay('2026-07-01')
+  const events = await fetchPastEventsForDay(FULL_MOON_DAY)
   const fullMoon = events.find((event) => event.title === 'Full Moon')
 
   assert.ok(fullMoon, 'expected the full moon in the generated day')
@@ -45,7 +66,7 @@ test('a Moon-pointed photo on a full-moon night is a strong match', async () => 
 })
 
 test('heading orders candidates but never rejects them', async () => {
-  const events = await fetchPastEventsForDay('2026-07-01')
+  const events = await fetchPastEventsForDay(FULL_MOON_DAY)
   const fullMoon = events.find((event) => event.title === 'Full Moon')
   const instant = new Date(new Date(fullMoon.startsAt).getTime() + 20 * 60_000)
 
@@ -148,7 +169,12 @@ test('gate B drops an event that was not observable from where the photo was tak
   // Perth could not see it, so it must not be offered as a candidate no matter
   // how well its time overlaps -- the photo cannot be of an eclipse you were
   // not under.
-  const events = await fetchPastEventsForDay('2026-08-12')
+  //
+  // Asked for as the 13th, not the 12th, for the timezone-band reason spelled
+  // out at FULL_MOON_DAY: the eclipse peaks at 16:15:46.794Z, which is past the
+  // end of the window a +14 process builds for the 12th. The event and its
+  // timestamp are unchanged -- only the day prefix is.
+  const events = await fetchPastEventsForDay('2026-08-13')
   const eclipse = events.find((event) => event.kind === 'eclipse')
 
   assert.ok(eclipse, 'expected the eclipse in the generated day')

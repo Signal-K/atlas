@@ -5,6 +5,15 @@
 // generators were *moved* out of scripts/ rather than copied, and this is the
 // check that the move did not change what they compute. If a future
 // refactor forks them, one of the two tests goes red.
+//
+// It asks for the 13th rather than the 12th. The window is padded either side
+// of *local* midnight, which can only be produced in the zone the process runs
+// in, so the eclipse is only guaranteed to be in the generated day when it also
+// falls inside the window the padding builds at every offset -- the band
+// [dayKeyT00:00Z - 12h, dayKeyT00:00Z + 16h]. The eclipse peaks at
+// 16:15:46.794Z, just past the end of what a +14 process builds for the 12th.
+// Only the day prefix differs; the timestamp asserted is the same one
+// test/event-sources.test.mjs pins, so the cross-check is unchanged.
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
@@ -15,7 +24,7 @@ import {
 import { canonicalKey } from '../src/lib/eventSources/canonical.mjs'
 
 test('a past day matches the forward catalogue on the event it shares with it', async () => {
-  const events = await fetchPastEventsForDay('2026-08-12')
+  const events = await fetchPastEventsForDay('2026-08-13')
   const eclipse = events.find((event) => event.kind === 'eclipse')
 
   assert.ok(eclipse, 'expected the 2026-08-12 total solar eclipse')
