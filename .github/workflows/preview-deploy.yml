@@ -48,7 +48,8 @@ jobs:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
       - name: Deploy preview to Cloudflare Pages
         id: deploy
-        uses: cloudflare/pages-action@v1
+        # ASV-52: pin the SHA that last resolved (see deploy.yml).
+        uses: cloudflare/pages-action@f0a1cd58cd66095dee69bfa18fa5efd1dde93bca
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
