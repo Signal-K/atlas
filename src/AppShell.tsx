@@ -106,7 +106,20 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
             <span>
               You're browsing as a guest. Tonight's sky is free — an account keeps your journal, watchlist and
               reminders.
+              {currentLocation.source === 'default' && (
+                <>
+                  {' '}
+                  Showing {currentLocation.name} until you share your location.
+                </>
+              )}
             </span>
+            {currentLocation.source === 'default' && (
+              // The location sheet's city search is a Sky Pass feature, so a guest
+              // is offered the device's own location -- no upsell in the way.
+              <button type="button" className="guest-strip-cta" onClick={() => void profileProps.requestLocation()}>
+                Use my location
+              </button>
+            )}
             <button type="button" className="guest-strip-cta" onClick={() => navigate('/app/journal')}>
               Create a free account
             </button>

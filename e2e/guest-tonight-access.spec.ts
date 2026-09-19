@@ -73,6 +73,18 @@ test('a guest is never put through onboarding', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
 })
 
+test('a guest is offered their device location instead of the Melbourne default', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: 47.3769, longitude: 8.5417 })
+  await page.goto('/app/hub')
+
+  await expect(page.getByText(/until you share your location/)).toBeVisible()
+  await page.getByRole('button', { name: 'Use my location' }).click()
+
+  await expect(page.getByText(/until you share your location/)).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.getByRole('button', { name: 'Use my location' })).toHaveCount(0)
+})
+
 test('everything beyond tonight still requires an account', async ({ page }) => {
   for (const path of ['/app/events', '/app/planner', '/app/journal', '/app/profile']) {
     await page.goto(path)

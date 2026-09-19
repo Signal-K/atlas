@@ -62,6 +62,14 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
       setLoadError(false)
       trackEvent('Tonight plan generation started', { source: 'mobile_hub' })
       try {
+        // Stale-while-revalidate: whatever is already cached locally can fill
+        // the Upcoming list straight away, instead of leaving the page on
+        // "Loading tonight…" for the whole network round trip. The pull below
+        // then refreshes it. A first-ever visit has an empty cache and simply
+        // waits as before.
+        const firstNow = new Date()
+        const cached = await getEventsInRange(firstNow, new Date(firstNow.getTime() + 14 * 86_400_000))
+        if (!cancelled && cached.length > 0) setEvents(cached)
         await pullSkyEvents()
         const now = new Date()
         const end = new Date(now.getTime() + 14 * 86_400_000)
