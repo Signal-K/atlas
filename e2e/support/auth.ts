@@ -70,6 +70,12 @@ export function seedSignedInUser(page: Page, options: SeedSignedInUserOptions = 
       window.localStorage.setItem('atlas-entered', '1')
       if (onboardingCompleteValue) {
         window.localStorage.setItem('atlas-onboarding-flow-complete', String(versionValue))
+        // An onboarded account has a home location -- without one the Hub shows
+        // its global "no location set" view instead of a tonight plan. Never
+        // overwrites a location a spec seeds for itself.
+        if (!window.localStorage.getItem('atlas-manual-location')) {
+          window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278, timeZone: 'Europe/London' }))
+        }
       }
     },
     {

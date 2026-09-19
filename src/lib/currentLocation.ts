@@ -104,7 +104,11 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
       const name = geoName?.key === key ? geoName.name : 'Your location'
       return { name, lat: geo.coordinates.lat, lon: geo.coordinates.lon, source: 'geolocation' }
     }
-    return { name: DEFAULT_CITY.name, lat: DEFAULT_CITY.lat, lon: DEFAULT_CITY.lon, source: 'default' }
+    // No location is known. The coordinates are only a numeric placeholder for
+    // code that needs some point on the globe -- they are never presented as
+    // the visitor's place, and no time zone is attached so times fall back to
+    // the viewer's own rather than Melbourne's.
+    return { name: 'Location not set', lat: DEFAULT_CITY.lat, lon: DEFAULT_CITY.lon, source: 'default' }
   }, [trip, manualCity, geo.coordinates, geoName])
 
   return { current, manualCity, setManualLocation }

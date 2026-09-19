@@ -39,10 +39,14 @@ const HUB_FILTERS: Array<{ key: HubFilterKey; label: string }> = [
 
 export interface HubPageProps {
   city: CurrentLocation
+  // Asks the browser for the device's location. Shown as a prompt while no
+  // location is set, in place of a personal plan.
+  onRequestLocation?: () => void
   onLogAttempt: (draft: ObservationDraft) => void
 }
 
-export function HubPage({ city, onLogAttempt }: HubPageProps) {
+export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps) {
+  const hasLocation = city.source !== 'default'
   const [theme] = useThemeState()
   const { user } = useAuth()
   const [plan, setPlan] = useState<TonightPlan | null>(null)
@@ -73,6 +77,17 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         await pullSkyEvents()
         const now = new Date()
         const end = new Date(now.getTime() + 14 * 86_400_000)
+        // With no location there is no "tonight over you" to compute -- and
+        // computing one for a placeholder city would present someone else's
+        // sky as theirs. Show the global event list only.
+        if (!hasLocation) {
+          const [upcoming, watched] = await Promise.all([getEventsInRange(now, end), getWatchlist()])
+          if (cancelled) return
+          setPlan(null)
+          setEvents(upcoming)
+          setWatchlist(watched)
+          return
+        }
         const [tonightPlan, upcoming, watched] = await Promise.all([
           getTonightPlan(city.lat, city.lon, now, city.timeZone),
           getEventsInRange(now, end),
@@ -130,7 +145,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     // object) -- depending on them too would just duplicate this effect's
     // existing re-run trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city.lat, city.lon, city.timeZone, user?.id, retryTick])
+  }, [city.lat, city.lon, city.timeZone, hasLocation, user?.id, retryTick])
 
   async function toggleWatch(target: string): Promise<QuickActionOutcome> {
     if (!user?.entitled) {
@@ -279,7 +294,27 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
       <p className="az-kicker">
         {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} · after dark
       </p>
-      <h1 className="az-h1">{plan ? headlineFor(plan) : loadError ? "Couldn't load tonight" : 'Loading tonight…'}</h1>
+      <h1 className="az-h1">
+        {plan
+          ? headlineFor(plan)
+          : !hasLocation
+            ? 'Flagship events, worldwide'
+            : loadError
+              ? "Couldn't load tonight"
+              : 'Loading tonight…'}
+      </h1>
+      {!hasLocation && (
+        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <p className="az-muted" style={{ margin: 0 }}>
+            Share your location for a plan built around your own sky.
+          </p>
+          {onRequestLocation && (
+            <button type="button" className="az-btn az-btn-outline" onClick={onRequestLocation}>
+              Use my location
+            </button>
+          )}
+        </div>
+      )}
       {!plan && loadError && (
         <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <p className="az-muted" style={{ margin: 0 }}>
