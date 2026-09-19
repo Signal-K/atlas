@@ -74,18 +74,20 @@ export async function subscribeToPush(): Promise<void> {
 
 const WATCH_CONFIRMATION_KEY = 'atlas-watch-confirmation-queued'
 
-function melbourneHour(date: Date): number {
-  const hour = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', hour12: false }).format(date)
-  return Number(hour)
+// Stored with the viewer's own calendar date, not any fixed city's.
+function localDateKey(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
 }
 
-function melbourneDateKey(date: Date): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
-}
-
-/** The first eligible watch after the 11am AEST product cut-over gets one confirmation. */
-export function watchConfirmationEligible(date = new Date()): boolean {
-  return melbourneHour(date) >= 11 && !localStorage.getItem(WATCH_CONFIRMATION_KEY)
+/**
+ * A user's first watch gets one confirmation notification. This used to also
+ * require the current hour in Melbourne to be >= 11 (an "11am AEST product
+ * cut-over" gate). That cut-over has passed, and the check ran on every call,
+ * so it kept blocking the confirmation for anyone whose local time fell on the
+ * wrong side of Melbourne's clock -- i.e. most users outside Australia.
+ */
+export function watchConfirmationEligible(): boolean {
+  return !localStorage.getItem(WATCH_CONFIRMATION_KEY)
 }
 
 export async function ensurePushSubscription(): Promise<boolean> {
@@ -106,7 +108,7 @@ export async function queueWatchConfirmation(event: { id: string; title: string 
     title: event.title,
     created_at: new Date().toISOString(),
   })
-  localStorage.setItem(WATCH_CONFIRMATION_KEY, `${melbourneDateKey(new Date())}:${localId}`)
+  localStorage.setItem(WATCH_CONFIRMATION_KEY, `${localDateKey(new Date())}:${localId}`)
   return true
 }
 
