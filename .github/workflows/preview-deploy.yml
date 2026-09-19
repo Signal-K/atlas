@@ -48,11 +48,10 @@ jobs:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
       - name: Deploy preview to Cloudflare Pages
         id: deploy
-        uses: cloudflare/pages-action@v1
+        # ASV-52: pages-action no longer resolves; wrangler-action SHA of v3.
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: atlas
-          directory: dist
-          branch: ${{ github.ref_name }}
-          wranglerVersion: '3'
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy dist --project-name=atlas --branch=${{ github.ref_name }}
