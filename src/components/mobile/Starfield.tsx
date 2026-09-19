@@ -1,10 +1,17 @@
 import { useMemo } from 'react'
 
 // Decorative animated star field, ported from the Atlas Mobile Claude
-// Design mockup's buildStarfield(): a seeded PRNG dot field plus three
-// blurred nebula washes. Deterministic per (density, palette, theme) so it
-// doesn't jitter across re-renders. Mounted behind Hub, the Event Detail
-// overlay, the Search overlay, and onboarding.
+// Design mockup's buildStarfield(): a seeded PRNG dot field. Deterministic
+// per (density, palette, theme) so it doesn't jitter across re-renders.
+// Mounted behind Hub, the Event Detail overlay, the Search overlay, and
+// onboarding.
+//
+// The mockup also painted three blurred nebula "wash" circles (violet /
+// teal / ember) over the dot field. Those are gone: at blur(60px) and
+// 240-300px across they bled colour right across the whole viewport, so
+// what should have read as "stars over a night sky" read as "stars over a
+// colour gradient". The background behind this field is near-black
+// (--bg, #0a0a11) and flat now, which is the intent.
 export type StarfieldPalette = 'multicolour' | 'cool' | 'ember' | 'mono'
 export type StarfieldMotion = 'drift' | 'static'
 
@@ -14,12 +21,6 @@ const PALETTES: Record<StarfieldPalette, (dark: boolean) => string[]> = {
   ember: () => ['oklch(.76 .13 60)', 'oklch(.72 .13 25)', 'oklch(.74 .10 95)'],
   mono: (dark) => [dark ? 'oklch(.9 .01 280)' : 'oklch(.45 .02 280)'],
 }
-
-const WASHES = [
-  { left: '-14%', top: '6%', size: 260, hue: 288 },
-  { left: '58%', top: '38%', size: 300, hue: 200 },
-  { left: '4%', top: '74%', size: 240, hue: 25 },
-]
 
 function makeRng(seed: number) {
   let s = seed
@@ -60,19 +61,6 @@ export function Starfield({
 
   return (
     <div className={`az-starfield${motion === 'drift' ? ' is-drift' : ''}`} aria-hidden="true">
-      {WASHES.map((w) => (
-        <i
-          key={w.hue}
-          className="az-starfield-wash"
-          style={{
-            left: w.left,
-            top: w.top,
-            width: w.size,
-            height: w.size,
-            background: `oklch(.7 .16 ${w.hue} / ${dark ? 0.16 : 0.09})`,
-          }}
-        />
-      ))}
       {dots.map((d) => (
         <i
           key={d.key}

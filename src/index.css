@@ -18,6 +18,53 @@ body {
   font-family: var(--az-font-sans, system-ui, -apple-system, sans-serif);
 }
 button, input, select, textarea { font: inherit; }
+
+/* ---------------------------------------------------------------- zoom
+ *
+ * iOS Safari (and an installed iOS PWA -- same engine) auto-zooms the whole
+ * viewport when a focused form control's *computed* font-size is below
+ * 16px. Android Chrome does the same thing by a different route: its text
+ * autosizing inflates text it thinks is too small, which shifts the layout
+ * out from under the field just as the keyboard opens.
+ *
+ * This app had both, because the two halves of the problem reinforced each
+ * other:
+ *
+ *   1. `font: inherit` above means any control without a class takes its
+ *      container's size. Inputs sitting inside a 0.75rem or 0.8125rem
+ *      block -- settings rows, sheet bodies, feedback fields -- computed
+ *      to 12-13px with nothing in the design system saying so.
+ *   2. Every control that *did* get a rule got 0.875rem (14px), or
+ *      0.90625rem (14.5px) for the search field. Both are under the
+ *      threshold, so the fix had to be "raise all of them", not "raise the
+ *      default".
+ *
+ * ASV-35 hit this on the location picker and patched that one selector with
+ * `font-size: 1rem !important`; the other ~20 controls were left on 14px,
+ * so tapping the onboarding name field still zoomed the app. Rather than
+ * re-derive 16px at each control rule -- and have the next new input
+ * silently regress -- this is the single place that guarantees it. The
+ * `!important` is load-bearing: it has to outrank the component rules and
+ * the `font: inherit` shorthand, both of which set font-size.
+ *
+ * Checkboxes, radios and hidden/file inputs are excluded: they render no
+ * text, so they have no size to zoom on and forcing 1rem on them only
+ * distorts their intrinsic box.
+ */
+input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']),
+select,
+textarea {
+  font-size: 1rem !important;
+}
+
+/* Android Chrome text autosizing. This layout is mobile-optimised already,
+   so tell Chrome not to second-guess it -- without this, Chrome can inflate
+   text inside wide blocks and reflow the page on focus. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 button, a, select, summary { touch-action: manipulation; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
   outline: 2px solid currentColor;

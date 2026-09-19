@@ -1070,7 +1070,11 @@
   background: var(--bg);
   color: inherit;
   outline: none;
-  font: 400 0.875rem var(--az-font-sans);
+  /* 1rem, not 0.875rem -- see the zoom block in src/index.css. This was the
+     last control rule in the stylesheet still declaring a sub-16px size; the
+     global floor was overriding it, but leaving the declaration here meant the
+     file contradicted its own invariant. */
+  font: 400 1rem var(--az-font-sans);
   padding: 0.625rem 0.75rem;
 }
 .feedback-field textarea {
@@ -1184,7 +1188,11 @@
   background: var(--surface);
   color: inherit;
   outline: none;
-  font: 400 0.875rem var(--az-font-sans);
+  /* 1rem, not the 0.875rem (14px) this used to be: any focused control below
+     16px makes iOS Safari zoom the whole viewport in. See the zoom block in
+     src/index.css -- that rule is the backstop, this is the design system
+     actually declaring the size. */
+  font: 400 1rem var(--az-font-sans);
 }
 
 .az-input {
@@ -1216,7 +1224,8 @@
   background: none;
   color: inherit;
   outline: none;
-  font: 400 0.90625rem var(--az-font-sans);
+  /* 1rem, not 0.90625rem (14.5px) -- see the zoom block in src/index.css. */
+  font: 400 1rem var(--az-font-sans);
 }
 
 /* ---------------------------------------------------------------------
@@ -1248,7 +1257,8 @@
   border: 1px solid var(--line);
   background: var(--surface);
   color: inherit;
-  font: 400 0.875rem var(--az-font-sans);
+  /* 1rem, not 0.875rem -- see the zoom block in src/index.css. */
+  font: 400 1rem var(--az-font-sans);
   outline: none;
 }
 
@@ -1321,20 +1331,18 @@
   gap: 0.5rem;
 }
 
-/* ASV-35: this had no styling at all -- it inherited the sheet's generic
-   14px input font (`.az-sheet-body input`), which is below the 16px
-   threshold that stops iOS Safari auto-zooming the whole page in on
-   focus. On a ~390px sheet that auto-zoom is what read as "cramped,
-   over-zoomed, hard to pan" -- there's no map here to over-zoom, just an
-   unstyled combobox WebKit was zooming in on. Also had no popover
-   positioning, so results pushed the sheet content down instead of
-   floating over it. */
+/* ASV-35: this had no styling at all, so results pushed the sheet content
+   down instead of floating over it. Its `font-size: 1rem !important` -- the
+   original fix for the iOS auto-zoom on this field -- is gone: the floor now
+   lives in the zoom block in src/index.css (and at 16px in the `.az-input` /
+   `.az-sheet-body input` rules above), so restating it here would just be a
+   third place to keep in sync. Only the padding override is still needed, to
+   clear the `.location-search-clear` button. */
 .location-search {
   position: relative;
 }
 .location-search input {
   padding-right: 2.5rem !important;
-  font-size: 1rem !important;
 }
 /* type="search" gets a native WebKit/Chromium clear icon on top of our own
    .location-search-clear button -- two overlapping "x" controls at the same
@@ -1667,11 +1675,6 @@
 .az-starfield-dot {
   position: absolute;
   border-radius: 50%;
-}
-.az-starfield-wash {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
 }
 
 /* ---------------------------------------------------- centered modals */
