@@ -1,3 +1,4 @@
+import { ClientResponseError } from 'pocketbase'
 import { pb } from './pocketbase'
 import { trackEvent } from './analytics'
 import { db, type ObservationLogEntry, type SkyEvent } from './db'
@@ -151,7 +152,21 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
     // whatever awaits it, e.g. Today's initial load) for minutes -- the
     // catch below already falls back to cached/local data, but only once
     // this actually rejects instead of sitting pending indefinitely.
-    const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', signal: AbortSignal.timeout(8000) })
+    // Fly's PocketBase machine cold-starts in ~10-15s (see lib/pocketbase.ts),
+    // so a single 8s attempt reported a failure ("ClientResponseError 0") for
+    // every first visitor to a cold machine. One retry with a longer bound
+    // covers the wake-up; only a failure after that is worth reporting.
+    // requestKey: null stops the SDK auto-cancelling this against another
+    // concurrent request to the same collection.
+    const fetchEvents = (timeoutMs: number) =>
+      pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', requestKey: null, signal: AbortSignal.timeout(timeoutMs) })
+    let records
+    try {
+      records = await fetchEvents(8000)
+    } catch (firstErr) {
+      if (!(firstErr instanceof ClientResponseError) || firstErr.status !== 0) throw firstErr
+      records = await fetchEvents(20000)
+    }
     const events = records.map(skyEventFromRecord)
     // Seed content is a fallback, not a supplement. Merging it into every
     // successful pull put four fixed entries into the local cache alongside

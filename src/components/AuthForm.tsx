@@ -211,7 +211,7 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
       onSignedUp?.(result.total)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong finishing sign-in.')
-      trackEvent(mode === 'sign-in' ? 'Sign in failed' : 'Sign up failed', { source })
+      trackEvent(mode === 'sign-in' ? 'Sign in failed' : 'Sign up failed', { source, error: err instanceof Error ? err.message : String(err) })
       // Allow retrying (e.g. the exchange endpoint was briefly unreachable)
       // without needing to sign out of Clerk and back in.
       exchangeStartedRef.current = false

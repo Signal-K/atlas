@@ -158,7 +158,12 @@ export async function deleteAccount(): Promise<void> {
 // Re-fetches the signed-in user's record (e.g. `entitled`, flipped
 // server-side by the Polar webhook after a purchase) since the cached
 // authStore snapshot only otherwise updates on the next sign-in.
-export function refreshEntitlement(): Promise<AuthUser | null> {
+const RECONCILE_COOLDOWN_MS = 5 * 60_000
+let reconcileRetryAfter = 0
+
+// `force` skips the failure cooldown -- used right after a purchase, where a
+// prompt reconciliation matters more than avoiding a repeat failure.
+export function refreshEntitlement({ force = false }: { force?: boolean } = {}): Promise<AuthUser | null> {
   if (!pb.authStore.isValid) return Promise.resolve(null)
   // App boot, Settings, focus and the post-checkout return can all request a
   // reconciliation at the same time. Safari in particular is prone to
@@ -170,14 +175,22 @@ export function refreshEntitlement(): Promise<AuthUser | null> {
   notifyEntitlementListeners()
   const refresh = (async (): Promise<AuthUser | null> => {
     let reconciledAsEntitled = false
-    try {
-      // Webhooks are the fast path, but reconciliation makes paid access
-      // self-healing if Polar's asynchronous delivery was missed or delayed.
-      const result = await atlasBillingFetch<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
-      reconciledAsEntitled = result.entitled === true
-    } catch (err) {
-      // Best-effort. authRefresh below still picks up a webhook-applied change.
-      trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err) })
+    // Reconciliation is best-effort and re-armed on every focus/visibility
+    // change, so a persistently failing billing service (offline device, a
+    // 401 from an expired token) was retried -- and reported -- on every tab
+    // switch: 17 failures from one user in four days. After a failure, skip
+    // it for a few minutes; authRefresh below still runs every time.
+    if (force || Date.now() >= reconcileRetryAfter) {
+      try {
+        // Webhooks are the fast path, but reconciliation makes paid access
+        // self-healing if Polar's asynchronous delivery was missed or delayed.
+        const result = await atlasBillingFetch<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
+        reconciledAsEntitled = result.entitled === true
+      } catch (err) {
+        reconcileRetryAfter = Date.now() + RECONCILE_COOLDOWN_MS
+        // Best-effort. authRefresh below still picks up a webhook-applied change.
+        trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err) })
+      }
     }
     try {
       await pb.collection('users').authRefresh()
@@ -215,7 +228,7 @@ export async function refreshEntitlementAfterCheckout(): Promise<void> {
   const delays = [0, 1_000, 2_000, 4_000, 8_000, 16_000]
   for (const delay of delays) {
     if (delay) await new Promise((resolve) => window.setTimeout(resolve, delay))
-    const user = await refreshEntitlement()
+    const user = await refreshEntitlement({ force: true })
     if (!user || user.entitled) return
   }
 }
