@@ -155,7 +155,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   async function toggleWatch(event: SkyEvent): Promise<QuickActionOutcome> {
     if (!hasPremium) {
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_events' })
-      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and check-ins stay free.' }
+      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and tonight’s check-ins stay free.' }
     }
     const nowWatching = !isWatching(watchlist, 'target', event.target)
     if (nowWatching) {

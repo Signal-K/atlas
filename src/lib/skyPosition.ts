@@ -19,7 +19,7 @@ export function azimuthToCompass(azimuthDeg: number): string {
 
 // Maps a SkyEvent's target string to an astronomy-engine Body, where
 // identifiable. planet_event targets are already lowercase body names
-// (see scripts/sources/planets.mjs); moon_phase targets are always 'moon'.
+// (see src/lib/eventSources/planets.mjs); moon_phase targets are always 'moon'.
 // Everything else (iss_pass, conjunction, meteor_shower, eclipse, deep_sky)
 // isn't a single point body astronomy-engine can look up, so returns null.
 export function bodyForTarget(kind: string, target: string): Astronomy.Body | null {

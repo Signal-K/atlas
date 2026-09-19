@@ -9,7 +9,14 @@ function scopeId(): string {
 }
 
 // Monday of the ISO week containing `date`, as YYYY-MM-DD.
-function weekStart(date: Date): string {
+//
+// Exported for the backdated-check-in writer, which must decide whether a
+// past date lands in the *current* week before recording activity at all.
+// Recording a 2019 check-in through `recordWeeklyActivity` would compute a
+// multi-year gap, reset `currentWeeks` to 1, and corrupt a live streak --
+// so the caller has to ask this question first, with the same week
+// arithmetic the recorder itself uses rather than a second copy of it.
+export function weekStart(date: Date): string {
   const d = new Date(date)
   const day = (d.getDay() + 6) % 7 // 0 = Monday
   d.setDate(d.getDate() - day)

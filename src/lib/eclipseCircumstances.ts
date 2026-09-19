@@ -1,5 +1,5 @@
 // Real per-observer eclipse circumstances (AT: eclipse detail depth), not
-// just the global "somewhere on Earth" blurb from scripts/sources/eclipses.mjs.
+// just the global "somewhere on Earth" blurb from src/lib/eventSources/eclipses.mjs.
 // astronomy-engine's SearchLocalSolarEclipse computes what a specific lat/lon
 // actually sees: partial vs. total/annular for them, % of the Sun obscured,
 // and local start/peak/end times -- the same library the ingest pipeline

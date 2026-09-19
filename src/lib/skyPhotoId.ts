@@ -30,6 +30,14 @@ export interface SkyPhotoIdResult {
   // its heading when headingDeg is known, otherwise by altitude (higher =
   // more likely to be the bright thing someone pointed a phone at).
   objects: IdentifiedObject[]
+  // Everything above the horizon, ignoring the heading/FOV filter entirely.
+  //
+  // Callers that ask "was body X in the sky at that moment?" must use this
+  // rather than `objects`. `objects` is heading-filtered when a heading is
+  // supplied, so judging "this photo is of the Moon" against it would let a
+  // wrong or rotated GPSImgDirection silently rule out the right answer --
+  // the same reasoning that already keeps closestPair unfiltered below.
+  aboveHorizon: IdentifiedObject[]
   // The tightest pairing among visible bodies, if any two are close enough
   // to plausibly be "the thing next to the other thing" in the photo (e.g.
   // "crescent Moon with a bright point beside it").
@@ -108,7 +116,7 @@ export function identifySky({ date, lat, lon, headingDeg }: SkyPhotoIdInput): Sk
     }
   }
 
-  return { objects, closestPair, summary: buildSummary(objects, closestPair) }
+  return { objects, aboveHorizon: visible, closestPair, summary: buildSummary(objects, closestPair) }
 }
 
 export { azimuthToCompass }

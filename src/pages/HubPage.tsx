@@ -127,7 +127,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
   async function toggleWatch(target: string): Promise<QuickActionOutcome> {
     if (!user?.entitled) {
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_hub' })
-      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and check-ins stay free.' }
+      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and tonight’s check-ins stay free.' }
     }
     const nowWatching = !isWatching(watchlist, 'target', target)
     if (nowWatching) {

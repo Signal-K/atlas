@@ -3,7 +3,12 @@ import { trackEvent } from './analytics'
 import { db, type ObservationLogEntry, type SkyEvent } from './db'
 import { parsePbDate } from './pocketbaseDate'
 import { categoryForKind } from './eventCategories'
+import { isGeneratedPastEventId } from './pastEvents.mjs'
 import { fetchPrivateObservationPhoto, isAtlasMediaEnabled, isAtlasMediaUploadBlockedError, uploadObservationPhoto } from './atlasMedia'
+// Circular by design: checkInReview.ts imports pushObservation from here.
+// Both references live inside function bodies, never at module-init scope, so
+// the cycle resolves under ESM. See the note at the top of checkInReview.ts.
+import { pullReviewSubmissions } from './checkInReview'
 
 function eventAtLocalHour(now: Date, hour: number): Date {
   const date = new Date(now)
@@ -200,6 +205,33 @@ function attemptRating(value: unknown): ObservationLogEntry['attemptRating'] {
   return value === 'poor' || value === 'ok' || value === 'good' || value === 'great' ? value : undefined
 }
 
+// The backdated-check-in provenance fields (see checkInReview.ts). Each one is
+// a select or text column on the remote side, so the pull path is the only
+// place a value from the wire becomes a union type -- narrow here rather than
+// trusting the response, for the same reason `attemptRating` above exists.
+// `photo_day_ambiguous` is a real bool and needs no narrow, just `=== true`.
+function checkInKindValue(value: unknown): ObservationLogEntry['checkInKind'] {
+  return value === 'tonight' || value === 'past' ? value : undefined
+}
+
+function matchedByValue(value: unknown): ObservationLogEntry['matchedBy'] {
+  return value === 'photo-exif' || value === 'photo-exif-heading' || value === 'manual' ? value : undefined
+}
+
+function matchConfidenceValue(value: unknown): ObservationLogEntry['matchConfidence'] {
+  return value === 'strong' || value === 'possible' || value === 'weak' || value === 'none' ? value : undefined
+}
+
+function anchorSourceValue(value: unknown): ObservationLogEntry['anchorSource'] {
+  return value === 'trip' ||
+    value === 'trip-plan' ||
+    value === 'journal-location' ||
+    value === 'current-location' ||
+    value === 'manual'
+    ? value
+    : undefined
+}
+
 async function pullObservationPhoto(record: Parameters<typeof pb.files.getURL>[0]): Promise<Blob | undefined> {
   const r2Key = optionalText((record as { photo_r2_key?: unknown }).photo_r2_key)
   if (r2Key && isAtlasMediaEnabled()) return fetchPrivateObservationPhoto(r2Key)
@@ -289,6 +321,19 @@ async function pullObservationsNow(): Promise<void> {
         ...(optionalText(record.photo_r2_key) ? { photoR2Key: record.photo_r2_key } : {}),
         ...(Number.isFinite(Number(record.photo_r2_size)) && Number(record.photo_r2_size) > 0 ? { photoR2Size: Number(record.photo_r2_size) } : {}),
         ...(record.public === true ? { isPublic: true } : {}),
+        // Backdated check-in provenance. Absent on every pre-feature row and
+        // on a plain tonight check-in, which is exactly what `undefined`
+        // means to every reader of these fields.
+        //
+        // `reviewStatus` / `reviewSubmissionId` are NOT here: the queue
+        // collection owns review state, and `pullReviewSubmissions` (called at
+        // the end of this function) is what mirrors it onto the entry.
+        ...(checkInKindValue(record.check_in_kind) ? { checkInKind: checkInKindValue(record.check_in_kind) } : {}),
+        ...(matchedByValue(record.matched_by) ? { matchedBy: matchedByValue(record.matched_by) } : {}),
+        ...(matchConfidenceValue(record.match_confidence) ? { matchConfidence: matchConfidenceValue(record.match_confidence) } : {}),
+        ...(anchorSourceValue(record.anchor_source) ? { anchorSource: anchorSourceValue(record.anchor_source) } : {}),
+        ...(optionalText(record.anchor_label) ? { anchorLabel: record.anchor_label } : {}),
+        ...(record.photo_day_ambiguous === true ? { photoDayAmbiguous: true } : {}),
         ...(downloadedPhoto ? { photo: downloadedPhoto } : cachedPhoto ? { photo: cachedPhoto } : {}),
       }
 
@@ -311,6 +356,16 @@ async function pullObservationsNow(): Promise<void> {
     console.error('pullObservationsNow failed', err)
     trackEvent('sync_failed', { stage: 'pull_observations', error: String(err) })
   }
+
+  // Outside the try above, deliberately: review state is independent of
+  // whether the observation pull succeeded, and a failure here should not be
+  // reported as an observation failure. `pullReviewSubmissions` handles its
+  // own errors and never rejects.
+  //
+  // This is the only call site -- the Journal already awaits
+  // `pullObservations()`, so review state refreshes on the same visit with no
+  // new hook in any page.
+  await pullReviewSubmissions()
 }
 
 // For a past prominent event, find upcoming events a user would recognize
@@ -345,50 +400,24 @@ export async function getEventsInRange(start: Date, end: Date): Promise<SkyEvent
   return all.filter((event) => event.startsAt < end.toISOString() && event.endsAt >= start.toISOString())
 }
 
-// Sky Pass backdated check-ins need an event chooser for dates outside the
-// normal upcoming mirror. This stays read-only and also adds the result to
-// the local cache, so the chosen event remains legible offline afterwards.
-export async function getEventsForDate(date: string): Promise<SkyEvent[]> {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
-
-  const start = new Date(`${date}T00:00:00.000Z`)
-  const end = new Date(start.getTime() + 86_400_000)
-  const cached = await getEventsInRange(start, end)
-  if (!navigator.onLine) return cached
-
-  const toPbDate = (value: Date) => value.toISOString().replace('T', ' ')
-  const filter = `starts_at < "${toPbDate(end)}" && ends_at >= "${toPbDate(start)}"`
-  try {
-    const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', signal: AbortSignal.timeout(8000) })
-    const events = records.map(skyEventFromRecord)
-    if (events.length > 0) await db.skyEvents.bulkPut(events)
-    return events
-  } catch (err) {
-    trackEvent('sync_failed', { stage: 'get_events_for_date', error: String(err) })
-    return cached
-  }
-}
-
 // Same "flagship" definition EventsView uses for the featured cards above
 // the fold -- eclipses and meteor showers are rare enough to be worth
 // surfacing, unlike the high-frequency filler kinds (local night-sky
 // guides, asteroid passes) that otherwise dominate purely by recency.
-// Exported so ArchiveView's recap section (KES-178) uses the same
-// definition of "prominent" rather than redefining it.
-export const FLAGSHIP_KINDS = new Set(['eclipse', 'meteor_shower'])
-
-export async function getPastEvents(limit = 20): Promise<SkyEvent[]> {
-  const now = new Date().toISOString()
-  const all = await db.skyEvents.orderBy('startsAt').reverse().toArray()
-  const past = all.filter((event) => event.endsAt < now)
-  // Guarantee flagship events a slot instead of letting them get crowded out
-  // of a plain "most recent N" slice by same-day/more-recent filler -- then
-  // backfill the rest and re-sort, since ArchiveView's groupByDay depends on
-  // the array staying date-descending for its adjacency-based grouping.
-  const flagship = past.filter((event) => FLAGSHIP_KINDS.has(event.kind)).slice(0, limit)
-  const other = past.filter((event) => !FLAGSHIP_KINDS.has(event.kind)).slice(0, limit - flagship.length)
-  return [...flagship, ...other].sort((a, b) => b.startsAt.localeCompare(a.startsAt))
-}
+//
+// Defined in pastCheckInMatch.mjs, which is where it now earns its keep: a
+// flagship kind earns a `strong` match on time overlap alone, because a photo
+// taken inside a three-hour eclipse window does not need its frame parsed to
+// know what it is. Re-exported here so the existing consumers do not move.
+//
+// (`getPastEvents` and `getEventsForDate` used to live here and read
+// `db.skyEvents`. Both were removed rather than fixed: that table is a forward
+// mirror, `pullSkyEventsNow` actively deletes cached rows it does not get back,
+// and it could therefore never answer a question about history. Backdated
+// check-ins compute their day instead -- see pastEvents.mjs. Leaving exports
+// named `getPastEvents` around is how a future contributor gets wired to a
+// table that cannot answer.)
+export { FLAGSHIP_KINDS } from './pastCheckInMatch.mjs'
 
 // Write path: best-effort immediate push when signed in and online. The
 // entry is already saved locally by the caller before this runs, so a
@@ -410,7 +439,14 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
     const record = await pb.collection('atlas_observations').create({
       user: pb.authStore.record?.id,
       observed_at: entry.observedAt,
-      event: entry.eventId,
+      // Omitted, not nulled, for a backdated check-in: its matched event is a
+      // generated `past-…` id that exists nowhere on the server, and PocketBase
+      // validates the relation by looking the id up -- so sending it fails the
+      // entire record with "Failed to find all relation records with the
+      // provided ids" and the night never leaves the device. The title still
+      // travels as `target_name`, and a submission that needs review carries
+      // the event itself as `event_snapshot`.
+      event: isGeneratedPastEventId(entry.eventId) ? undefined : entry.eventId,
       note: entry.note,
       target_name: entry.targetName,
       device_used: entry.deviceUsed,
@@ -418,6 +454,16 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
       location_label: entry.locationLabel,
       condition_summary: entry.conditionSummary,
       attempt_rating: entry.attemptRating,
+      // Backdated check-in provenance. Sent as null when absent, which is what
+      // a plain tonight check-in and every pre-feature row have -- so the pull
+      // path's narrowers fall through to `undefined` rather than inventing a
+      // kind for an entry that never had one.
+      check_in_kind: entry.checkInKind,
+      matched_by: entry.matchedBy,
+      match_confidence: entry.matchConfidence,
+      anchor_source: entry.anchorSource,
+      anchor_label: entry.anchorLabel,
+      photo_day_ambiguous: entry.photoDayAmbiguous,
       ...(!useR2 && entry.photo ? { photo: entry.photo } : {}),
     })
     await db.observations.update(entry.id, { remoteId: record.id })

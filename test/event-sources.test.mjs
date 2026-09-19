@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { fetchEvents as fetchEclipseEvents } from '../scripts/sources/eclipses.mjs'
-import { fetchEvents as fetchMeteorShowerEvents } from '../scripts/sources/meteor-showers.mjs'
-import { fetchEvents as fetchConjunctionEvents } from '../scripts/sources/conjunctions.mjs'
+import { fetchEvents as fetchEclipseEvents } from '../src/lib/eventSources/eclipses.mjs'
+import { fetchEvents as fetchMeteorShowerEvents } from '../src/lib/eventSources/meteor-showers.mjs'
+import { fetchEvents as fetchConjunctionEvents } from '../src/lib/eventSources/conjunctions.mjs'
 import { isInCuratedWindow } from '../scripts/seed-curated-window.mjs'
 
 const TODAY = new Date('2026-08-12T00:00:00.000Z')

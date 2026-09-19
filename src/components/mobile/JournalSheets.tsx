@@ -52,6 +52,11 @@ export function EntryDetailSheet({ entry, onClose, onShared }: EntryDetailSheetP
                 {RATING_LABEL[entry.attemptRating].toUpperCase()}
               </span>
             )}
+            {entry.checkInKind === 'past' && (
+              <span className="az-pill" style={{ '--pill-hue': 288 } as React.CSSProperties}>
+                BACKDATED
+              </span>
+            )}
             <span className="az-kicker">
               {new Date(entry.observedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
             </span>
@@ -61,7 +66,20 @@ export function EntryDetailSheet({ entry, onClose, onShared }: EntryDetailSheetP
             {entry.locationLabel && (
               <>
                 <dt className="az-muted">Location</dt>
-                <dd style={{ margin: 0 }}>{entry.locationLabel}</dd>
+                <dd style={{ margin: 0 }}>
+                  {entry.locationLabel}
+                  {/* Why this place. A backdated entry can have no GPS at all, so
+                      without this line the location is an unexplained assertion
+                      both to the user and to whoever reviews it. */}
+                  {provenanceFor(entry) && (
+                    <>
+                      <br />
+                      <span className="az-muted" style={{ fontSize: '0.71875rem' }}>
+                        {provenanceFor(entry)}
+                      </span>
+                    </>
+                  )}
+                </dd>
               </>
             )}
             {entry.conditionSummary && (
@@ -86,6 +104,28 @@ export function EntryDetailSheet({ entry, onClose, onShared }: EntryDetailSheetP
 
           {entry.note && <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5 }}>{entry.note}</p>}
 
+          {/* Review state, read straight off the local row. `'unsent'` is not a
+              slower `'pending'` -- the queue row genuinely does not exist yet,
+              and saying "sent" for it would be a lie the user cannot see
+              through until it visibly did nothing. `'rejected'` keeps the
+              entry: deleting someone's own memory because a reviewer
+              disagreed is hostile and unrecoverable. */}
+          {entry.reviewStatus === 'pending' && (
+            <p style={{ margin: 0, fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--az-amber-strong)' }}>
+              Sent for review — we’ll add it to your city stamps once it’s approved.
+            </p>
+          )}
+          {entry.reviewStatus === 'unsent' && (
+            <p className="az-muted" style={{ margin: 0, fontSize: '0.8125rem', lineHeight: 1.5 }}>
+              Waiting to send — we’ll pass this to review next time you’re online.
+            </p>
+          )}
+          {entry.reviewStatus === 'rejected' && (
+            <p className="az-muted" style={{ margin: 0, fontSize: '0.8125rem', lineHeight: 1.5 }}>
+              We couldn’t verify this one, so it stays private.
+            </p>
+          )}
+
           {entry.aiCaption && (
             <p style={{ margin: 0, fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--az-violet-strong)' }}>
               <span className="az-kicker">AI caption</span>
@@ -107,6 +147,26 @@ export function EntryDetailSheet({ entry, onClose, onShared }: EntryDetailSheetP
 
 function ratingHue(rating: NonNullable<ObservationLogEntry['attemptRating']>): number {
   return { poor: 25, ok: 250, good: 145, great: 288 }[rating]
+}
+
+// Where this entry's location came from, in the user's own terms. Derived
+// rather than stored: `anchorSource` records an anchor, `matchedBy` records
+// that a photo supplied the coordinates, and a tonight entry that has neither
+// was typed in. Returns null for an entry with no location at all, so the
+// caller renders nothing rather than an empty explanation.
+function provenanceFor(entry: ObservationLogEntry): string | null {
+  if (!entry.locationLabel) return null
+  if (entry.anchorSource) {
+    return {
+      trip: 'From your trip',
+      'trip-plan': 'From your trip plan',
+      'journal-location': 'From where you checked in that week',
+      'current-location': 'From where you were at the time',
+      manual: 'You told us',
+    }[entry.anchorSource]
+  }
+  if (entry.matchedBy === 'photo-exif' || entry.matchedBy === 'photo-exif-heading') return 'From your photo’s GPS'
+  return entry.checkInKind === 'past' ? 'You told us' : null
 }
 
 export interface ActiveChallenge {

@@ -108,8 +108,8 @@ export function PhotoSkyIdSheet({ open, onClose, currentLocation, onSignInClick 
         feature="photo_sky_id"
         description="Upload a sky photo and Atlas reads its time, GPS and heading to tell you exactly what you were looking at."
         onSignInClick={onSignInClick}
-        freeBullets="Tonight, 14-day event browsing, check-ins, and your private journal."
-        paidBullets="Photo sky ID, 90-day plans, saved targets, reminders, dark sites, and the rest of Sky Pass."
+        freeBullets="Tonight, 14-day event browsing, tonight’s check-ins, and your private journal."
+        paidBullets="Backdated check-ins, photo sky ID, 90-day plans, saved targets, reminders, dark sites, and the rest of Sky Pass."
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <p className="az-muted" style={{ margin: 0, fontSize: '0.8125rem' }}>

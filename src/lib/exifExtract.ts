@@ -4,7 +4,22 @@
 // question raised in the ticket entirely (there's simply nothing to retain
 // server-side unless the user separately chooses to save the result to
 // their Journal).
+//
+// The date arithmetic is NOT here. It lives in exifDateTime.mjs, which is pure
+// and importable by the `node --test` suite -- a `.mjs` file can be imported by
+// a test where a `.ts` file cannot. Deciding which civil day a photo belongs to
+// is the highest-risk calculation in the backdated-check-in feature, so it is
+// the part that has to be pinned by tests. This module's job is now only to get
+// the raw EXIF tags out of the file and hand them over.
 import { parse } from 'exifr'
+import {
+  deriveOffset,
+  naiveUtcMs,
+  parseExifDateTime,
+  parseGpsUtcPair,
+  parseOffsetMinutes,
+  type OffsetSource,
+} from './exifDateTime.mjs'
 
 export interface PhotoExif {
   dateTimeOriginal: Date | null
@@ -18,34 +33,31 @@ export interface PhotoExif {
   lon: number | null
   // GPSImgDirection: compass heading the camera was pointed, 0-360.
   headingDeg: number | null
+  // Added for backdated check-ins. `gpsUtc` is the one EXIF value that cannot
+  // be wrong about the timezone (GPSDateStamp + GPSTimeStamp are stored UTC),
+  // so it stays available as the fallback when the offset has to be derived
+  // rather than read. `offsetMinutes`/`offsetSource` record what was decided
+  // and on what evidence, which the sheet shows and the entry stores.
+  gpsUtc: Date | null
+  offsetMinutes: number | null
+  offsetSource: OffsetSource
 }
 
-const EMPTY: PhotoExif = { dateTimeOriginal: null, timeZoneKnown: false, lat: null, lon: null, headingDeg: null }
-
-// "2026:09:14 18:29:57" -- EXIF's own date separator is ':', including in
-// the date portion, so this can't be handed to `new Date(...)` directly.
-function parseExifDateTime(raw: unknown): { y: number; mo: number; d: number; h: number; mi: number; s: number } | null {
-  if (typeof raw !== 'string') return null
-  const match = raw.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/)
-  if (!match) return null
-  const [, y, mo, d, h, mi, s] = match.map(Number)
-  return { y, mo, d, h, mi, s }
-}
-
-// "+08:00" / "-05:30" -> minutes east of UTC.
-function parseOffsetMinutes(raw: unknown): number | null {
-  if (typeof raw !== 'string') return null
-  const match = raw.match(/^([+-])(\d{2}):(\d{2})$/)
-  if (!match) return null
-  const [, sign, h, m] = match
-  const minutes = Number(h) * 60 + Number(m)
-  return sign === '-' ? -minutes : minutes
+const EMPTY: PhotoExif = {
+  dateTimeOriginal: null,
+  timeZoneKnown: false,
+  lat: null,
+  lon: null,
+  headingDeg: null,
+  gpsUtc: null,
+  offsetMinutes: null,
+  offsetSource: 'unknown',
 }
 
 export async function extractPhotoExif(file: File): Promise<PhotoExif> {
   try {
     // reviveValues: false keeps DateTimeOriginal/OffsetTimeOriginal as raw
-    // strings (parsed manually below, timezone-aware) rather than exifr's
+    // strings (parsed in exifDateTime.mjs, timezone-aware) rather than exifr's
     // own Date conversion, which reads the naive "YYYY:MM:DD HH:MM:SS" text
     // using the *browser's* local timezone -- wrong whenever someone
     // uploads a photo from a different timezone than where it was taken.
@@ -55,23 +67,39 @@ export async function extractPhotoExif(file: File): Promise<PhotoExif> {
     if (!tags) return EMPTY
 
     const parsed = parseExifDateTime(tags.DateTimeOriginal)
-    const offsetMinutes = parseOffsetMinutes(tags.OffsetTimeOriginal)
-    let dateTimeOriginal: Date | null = null
-    if (parsed) {
-      // Treat the naive components as UTC, then subtract the known offset
-      // to get the true UTC instant. With no offset, this is the raw
-      // wall-clock reading misinterpreted as UTC -- a placeholder the
-      // caller must show as editable/unconfirmed, not a real UTC instant.
-      const utcMs = Date.UTC(parsed.y, parsed.mo - 1, parsed.d, parsed.h, parsed.mi, parsed.s)
-      dateTimeOriginal = new Date(utcMs - (offsetMinutes ?? 0) * 60_000)
-    }
+    const naive = naiveUtcMs(parsed)
+
+    const lat = typeof tags.latitude === 'number' ? tags.latitude : null
+    const lon = typeof tags.longitude === 'number' ? tags.longitude : null
+
+    const gpsUtcMs = parseGpsUtcPair(tags.GPSDateStamp, tags.GPSTimeStamp)
+    const { offsetMinutes, offsetSource } = deriveOffset({
+      explicitOffsetMinutes: parseOffsetMinutes(tags.OffsetTimeOriginal),
+      naiveUtcMs: naive,
+      gpsUtcMs,
+      // Only fed in when there is a longitude to feed it: deriveOffset treats
+      // `longitudeDeg` as present-or-absent evidence, and passing NaN or a
+      // placeholder zero would silently claim the photo was taken at Greenwich.
+      longitudeDeg: lon,
+    })
+
+    // The true UTC instant. Reading the naive components as UTC and then
+    // subtracting the offset is the only safe direction: with no known offset
+    // this is the raw wall-clock reading misinterpreted as UTC, which the
+    // caller must show as editable rather than treat as real.
+    const dateTimeOriginal = naive != null ? new Date(naive - (offsetMinutes ?? 0) * 60_000) : null
 
     return {
       dateTimeOriginal,
-      timeZoneKnown: offsetMinutes != null,
-      lat: typeof tags.latitude === 'number' ? tags.latitude : null,
-      lon: typeof tags.longitude === 'number' ? tags.longitude : null,
+      // Unchanged meaning: was an offset *read*, not derived. A derived offset
+      // is good enough to match with but not good enough to stop asking.
+      timeZoneKnown: offsetSource === 'exif-offset',
+      lat,
+      lon,
       headingDeg: typeof tags.GPSImgDirection === 'number' ? tags.GPSImgDirection : null,
+      gpsUtc: gpsUtcMs != null ? new Date(gpsUtcMs) : null,
+      offsetMinutes,
+      offsetSource,
     }
   } catch {
     // Stripped/corrupt/unsupported EXIF -- treated the same as "no EXIF"

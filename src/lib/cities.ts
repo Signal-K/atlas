@@ -5,6 +5,11 @@
 // src/lib/currentLocation.ts), only as a curated set of fallback/browse
 // options, so it doesn't need to cover every place on Earth, just enough
 // that most people can find something reasonably close.
+//
+// haversineKm now lives in eventGeo.mjs (see the note where it is
+// re-exported below). Imported here because findNearestCity uses it.
+import { haversineKm } from './eventGeo.mjs'
+
 export interface City {
   name: string
   lat: number
@@ -100,15 +105,10 @@ export const CITIES: City[] = [
   { name: 'Wellington', lat: -41.2865, lon: 174.7762 },
 ]
 
-export function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
-  const R = 6371
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180
-  const dLon = ((b.lon - a.lon) * Math.PI) / 180
-  const lat1 = (a.lat * Math.PI) / 180
-  const lat2 = (b.lat * Math.PI) / 180
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(h))
-}
+// Moved to eventGeo.mjs so the past-check-in matcher can import it under
+// plain `node --test`, which cannot resolve this file's extensionless
+// imports. Re-exported so every existing caller is unchanged.
+export { haversineKm }
 
 export function findNearestCity(lat: number, lon: number): City {
   return CITIES.reduce((closest, city) => (haversineKm(city, { lat, lon }) < haversineKm(closest, { lat, lon }) ? city : closest))

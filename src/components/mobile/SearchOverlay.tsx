@@ -89,7 +89,7 @@ export function SearchOverlay({
   async function toggleWatch(event: SkyEvent): Promise<QuickActionOutcome> {
     if (!hasPremium) {
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_search' })
-      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and check-ins stay free.' }
+      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and tonight’s check-ins stay free.' }
     }
     const watchlist = await getWatchlist()
     const nowWatching = !isWatching(watchlist, 'target', event.target)

@@ -63,6 +63,41 @@ export interface ObservationLogEntry {
   // the object key is intentionally not put in any public page URL.
   photoR2Key?: string
   photoR2Size?: number
+
+  // --- Backdated check-ins (see src/lib/checkInRules.ts) ---
+  //
+  // All optional and none indexed, which is why adding them needs no Dexie
+  // version bump: Dexie stores whatever is on the object and only the
+  // documented indexes matter. An entry predating this feature simply has
+  // them undefined, and every reader treats undefined as "not a backdated
+  // check-in" -- which is the truth for those rows.
+  //
+  // `checkInKind` is stored rather than inferred from `observedAt < now`,
+  // because that comparison is true of *every* entry in a diary and would
+  // label the whole journal as backdated.
+  checkInKind?: 'tonight' | 'past'
+  matchConfidence?: 'strong' | 'possible' | 'weak' | 'none'
+  matchedBy?: 'photo-exif' | 'photo-exif-heading' | 'manual'
+  // How the place was established when there was no photo GPS to read it
+  // from. The reviewer and the diary both need to show why this place, and
+  // re-deriving it later would read today's trips, not the ones that applied.
+  anchorSource?: 'trip' | 'trip-plan' | 'journal-location' | 'current-location' | 'manual'
+  anchorLabel?: string
+  // The only honest record that the civil date was a judgement call -- see
+  // resolvePhotoDay in exifDateTime.mjs.
+  photoDayAmbiguous?: boolean
+  // Offline-first: the Journal has to render review state with no network
+  // round-trip, so it is mirrored locally. The queue collection owns the
+  // truth; this is a copy. `unsent` is required rather than cosmetic -- see
+  // submitForReview in checkInReview.ts.
+  //
+  // `withdrawn` is the user retracting their own claim (the entry stays in the
+  // diary, it just stops counting toward a city stamp). It is a distinct state
+  // from `rejected`, which is the reviewer's word, and from `unsent`, which the
+  // retry sweep would helpfully resubmit.
+  reviewStatus?: 'not_required' | 'unsent' | 'pending' | 'approved' | 'rejected' | 'withdrawn'
+  // Reconciles a pulled queue row back to this Dexie entry.
+  reviewSubmissionId?: string
 }
 
 export interface StreakState {

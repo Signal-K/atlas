@@ -35,10 +35,45 @@ export function cityStampShareUrl(slug: string): string {
   return `${window.location.origin}/stamps/${slug}`
 }
 
+/**
+ * Whether an entry may count toward a city stamp.
+ *
+ * A backdated check-in that went to the review queue is a self-asserted claim
+ * until a human looks at it, so it must not inflate `checkin_count` or pull
+ * `first_checked_in_at` back on the strength of the claim alone -- and there is
+ * no decrement path if the review later rejects it. The queue row flips to
+ * `approved`, `reconcileApprovedStamps` calls `pushCityStampFromObservation`
+ * with the now-approved entry, and that is the one point a claim becomes a
+ * stamp.
+ *
+ * Exported because the remote rule (in `pushCityStampFromObservation`'s
+ * callers) and this local derivation must agree: the Journal's PLACES stat
+ * reads this one, and a disagreement would show a stamp count that no reload
+ * could explain.
+ *
+ * `undefined` counts. Every entry predating backdated check-ins has no
+ * `reviewStatus`, and those are ordinary check-ins that always counted.
+ *
+ * Written as an allowlist rather than a list of exclusions: a status added
+ * later has to be deliberately let through, instead of silently counting
+ * toward a stamp the moment it is introduced. The direction of that default
+ * matters -- inflating a count is the failure this function exists to prevent.
+ */
+const STAMP_COUNTING_STATUS: ReadonlySet<ObservationLogEntry['reviewStatus']> = new Set([
+  undefined,
+  'not_required',
+  'approved',
+])
+
+export function countsTowardCityStamp(entry: ObservationLogEntry): boolean {
+  return STAMP_COUNTING_STATUS.has(entry.reviewStatus)
+}
+
 export function cityStampsFromObservations(entries: ObservationLogEntry[]): CityStamp[] {
   const stamps = new Map<string, CityStamp>()
 
   for (const entry of entries) {
+    if (!countsTowardCityStamp(entry)) continue
     const cityName = entry.locationLabel?.trim()
     if (!cityName) continue
 

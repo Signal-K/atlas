@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MobileIcon } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
 import { CaptureSheet, RATING_HUE, RATING_LABEL } from '../components/mobile/CaptureSheet'
+import { PastCheckInSheet } from '../components/mobile/PastCheckInSheet'
 import { EntryDetailSheet } from '../components/mobile/JournalSheets'
 import { JournalCommunity } from '../components/mobile/JournalCommunity'
 import { PhotoSkyIdSheet } from '../components/mobile/PhotoSkyIdSheet'
@@ -77,8 +78,10 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
   const [entries, setEntries] = useState<ObservationLogEntry[]>([])
   const [eventKindById, setEventKindById] = useState<Map<string, string>>(new Map())
   const [captureOpen, setCaptureOpen] = useState(false)
+  const [pastOpen, setPastOpen] = useState(false)
   const [photoIdOpen, setPhotoIdOpen] = useState(false)
   const [openEntry, setOpenEntry] = useState<ObservationLogEntry | null>(null)
+  const [yearFilter, setYearFilter] = useState<string | null>(null)
 
   async function refresh() {
     const all = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
@@ -129,6 +132,25 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
   const firstSeen = new Set(entries.map((entry) => entry.targetName).filter(Boolean)).size
   const places = cityStampsFromObservations(entries).length
 
+  // The diary's own archive index. Built from `db.observations` and nothing
+  // else -- `db.skyEvents` only ever holds the forward catalogue, so an
+  // archive view built on it could never answer for a past year.
+  const years = [...new Set(entries.map((entry) => entry.observedAt.slice(0, 4)))].sort().reverse()
+  // A filter naming a year that is no longer present (the entry was the only
+  // one, and it just changed) falls back to everything rather than rendering an
+  // empty diary with no visible reason why.
+  const activeYear = yearFilter && years.includes(yearFilter) ? yearFilter : null
+  const visible = activeYear ? entries.filter((entry) => entry.observedAt.startsWith(activeYear)) : entries
+  // Keyed by year and rendered one group per year, so a single header per year
+  // regardless of which direction the entries happen to be sorted in.
+  const byYear = new Map<string, ObservationLogEntry[]>()
+  for (const entry of visible) {
+    const year = entry.observedAt.slice(0, 4)
+    const bucket = byYear.get(year)
+    if (bucket) bucket.push(entry)
+    else byYear.set(year, [entry])
+  }
+
   return (
     <div className="az-page">
       <h1 className="az-h1">Journal</h1>
@@ -158,6 +180,9 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
           <button type="button" className="az-btn az-btn-dashed az-btn-block" style={{ marginTop: '0.875rem' }} onClick={() => setCaptureOpen(true)}>
             + Log tonight's session
           </button>
+          <button type="button" className="az-btn az-btn-outline az-btn-block" style={{ marginTop: '0.5rem' }} onClick={() => setPastOpen(true)}>
+            Check in to a past night
+          </button>
           <button type="button" className="az-btn az-btn-outline az-btn-block" style={{ marginTop: '0.5rem' }} onClick={() => setPhotoIdOpen(true)}>
             What's in this photo?
           </button>
@@ -165,19 +190,52 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
           <div className="az-section-head">
             <span className="az-kicker">Your entries</span>
           </div>
+
+          {/* Only worth a filter row once the diary genuinely spans years. */}
+          {years.length > 1 && (
+            <div className="az-chip-row" style={{ marginBottom: '0.625rem' }}>
+              <button
+                type="button"
+                className={`az-chip${activeYear === null ? ' is-active' : ''}`}
+                onClick={() => setYearFilter(null)}
+              >
+                All
+              </button>
+              {years.map((year) => (
+                <button
+                  key={year}
+                  type="button"
+                  className={`az-chip${activeYear === year ? ' is-active' : ''}`}
+                  onClick={() => setYearFilter(year)}
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+          )}
+
           {entries.length === 0 ? (
             <p className="az-muted">Nothing logged yet — your sky-watching notes will show up here.</p>
           ) : (
-            <div className="az-row-group">
-              {entries.map((entry) => (
-                <JournalEntryRow
-                  key={entry.id}
-                  entry={entry}
-                  kindLabel={entry.eventId ? categoryForKind(eventKindById.get(entry.eventId) ?? '')?.label : undefined}
-                  onOpen={() => setOpenEntry(entry)}
-                />
-              ))}
-            </div>
+            [...byYear.entries()].map(([year, yearEntries]) => (
+              <div key={year} style={{ marginBottom: '0.875rem' }}>
+                <div className="az-section-head">
+                  <span className="az-kicker">
+                    {year} · {yearEntries.length}
+                  </span>
+                </div>
+                <div className="az-row-group">
+                  {yearEntries.map((entry) => (
+                    <JournalEntryRow
+                      key={entry.id}
+                      entry={entry}
+                      kindLabel={entry.eventId ? categoryForKind(eventKindById.get(entry.eventId) ?? '')?.label : undefined}
+                      onOpen={() => setOpenEntry(entry)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </>
       )}
@@ -190,6 +248,16 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
         draft={draft}
         onDraftConsumed={onDraftConsumed}
         currentLocation={currentLocation}
+        onSaved={refresh}
+      />
+
+      <PastCheckInSheet
+        open={pastOpen}
+        onClose={() => setPastOpen(false)}
+        currentLocation={currentLocation}
+        // Straight to Profile, never an inline checkout: a purchase mid-flow
+        // would discard the day and place they have already entered.
+        onUpgradeClick={() => navigate('/app/profile')}
         onSaved={refresh}
       />
 

@@ -17,6 +17,7 @@
     "ingest": "node scripts/ingest.mjs",
     "notify": "node scripts/notify.mjs",
     "moderate": "node scripts/moderate-photo-challenges.mjs",
+    "review:checkins": "node scripts/review-checkin-queue.mjs",
     "vapid": "node scripts/generate-vapid-keys.mjs",
     "posthog:surveys": "node scripts/posthog-surveys-setup.mjs",
     "capture:video": "node scripts/capture-mobile-video.mjs",

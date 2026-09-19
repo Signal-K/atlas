@@ -30,8 +30,8 @@ export function PaywallGate({
   onSignInClick,
   children,
   freeNote,
-  freeBullets = 'Tonight, 14-day event browsing, check-ins, and your private journal.',
-  paidBullets = '90-day plans, saved targets, reminders, dark sites, gear fit, community, and archive.',
+  freeBullets = 'Tonight, 14-day event browsing, tonight’s check-ins, and your private journal.',
+  paidBullets = 'Backdated check-ins, 90-day plans, saved targets, reminders, dark sites, gear fit, community, and archive.',
 }: PaywallGateProps) {
   const { entitlementRefreshing: authEntitlementRefreshing } = useAuth()
   const isEntitlementRefreshing = entitlementRefreshing || (user != null && authEntitlementRefreshing)
