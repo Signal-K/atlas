@@ -83,17 +83,12 @@ jobs:
       # Fails the deploy if dist/ contains a localhost service URL or still
       # points analytics at PostHog directly instead of the /uplink proxy.
       - run: node scripts/verify-build.mjs
-      # ASV-52: `cloudflare/pages-action@v1` stopped resolving on 19 Sep 2026
-      # (`Unable to resolve action cloudflare/pages-action, not found`) and
-      # blocked the 99d0b88 production deploy. Pin the SHA that last
-      # succeeded on master (163a196, 18 Sep 09:07Z).
-      - uses: cloudflare/pages-action@f0a1cd58cd66095dee69bfa18fa5efd1dde93bca
+      # ASV-52: `cloudflare/pages-action` is unpublished from GitHub Actions
+      # (`Unable to resolve action cloudflare/pages-action, not found` even
+      # when pinned to SHA f0a1cd58). Use wrangler-action instead.
+      - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: atlas
-          directory: dist
-          # cloudflare/pages-action@v1 defaults to installing wrangler v2
-          # via npx if this isn't set -- v2 is EOL and crashes under the
-          # Node 24 runners GitHub Actions now uses by default.
-          wranglerVersion: '3'
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy dist --project-name=atlas --branch=master
