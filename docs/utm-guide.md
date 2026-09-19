@@ -47,6 +47,14 @@ After posting a tagged link and getting at least one click:
 3. Note the confirmed link + result in the Linear ticket (ASV-22) as
    verification.
 
+## Verification (18 Sep 2026)
+
+No Atlas events in the last 30 days carried `utm_source` / `utm_medium` /
+`utm_campaign` (all 1273 events / 68 people on Atlas hosts were untagged).
+Until a real share uses the scheme above, morning reviews will still read
+as Direct. Check [Web analytics](https://us.posthog.com/project/199773/web)
+after the first tagged click.
+
 ## Result
 
 With this in place, morning/weekly analytics reviews can break down
