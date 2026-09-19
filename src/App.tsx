@@ -101,7 +101,7 @@ function App() {
 
   if (showLanding) {
     return (
-      <LandingPage authenticatedEmail={user?.email} city={currentLocation} onEnter={enterApp} onEnterPaid={enterPaidApp} />
+      <LandingPage authenticatedEmail={user?.email} onEnter={enterApp} onEnterPaid={enterPaidApp} />
     )
   }
 

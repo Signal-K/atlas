@@ -3,18 +3,13 @@ import { trackEvent } from '../lib/analytics'
 import { pullSkyEvents, getEventsInRange } from '../lib/sync'
 import type { SkyEvent } from '../lib/db'
 import { metaFor, type TargetDifficulty } from '../lib/tonightTargets'
-import { bodyForTarget, getHorizontalPosition } from '../lib/skyPosition'
-import { getDarknessWindow } from '../lib/darknessWindow'
 import { isMoonWaxingAt, moonIlluminationPctAt, moonPhaseNameAt } from '../lib/moonPhase'
 import { moonLitPath } from '../lib/moonDisc.mjs'
 import { SKY_PASS_SUMMARY, SKY_PASS_TIERS } from '../lib/pricing'
-import { localDateKey, fetchViewingForecast, type DailyViewingAdvisory } from '../lib/weather'
-import { estimateLightPollution, rankDarkSkySites, skyQualityLabelForScore, type RankedDarkSkySite } from '../lib/darkSky'
-import type { CurrentLocation } from '../lib/currentLocation'
+import { localDateKey } from '../lib/weather'
 
 interface LandingPageProps {
   authenticatedEmail?: string
-  city: CurrentLocation
   onEnter: () => void
   // Sky Pass CTAs must land on a paywalled screen (not the free Hub), so the
   // already-working checkout button in PaywallGate is what the visitor sees
@@ -33,14 +28,11 @@ interface WeekRow {
   description: string
   difficulty: TargetDifficulty
   timeLabel: string
-  windowStartPct: number
-  windowWidthPct: number
   isPick: boolean
   isFallback: boolean
 }
 
 interface TonightSnapshot {
-  darkFromLabel: string
   moonLabel: string
   moonIlluminationPct: number
   moonWaxing: boolean
@@ -71,33 +63,17 @@ const FAQS = [
   },
 ]
 
-function formatCoord(lat: number, lon: number): string {
-  const latDir = lat >= 0 ? 'N' : 'S'
-  const lonDir = lon >= 0 ? 'E' : 'W'
-  return `${Math.abs(lat).toFixed(2)}°${latDir} ${Math.abs(lon).toFixed(2)}°${lonDir}`
+// Times are shown in the visitor's own zone: the landing page is global and
+// deliberately knows nothing about where the visitor is.
+function formatLocalTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }
 
-function formatLocalTime(iso: string, timeZone?: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone })
-}
-
-// Position within the 18:00 - 06:00 "usable night" window, as a 0-1
-// fraction, for drawing the ephemeris table's visibility bar.
-function nightWindowFraction(iso: string, timeZone?: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hourCycle: 'h23', timeZone }).formatToParts(
-    new Date(iso),
-  )
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0')
-  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0')
-  const decimalHour = hour + minute / 60
-  const hoursSince18 = decimalHour >= 18 ? decimalHour - 18 : decimalHour + 6
-  return Math.min(1, Math.max(0, hoursSince18 / 12))
-}
-
-function buildWeekRows(events: SkyEvent[], city: CurrentLocation, now: Date): WeekRow[] {
+// One flagship event per day, chosen globally (lowest priority number wins).
+function buildWeekRows(events: SkyEvent[], now: Date): WeekRow[] {
   const byDay = new Map<string, SkyEvent[]>()
   for (const event of events) {
-    const key = localDateKey(event.startsAt, city.timeZone)
+    const key = localDateKey(event.startsAt)
     const list = byDay.get(key)
     if (list) list.push(event)
     else byDay.set(key, [event])
@@ -105,9 +81,9 @@ function buildWeekRows(events: SkyEvent[], city: CurrentLocation, now: Date): We
 
   const built = Array.from({ length: 7 }, (_, i) => {
     const dayDate = new Date(now.getTime() + i * 86_400_000)
-    const dateKey = localDateKey(dayDate.toISOString(), city.timeZone)
-    const weekdayLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short', timeZone: city.timeZone }).toUpperCase()
-    const dayLabel = dayDate.toLocaleDateString(undefined, { day: 'numeric', timeZone: city.timeZone })
+    const dateKey = localDateKey(dayDate.toISOString())
+    const weekdayLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
+    const dayLabel = dayDate.toLocaleDateString(undefined, { day: 'numeric' })
 
     const dayEvents = (byDay.get(dateKey) ?? []).slice().sort((a, b) => {
       const diff = metaFor(a.kind).priority - metaFor(b.kind).priority
@@ -118,12 +94,6 @@ function buildWeekRows(events: SkyEvent[], city: CurrentLocation, now: Date): We
     if (best) {
       const meta = metaFor(best.kind)
       const durationHours = (new Date(best.endsAt).getTime() - new Date(best.startsAt).getTime()) / 3_600_000
-      const allNight = durationHours >= 8
-      const body = bodyForTarget(best.kind, best.target)
-      const compass = body ? getHorizontalPosition(body, new Date(best.startsAt), city.lat, city.lon).compassLabel : null
-      const timeLabel = allNight ? 'All night' : [formatLocalTime(best.startsAt, city.timeZone), compass].filter(Boolean).join(' · ')
-      const startFraction = allNight ? 0.04 : nightWindowFraction(best.startsAt, city.timeZone)
-      const endFraction = allNight ? 0.96 : Math.max(startFraction + 0.04, nightWindowFraction(best.endsAt, city.timeZone))
       return {
         row: {
           dateKey,
@@ -132,9 +102,7 @@ function buildWeekRows(events: SkyEvent[], city: CurrentLocation, now: Date): We
           title: best.title,
           description: best.description || meta.reason,
           difficulty: meta.difficulty,
-          timeLabel,
-          windowStartPct: startFraction * 100,
-          windowWidthPct: Math.max(4, (endFraction - startFraction) * 100),
+          timeLabel: durationHours >= 8 ? 'All night' : formatLocalTime(best.startsAt),
           isFallback: false,
         } satisfies Omit<WeekRow, 'isPick'>,
         priority: meta.priority,
@@ -143,19 +111,15 @@ function buildWeekRows(events: SkyEvent[], city: CurrentLocation, now: Date): We
 
     const evening = new Date(dayDate)
     evening.setHours(21, 0, 0, 0)
-    const illuminationPct = Math.round(moonIlluminationPctAt(evening))
-    const phase = moonPhaseNameAt(evening)
     return {
       row: {
         dateKey,
         weekdayLabel,
         dayLabel,
-        title: `${phase} over ${city.name}`,
-        description: `No standout scheduled event here tonight — the Moon is ${illuminationPct}% illuminated. Check the sky map for planets and satellite passes.`,
+        title: moonPhaseNameAt(evening),
+        description: `No flagship event scheduled — the Moon is ${Math.round(moonIlluminationPctAt(evening))}% illuminated.`,
         difficulty: 'easy' as TargetDifficulty,
         timeLabel: 'After dark',
-        windowStartPct: 20,
-        windowWidthPct: 60,
         isFallback: true,
       } satisfies Omit<WeekRow, 'isPick'>,
       priority: Number.POSITIVE_INFINITY,
@@ -166,11 +130,9 @@ function buildWeekRows(events: SkyEvent[], city: CurrentLocation, now: Date): We
   return built.map((entry) => ({ ...entry.row, isPick: entry.priority === bestPriority && Number.isFinite(entry.priority) }))
 }
 
-export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: LandingPageProps) {
+export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: LandingPageProps) {
   const [weekRows, setWeekRows] = useState<WeekRow[] | null>(null)
   const [tonight, setTonight] = useState<TonightSnapshot | null>(null)
-  const [forecastDays, setForecastDays] = useState<DailyViewingAdvisory[] | null>(null)
-  const [nearestSite, setNearestSite] = useState<RankedDarkSkySite | null>(null)
 
   useEffect(() => {
     trackEvent('Viewed landing page', { authenticated: Boolean(authenticatedEmail) })
@@ -182,45 +144,29 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
     let cancelled = false
     const now = new Date()
 
-    const darkness = getDarknessWindow(city.lat, city.lon, now, new Date(now.getTime() + 2 * 86_400_000))
-    const darkFromIso = darkness.astronomicalDuskAt ?? darkness.civilDuskAt ?? darkness.sunsetAt
     setTonight({
-      darkFromLabel: darkFromIso ? formatLocalTime(darkFromIso, city.timeZone) : '—',
       moonLabel: `${moonPhaseNameAt(now)} · ${Math.round(moonIlluminationPctAt(now))}%`,
       moonIlluminationPct: moonIlluminationPctAt(now),
       moonWaxing: isMoonWaxingAt(now),
     })
-    setNearestSite(rankDarkSkySites(city.lat, city.lon, 1)[0] ?? null)
 
     async function loadWeek() {
       try {
         await pullSkyEvents()
-        const end = new Date(now.getTime() + 7 * 86_400_000)
-        const events = await getEventsInRange(now, end)
-        if (!cancelled) setWeekRows(buildWeekRows(events, city, now))
+        const events = await getEventsInRange(now, new Date(now.getTime() + 7 * 86_400_000))
+        if (!cancelled) setWeekRows(buildWeekRows(events, now))
       } catch (err) {
-        if (!cancelled) setWeekRows(buildWeekRows([], city, now))
+        if (!cancelled) setWeekRows(buildWeekRows([], now))
         trackEvent('sync_failed', { stage: 'landing_week_events', error: String(err) })
       }
     }
 
-    async function loadForecast() {
-      try {
-        const forecast = await fetchViewingForecast(city.lat, city.lon, 7)
-        if (!cancelled) setForecastDays(forecast.days)
-      } catch (err) {
-        trackEvent('sync_failed', { stage: 'landing_forecast', error: String(err) })
-      }
-    }
-
     loadWeek()
-    loadForecast()
     return () => {
       cancelled = true
     }
-  }, [city])
+  }, [])
 
-  const skyGlow = useMemo(() => estimateLightPollution(city.lat, city.lon), [city.lat, city.lon])
   const weekRangeLabel = useMemo(() => {
     const now = new Date()
     const end = new Date(now.getTime() + 6 * 86_400_000)
@@ -229,7 +175,6 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
     return `${start} — ${endLabel}`
   }, [])
   const todayLabel = useMemo(() => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }), [])
-  const pickRow = weekRows?.find((row) => row.isPick && !row.isFallback) ?? null
 
   function handleEnter(source: CtaSource) {
     trackEvent('Landing CTA clicked', { method: authenticatedEmail ? 'open_app' : 'get_started', source })
@@ -250,10 +195,6 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
       <header className="am-masthead">
         <div className="am-masthead-meta">
           <span>{todayLabel}</span>
-          <span className="am-masthead-meta-location">
-            {city.name}
-            <span className="am-masthead-coords"> &middot; {formatCoord(city.lat, city.lon)}</span>
-          </span>
           <span>{weekRangeLabel}</span>
         </div>
         <div className="am-masthead-title">
@@ -280,13 +221,12 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
             </h1>
             <div className="am-lede-columns">
               <p>
-                <span className="am-dropcap">A</span>tlas reads the sky above your address — the moon, the weather, how much
-                light your street throws up — and picks the handful of things that are genuinely visible from where you
-                stand this week.
+                <span className="am-dropcap">A</span>tlas picks the handful of things worth looking up for each week —
+                the flagship events, anywhere in the world — and tells you when they happen.
               </p>
               <p>
-                Nothing on the list needs equipment you don't own. Tell it whether you have eyes, binoculars or a
-                telescope, and the entries you can't use quietly drop away.
+                Set your location and Atlas works out what is actually visible from where you stand, and what your
+                eyes, binoculars or telescope can reach.
               </p>
             </div>
             <div className="am-lede-actions">
@@ -300,7 +240,7 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
           <div className="am-lede-divider" aria-hidden="true" />
 
           <div className="am-tonight">
-            <div className="am-tonight-label">Tonight over {city.name}</div>
+            <div className="am-tonight-label">Tonight</div>
             {/* The unlit disc is the base and the lit region is painted on top,
                 so new moon (an empty path) and full moon (the whole disc) need
                 no special cases. See lib/moonDisc.mjs for the geometry. */}
@@ -314,7 +254,6 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
                     r: 42,
                     illuminatedFraction: tonight.moonIlluminationPct / 100,
                     waxing: tonight.moonWaxing,
-                    southernHemisphere: city.lat < 0,
                   })}
                   fill="#e4dfd3"
                 />
@@ -323,22 +262,8 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
             </svg>
             <div className="am-tonight-stats">
               <div>
-                <span>Dark from</span>
-                <strong>{tonight?.darkFromLabel ?? '—'}</strong>
-              </div>
-              <div>
                 <span>Moon</span>
                 <strong>{tonight?.moonLabel ?? '—'}</strong>
-              </div>
-              <div>
-                <span>Sky glow</span>
-                <strong>
-                  Bortle {skyGlow.bortleClass} · {skyQualityLabelForScore(skyGlow.skyQualityScore)}
-                </strong>
-              </div>
-              <div>
-                <span>Nearest dark sky</span>
-                <strong>{nearestSite ? `${nearestSite.estimatedTravelMinutes} min` : '—'}</strong>
               </div>
             </div>
           </div>
@@ -346,7 +271,7 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
 
         <section id="week" className="am-section am-week" aria-labelledby="am-week-title">
           <div className="am-section-head">
-            <h2 id="am-week-title">Ephemeris for the week</h2>
+            <h2 id="am-week-title">Flagship events this week</h2>
             <div className="am-legend">
               {(Object.keys(GEAR_META) as TargetDifficulty[]).map((key) => (
                 <span key={key} className="am-legend-item">
@@ -362,8 +287,7 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
               <div role="columnheader">Night</div>
               <div role="columnheader">Event</div>
               <div role="columnheader">What you'll see</div>
-              <div role="columnheader">Best time</div>
-              <div role="columnheader">Visible window · 18h — 06h</div>
+              <div role="columnheader">Time</div>
             </div>
 
             {(weekRows ?? Array.from({ length: 7 })).map((row, index) => (
@@ -384,18 +308,6 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
                     <div className="am-week-time" role="cell">
                       {(row as WeekRow).timeLabel}
                     </div>
-                    <div role="cell">
-                      <div className="am-week-bar-track">
-                        <span
-                          className="am-week-bar-fill"
-                          style={{
-                            left: `${(row as WeekRow).windowStartPct}%`,
-                            width: `${(row as WeekRow).windowWidthPct}%`,
-                            background: GEAR_META[(row as WeekRow).difficulty].color,
-                          }}
-                        />
-                      </div>
-                    </div>
                   </>
                 ) : (
                   <div className="am-week-loading" role="cell">
@@ -407,49 +319,10 @@ export function LandingPage({ authenticatedEmail, city, onEnter, onEnterPaid }: 
           </div>
 
           <div className="am-week-foot">
-            <span>Times shown for {city.name}. Atlas recalculates this whole table for wherever you are.</span>
+            <span>Global highlights, times in your own zone. Set a location and Atlas tailors the week to your sky.</span>
             <button type="button" className="am-link-btn" onClick={() => handleEnter('nav')}>
               Set your location →
             </button>
-          </div>
-        </section>
-
-        <section className="am-strip" aria-label="This week at a glance">
-          <div className="am-strip-item">
-            <div className="am-strip-label">Nearest dark sky</div>
-            <div className="am-strip-value">{nearestSite ? `${nearestSite.name}` : 'Finding one for you…'}</div>
-            <div className="am-strip-sub">
-              {nearestSite ? `Bortle ${nearestSite.bortleClass} · ${Math.round(nearestSite.distanceKm)} km, about ${nearestSite.estimatedTravelMinutes} min` : ''}
-            </div>
-          </div>
-          <div className="am-strip-divider" />
-          <div className="am-strip-item">
-            <div className="am-strip-label">Pick of the week</div>
-            <div className="am-strip-value">{pickRow ? pickRow.title : 'Checking the sky…'}</div>
-            <div className="am-strip-sub">{pickRow ? `${pickRow.weekdayLabel} ${pickRow.dayLabel} · ${pickRow.timeLabel}` : 'Atlas is scanning the whole week.'}</div>
-          </div>
-          <div className="am-strip-divider" />
-          <div className="am-strip-item">
-            <div className="am-strip-label">This week's forecast</div>
-            <div className="am-forecast-bars">
-              {(forecastDays ?? Array.from({ length: 7 })).map((day, index) => {
-                const advisory = day as DailyViewingAdvisory | undefined
-                const clearPct = advisory ? Math.max(6, 100 - advisory.cloudCoverPct) : 6
-                const label = advisory
-                  ? new Date(`${advisory.date}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'narrow' })
-                  : '·'
-                return (
-                  <span className="am-forecast-bar" key={advisory?.date ?? index}>
-                    <span
-                      className="am-forecast-bar-fill"
-                      style={{ height: `${clearPct}%`, background: advisory?.quality === 'cloudy' ? '#4d6150' : '#7ea888' }}
-                    />
-                    <span className="am-forecast-bar-label">{label}</span>
-                  </span>
-                )
-              })}
-            </div>
-            <div className="am-strip-sub">Clear-sky chance, per night</div>
           </div>
         </section>
 

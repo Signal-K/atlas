@@ -107,6 +107,11 @@ export function useAuth() {
     const unsubscribeAuth = pb.authStore.onChange(() => {
       setUser(currentUser())
     })
+    // The initial state above was read at render time; an authStore change
+    // between that render and this subscription (e.g. the demo-code redeem's
+    // authRefresh landing while a screen mounts) would otherwise be missed
+    // and leave a stale `entitled:false` on screen.
+    setUser(currentUser())
     const unsubscribeEntitlement = subscribeToEntitlementRefresh(() => setEntitlementRefreshing(entitlementRefreshCount > 0))
     let unsubscribeDevPreview = () => {}
     if (DEV) {
