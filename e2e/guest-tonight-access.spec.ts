@@ -1,5 +1,4 @@
 import { test, expect, type Page } from '@playwright/test'
-import { completeOnboarding, finishOnboarding, reachOnboardingLocationStep, skipOnboardingQuestions } from './support/onboarding'
 
 // ASV-47. Atlas's whole pitch is "tonight's sky for where you are", and until
 // this change none of it was reachable without registering: every landing CTA,
@@ -57,32 +56,21 @@ test("a visitor with no account reaches tonight's sky from the landing page", as
   await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
   await expect(page).toHaveURL('/app/hub')
 
-  await completeOnboarding(page)
-
   await expect(page.getByText("You're browsing as a guest.")).toBeVisible()
   // Not a signup form.
   await expect(page.getByRole('heading', { name: 'Create your free account' })).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => localStorage.getItem('pocketbase_auth'))).toBeFalsy()
 })
 
-test('a guest can set a location without an account, and it survives a reload', async ({ page }) => {
+test('a guest is never put through onboarding', async ({ page }) => {
   await page.goto('/app/hub')
 
-  // Onboarding opens on the name step; the location step is second of eight.
-  await reachOnboardingLocationStep(page)
-  await page.getByPlaceholder(/Search for your town/).fill('Zurich')
-  await page.getByText('Canton of Zurich, Switzerland').first().click()
-  await page.getByRole('button', { name: /Use this location|Looks good/ }).click()
-  await skipOnboardingQuestions(page)
-  await finishOnboarding(page)
-
-  await expect(page.getByText(/Zurich/).first()).toBeVisible()
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas-manual-location'))).toContain('Zurich')
+  await expect(page.getByText("You're browsing as a guest.")).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
 
   await page.reload()
-  await expect(page.getByText(/Zurich/).first()).toBeVisible()
-  // Still no account anywhere in this journey.
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('pocketbase_auth'))).toBeFalsy()
+  await expect(page.getByText("You're browsing as a guest.")).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
 })
 
 test('everything beyond tonight still requires an account', async ({ page }) => {
@@ -97,7 +85,6 @@ test('everything beyond tonight still requires an account', async ({ page }) => 
 
 test('the gate returns a guest to tonight rather than ejecting them to the landing page', async ({ page }) => {
   await page.goto('/app/hub')
-  await completeOnboarding(page)
 
   await page.getByRole('link', { name: /All events/ }).click()
   await expect(page.getByRole('heading', { name: /Create your free account|Welcome back/ })).toBeVisible()

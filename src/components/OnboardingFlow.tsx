@@ -170,7 +170,11 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
   }
 
   async function handleNameContinue() {
-    if (name.trim()) saveDisplayName(name)
+    try {
+      if (name.trim()) saveDisplayName(name)
+    } catch {
+      // Storage unavailable; the name is cosmetic, keep going.
+    }
     trackEvent('Onboarding step advanced', { step: 'name', hasName: Boolean(name.trim()) })
     advance()
   }
@@ -179,7 +183,13 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
     // Always persist, even with zero interests picked -- otherwise skipping
     // this step leaves the completion flag unset and EventPreferencePrompt
     // re-shows on every dashboard visit.
-    await savePreferredEventTypes(interests)
+    // A storage failure must never strand the button -- the picks are only a
+    // preference, and the step has to advance regardless.
+    try {
+      await savePreferredEventTypes(interests)
+    } catch {
+      trackEvent('Onboarding step save failed', { step: 'interests' })
+    }
     if (interests.length > 0) trackEvent('Set event preferences', { kinds: interests, source: 'onboarding' })
     trackEvent('Onboarding step advanced', { step: 'interests', interestCount: interests.length })
     advance()

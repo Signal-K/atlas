@@ -109,8 +109,8 @@ test('signup happens via the auth gate before onboarding, then observations save
     // Straight into the product as a guest -- no account demanded first.
     await expect(page).toHaveURL('/app/hub')
 
-    // Onboarding runs on entry now, so a guest can set a location.
-    await completeOnboarding(page)
+    // Guests are not put through onboarding; it waits for an account.
+    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
 
     // Tonight's sky is readable without an account.
     await expect(page.getByText("You're browsing as a guest.")).toBeVisible()
@@ -129,9 +129,8 @@ test('signup happens via the auth gate before onboarding, then observations save
       )
       .toBe(email)
 
-    // Onboarding was already finished as a guest, so signing up must not
-    // replay it.
-    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
+    // Onboarding runs now that there is an account to keep the answers on.
+    await completeOnboarding(page)
 
     await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
 

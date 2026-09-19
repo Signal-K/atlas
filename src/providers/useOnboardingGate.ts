@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ONBOARDING_VERSION,
   hasCompletedOnboardingFlow,
@@ -57,7 +57,22 @@ export function useOnboardingGate({ user, isAppRoute }: UseOnboardingGateArgs) {
       (hasCompletedOnboardingFlow() || Boolean(user && user.onboardingVersion >= ONBOARDING_VERSION)),
   )
 
-  const showOnboardingFlow = hasClickedIntoApp && isAppRoute && !onboardingFlowDismissed
+  // The account can hydrate after this hook's first render (token refresh),
+  // by which point the initializer above has already run against a stale
+  // null user and decided the flow was still owed. Re-check when the account
+  // arrives so a returning user is never walked through it again.
+  const accountVersion = user?.onboardingVersion ?? 0
+  useEffect(() => {
+    if (accountVersion >= ONBOARDING_VERSION && !requiresOnboardingFlow()) {
+      markOnboardingComplete()
+      setOnboardingFlowDismissed(true)
+    }
+  }, [accountVersion])
+
+  // Onboarding belongs to an account: guests get the plain Hub, and the flow
+  // runs once they have signed in or up (handleSignedIn/handleSignedUp reset
+  // the dismissed flag for exactly that moment).
+  const showOnboardingFlow = Boolean(user) && hasClickedIntoApp && isAppRoute && !onboardingFlowDismissed
 
   function markEntered() {
     localStorage.setItem(ENTERED_KEY, '1')

@@ -215,14 +215,15 @@ export async function ensureNotificationPermission(options?: { force?: boolean }
     return false
   }
 
+  // Not awaited: the local permission is already granted, and the server push
+  // sync can take up to PUSH_SYNC_TIMEOUT_MS. Awaiting it left the onboarding
+  // "Enable notifications" button stuck on "Enabling…" for seconds.
   if (pb.authStore.isValid && isPushSupported()) {
-    try {
-      await withTimeout(subscribeToPush(), PUSH_SYNC_TIMEOUT_MS)
-    } catch (err) {
+    void withTimeout(subscribeToPush(), PUSH_SYNC_TIMEOUT_MS).catch((err) => {
       // Browser notifications are still available as a local fallback --
       // covers both a real subscribeToPush() failure and this timeout.
       trackEvent('sync_failed', { stage: 'notification_permission_push_subscribe', error: String(err) })
-    }
+    })
   }
 
   return true
