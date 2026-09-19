@@ -1,4 +1,18 @@
 import type { Page } from '@playwright/test'
+import { ONBOARDING_VERSION } from '../../src/lib/onboarding'
+
+// The onboarding gate compares a *version*, not a boolean (lib/onboarding.ts),
+// so a hardcoded '1' would leave every seeded spec sitting behind the current
+// flow the moment that flow gains a step. Importing the constant keeps the
+// seed honest across future bumps instead of rotting silently.
+//
+// lib/onboarding.ts is safe to import from here: it has no imports of its own
+// and never touches import.meta.env, unlike the components that consume it.
+export function seedOnboardingComplete(page: Page, version: number = ONBOARDING_VERSION) {
+  return page.addInitScript((value) => {
+    window.localStorage.setItem('atlas-onboarding-flow-complete', String(value))
+  }, version)
+}
 
 export function makeAuthToken() {
   const payload = {
@@ -33,19 +47,38 @@ export function seedSignedInUser(page: Page, options: SeedSignedInUserOptions = 
   const token = makeAuthToken()
 
   return page.addInitScript(
-    ({ tokenValue, userId, userEmail, entitledValue, onboardingCompleteValue }) => {
+    ({ tokenValue, userId, userEmail, entitledValue, onboardingCompleteValue, versionValue }) => {
       window.localStorage.setItem(
         'pocketbase_auth',
         JSON.stringify({
           token: tokenValue,
-          record: { id: userId, email: userEmail, entitled: entitledValue },
+          record: {
+            id: userId,
+            email: userEmail,
+            entitled: entitledValue,
+            onboarded: onboardingCompleteValue,
+            // Both signals the gate reads are seeded, not just the local flag.
+            // Seeding only localStorage would leave the account itself looking
+            // like a brand-new signup (onboarding_version 0), and the next
+            // sign-in event would then fire a real syncOnboardingToAccount()
+            // write at the PocketBase URL under test -- a needless network
+            // round-trip per spec, on a server that may not even be up.
+            onboarding_version: onboardingCompleteValue ? versionValue : 0,
+          },
         }),
       )
       window.localStorage.setItem('atlas-entered', '1')
       if (onboardingCompleteValue) {
-        window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
+        window.localStorage.setItem('atlas-onboarding-flow-complete', String(versionValue))
       }
     },
-    { tokenValue: token, userId: id, userEmail: email, entitledValue: entitled, onboardingCompleteValue: onboardingComplete },
+    {
+      tokenValue: token,
+      userId: id,
+      userEmail: email,
+      entitledValue: entitled,
+      onboardingCompleteValue: onboardingComplete,
+      versionValue: ONBOARDING_VERSION,
+    },
   )
 }

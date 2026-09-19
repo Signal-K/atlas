@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
-import { seedSignedInUser } from './support/auth'
+import { seedOnboardingComplete, seedSignedInUser } from './support/auth'
+import { finishOnboarding, reachOnboardingLocationStep, skipOnboardingQuestions } from './support/onboarding'
 
 const APP_URL = `http://localhost:${process.env.PLAYWRIGHT_PORT || '5173'}`
 
@@ -70,10 +71,8 @@ test.beforeEach(async ({ page }) => {
 
 test('index stays on the landing page for a returning signed-out visitor', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.addInitScript(() => {
-    localStorage.setItem('atlas-entered', '1')
-    localStorage.setItem('atlas-onboarding-flow-complete', '1')
-  })
+  await page.addInitScript(() => localStorage.setItem('atlas-entered', '1'))
+  await seedOnboardingComplete(page)
 
   await page.goto('/')
 
@@ -87,31 +86,10 @@ test('index stays on the landing page for a returning signed-out visitor', async
 })
 
 test('index stays on the landing page for a signed-in visitor and identifies the session', async ({ page }) => {
-  const tokenPayload = {
-    exp: Math.floor(Date.now() / 1000) + 60 * 60,
-    type: 'auth',
-    collectionId: 'users',
-  }
-  const token = ['e2e', Buffer.from(JSON.stringify(tokenPayload)).toString('base64url'), 'sig'].join('.')
-
-  await page.addInitScript(
-    ({ tokenValue }) => {
-      localStorage.setItem(
-        'pocketbase_auth',
-        JSON.stringify({
-          token: tokenValue,
-          record: {
-            id: 'e2e-landing-user',
-            email: 'signed-in@example.com',
-            entitled: false,
-          },
-        }),
-      )
-      localStorage.setItem('atlas-entered', '1')
-      localStorage.setItem('atlas-onboarding-flow-complete', '1')
-    },
-    { tokenValue: token },
-  )
+  // Same session fixture as every other signed-in spec -- this used to mint its
+  // own token and record inline, which is how it ended up seeding the
+  // onboarding flag as a bare '1' while the gate had moved on to versions.
+  await seedSignedInUser(page, { id: 'e2e-landing-user', email: 'signed-in@example.com', onboardingComplete: true })
 
   await page.goto('/')
 
@@ -128,29 +106,34 @@ test('index stays on the landing page for a signed-in visitor and identifies the
 // first-time visitor has actually seen what Atlas does, not before. A
 // signed-in visitor (seeded above) skips landing entirely -- "/" redirects
 // straight to "/app" -- so this goes there directly and clicks past the
-// (skippable) name and interests steps first.
-async function reachOnboardingLocationStep(page: Page) {
+// (skippable) name step. The walk itself is shared with the guest specs; see
+// e2e/support/onboarding.ts.
+async function seedFreshAccountAtLocationStep(page: Page) {
   // Onboarding only runs after authentication. These tests exercise its
   // location step, so seed a newly-created, not-yet-onboarded account here
   // without affecting the returning-account landing-page test above.
   await page.addInitScript(() => localStorage.setItem('atlas-onboarding-flow-required', '1'))
   await seedSignedInUser(page, { onboardingComplete: false })
   await page.goto('/app')
-  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
+  await reachOnboardingLocationStep(page)
+}
+
+// The four question steps and the two closing steps that sit between the
+// location step and the app. Shared, so each test's own clicks stay about the
+// location behaviour it is actually pinning.
+async function finishOnboardingFromQuestions(page: Page) {
+  await skipOnboardingQuestions(page)
+  await finishOnboarding(page)
 }
 
 test('manual city entry reaches tonight feed with selected city', async ({ page }) => {
-  await reachOnboardingLocationStep(page)
+  await seedFreshAccountAtLocationStep(page)
 
   await page.getByPlaceholder('Search for your town or city').fill('Zur')
   await expect(page.getByRole('option', { name: /Zurich/ })).toBeVisible()
   await page.getByRole('option', { name: /Zurich/ }).click()
   await page.getByRole('button', { name: 'Use this location' }).click()
-  await page.getByRole('button', { name: 'Not now' }).click()
+  await finishOnboardingFromQuestions(page)
 
   await expect(page).toHaveURL('/app/hub')
   await expect(page.locator('.az-kicker', { hasText: 'after dark' })).toBeVisible({ timeout: 15_000 })
@@ -174,14 +157,140 @@ test('browser geolocation entry reaches tonight feed', async ({ page, context })
     })
   })
 
-  await reachOnboardingLocationStep(page)
+  await seedFreshAccountAtLocationStep(page)
 
   await page.getByRole('button', { name: 'Use my current location' }).click()
-  await page.getByRole('button', { name: 'Not now' }).click()
+  await finishOnboardingFromQuestions(page)
 
   await expect(page).toHaveURL('/app/hub')
   await expect(page.locator('.az-kicker', { hasText: 'after dark' })).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Zurich')).toBeVisible()
+})
+
+// ASV-53: the geolocation branch used to leave nothing durable behind. It
+// fired the GPS request without awaiting it and never wrote a home at all, so
+// a granted permission produced only geo.ts's 30-day `atlas-location-cache` --
+// once that expired the user silently reverted to the hardcoded Melbourne
+// default, with no way to tell why. Onboarding now reverse-geocodes the fix
+// and persists it through the same store the search path uses.
+//
+// The reload is what makes this a regression test rather than a restatement of
+// the test above: the cache is deleted *and* the browser permission is
+// withdrawn, so geolocation cannot quietly re-supply the location a second
+// time. Only a persisted home can still answer with Zurich.
+test('a geolocation home outlives the geo cache it was derived from', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'], { origin: APP_URL })
+  await context.setGeolocation({ latitude: 47.3769, longitude: 8.5417 })
+  await page.route('https://api.bigdatacloud.net/data/reverse-geocode-client**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ city: 'Zurich', locality: 'Zurich', principalSubdivision: 'Zurich' }),
+    })
+  })
+
+  await seedFreshAccountAtLocationStep(page)
+  await page.getByRole('button', { name: 'Use my current location' }).click()
+  await finishOnboardingFromQuestions(page)
+  await expect(page).toHaveURL('/app/hub')
+  await expect(page.getByText('Zurich')).toBeVisible({ timeout: 15_000 })
+
+  // The durable half of the fix: a real named home, at the same ~1-degree
+  // rounded fix geo.ts caches (47.3769 -> 47.4, 8.5417 -> 8.5).
+  await expect
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('atlas-manual-location') ?? 'null')))
+    .toMatchObject({ name: 'Zurich', lat: 47.4, lon: 8.5 })
+
+  // Take away every other way of answering the same question. The flow-required
+  // flag is re-seeded on this load, so onboarding reopens -- which is the point:
+  // the location step reads its "Current Atlas location" line off a fresh mount
+  // with no cache and no permission behind it.
+  await context.clearPermissions()
+  await page.evaluate(() => localStorage.removeItem('atlas-location-cache'))
+  await page.goto('/app')
+  await reachOnboardingLocationStep(page)
+
+  await expect(page.getByText('Current Atlas location: Zurich')).toBeVisible()
+})
+
+// The other half of the same bug: the old handler cleared the stored home
+// *before* the browser had answered, so a denial destroyed the home the user
+// already had. The failure is stubbed rather than left to the headless
+// browser's default, so "denied" is deterministic here instead of depending on
+// how Chromium treats an unanswered permission prompt.
+test('a refused location request leaves the existing home untouched', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'atlas-manual-location',
+      JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278, admin1: 'England', country: 'United Kingdom', timeZone: 'Europe/London' }),
+    )
+    navigator.geolocation.getCurrentPosition = (_ok, fail) => {
+      fail?.({ code: 1, message: 'User denied Geolocation' } as GeolocationPositionError)
+    }
+  })
+
+  await seedFreshAccountAtLocationStep(page)
+  await expect(page.getByText('Current Atlas location: London')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Use my current location' }).click()
+
+  await expect(page.getByText(/We couldn’t get your location/)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Current Atlas location: London')).toBeVisible()
+  await expect
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('atlas-manual-location') ?? 'null')))
+    .toMatchObject({ name: 'London', lat: 51.5074, lon: -0.1278 })
+})
+
+// ASV-53: a day covered by two trips resolved to the *soonest*-starting one,
+// so flying Perth -> Darwin on the 27th of a 24-27 and a 27-30 trip showed
+// Perth -- the city just left, with the wrong forecast for the one arrived in.
+// The rule is now latest-start wins, i.e. the newest leg is the one in force.
+//
+// This asserts the selector the app resolves locations with
+// (useCurrentLocation calls activeTripFor on mount and on a timer), against a
+// whole table of days rather than just the handover, so an off-by-one at
+// either edge of the inclusive range fails here too.
+//
+// The dates are fixed rather than derived from today: the point is the overlap
+// itself, and a handover that only happens to occur when the suite runs on one
+// particular calendar day is a test that quietly stops testing anything.
+test('a shared handover day resolves to the later trip', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'Melbourne', lat: -37.8136, lon: 144.9631 }))
+    localStorage.setItem(
+      'atlas-trips',
+      JSON.stringify([
+        { id: 'perth', name: 'Perth', lat: -31.9523, lon: 115.8613, startDate: '2026-10-24', endDate: '2026-10-27' },
+        { id: 'darwin', name: 'Darwin', lat: -12.4634, lon: 130.8456, startDate: '2026-10-27', endDate: '2026-10-30' },
+      ]),
+    )
+  })
+
+  await page.goto('/')
+
+  const resolved = await page.evaluate(async () => {
+    const { activeTripFor } = await import('/src/lib/trips.ts')
+    // Midday local, so the day key can't be nudged across a boundary by the
+    // runner's offset from UTC.
+    const at = (day: string) => activeTripFor(new Date(`${day}T12:00:00`))?.name ?? null
+    return {
+      before: at('2026-10-23'),
+      firstLeg: at('2026-10-25'),
+      handover: at('2026-10-27'),
+      secondLeg: at('2026-10-28'),
+      lastDay: at('2026-10-30'),
+      after: at('2026-10-31'),
+    }
+  })
+
+  expect(resolved).toEqual({
+    before: null,
+    firstLeg: 'Perth',
+    handover: 'Darwin',
+    secondLeg: 'Darwin',
+    lastDay: 'Darwin',
+    after: null,
+  })
 })
 
 test('location search disambiguates cities by region and country', async ({ page }) => {
@@ -214,12 +323,12 @@ test('location search disambiguates cities by region and country', async ({ page
     })
   })
 
-  await reachOnboardingLocationStep(page)
+  await seedFreshAccountAtLocationStep(page)
   await page.getByPlaceholder('Search for your town or city').fill('London')
   await expect(page.getByRole('option', { name: /London.*Ontario, Canada/ })).toBeVisible()
   await page.getByRole('option', { name: /London.*Ontario, Canada/ }).click()
   await page.getByRole('button', { name: 'Use this location' }).click()
-  await page.getByRole('button', { name: 'Not now' }).click()
+  await finishOnboardingFromQuestions(page)
 
   await expect(page).toHaveURL('/app/hub')
   await expect(page.locator('.az-kicker', { hasText: 'after dark' })).toBeVisible({ timeout: 15_000 })

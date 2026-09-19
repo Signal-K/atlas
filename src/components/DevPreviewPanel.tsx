@@ -1,4 +1,5 @@
 import { getDevPreviewUser, setDevPreviewUser, useAuth, type AuthUser } from '../lib/auth'
+import { ONBOARDING_VERSION } from '../lib/onboarding'
 
 // Local visual-QA helper only -- lets a local dev session preview signed-in
 // (and Sky Pass on/off) states without creating a real account. Rendered
@@ -10,6 +11,10 @@ const DEV_USER: AuthUser = {
   email: 'dev-preview@local.test',
   entitled: false,
   onboarded: true,
+  // Stamped at the current version so previewing the signed-in state shows the
+  // app rather than dropping the 8-step first-run flow over it. Clear
+  // localStorage instead when the flow itself is what you want to look at.
+  onboardingVersion: ONBOARDING_VERSION,
   deviceModels: [],
 }
 

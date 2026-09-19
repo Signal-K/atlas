@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { completeOnboarding, finishOnboarding, reachOnboardingLocationStep, skipOnboardingQuestions } from './support/onboarding'
 
 // ASV-47. Atlas's whole pitch is "tonight's sky for where you are", and until
 // this change none of it was reachable without registering: every landing CTA,
@@ -40,15 +41,10 @@ async function mockTonightData(page: Page) {
   })
 }
 
-// Skips the four onboarding steps a guest now sees on entry. Onboarding moved
-// ahead of sign-up because it is where a guest sets their location.
-async function completeOnboarding(page: Page) {
-  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await page.getByRole('button', { name: 'Looks good' }).click()
-  await page.getByRole('button', { name: 'Not now' }).click()
-}
+// Skipping the eight onboarding steps a guest now sees on entry lives in
+// support/onboarding.ts -- onboarding moved ahead of sign-up because it is
+// where a guest sets their location, so it is the first thing every spec that
+// starts as a guest has to get past.
 
 test.beforeEach(async ({ page }) => {
   await mockTonightData(page)
@@ -72,15 +68,13 @@ test("a visitor with no account reaches tonight's sky from the landing page", as
 test('a guest can set a location without an account, and it survives a reload', async ({ page }) => {
   await page.goto('/app/hub')
 
-  // Onboarding opens on the name step; the location step is third.
-  await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
+  // Onboarding opens on the name step; the location step is second of eight.
+  await reachOnboardingLocationStep(page)
   await page.getByPlaceholder(/Search for your town/).fill('Zurich')
   await page.getByText('Canton of Zurich, Switzerland').first().click()
   await page.getByRole('button', { name: /Use this location|Looks good/ }).click()
-  await page.getByRole('button', { name: 'Not now' }).click()
+  await skipOnboardingQuestions(page)
+  await finishOnboarding(page)
 
   await expect(page.getByText(/Zurich/).first()).toBeVisible()
   await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas-manual-location'))).toContain('Zurich')

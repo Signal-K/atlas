@@ -8,33 +8,36 @@ import { ensureNotificationPermission } from '../lib/getReadyReminders'
 import { trackEvent } from '../lib/analytics'
 import { Starfield } from './mobile/Starfield'
 import { useThemeState } from '../lib/theme'
+import { reverseGeocodeCity } from '../lib/reverseGeocode'
+import { recordOnboardingEquipment } from '../lib/firstPlanJourney'
+import {
+  ONBOARDING_VERSION,
+  getOnboardingAnswers,
+  markOnboardingComplete,
+  saveOnboardingAnswers,
+  type ExperienceLevel,
+} from '../lib/onboarding'
+import {
+  reportOnboardingSurveyDismissed,
+  reportOnboardingSurveyShown,
+  reportOnboardingSurveySubmitted,
+} from '../lib/onboardingSurvey'
+import { ClubsStep, EquipmentStep, ExperienceStep, SurveyStep } from './onboarding/AnswerSteps'
 import type { AuthUser } from '../lib/auth'
 import type { City } from '../lib/cities'
+import type { Coordinates } from '../lib/geo'
 import type { CurrentLocation } from '../lib/currentLocation'
 
-export const ONBOARDING_FLOW_KEY = 'atlas-onboarding-flow-complete'
-export const ONBOARDING_REQUIRED_KEY = 'atlas-onboarding-flow-required'
+type Step = 'name' | 'location' | 'equipment' | 'interests' | 'experience' | 'clubs' | 'notifications' | 'survey'
 
-export function hasCompletedOnboardingFlow(): boolean {
-  return localStorage.getItem(ONBOARDING_FLOW_KEY) === '1'
-}
-
-export function requiresOnboardingFlow(): boolean {
-  return localStorage.getItem(ONBOARDING_REQUIRED_KEY) === '1'
-}
-
-export function markOnboardingRequired(): void {
-  localStorage.removeItem(ONBOARDING_FLOW_KEY)
-  localStorage.setItem(ONBOARDING_REQUIRED_KEY, '1')
-}
-
-export function markOnboardingComplete(): void {
-  localStorage.setItem(ONBOARDING_FLOW_KEY, '1')
-  localStorage.removeItem(ONBOARDING_REQUIRED_KEY)
-}
-
-type Step = 'name' | 'interests' | 'location' | 'notifications'
-const STEPS: Step[] = ['name', 'interests', 'location', 'notifications']
+// Order follows the request that produced this flow. `name` stays first
+// because the feed greets the user by name; `notifications` stays a permission
+// ask after the questions; the survey is last so it's the thing they leave on.
+//
+// The gate's ONBOARDING_VERSION (lib/onboarding.ts) is the single source of
+// truth for "how many steps this flow has" -- adding a step here and bumping
+// that constant is what re-runs the flow for everyone who's already onboarded.
+const STEPS: Step[] = ['name', 'location', 'equipment', 'interests', 'experience', 'clubs', 'notifications', 'survey']
 
 // Local "get ready" reminders (localStorage + the browser's own Notification
 // permission, see lib/getReadyReminders.ts) work for guests with no account
@@ -42,6 +45,12 @@ const STEPS: Step[] = ['name', 'interests', 'location', 'notifications']
 // Checked separately from lib/push.ts's isPushSupported(), which also
 // requires a service worker + VAPID key just for that sync layer.
 const localNotificationsSupported = typeof window !== 'undefined' && 'Notification' in window
+
+// Shown as the persisted home's name when a granted location can't be turned
+// back into a place name (offline, or the geocoder is down). Better a home
+// that survives the 30-day geo cache under a plain label than coordinates the
+// user can't recognise, or no home at all.
+const UNNAMED_HOME = 'Current location'
 
 interface OnboardingFlowProps {
   city: CurrentLocation
@@ -52,15 +61,19 @@ interface OnboardingFlowProps {
   // any permission prompt) -- this is how that step actually triggers the
   // browser's own geolocation permission request, same as the old landing
   // page's "use my current location" button did.
-  requestLocation?: () => void
+  //
+  // Returns the fix on success and null on denial/unsupported/failure. The
+  // step has to know which happened before it replaces an existing home --
+  // see handleUseCurrentLocation.
+  requestLocation?: () => Promise<Coordinates | null>
   onDone: () => void
 }
 
-// First-run onboarding: name, interests, location, notifications (per the
-// notes' "Onboarding overhaul" list). Each step is skippable and starts
-// pre-filled from whatever's already saved, so this never re-asks for
-// something the user already told Atlas via another surface (mobile's
-// EventPreferencePrompt, geolocation, etc).
+// First-run onboarding: name, home location, equipment, interests, experience,
+// club membership, notifications, and a purpose survey. Each question is
+// skippable and starts pre-filled from whatever's already saved, so this never
+// re-asks for something the user already told Atlas via another surface
+// (mobile's EventPreferencePrompt, the trip planner's equipment chips, etc).
 export function OnboardingFlow({ city, user, setManualLocation, requestLocation, onDone }: OnboardingFlowProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [name, setName] = useState(() => getDisplayName() ?? '')
@@ -68,9 +81,27 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
   const [hasSavedInterests, setHasSavedInterests] = useState(false)
   const [locationQuery, setLocationQuery] = useState('')
   const [chosenCity, setChosenCity] = useState<City | null>(null)
+  const [locationBusy, setLocationBusy] = useState(false)
+  const [locationError, setLocationError] = useState<string | null>(null)
+  const [equipment, setEquipment] = useState<string[]>(() => getOnboardingAnswers().viewingInstruments)
+  const [experience, setExperience] = useState<ExperienceLevel | null>(() => getOnboardingAnswers().experienceLevel)
+  const [surveyChoices, setSurveyChoices] = useState<string[]>([])
   const [pushBusy, setPushBusy] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushError, setPushError] = useState<string | null>(null)
+
+  // Staged answers survive a mid-flow reload, so an interrupted run resumes
+  // with the questions it already answered rather than blank. There is no
+  // "was this answered" marker stored, so the club answer seeds from the only
+  // evidence a prior answer leaves -- if neither the flag nor a name is set,
+  // the question reads as unanswered (null) rather than asserting "No" on the
+  // user's behalf.
+  const [inClub, setInClub] = useState<boolean | null>(() => {
+    const answers = getOnboardingAnswers()
+    return answers.inAstroClub || answers.astroClubName ? true : null
+  })
+  const [clubName, setClubName] = useState(() => getOnboardingAnswers().astroClubName)
+
   // Guards against a second Notification.requestPermission() firing before
   // React re-renders the disabled button -- a fast double-tap (common on
   // mobile, where touchstart/click can both land in one gesture) invokes
@@ -95,6 +126,10 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
   // ultimately completed.
   useEffect(() => {
     trackEvent('Onboarding step viewed', { step })
+    // The survey's own `survey shown` is emitted separately (with $survey_id)
+    // but hooked onto the same transition, so the two can't disagree about
+    // whether the step was ever displayed.
+    if (step === 'survey') reportOnboardingSurveyShown()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once per step index change only
   }, [stepIndex])
 
@@ -104,7 +139,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
     // just this browser's localStorage) so a new device/browser doesn't get
     // sent through onboarding again just because it's never seen this flag.
     if (user) void syncOnboardingToAccount()
-    trackEvent('Completed onboarding flow')
+    trackEvent('Completed onboarding flow', { version: ONBOARDING_VERSION })
     onDone()
   }
 
@@ -120,8 +155,17 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
     })
   }
 
+  function toggleEquipment(id: string) {
+    setEquipment((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
+  }
+
   function skipStep(step: Step) {
     trackEvent('Onboarding step skipped', { step })
+    // Skipping equipment is still an answer to the first-plan journey's own
+    // equipment prompt, which otherwise fires after the user next taps a
+    // Tonight target -- without this they'd be asked the same question twice,
+    // and the second asking would be the one that actually gets used.
+    if (step === 'equipment') recordOnboardingEquipment([])
     advance()
   }
 
@@ -147,11 +191,92 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
     advance()
   }
 
-  function handleUseCurrentLocation() {
-    setManualLocation?.(null)
-    requestLocation?.()
+  // Grants a *durable* home, not just a 30-day rounded geo cache: the fix is
+  // reverse-geocoded to a name and saved through the same manual-location
+  // store the search path uses, so home survives the cache expiring. (Trips
+  // still override it for exactly their dates -- lib/currentLocation.ts
+  // resolves trip > manual > geo > default.)
+  //
+  // The ordering here is the whole point of awaiting the request: the previous
+  // version cleared the stored home *before* the browser had answered, so a
+  // denial destroyed the home the user already had, and a success never
+  // persisted one in the first place.
+  async function handleUseCurrentLocation() {
+    if (!requestLocation || locationBusy) return
     trackEvent('Onboarding location: use current location clicked')
+    setLocationBusy(true)
+    setLocationError(null)
+    try {
+      const fix = await requestLocation()
+      if (!fix) {
+        // Denied, unsupported, or a concurrent request already in flight. Any
+        // existing home is left exactly as it was; the user can search instead.
+        setLocationError('We couldn’t get your location just now. Search for your town instead, or try again.')
+        trackEvent('Onboarding location: use current location failed')
+        return
+      }
+      let name: string | null = null
+      try {
+        name = await reverseGeocodeCity(fix.lat, fix.lon)
+      } catch {
+        // A geocoder failure must not cost the user their home -- see below.
+      }
+      // The device's own zone is the right one to attach here precisely
+      // because the user is physically at this location right now, which the
+      // old geo-only path couldn't say (it carried no timezone at all).
+      const home: City = {
+        name: name ?? UNNAMED_HOME,
+        lat: fix.lat,
+        lon: fix.lon,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }
+      setManualLocation?.(home)
+      setChosenCity(home)
+      trackEvent('Onboarding step advanced', { step: 'location', chosenLocation: true, source: 'geolocation', named: Boolean(name) })
+      advance()
+    } finally {
+      setLocationBusy(false)
+    }
+  }
+
+  function handleEquipmentContinue() {
+    saveOnboardingAnswers({ viewingInstruments: equipment })
+    recordOnboardingEquipment(equipment)
+    trackEvent('Onboarding step advanced', { step: 'equipment', instrumentCount: equipment.length })
     advance()
+  }
+
+  function handleExperienceContinue() {
+    saveOnboardingAnswers({ experienceLevel: experience })
+    trackEvent('Onboarding step advanced', { step: 'experience', answered: Boolean(experience) })
+    advance()
+  }
+
+  function handleClubsContinue() {
+    saveOnboardingAnswers({
+      inAstroClub: inClub === true,
+      // Trimmed and clipped to the field's 120-char limit here so the staged
+      // answer and the account field can't disagree about what was typed.
+      astroClubName: inClub ? clubName.trim().slice(0, 120) : '',
+    })
+    trackEvent('Onboarding step advanced', { step: 'clubs', inClub: inClub === true, named: Boolean(clubName.trim()) })
+    advance()
+  }
+
+  // The step is reachable whether or not the survey is provisioned, so both
+  // exits close the flow either way -- exactly one of them reports a response.
+  function handleSurveyContinue() {
+    if (surveyChoices.length > 0) {
+      reportOnboardingSurveySubmitted(surveyChoices)
+      trackEvent('Onboarding step advanced', { step: 'survey', choiceCount: surveyChoices.length })
+    }
+    finish()
+  }
+
+  function handleSurveySkip() {
+    reportOnboardingSurveyDismissed()
+    trackEvent('Onboarding step skipped', { step: 'survey' })
+    finish()
   }
 
   async function enableNotifications() {
@@ -218,23 +343,15 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
 
   const [theme] = useThemeState()
 
-  return (
-    <div className="onboarding-overlay az-overlay" style={{ padding: 'max(3.5rem, env(safe-area-inset-top)) 1.5rem 1.75rem', flexDirection: 'column', alignItems: 'stretch' }}>
-      <div className="az-overlay-bg">
-        <Starfield dark={theme === 'dark'} />
-      </div>
-      <div className="az-onboard-bars" style={{ position: 'relative', zIndex: 1 }}>
-        {STEPS.map((s, i) => (
-          <span key={s} className={`az-onboard-bar${i <= stepIndex ? ' is-done' : ''}`} />
-        ))}
-      </div>
-
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, overflowY: 'auto', paddingTop: '2.125rem' }}>
-        <span className="az-kicker">
-          STEP {stepIndex + 1} OF {STEPS.length}
-        </span>
-
-        {step === 'name' && (
+  // Split out of the JSX below because eight branches inline would put the
+  // step bodies ~150 lines deep inside the overlay markup. Kept in this file
+  // rather than a separate component on purpose: every branch reads two or
+  // three pieces of local state, and threading a dozen callbacks and values
+  // through a child would add a new way for a step to render stale answers.
+  function renderStep() {
+    switch (step) {
+      case 'name':
+        return (
           <>
             <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
               What should Atlas call you?
@@ -252,23 +369,10 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
               autoFocus
             />
           </>
-        )}
+        )
 
-        {step === 'interests' && (
-          <>
-            <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
-              What do you want to see?
-            </h1>
-            <p className="az-muted" style={{ margin: '0 0 1.25rem', fontSize: '0.90625rem' }}>
-              {hasSavedInterests
-                ? 'Pre-filled from what you already follow — tap any you want to remove.'
-                : 'Atlas will prioritise these in your feed and week strip.'}
-            </p>
-            <InterestsPicker selected={interests} onToggleCategory={toggleInterest} />
-          </>
-        )}
-
-        {step === 'location' && (
+      case 'location':
+        return (
           <>
             <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
               Where are you observing from?
@@ -290,14 +394,55 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
               placeholder="Search for your town or city"
             />
             {requestLocation && !chosenCity && (
-              <button type="button" className="az-btn az-btn-outline az-btn-block" style={{ marginTop: '0.75rem' }} onClick={handleUseCurrentLocation}>
-                Use my current location
+              <button
+                type="button"
+                className="az-btn az-btn-outline az-btn-block"
+                style={{ marginTop: '0.75rem' }}
+                onClick={handleUseCurrentLocation}
+                disabled={locationBusy}
+              >
+                {locationBusy ? 'Finding you…' : 'Use my current location'}
               </button>
             )}
+            {locationError && (
+              <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--az-flagship)' }}>{locationError}</p>
+            )}
           </>
-        )}
+        )
 
-        {step === 'notifications' && (
+      case 'equipment':
+        return <EquipmentStep selected={equipment} onToggle={toggleEquipment} />
+
+      case 'interests':
+        return (
+          <>
+            <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
+              What do you want to see?
+            </h1>
+            <p className="az-muted" style={{ margin: '0 0 1.25rem', fontSize: '0.90625rem' }}>
+              {hasSavedInterests
+                ? 'Pre-filled from what you already follow — tap any you want to remove.'
+                : 'Atlas will prioritise these in your feed and week strip.'}
+            </p>
+            <InterestsPicker selected={interests} onToggleCategory={toggleInterest} />
+          </>
+        )
+
+      case 'experience':
+        return <ExperienceStep selected={experience} onSelect={setExperience} />
+
+      case 'clubs':
+        return (
+          <ClubsStep
+            inClub={inClub}
+            clubName={clubName}
+            onSelectInClub={setInClub}
+            onClubNameChange={setClubName}
+          />
+        )
+
+      case 'notifications':
+        return (
           <>
             <h1 className="az-h1" style={{ fontSize: '2rem', margin: '0.5rem 0 0.5rem' }}>
               Stay in the loop
@@ -325,11 +470,17 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
               </>
             )}
           </>
-        )}
-      </div>
+        )
 
-      <div style={{ position: 'relative', zIndex: 1, flex: 'none', display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
-        {step === 'name' && (
+      case 'survey':
+        return <SurveyStep selected={surveyChoices} onToggle={(choice) => setSurveyChoices((current) => (current.includes(choice) ? current.filter((item) => item !== choice) : [...current, choice]))} />
+    }
+  }
+
+  function renderActions() {
+    switch (step) {
+      case 'name':
+        return (
           <>
             <button type="button" className="az-text-btn" onClick={() => skipStep('name')}>
               Skip
@@ -338,8 +489,37 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
               Continue
             </button>
           </>
-        )}
-        {step === 'interests' && (
+        )
+
+      // The geo path advances itself on a successful fix, so this button only
+      // has to cover the search path and the skip.
+      case 'location':
+        return (
+          <button
+            type="button"
+            className="az-btn az-btn-primary"
+            style={{ flex: 1 }}
+            onClick={chosenCity ? handleLocationContinue : () => skipStep('location')}
+            disabled={locationBusy}
+          >
+            {chosenCity ? 'Use this location' : 'Looks good'}
+          </button>
+        )
+
+      case 'equipment':
+        return (
+          <>
+            <button type="button" className="az-text-btn" onClick={() => skipStep('equipment')}>
+              Skip
+            </button>
+            <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleEquipmentContinue}>
+              Continue
+            </button>
+          </>
+        )
+
+      case 'interests':
+        return (
           <>
             <button type="button" className="az-text-btn" onClick={() => skipStep('interests')}>
               Skip
@@ -348,29 +528,95 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
               Continue
             </button>
           </>
-        )}
-        {step === 'location' && (
-          <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={chosenCity ? handleLocationContinue : () => skipStep('location')}>
-            {chosenCity ? 'Use this location' : 'Looks good'}
-          </button>
-        )}
-        {step === 'notifications' && (
+        )
+
+      case 'experience':
+        return (
           <>
-            <button type="button" className="az-text-btn" onClick={finish}>
-              {pushEnabled ? 'Done' : 'Not now'}
+            <button type="button" className="az-text-btn" onClick={() => skipStep('experience')}>
+              Skip
             </button>
-            {!pushEnabled && (
-              <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={enableNotifications} disabled={pushBusy || !localNotificationsSupported}>
-                {pushBusy ? 'Enabling…' : 'Enable notifications'}
-              </button>
-            )}
-            {pushEnabled && (
-              <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={finish}>
-                Finish
-              </button>
-            )}
+            <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleExperienceContinue}>
+              Continue
+            </button>
           </>
-        )}
+        )
+
+      case 'clubs':
+        return (
+          <>
+            <button type="button" className="az-text-btn" onClick={() => skipStep('clubs')}>
+              Skip
+            </button>
+            <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleClubsContinue}>
+              Continue
+            </button>
+          </>
+        )
+
+      // Once notifications are on there's nothing left to decide here, so the
+      // step collapses to a single Continue rather than offering "Done" and
+      // "Continue" side by side doing the same thing.
+      case 'notifications':
+        if (pushEnabled) {
+          return (
+            <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={advance}>
+              Continue
+            </button>
+          )
+        }
+        return (
+          <>
+            <button type="button" className="az-text-btn" onClick={advance}>
+              Not now
+            </button>
+            <button
+              type="button"
+              className="az-btn az-btn-primary"
+              style={{ flex: 1 }}
+              onClick={enableNotifications}
+              disabled={pushBusy || !localNotificationsSupported}
+            >
+              {pushBusy ? 'Enabling…' : 'Enable notifications'}
+            </button>
+          </>
+        )
+
+      case 'survey':
+        return (
+          <>
+            <button type="button" className="az-text-btn" onClick={handleSurveySkip}>
+              Skip
+            </button>
+            <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleSurveyContinue}>
+              Finish
+            </button>
+          </>
+        )
+    }
+  }
+
+  return (
+    <div className="onboarding-overlay az-overlay" style={{ padding: 'max(3.5rem, env(safe-area-inset-top)) 1.5rem 1.75rem', flexDirection: 'column', alignItems: 'stretch' }}>
+      <div className="az-overlay-bg">
+        <Starfield dark={theme === 'dark'} />
+      </div>
+      <div className="az-onboard-bars" style={{ position: 'relative', zIndex: 1 }}>
+        {STEPS.map((s, i) => (
+          <span key={s} className={`az-onboard-bar${i <= stepIndex ? ' is-done' : ''}`} />
+        ))}
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, overflowY: 'auto', paddingTop: '2.125rem' }}>
+        <span className="az-kicker">
+          STEP {stepIndex + 1} OF {STEPS.length}
+        </span>
+
+        {renderStep()}
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 1, flex: 'none', display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
+        {renderActions()}
       </div>
     </div>
   )

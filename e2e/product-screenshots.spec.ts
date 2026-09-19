@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
+import { seedOnboardingComplete } from './support/auth'
 
 const CAPTURE_DIR = path.join(process.cwd(), 'test-results', 'product-screenshots')
 
@@ -11,8 +12,8 @@ test.beforeEach(async ({ page }) => {
   // Location moved from the landing page into OnboardingFlow's own
   // "location" step -- seed it directly and skip onboarding so these
   // screenshots keep capturing the same screens as before that move.
+  await seedOnboardingComplete(page)
   await page.addInitScript(() => {
-    window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
     window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
   })
 })

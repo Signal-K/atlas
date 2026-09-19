@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { setupClerkTestingToken } from '@clerk/testing/playwright'
 import { clerkTestEmail, deleteClerkTestUser, fillClerkSignUp, readPocketBaseAuth } from './support/clerk'
+import { seedOnboardingComplete } from './support/auth'
 
 test.describe('PocketBase-backed write actions', () => {
   test.skip(
@@ -20,7 +21,7 @@ test.describe('PocketBase-backed write actions', () => {
       // Signing up flips `alreadyEntered`, which would otherwise surface the
       // first-run OnboardingFlow overlay and block the Scrapbook tab click
       // below -- this test isn't testing onboarding, so mark it done upfront.
-      await page.addInitScript(() => window.localStorage.setItem('atlas-onboarding-flow-complete', '1'))
+      await seedOnboardingComplete(page)
       await page.goto('/app/settings')
 
       await page.getByRole('tab', { name: 'Create account' }).click()

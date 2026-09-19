@@ -80,6 +80,38 @@ const SURVEYS = [
     ],
   },
   {
+    // ASV-53: the last step of first-run onboarding. Headless like the rest
+    // (type 'api') -- OnboardingFlow renders this with Atlas's own markup so
+    // it reads as part of the flow rather than a third-party widget landing
+    // on top of it, and reports back with PostHog's standard survey events.
+    //
+    // The question id is pinned on purpose and must stay in lockstep with
+    // ONBOARDING_SURVEY_QUESTION_ID in src/lib/onboardingSurvey.ts: PostHog
+    // keys a multiple-choice answer as `$survey_response_<question_id>`, so
+    // if the two drift, every answer lands under a key nothing reads -- with
+    // no error on either side. The choices are duplicated there for the same
+    // reason (a .mjs script can't import the TS module), so change both
+    // together.
+    envVar: 'VITE_POSTHOG_ONBOARDING_SURVEY_ID',
+    name: 'Atlas onboarding: what to use it for',
+    type: 'api',
+    questions: [
+      {
+        id: 'a3f1c0d2-7b4e-4c58-9e21-6d0a8b5f4c73',
+        type: 'multiple_choice',
+        question: 'What do you want to use Atlas for?',
+        choices: [
+          'Knowing what to look for tonight',
+          'Learning the sky as a beginner',
+          'Planning sessions with my telescope',
+          'Photographing the sky',
+          'Not missing rare events',
+          'Sharing the sky with others',
+        ],
+      },
+    ],
+  },
+  {
     // ASV-27: shown once a user reaches the paywall. Pairs with the
     // "Paywall checkout clicked" / "Paywall viewed" feature-property
     // breakdown -- this is the stated-preference half.

@@ -43,3 +43,46 @@ always-enabled primary button — "Use this location" if a city was
 searched and picked, "Looks good" (confirming the already-detected
 location) otherwise. Verified with a live browser test (Playwright)
 against a fresh onboarding run.
+
+## Follow-up fix 2 — geolocation left no durable home (ASV-53)
+
+Two bugs in the same handler, both found while rebuilding this step for
+the eight-step flow:
+
+1. **A granted permission persisted nothing durable.** The handler fired
+   the GPS request without awaiting it and never wrote a home, so the
+   only record of the user's location was `geo.ts`'s 30-day
+   `atlas-location-cache` — rounded to ~1 decimal degree, with no name
+   and no timezone. Once that expired, `useCurrentLocation` fell through
+   to the hardcoded Melbourne default, with nothing on screen explaining
+   why the app thought the user was in Australia.
+2. **A denial destroyed the home they already had.** The handler called
+   `setManualLocation?.(null)` *before* awaiting the browser's answer, so
+   declining the prompt deleted a perfectly good stored home and left the
+   user with no location at all.
+
+Fixed by inverting the order and persisting a real home on success: the
+request is awaited first, and a fix is reverse-geocoded to a name and
+saved through the same `MANUAL_LOCATION_KEY` store the search path uses
+(`setManualLocation`), so home now survives the cache expiring. The
+timezone comes from `Intl.DateTimeFormat().resolvedOptions().timeZone`,
+which is the right zone precisely because the user is physically at that
+location at that moment — the old geo-only path carried no timezone at
+all. On refusal or failure the handler leaves any existing home exactly
+as it was and still shows the search-instead error. Rounding stays at ~1
+decimal degree: this is a named home, not a precise track, and the
+device-local promise at `LocationSettings` is unchanged.
+
+Related, though not part of the location step: `activeTripFor`
+(`src/lib/trips.ts`) returned the *soonest*-starting trip covering a
+date, so a handover day belonged to the trip the user had just left.
+Perth 24–27 followed by Darwin 27–30 showed Perth on the 27th — wrong
+city, wrong forecast, on the one day it mattered most. The
+later-starting trip now wins, since a trip beginning that day supersedes
+one ending it.
+
+Both are pinned in `e2e/landing-location-flow.spec.ts`: the home test
+deletes the geo cache *and* withdraws the browser permission before
+reloading, so only a persisted home can still answer; the refusal test
+stubs the failure rather than relying on how headless Chromium treats an
+unanswered prompt.

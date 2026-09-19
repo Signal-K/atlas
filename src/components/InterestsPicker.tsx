@@ -1,4 +1,5 @@
 import { EVENT_CATEGORIES } from '../lib/eventCategories'
+import { ChoiceChips } from './onboarding/ChoiceChips'
 
 // Shared category chip grid for picking event-type interests -- used by
 // both the desktop feed's interests summary (WeekConditionsStrip) and the
@@ -15,22 +16,19 @@ export function InterestsPicker({
   onToggleCategory: (categoryKinds: string[]) => void
 }) {
   return (
-    <div className="interests-picker">
-      {OPTIONS.map((category) => {
-        const active = category.kinds.every((kind) => selected.includes(kind))
-        return (
-          <button
-            type="button"
-            key={category.id}
-            className={`interests-picker-chip${active ? ' is-active' : ''}`}
-            onClick={() => onToggleCategory(category.kinds)}
-            aria-pressed={active}
-          >
-            {category.label}
-          </button>
-        )
-      })}
-    </div>
+    <ChoiceChips
+      ariaLabel="What you want to see"
+      // `selected` holds event *kinds*, but a chip is one category covering
+      // several kinds at once, so a category reads as active only when every
+      // one of its kinds is present -- the same all-or-nothing rule the
+      // previous hand-rolled version used.
+      selected={OPTIONS.filter((category) => category.kinds.every((kind) => selected.includes(kind))).map((category) => category.id)}
+      options={OPTIONS.map((category) => ({ id: category.id, label: category.label }))}
+      onToggle={(id) => {
+        const category = OPTIONS.find((option) => option.id === id)
+        if (category) onToggleCategory(category.kinds)
+      }}
+    />
   )
 }
 

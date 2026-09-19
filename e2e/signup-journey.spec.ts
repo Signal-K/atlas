@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { setupClerkTestingToken } from '@clerk/testing/playwright'
 import { clerkTestEmail, createClerkTestUser, deleteClerkTestUser, fillClerkSignIn, fillClerkSignUp, primeClerkPocketBaseLink } from './support/clerk'
+import { completeOnboarding } from './support/onboarding'
 import { resolvePbUrl } from './support/pbUrl'
+import { ONBOARDING_VERSION } from '../src/lib/onboarding'
 
 const PB_URL = resolvePbUrl()
 
@@ -108,13 +110,7 @@ test('signup happens via the auth gate before onboarding, then observations save
     await expect(page).toHaveURL('/app/hub')
 
     // Onboarding runs on entry now, so a guest can set a location.
-    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
-    await page.getByRole('button', { name: 'Skip' }).click()
-    await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Skip' }).click()
-    await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Looks good' }).click()
-    await page.getByRole('button', { name: 'Not now' }).click()
+    await completeOnboarding(page)
 
     // Tonight's sky is readable without an account.
     await expect(page.getByText("You're browsing as a guest.")).toBeVisible()
@@ -154,7 +150,14 @@ test('signup happens via the auth gate before onboarding, then observations save
   }
 })
 
-test('an existing account signs in without being sent through onboarding again', async ({ page }) => {
+// This test used to assert the opposite -- that a returning account signs in
+// and lands straight in the product without seeing onboarding. That is no
+// longer the behaviour: ASV-53 made the gate a *version* comparison, so an
+// account whose onboarding_version predates the current flow is sent through
+// it rather than exempted by `onboarded`. The Clerk-side setup below is
+// unchanged and still worth keeping -- it is what exercises the account's
+// second login (created:false), which is the real returning-account case.
+test('an existing account is re-run through the current onboarding flow', async ({ page }) => {
   const email = clerkTestEmail('signup-journey-returning')
   const password = 'Correct-horse-battery1!'
   const clerkUser = await createClerkTestUser(email, password)
@@ -187,10 +190,19 @@ test('an existing account signs in without being sent through onboarding again',
 
     await fillClerkSignIn(page, email, password)
 
-    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
+    // Signed in, and sent through the current flow -- not waved past it by
+    // the account's existing `onboarded` flag.
+    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
+    await completeOnboarding(page)
+
+    // The flow is an overlay on the route the gate interrupted, so finishing it
+    // reveals Events rather than navigating anywhere new.
     await expect(page).toHaveURL('/app/events')
     await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete'))).toBe('1')
+    // The stored marker is a version, not a flag -- see lib/onboarding.ts.
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete')))
+      .toBe(String(ONBOARDING_VERSION))
   } finally {
     await deleteClerkTestUser({ id: clerkUser.id })
   }

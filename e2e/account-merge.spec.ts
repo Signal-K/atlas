@@ -4,7 +4,7 @@ test('local first-journey data merges into account and deduplicates saved record
   await page.goto('/')
 
   const result = await page.evaluate(async () => {
-    const [{ db }, { mergeLocalDataIntoAccount }] = await Promise.all([
+    const [{ db, CAMERA_PRESET_SCHEMA_VERSION }, { mergeLocalDataIntoAccount }] = await Promise.all([
       import('/src/lib/db.ts'),
       import('/src/lib/accountMerge.ts'),
     ])
@@ -59,7 +59,11 @@ test('local first-journey data merges into account and deduplicates saved record
       device: 'iphone_15_pro',
       targetKey: 'moon',
       name: 'Moon handheld',
-      settings: { mode: 'Night mode' },
+      // Current v2 settings shape -- `mode` moved under `capture` when the
+      // settings split into capture/look (see CameraPresetSettings in
+      // src/lib/db.ts). The pre-split flat form is still accepted at runtime,
+      // but this row is seeded fresh, so it should look like one.
+      settings: { schemaVersion: CAMERA_PRESET_SCHEMA_VERSION, capture: { mode: 'Night mode' } },
       source: 'imported',
       createdAt: now,
     })

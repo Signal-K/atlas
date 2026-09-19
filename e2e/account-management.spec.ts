@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { ONBOARDING_VERSION } from '../src/lib/onboarding'
 import { resolvePbUrl } from './support/pbUrl'
 
 const PB_URL = resolvePbUrl()
@@ -17,19 +18,29 @@ function makeAuthToken() {
 
 function seedSignedInUser(page: Page) {
   return page.addInitScript(
-    ({ tokenValue, userId, email }) => {
+    ({ tokenValue, userId, email, versionValue }) => {
       window.localStorage.setItem(
         'pocketbase_auth',
         JSON.stringify({
           token: tokenValue,
-          record: { id: userId, email, entitled: true },
+          record: {
+            id: userId,
+            email,
+            entitled: true,
+            // Both gate inputs, so the seeded account doesn't read as a
+            // brand-new signup to the account-side half of the check.
+            onboarded: true,
+            onboarding_version: versionValue,
+          },
         }),
       )
       // See entitlement-refresh.spec.ts -- this suite isn't testing
-      // onboarding, so skip straight past the first-run overlay.
-      window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
+      // onboarding, so skip straight past the first-run overlay. The flag
+      // holds a *version* (lib/onboarding.ts), not a boolean: seeding a
+      // hardcoded '1' would leave these tests behind the current flow.
+      window.localStorage.setItem('atlas-onboarding-flow-complete', String(versionValue))
     },
-    { tokenValue: E2E_TOKEN, userId: E2E_USER_ID, email: E2E_EMAIL },
+    { tokenValue: E2E_TOKEN, userId: E2E_USER_ID, email: E2E_EMAIL, versionValue: ONBOARDING_VERSION },
   )
 }
 

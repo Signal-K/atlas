@@ -69,6 +69,35 @@ export default defineConfig({
     env: {
       VITE_PB_URL: pbUrl,
       VITE_POLAR_CHECKOUT_URL: process.env.VITE_POLAR_CHECKOUT_URL || `${e2eBaseURL}/fallback-checkout`,
+      // ASV-53: e2e runs with PostHog switched off, pinned here rather than
+      // left to the developer's gitignored .env.
+      //
+      // Why it has to be pinned: FeedbackDock does not just add a property
+      // when a survey is provisioned, it emits a *different event name* --
+      // `survey sent`/`survey dismissed` with $survey_id when the id is set,
+      // and Atlas's own `NPS survey submitted`/`Micro survey dismissed` when
+      // it isn't (src/components/FeedbackDock.tsx). e2e/micro-survey and
+      // e2e/nps-feedback assert the latter, so simply running
+      // scripts/posthog-surveys-setup.mjs and putting the ids in .env turned
+      // 4 passing specs red without a line of app code changing. That is a
+      // suite whose result depends on a file the repo deliberately doesn't
+      // commit, which is the same class of bug as
+      // story-tonight-window-timezone-fallback.
+      //
+      // Why off and not on: with the ids set, exercising the feedback dock
+      // sends real `survey sent`/`survey dismissed` events into the live
+      // project, and with the key set it ships pageviews and exceptions too.
+      // Tests must not write to production analytics. (They only *appear* not
+      // to today because posthog-js's bot filter drops every capture from a
+      // Playwright browser, which is an accident of navigator.webdriver, not a
+      // guarantee.)
+      VITE_POSTHOG_KEY: '',
+      VITE_POSTHOG_NPS_SURVEY_ID: '',
+      VITE_POSTHOG_SURVEY_REMINDER_ID: '',
+      VITE_POSTHOG_SURVEY_TARGET_ID: '',
+      VITE_POSTHOG_POSTPLAN_SURVEY_ID: '',
+      VITE_POSTHOG_ONBOARDING_SURVEY_ID: '',
+      VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID: '',
     },
     timeout: 30_000,
   },

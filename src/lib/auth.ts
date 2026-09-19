@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ClientResponseError } from 'pocketbase'
 import { pb, atlasBillingFetch } from './pocketbase'
 import { trackEvent } from './analytics'
+import { ONBOARDING_VERSION, clearOnboardingAnswers, getOnboardingAnswers } from './onboarding'
 
 const entitlementListeners = new Set<() => void>()
 let entitlementRefreshCount = 0
@@ -41,6 +42,12 @@ export interface AuthUser {
   email: string
   entitled: boolean
   onboarded: boolean
+  // Which version of the onboarding flow this account last completed; 0 if
+  // never. The versioned replacement for `onboarded` as a gate input -- see
+  // lib/onboarding.ts. `onboarded` stays as "has ever completed" for
+  // reporting, but it cannot express "completed the four-step flow, not the
+  // eight-step one", which is exactly the distinction the re-run needs.
+  onboardingVersion: number
   deviceModels: string[]
 }
 
@@ -61,8 +68,23 @@ function currentUser(): AuthUser | null {
     email: model.email as string,
     entitled: Boolean(model.entitled),
     onboarded: Boolean(model.onboarded),
+    // `|| 0` rather than a plain Number(): the field is absent from the auth
+    // record until migration 39 has run *and* this record has been re-fetched,
+    // so Number(undefined) would yield NaN and every comparison against it
+    // would be false.
+    onboardingVersion: Number(model.onboarding_version) || 0,
     deviceModels: Array.isArray(model.device_models) ? (model.device_models as string[]) : [],
   }
+}
+
+// Whether the signed-in account itself has completed the current onboarding
+// flow. The gate's handleSignedIn() needs this rather than the `user` prop:
+// AuthGate only renders when there is no user, so the handlers close over a
+// stale `null` and must read the freshly-populated authStore instead.
+export function accountOnboardingVersion(): number {
+  const model = pb.authStore.record
+  if (!model) return 0
+  return Number(model.onboarding_version) || 0
 }
 
 // Whether the stored token is still usable. Lets callers tell "the server is
@@ -193,22 +215,50 @@ export async function refreshEntitlementAfterCheckout(): Promise<void> {
   }
 }
 
-// Persists onboarding completion on the account itself, not just this
-// browser's localStorage -- otherwise a signed-in user on a new device or
-// with storage cleared gets sent through onboarding again despite the app
-// clearly knowing who they are. Best-effort: if this fails (offline, etc.)
-// the local flag OnboardingFlow also sets still prevents a re-prompt on the
-// same browser, and the next successful sign-in/refresh retries the sync.
-// Named distinctly from OnboardingFlow's own (localStorage-only)
-// markOnboardingComplete() -- this one talks to the account.
+// Persists onboarding completion -- and the answers the account-side questions
+// collected -- on the account itself, not just this browser's localStorage.
+// Otherwise a signed-in user on a new device or with storage cleared gets sent
+// through onboarding again despite the app clearly knowing who they are, and
+// anyone who answered as a guest loses those answers the moment they sign up.
+//
+// Both writes live in one function deliberately: onboarding_version and the
+// answer fields are written to the same record, and two separate hand-merged
+// pb.authStore.save() calls racing on the same fields would let the loser drop
+// the winner's field from the local cache until the next refresh.
+//
+// Best-effort: if this fails (offline, etc.) the local flag OnboardingFlow
+// also sets still prevents a re-prompt on the same browser, the staged answers
+// are left in place for the next attempt, and the next successful sign-in or
+// refresh retries. Named distinctly from lib/onboarding.ts's own
+// (localStorage-only) markOnboardingComplete() -- this one talks to the account.
 export async function syncOnboardingToAccount(): Promise<void> {
   const id = pb.authStore.record?.id as string | undefined
   if (!id) return
+  const answers = getOnboardingAnswers()
+  const payload: Record<string, unknown> = {
+    onboarded: true,
+    onboarding_version: ONBOARDING_VERSION,
+  }
+  // The select fields are omitted rather than sent empty when unanswered:
+  // every onboarding question is skippable, and PocketBase rejects an empty
+  // value for a select field outright, which would fail the whole update --
+  // taking `onboarding_version` down with it and re-running the flow forever.
+  if (answers.viewingInstruments.length > 0) payload.viewing_instruments = answers.viewingInstruments
+  if (answers.experienceLevel) payload.experience_level = answers.experienceLevel
+  payload.in_astro_club = answers.inAstroClub
+  payload.astro_club_name = answers.inAstroClub ? answers.astroClubName.slice(0, 120) : ''
   try {
-    await pb.collection('users').update(id, { onboarded: true })
-    if (pb.authStore.record) {
-      pb.authStore.save(pb.authStore.token, { ...pb.authStore.record, onboarded: true })
-    }
+    const saved = await pb.collection('users').update(id, payload)
+    // Save the record the server returned, not a hand-built object. PocketBase
+    // silently drops unknown fields (it sets only fields the collection knows),
+    // so if migration 39 hasn't been applied the update still succeeds and
+    // returns a record without our fields -- and a hand-merged cache would then
+    // claim a version the server never stored, until the next authRefresh()
+    // quietly reverted it and sent the user through onboarding a second time.
+    pb.authStore.save(pb.authStore.token, saved)
+    // Only clear once the server has actually taken them; a failed push must
+    // survive for the next sign-in to retry.
+    clearOnboardingAnswers()
   } catch (err) {
     // Best-effort, see comment above.
     trackEvent('sync_failed', { stage: 'onboarding_account_sync', error: String(err) })

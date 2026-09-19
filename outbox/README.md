@@ -60,6 +60,15 @@ one fragment (dashboard widget limits/priority) was never confirmed and
 is resolved to the closest existing feature with a caveat — see
 story-dashboard-widget-limits.
 
+The most recent batch is the `epic-onboarding` overhaul to eight steps
+plus its four new stories (`story-onboarding-equipment`,
+`story-onboarding-experience`, `story-onboarding-club`,
+`story-onboarding-purpose-survey`), again from a direct request rather
+than the notebook pages. Note that ticket tracking moved off Desk to
+Linear in August 2026, so the sync instructions above apply only to the
+notebook-derived items; the onboarding-overhaul work is tracked as
+ASV-53 in Linear, and these files are the in-repo record of it.
+
 A later batch of stories (`story-feed-day-grouping-improvements`,
 everything under `epic-event-data-expansion`, everything under
 `epic-guest-experience`, everything under
@@ -93,9 +102,13 @@ what was scoped/shipped.
 | story-event-detail-subpage | story | Tap an event to open detail/plan/share subpage | done (pre-existing) |
 | story-home-happening-now | story | Home shows what's happening now/upcoming soon | done (pre-existing) |
 | story-onboarding-name | story | Onboarding: capture display name | done |
+| story-onboarding-equipment | story | Onboarding: capture viewing equipment | done |
 | story-onboarding-interests | story | Onboarding: capture interests | done |
+| story-onboarding-experience | story | Onboarding: capture astronomy experience level | done |
+| story-onboarding-club | story | Onboarding: ask about astronomy club membership | done |
 | story-onboarding-location | story | Onboarding: capture location | done (pre-existing) |
 | story-onboarding-notifications | story | Onboarding: capture notification preferences | done |
+| story-onboarding-purpose-survey | story | Onboarding: ask what they want to use Atlas for | done |
 | story-events-page-structure | story | Events page: 100% clear structure pass | done |
 | story-events-category-filter | story | Optional category filter at top of events views | done |
 | story-daily-transit-articles | story | Ability to see Daily Transit articles from the Atlas app | done |

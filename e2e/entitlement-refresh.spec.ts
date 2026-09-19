@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { ONBOARDING_VERSION } from '../src/lib/onboarding'
 import { resolvePbUrl } from './support/pbUrl'
 
 const PB_URL = resolvePbUrl()
@@ -17,7 +18,7 @@ function makeAuthToken() {
 
 function seedSignedInUser(page: Page, entitled: boolean) {
   return page.addInitScript(
-    ({ entitledValue, tokenValue }) => {
+    ({ entitledValue, tokenValue, versionValue }) => {
       window.localStorage.setItem(
         'pocketbase_auth',
         JSON.stringify({
@@ -26,15 +27,22 @@ function seedSignedInUser(page: Page, entitled: boolean) {
             id: 'e2e-user',
             email: 'atlas-entitlement-e2e@example.com',
             entitled: entitledValue,
+            // Both gate inputs, so the seeded account doesn't read as a
+            // brand-new signup to the account-side half of the check.
+            onboarded: true,
+            onboarding_version: versionValue,
           },
         }),
       )
       // Signing in flips `alreadyEntered`, which would otherwise surface the
       // first-run OnboardingFlow overlay and block every click these tests
       // make -- this suite isn't testing onboarding, so mark it done upfront.
-      window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
+      // The flag holds a *version* (lib/onboarding.ts), not a boolean, so it
+      // has to be seeded from the constant rather than a hardcoded '1' -- a
+      // stale literal would silently put these tests back inside the flow.
+      window.localStorage.setItem('atlas-onboarding-flow-complete', String(versionValue))
     },
-    { entitledValue: entitled, tokenValue: E2E_TOKEN },
+    { entitledValue: entitled, tokenValue: E2E_TOKEN, versionValue: ONBOARDING_VERSION },
   )
 }
 

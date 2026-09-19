@@ -80,6 +80,40 @@ export function shouldAskForEquipment(): boolean {
   return listLocalTargetTaps().length > 0 && !getEquipmentChoice() && localStorage.getItem(EQUIPMENT_PROMPT_DISMISSED_KEY) !== '1'
 }
 
+// Bridges onboarding's multi-select answer (VIEWING_INSTRUMENTS ids from
+// lib/tripPlans.ts) into the single-choice signal this module ranks Tonight
+// targets with, and suppresses the first-plan equipment prompt -- onboarding
+// has already asked the same question, so without this the user is asked it
+// twice, the second time after tapping a target.
+//
+// The two vocabularies don't line up one-for-one: onboarding allows several
+// instruments and folds eyes-and-phone into one option, while
+// sortTargetsByEquipment() takes exactly one. The most capable instrument the
+// user named wins, which is the choice that keeps the most targets visible
+// rather than hiding ones they could actually have seen.
+//
+// Best-effort and never throws: it runs from onboarding's step handlers, where
+// an exception would strand the user on a step whose button no longer works.
+// (The writes below are raw localStorage, same as the rest of this module.)
+export function recordOnboardingEquipment(instruments: string[]): void {
+  try {
+    const choice: EquipmentChoice | null = instruments.includes('telescope')
+      ? 'telescope'
+      : instruments.includes('binoculars')
+        ? 'binoculars'
+        : instruments.includes('naked_eye')
+          ? 'eyes'
+          : null
+    // `null` means skipped, or picked nothing that maps -- either way the
+    // question has been put to them, so record it as answered-and-dismissed
+    // rather than leaving the prompt armed for later.
+    if (!choice) dismissEquipmentPrompt()
+    else saveEquipmentChoice(choice)
+  } catch {
+    // See above; the first-plan signal is not worth breaking onboarding over.
+  }
+}
+
 type EquipmentRankable = Pick<TonightTarget, 'phoneFriendly' | 'nakedEyeVisible' | 'difficulty'>
 
 function matchesEquipment(target: EquipmentRankable, equipment: EquipmentChoice): boolean {
