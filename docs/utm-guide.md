@@ -55,6 +55,16 @@ Until a real share uses the scheme above, morning reviews will still read
 as Direct. Check [Web analytics](https://us.posthog.com/project/199773/web)
 after the first tagged click.
 
+### Smoke test result (20 Sep 2026)
+
+Loaded `http://localhost:5199/?utm_source=linkedin&utm_medium=social&utm_campaign=asv-22-smoke-test`
+in Chrome with the project key. PostHog (project 199773) ingested
+`Viewed landing page` / `$pageleave` events carrying `utm_source=linkedin`,
+`utm_medium=social`, `utm_campaign=asv-22-smoke-test` (queried with
+`execute-sql`; host `localhost:5199`, so filter that campaign out of channel
+reports). The scheme works end to end. The first real share still needs to
+land to move the Direct share.
+
 ## Result
 
 With this in place, morning/weekly analytics reviews can break down

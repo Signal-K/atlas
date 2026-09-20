@@ -242,7 +242,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
         <div>
           <h1 className="az-h1">Events</h1>
-          <p className="az-hero-title">{events ? `${events.length} things to see` : 'Finding tonight’s sky…'}</p>
+          <p className="az-hero-title">{events ? `${filtered.length} things to see` : 'Finding tonight’s sky…'}</p>
         </div>
         <button type="button" className="az-text-btn" onClick={() => navigate('/app/calendar')}>
           Calendar
