@@ -304,10 +304,17 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
               : 'Loading tonight…'}
       </h1>
       {!hasLocation && (
-        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <p className="az-muted" style={{ margin: 0 }}>
-            Share your location for a plan built around your own sky.
-          </p>
+        <div
+          className="az-card"
+          role="note"
+          style={{ marginTop: '0.875rem', padding: '1rem 1.125rem', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}
+        >
+          <div style={{ flex: '1 1 16rem' }}>
+            <strong style={{ display: 'block' }}>You&rsquo;re seeing flagship events only</strong>
+            <p className="az-muted" style={{ margin: '0.25rem 0 0' }}>
+              Share your location to unlock more: tonight&rsquo;s plan for your sky, local weather and visibility, and events near you.
+            </p>
+          </div>
           {onRequestLocation && (
             <button type="button" className="az-btn az-btn-outline" onClick={onRequestLocation}>
               Use my location

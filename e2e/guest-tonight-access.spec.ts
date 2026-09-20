@@ -79,6 +79,7 @@ test('a guest with no location sees global events, never a Melbourne default', a
   await page.goto('/app/hub')
 
   await expect(page.getByRole('heading', { name: 'Flagship events, worldwide' })).toBeVisible()
+  await expect(page.getByText('You’re seeing flagship events only')).toBeVisible()
   await expect(page.getByText('Melbourne')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Location not set' })).toBeVisible()
 
