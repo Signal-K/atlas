@@ -9,6 +9,7 @@ import { MobileNavDrawer } from './components/mobile/MobileNavDrawer'
 import { SearchOverlay } from './components/mobile/SearchOverlay'
 import { HubPage } from './pages/HubPage'
 import { EventsPage } from './pages/EventsPage'
+import { CalendarPage } from './pages/CalendarPage'
 import { PlannerPage } from './pages/PlannerPage'
 import { JournalPage, type JournalPageProps } from './pages/JournalPage'
 import { AskAtlasPage } from './pages/AskAtlasPage'
@@ -115,6 +116,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
         <Routes>
           <Route path="/app/hub" element={<HubPage city={currentLocation} onLogAttempt={onLogAttempt} onRequestLocation={() => void profileProps.requestLocation()} />} />
           <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
+          <Route path="/app/calendar" element={<CalendarPage city={currentLocation} />} />
           <Route path="/app/planner" element={<PlannerPage />} />
           <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
           <Route path="/app/ask" element={<AskAtlasPage />} />

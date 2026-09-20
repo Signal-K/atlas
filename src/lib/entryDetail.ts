@@ -61,7 +61,8 @@ const DIFFICULTY_LABEL: Record<TargetDifficulty, string> = {
 
 // Kinds where a moving/brief target makes binoculars impractical even
 // though naked-eye or a phone can still catch it.
-const BINOCULARS_UNHELPFUL = new Set(['meteor_shower', 'fireball', 'solar_flare', 'iss_pass', 'satellite_flare'])
+const BINOCULARS_UNHELPFUL = new Set(['meteor_shower', 'fireball', 'solar_flare', 'iss_pass', 'satellite_flare', 'telescope_target'])
+const TELESCOPE_UNHELPFUL = new Set(['meteor_shower', 'fireball', 'solar_flare', 'iss_pass', 'satellite_flare'])
 
 // Moon illumination is useful context for dark-sky targets and lunar events,
 // but it is not a property of a planet such as Venus. Keep the detail facts
@@ -94,18 +95,21 @@ function eventSuitability(kind: string, phoneFriendly: boolean, nakedEyeVisible:
   return [
     { label: 'Naked eye', active: nakedEyeVisible },
     { label: 'Binoculars', active: !BINOCULARS_UNHELPFUL.has(kind) },
+    { label: 'Telescope', active: !TELESCOPE_UNHELPFUL.has(kind) },
     { label: 'Phone', active: phoneFriendly },
   ]
 }
 
 function eventSuitabilityNote(pills: SuitabilityPill[]): string {
+  const telescope = pills.find((pill) => pill.label === 'Telescope')?.active
   const phone = pills.find((pill) => pill.label === 'Phone')?.active
   const binoculars = pills.find((pill) => pill.label === 'Binoculars')?.active
   const nakedEye = pills.find((pill) => pill.label === 'Naked eye')?.active
   if (phone) return 'Bright enough for a handheld or tripod phone shot to pick out clearly.'
   if (binoculars) return 'Binoculars or a longer lens reveal it better than a phone alone will.'
   if (nakedEye) return 'Easy to find naked-eye, though a phone will struggle to resolve much detail.'
-  return 'A challenging target — best attempted with a telescope and tracking.'
+  if (telescope) return 'A challenging target — best attempted with a telescope and tracking.'
+  return 'Not a target for optics — this is best experienced with the naked eye or as a record of activity.'
 }
 
 interface EventDetailInput {

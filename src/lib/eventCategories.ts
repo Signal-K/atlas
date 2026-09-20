@@ -21,7 +21,7 @@ export const EVENT_CATEGORIES: EventCategory[] = [
   { id: 'meteor-showers', label: 'Meteors & fireballs', icon: 'zap', kinds: ['meteor_shower', 'fireball'] },
   { id: 'satellites', label: 'Satellites', icon: 'satellite', kinds: ['iss_pass', 'satellite_flare'] },
   { id: 'aurora', label: 'Aurora & space weather', icon: 'aurora', kinds: ['aurora', 'solar_flare'] },
-  { id: 'deep-sky', label: 'Deep sky', icon: 'telescope', kinds: ['deep_sky'] },
+  { id: 'deep-sky', label: 'Stars & deep sky', icon: 'telescope', kinds: ['bright_star', 'deep_sky', 'telescope_target'] },
   { id: 'asteroids', label: 'Asteroids', icon: 'asteroid', kinds: ['asteroid_approach'] },
   { id: 'guides', label: 'Guides', icon: 'book', kinds: ['comet', 'night_sky_guide', 'local_night_sky'] },
 ]

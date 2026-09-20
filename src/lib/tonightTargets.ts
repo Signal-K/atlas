@@ -72,6 +72,7 @@ export interface KindMeta {
   difficulty: TargetDifficulty
   phoneFriendly: boolean
   nakedEyeVisible: boolean
+  binocularFriendly?: boolean
   reason: string
 }
 
@@ -127,7 +128,24 @@ const KIND_META: Record<string, KindMeta> = {
     difficulty: 'hard',
     phoneFriendly: false,
     nakedEyeVisible: false,
-    reason: 'Faint — only worth a phone attempt on a clear, dark, moonless night, and usually needs binoculars or a scope to see at all.',
+    binocularFriendly: true,
+    reason: 'Faint — a clear, dark, moonless night matters, and binoculars or a scope usually reveal far more than a phone can.',
+  },
+  telescope_target: {
+    priority: 8,
+    difficulty: 'hard',
+    phoneFriendly: false,
+    nakedEyeVisible: false,
+    binocularFriendly: false,
+    reason: 'A telescope target selected for its altitude from your location tonight.',
+  },
+  bright_star: {
+    priority: 7,
+    difficulty: 'easy',
+    phoneFriendly: true,
+    nakedEyeVisible: true,
+    binocularFriendly: true,
+    reason: 'One of the brightest stars well placed from your location tonight.',
   },
   satellite_flare: {
     priority: 3,
@@ -178,6 +196,7 @@ const DEFAULT_META: KindMeta = {
   difficulty: 'hard',
   phoneFriendly: false,
   nakedEyeVisible: false,
+  binocularFriendly: false,
   reason: 'A niche target for tonight.',
 }
 

@@ -1,4 +1,4 @@
-import { getVisiblePlanetsTonight, getStarObjects, type SkyMapObject } from './skyMapLayers'
+import { getDeepSkyObjects, getStarObjects, getVisiblePlanetsTonight, type SkyMapObject } from './skyMapLayers'
 import type { SkyEvent } from './db'
 
 const MAX_STARS_MENTIONED = 3
@@ -8,6 +8,111 @@ const MAX_STARS_MENTIONED = 3
 // nothing browses that far day-by-day) and not worth the extra ephemeris
 // calls.
 export const SKY_GUIDE_WINDOW_DAYS = 14
+
+// The event feed is also an observing tool.  A remote catalogue is useful
+// for things that happen at a particular moment, but it cannot be the only
+// source of content: stars, clusters and nebulae are worthwhile on ordinary
+// clear nights too.  Keep this modest (rather than dumping the whole Messier
+// catalogue into every day) and compute it locally so it works for Perth,
+// Melbourne, or a traveller's selected location without a new ingest job.
+const BRIGHT_STARS_PER_NIGHT = 2
+const BINOCULAR_TARGETS_PER_NIGHT = 2
+const TELESCOPE_TARGETS_PER_NIGHT = 2
+const MIN_TARGET_ALTITUDE_DEG = 28
+
+function observingTimeFor(day: Date): Date {
+  const evening = new Date(day)
+  evening.setHours(21, 0, 0, 0)
+  return evening
+}
+
+function dateKeyFor(day: Date): string {
+  return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+}
+
+function targetDirection(target: SkyMapObject): string {
+  return `${Math.round(target.altitudeDeg)}° up in the ${target.compassLabel}`
+}
+
+function deepSkyRank(a: SkyMapObject, b: SkyMapObject): number {
+  // High altitude matters more than a small magnitude difference: a faint
+  // cluster high above suburban haze is usually a better real-world target
+  // than a nominally brighter one scraping the horizon.
+  const aScore = a.altitudeDeg * 0.12 - (a.magnitude ?? 99)
+  const bScore = b.altitudeDeg * 0.12 - (b.magnitude ?? 99)
+  return bScore - aScore
+}
+
+/**
+ * Location-aware, non-persisted observing targets for the next two weeks.
+ * They deliberately look like SkyEvents so the existing filters, event
+ * detail page, reminders and sky-position UI work without pretending that a
+ * star has a one-off calendar date.
+ */
+export function buildDailyObservingTargets(startDate: Date, days: number, lat: number, lon: number): SkyEvent[] {
+  const generatedAt = new Date().toISOString()
+
+  return Array.from({ length: days }, (_, dayOffset) => {
+    const day = new Date(startDate)
+    day.setHours(0, 0, 0, 0)
+    day.setDate(day.getDate() + dayOffset)
+    const evening = observingTimeFor(day)
+    const dateKey = dateKeyFor(day)
+
+    const stars = getStarObjects(evening, lat, lon)
+      .filter((star) => star.visible && star.altitudeDeg >= MIN_TARGET_ALTITUDE_DEG && (star.magnitude ?? 99) <= 1.5)
+      .sort((a, b) => (a.magnitude ?? 99) - (b.magnitude ?? 99) || b.altitudeDeg - a.altitudeDeg)
+      .slice(0, BRIGHT_STARS_PER_NIGHT)
+      .map((star) => ({
+        id: `bright-star-${dateKey}-${star.id}`,
+        kind: 'bright_star',
+        target: star.id,
+        title: star.name,
+        description: `${star.name}${star.constellation ? ` in ${star.constellation}` : ''} is a bright naked-eye target, ${targetDirection(star)} at 9pm.`,
+        content: `${star.name}${star.constellation ? ` is in ${star.constellation} and` : ''} is one of tonight's brightest stars. Find it ${targetDirection(star)}; binoculars bring out its colour and nearby star field.`,
+        startsAt: evening.toISOString(),
+        endsAt: new Date(evening.getTime() + 3 * 3_600_000).toISOString(),
+        updatedAt: generatedAt,
+      }))
+
+    const candidates = getDeepSkyObjects(evening, lat, lon)
+      .filter((target) => target.visible && target.altitudeDeg >= MIN_TARGET_ALTITUDE_DEG)
+      .sort(deepSkyRank)
+    const binocularTargets = candidates
+      .filter((target) => (target.magnitude ?? 99) <= 6.5)
+      .slice(0, BINOCULAR_TARGETS_PER_NIGHT)
+    const binocularIds = new Set(binocularTargets.map((target) => target.id))
+    const telescopeTargets = candidates
+      .filter((target) => !binocularIds.has(target.id) && (target.magnitude ?? 99) <= 9.5)
+      .slice(0, TELESCOPE_TARGETS_PER_NIGHT)
+
+    const binocularEvents = binocularTargets.map((target) => ({
+      id: `binocular-target-${dateKey}-${target.id}`,
+      kind: 'deep_sky',
+      target: target.id,
+      title: target.name,
+      description: `${target.objectType ?? 'Deep-sky object'} · magnitude ${(target.magnitude ?? 0).toFixed(1)} · ${targetDirection(target)} at 9pm.`,
+      content: `${target.name} is a ${target.objectType ?? 'deep-sky object'} suited to binoculars from a dark enough site. It is ${targetDirection(target)} at 9pm; let your eyes adjust before looking for its faint shape.`,
+      startsAt: evening.toISOString(),
+      endsAt: new Date(evening.getTime() + 3 * 3_600_000).toISOString(),
+      updatedAt: generatedAt,
+    }))
+
+    const telescopeEvents = telescopeTargets.map((target) => ({
+      id: `telescope-target-${dateKey}-${target.id}`,
+      kind: 'telescope_target',
+      target: target.id,
+      title: target.name,
+      description: `${target.objectType ?? 'Deep-sky object'} · magnitude ${(target.magnitude ?? 0).toFixed(1)} · ${targetDirection(target)} at 9pm.`,
+      content: `${target.name} is a ${target.objectType ?? 'deep-sky object'} for a telescope on a clear night. It is ${targetDirection(target)} at 9pm; start at low magnification and use a dark, steady view.`,
+      startsAt: evening.toISOString(),
+      endsAt: new Date(evening.getTime() + 3 * 3_600_000).toISOString(),
+      updatedAt: generatedAt,
+    }))
+
+    return [...stars, ...binocularEvents, ...telescopeEvents]
+  }).flat()
+}
 
 function describeVisiblePlanets(now: Date, lat: number, lon: number): string {
   const { visible, notVisible } = getVisiblePlanetsTonight(now, lat, lon)

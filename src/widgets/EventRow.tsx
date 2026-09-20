@@ -7,6 +7,8 @@ export const KIND_LABELS: Record<string, string> = {
   iss_pass: 'ISS pass',
   planet_event: 'Planet',
   deep_sky: 'Deep sky',
+  telescope_target: 'Telescope target',
+  bright_star: 'Bright star',
   conjunction: 'Conjunction',
   satellite_flare: 'Satellite flare',
   aurora: 'Aurora',
