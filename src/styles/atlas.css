@@ -2329,11 +2329,12 @@
 /* ---- lede / hero ---- */
 
 .am-lede {
-  display: grid;
-  grid-template-columns: 1.55fr 1px 1fr;
-  gap: 2.5rem;
-  align-items: start;
+  display: block;
   padding: 2.5rem 0 2.75rem;
+}
+
+.am-lede-copy {
+  max-width: 58rem;
 }
 
 .am-lede-divider {
@@ -2711,6 +2712,16 @@
   flex-direction: column;
   gap: 1rem;
   align-items: flex-start;
+}
+
+.am-plan--compact {
+  max-width: 48rem;
+}
+
+.am-plan--compact p {
+  margin: 0;
+  font: 400 0.9375rem/1.6 system-ui, sans-serif;
+  color: var(--am-muted-soft);
 }
 
 .am-plan-head {
