@@ -22,7 +22,7 @@ interface LandingPageProps {
 
 type CtaSource = 'nav' | 'hero' | 'membership-free' | 'membership-paid' | 'footer'
 
-interface WeekRow {
+interface EventRow {
   dateKey: string
   weekdayLabel: string
   dayLabel: string
@@ -31,7 +31,6 @@ interface WeekRow {
   difficulty: TargetDifficulty
   timeLabel: string
   isPick: boolean
-  isFallback: boolean
 }
 
 interface TonightSnapshot {
@@ -71,80 +70,49 @@ function formatLocalTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }
 
-// One flagship event per day, chosen globally. The landing page should put a
-// conjunction or planetary event ahead of a routine lunar phase when they
-// share a date: the point of this table is to make the sky feel alive, not to
-// let the Moon crowd out every other kind of astronomy.
-function buildWeekRows(events: SkyEvent[], now: Date): WeekRow[] {
-  const byDay = new Map<string, SkyEvent[]>()
+// The landing page is a cover, not a calendar. Show the five strongest real
+// events in the next month, so a quiet stretch can stay quiet and a conjunction
+// or planetary event is not buried under a row of routine Moon phases.
+function buildEventRows(events: SkyEvent[]): EventRow[] {
+  const landingPriority = (event: SkyEvent) => {
+    if (event.kind === 'eclipse') return 1
+    if (event.kind === 'conjunction') return 2
+    if (event.kind === 'planet_event') return 3
+    if (event.kind === 'meteor_shower') return 4
+    if (event.kind === 'moon_phase') return 5
+    return metaFor(event.kind).priority + 5
+  }
+  const uniqueEvents = new Map<string, SkyEvent>()
   for (const event of events) {
-    const key = localDateKey(event.startsAt)
-    const list = byDay.get(key)
-    if (list) list.push(event)
-    else byDay.set(key, [event])
+    const key = `${event.kind}|${event.target}|${event.startsAt}`
+    if (!uniqueEvents.has(key)) uniqueEvents.set(key, event)
   }
 
-  const built = Array.from({ length: 7 }, (_, i) => {
-    const dayDate = new Date(now.getTime() + i * 86_400_000)
-    const dateKey = localDateKey(dayDate.toISOString())
-    const weekdayLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
-    const dayLabel = dayDate.toLocaleDateString(undefined, { day: 'numeric' })
-
-    const dayEvents = (byDay.get(dateKey) ?? []).slice().sort((a, b) => {
-      const landingPriority = (event: SkyEvent) => {
-        if (event.kind === 'eclipse') return 1
-        if (event.kind === 'conjunction') return 2
-        if (event.kind === 'planet_event') return 3
-        if (event.kind === 'meteor_shower') return 4
-        if (event.kind === 'moon_phase') return 5
-        return metaFor(event.kind).priority + 5
-      }
-      const diff = landingPriority(a) - landingPriority(b)
-      return diff !== 0 ? diff : a.startsAt.localeCompare(b.startsAt)
+  return Array.from(uniqueEvents.values())
+    .sort((a, b) => {
+      const priorityDiff = landingPriority(a) - landingPriority(b)
+      return priorityDiff !== 0 ? priorityDiff : a.startsAt.localeCompare(b.startsAt)
     })
-    const best = dayEvents[0]
-
-    if (best) {
-      const meta = metaFor(best.kind)
-      const durationHours = (new Date(best.endsAt).getTime() - new Date(best.startsAt).getTime()) / 3_600_000
+    .slice(0, 5)
+    .map((event, index) => {
+      const meta = metaFor(event.kind)
+      const eventDate = new Date(event.startsAt)
+      const durationHours = (new Date(event.endsAt).getTime() - eventDate.getTime()) / 3_600_000
       return {
-        row: {
-          dateKey,
-          weekdayLabel,
-          dayLabel,
-          title: best.title,
-          description: best.description || meta.reason,
-          difficulty: meta.difficulty,
-          timeLabel: durationHours >= 8 ? 'All night' : formatLocalTime(best.startsAt),
-          isFallback: false,
-        } satisfies Omit<WeekRow, 'isPick'>,
-        priority: meta.priority,
+        dateKey: `${localDateKey(event.startsAt)}-${event.id}`,
+        weekdayLabel: eventDate.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase(),
+        dayLabel: eventDate.toLocaleDateString(undefined, { day: 'numeric' }),
+        title: event.title,
+        description: event.description || meta.reason,
+        difficulty: meta.difficulty,
+        timeLabel: durationHours >= 8 ? 'All night' : formatLocalTime(event.startsAt),
+        isPick: index === 0,
       }
-    }
-
-    const evening = new Date(dayDate)
-    evening.setHours(21, 0, 0, 0)
-    return {
-      row: {
-        dateKey,
-        weekdayLabel,
-        dayLabel,
-        title: moonPhaseNameAt(evening),
-        description: `${moonPhaseNameAt(evening) === 'Full moon' ? 'The full Moon' : `A ${moonPhaseNameAt(evening).toLowerCase()} Moon`} lights the night at ${Math.round(moonIlluminationPctAt(evening))}% illumination. After dark, look for the brightest stars and any planets above your horizon.`,
-        difficulty: 'easy' as TargetDifficulty,
-        timeLabel: 'After dark',
-        isFallback: true,
-      } satisfies Omit<WeekRow, 'isPick'>,
-      priority: Number.POSITIVE_INFINITY,
-    }
-  })
-
-  const bestPriority = Math.min(...built.map((entry) => entry.priority))
-  return built.map((entry) => ({ ...entry.row, isPick: entry.priority === bestPriority && Number.isFinite(entry.priority) }))
+    })
 }
 
 export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: LandingPageProps) {
-  const [weekRows, setWeekRows] = useState<WeekRow[] | null>(null)
+  const [eventRows, setEventRows] = useState<EventRow[] | null>(null)
   const [tonight, setTonight] = useState<TonightSnapshot | null>(null)
 
   useEffect(() => {
@@ -163,14 +131,14 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
       moonWaxing: isMoonWaxingAt(now),
     })
 
-    async function loadWeek() {
+    async function loadEvents() {
       try {
         await pullSkyEvents()
-        const weekEnd = new Date(now.getTime() + 7 * 86_400_000)
+        const monthEnd = new Date(now.getTime() + 30 * 86_400_000)
         const [cachedEvents, conjunctions, planetEvents] = await Promise.all([
-          getEventsInRange(now, weekEnd),
-          fetchConjunctionEvents({ now, windowDays: 7 }),
-          fetchPlanetEvents({ now, windowDays: 7 }),
+          getEventsInRange(now, monthEnd),
+          fetchConjunctionEvents({ now, windowDays: 30 }),
+          fetchPlanetEvents({ now, windowDays: 30 }),
         ])
         const computedEvents: SkyEvent[] = [...conjunctions, ...planetEvents].map((event, index) => ({
           id: `landing-${event.kind}-${event.target}-${event.starts_at}-${index}`,
@@ -183,22 +151,22 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
           endsAt: event.ends_at ?? event.starts_at,
           updatedAt: now.toISOString(),
         }))
-        if (!cancelled) setWeekRows(buildWeekRows([...cachedEvents, ...computedEvents], now))
+        if (!cancelled) setEventRows(buildEventRows([...cachedEvents, ...computedEvents]))
       } catch (err) {
-        if (!cancelled) setWeekRows(buildWeekRows([], now))
-        trackEvent('sync_failed', { stage: 'landing_week_events', error: String(err) })
+        if (!cancelled) setEventRows([])
+        trackEvent('sync_failed', { stage: 'landing_month_events', error: String(err) })
       }
     }
 
-    loadWeek()
+    loadEvents()
     return () => {
       cancelled = true
     }
   }, [])
 
-  const weekRangeLabel = useMemo(() => {
+  const eventRangeLabel = useMemo(() => {
     const now = new Date()
-    const end = new Date(now.getTime() + 6 * 86_400_000)
+    const end = new Date(now.getTime() + 30 * 86_400_000)
     const start = now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })
     const endLabel = end.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' })
     return `${start} — ${endLabel}`
@@ -224,7 +192,7 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
       <header className="am-masthead">
         <div className="am-masthead-meta">
           <span>{todayLabel}</span>
-          <span>{weekRangeLabel}</span>
+          <span>{eventRangeLabel}</span>
         </div>
         <div className="am-masthead-title">
           <div className="am-wordmark">ATLAS</div>
@@ -300,7 +268,7 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
 
         <section id="week" className="am-section am-week" aria-labelledby="am-week-title">
           <div className="am-section-head">
-            <h2 id="am-week-title">Flagship events this week</h2>
+            <h2 id="am-week-title">The next five flagship events</h2>
             <div className="am-legend">
               {(Object.keys(GEAR_META) as TargetDifficulty[]).map((key) => (
                 <span key={key} className="am-legend-item">
@@ -311,7 +279,7 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
             </div>
           </div>
 
-          <div className="am-week-table" role="table" aria-label="This week's sky events">
+          <div className="am-week-table" role="table" aria-label="The next five flagship sky events">
             <div className="am-week-row am-week-row--head" role="row">
               <div role="columnheader">Night</div>
               <div role="columnheader">Event</div>
@@ -319,36 +287,40 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
               <div role="columnheader">Time</div>
             </div>
 
-            {(weekRows ?? Array.from({ length: 7 })).map((row, index) => (
-              <div className={`am-week-row${row && (row as WeekRow).isPick ? ' am-week-row--pick' : ''}`} role="row" key={row ? (row as WeekRow).dateKey : index}>
-                {row ? (
-                  <>
-                    <div className="am-week-date" role="cell">
-                      {(row as WeekRow).weekdayLabel} {(row as WeekRow).dayLabel}
-                    </div>
-                    <div className="am-week-event" role="cell">
-                      <span className="am-legend-dot" style={{ background: GEAR_META[(row as WeekRow).difficulty].color }} />
-                      <span className="am-week-event-title">{(row as WeekRow).title}</span>
-                      {(row as WeekRow).isPick && <span className="am-pick-badge">Pick of the week</span>}
-                    </div>
-                    <div className="am-week-desc" role="cell">
-                      {(row as WeekRow).description}
-                    </div>
-                    <div className="am-week-time" role="cell">
-                      {(row as WeekRow).timeLabel}
-                    </div>
-                  </>
-                ) : (
-                  <div className="am-week-loading" role="cell">
-                    Loading tonight's sky…
-                  </div>
-                )}
+            {eventRows === null ? Array.from({ length: 5 }).map((_, index) => (
+              <div className="am-week-row" role="row" key={index}>
+                <div className="am-week-loading" role="cell">
+                  Loading the next month’s sky…
+                </div>
+              </div>
+            )) : eventRows.length === 0 ? (
+              <div className="am-week-row" role="row">
+                <div className="am-week-loading" role="cell">
+                  A quiet month ahead. Atlas will surface the next event as soon as there is something worth planning around.
+                </div>
+              </div>
+            ) : eventRows.map((row) => (
+              <div className={`am-week-row${row.isPick ? ' am-week-row--pick' : ''}`} role="row" key={row.dateKey}>
+                <div className="am-week-date" role="cell">
+                  {row.weekdayLabel} {row.dayLabel}
+                </div>
+                <div className="am-week-event" role="cell">
+                  <span className="am-legend-dot" style={{ background: GEAR_META[row.difficulty].color }} />
+                  <span className="am-week-event-title">{row.title}</span>
+                  {row.isPick && <span className="am-pick-badge">Pick of the month</span>}
+                </div>
+                <div className="am-week-desc" role="cell">
+                  {row.description}
+                </div>
+                <div className="am-week-time" role="cell">
+                  {row.timeLabel}
+                </div>
               </div>
             ))}
           </div>
 
           <div className="am-week-foot">
-            <span>Global highlights, times in your own zone. Set a location and Atlas tailors the week to your sky.</span>
+            <span>Global highlights, times in your own zone. Set a location and Atlas tailors these events to your sky.</span>
             <button type="button" className="am-link-btn" onClick={() => handleEnter('nav')}>
               Set your location →
             </button>
