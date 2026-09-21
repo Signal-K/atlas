@@ -56,6 +56,9 @@ function buildEventRows(events: SkyEvent[]): EventRow[] {
     if (event.kind === 'conjunction') return 3
     if (event.kind === 'planet_event') return 4
     if (event.kind === 'moon_phase') return 5
+    if (event.kind === 'bright_star') return 6
+    if (event.kind === 'deep_sky') return 7
+    if (event.kind === 'telescope_target') return 8
     return Number.POSITIVE_INFINITY
   }
   const uniqueEvents = new Map<string, SkyEvent>()
@@ -72,6 +75,9 @@ function buildEventRows(events: SkyEvent[]): EventRow[] {
     })
   const selected: SkyEvent[] = []
   const kindCounts = new Map<string, number>()
+  const kindCaps = new Map<string, number>([['conjunction', 1]])
+
+  const capForKind = (kind: string) => kindCaps.get(kind) ?? 2
 
   // First take one of every available kind. This is what prevents five Moon
   // phases, or five conjunctions, from becoming the whole landing page.
@@ -81,11 +87,12 @@ function buildEventRows(events: SkyEvent[]): EventRow[] {
     kindCounts.set(event.kind, 1)
   }
   // If fewer than five kinds exist in the window, fill the remaining slots,
-  // but cap any one kind at two entries.
+  // but keep conjunctions to one entry so they do not crowd out Moon phases,
+  // planets, stars, or the other real event types.
   for (const event of rankedEvents) {
     if (selected.length >= 5) break
     const count = kindCounts.get(event.kind) ?? 0
-    if (count >= 2 || selected.includes(event)) continue
+    if (count >= capForKind(event.kind) || selected.includes(event)) continue
     selected.push(event)
     kindCounts.set(event.kind, count + 1)
   }
@@ -216,7 +223,7 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
             <div className="am-lede-columns">
               <p>
                 <span className="am-dropcap">A</span>tlas picks five real sky events from the next month —
-                conjunctions, planets, eclipses and meteor showers — and tells you when they happen.
+                Moon phases, bright planets, conjunctions, eclipses, meteor showers and standout stars — and tells you when they happen.
               </p>
               <p>
                 Set your location to see what is visible from where you stand.
