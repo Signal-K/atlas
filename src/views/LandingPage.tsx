@@ -7,6 +7,8 @@ import { isMoonWaxingAt, moonIlluminationPctAt, moonPhaseNameAt } from '../lib/m
 import { moonLitPath } from '../lib/moonDisc.mjs'
 import { SKY_PASS_SUMMARY, SKY_PASS_TIERS } from '../lib/pricing'
 import { localDateKey } from '../lib/weather'
+import { fetchEvents as fetchConjunctionEvents } from '../lib/eventSources/conjunctions.mjs'
+import { fetchEvents as fetchPlanetEvents } from '../lib/eventSources/planets.mjs'
 
 interface LandingPageProps {
   authenticatedEmail?: string
@@ -69,7 +71,10 @@ function formatLocalTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }
 
-// One flagship event per day, chosen globally (lowest priority number wins).
+// One flagship event per day, chosen globally. The landing page should put a
+// conjunction or planetary event ahead of a routine lunar phase when they
+// share a date: the point of this table is to make the sky feel alive, not to
+// let the Moon crowd out every other kind of astronomy.
 function buildWeekRows(events: SkyEvent[], now: Date): WeekRow[] {
   const byDay = new Map<string, SkyEvent[]>()
   for (const event of events) {
@@ -86,7 +91,15 @@ function buildWeekRows(events: SkyEvent[], now: Date): WeekRow[] {
     const dayLabel = dayDate.toLocaleDateString(undefined, { day: 'numeric' })
 
     const dayEvents = (byDay.get(dateKey) ?? []).slice().sort((a, b) => {
-      const diff = metaFor(a.kind).priority - metaFor(b.kind).priority
+      const landingPriority = (event: SkyEvent) => {
+        if (event.kind === 'eclipse') return 1
+        if (event.kind === 'conjunction') return 2
+        if (event.kind === 'planet_event') return 3
+        if (event.kind === 'meteor_shower') return 4
+        if (event.kind === 'moon_phase') return 5
+        return metaFor(event.kind).priority + 5
+      }
+      const diff = landingPriority(a) - landingPriority(b)
       return diff !== 0 ? diff : a.startsAt.localeCompare(b.startsAt)
     })
     const best = dayEvents[0]
@@ -117,7 +130,7 @@ function buildWeekRows(events: SkyEvent[], now: Date): WeekRow[] {
         weekdayLabel,
         dayLabel,
         title: moonPhaseNameAt(evening),
-        description: `No flagship event scheduled — the Moon is ${Math.round(moonIlluminationPctAt(evening))}% illuminated.`,
+        description: `${moonPhaseNameAt(evening) === 'Full moon' ? 'The full Moon' : `A ${moonPhaseNameAt(evening).toLowerCase()} Moon`} lights the night at ${Math.round(moonIlluminationPctAt(evening))}% illumination. After dark, look for the brightest stars and any planets above your horizon.`,
         difficulty: 'easy' as TargetDifficulty,
         timeLabel: 'After dark',
         isFallback: true,
@@ -153,8 +166,24 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
     async function loadWeek() {
       try {
         await pullSkyEvents()
-        const events = await getEventsInRange(now, new Date(now.getTime() + 7 * 86_400_000))
-        if (!cancelled) setWeekRows(buildWeekRows(events, now))
+        const weekEnd = new Date(now.getTime() + 7 * 86_400_000)
+        const [cachedEvents, conjunctions, planetEvents] = await Promise.all([
+          getEventsInRange(now, weekEnd),
+          fetchConjunctionEvents({ now, windowDays: 7 }),
+          fetchPlanetEvents({ now, windowDays: 7 }),
+        ])
+        const computedEvents: SkyEvent[] = [...conjunctions, ...planetEvents].map((event, index) => ({
+          id: `landing-${event.kind}-${event.target}-${event.starts_at}-${index}`,
+          kind: event.kind,
+          target: event.target,
+          title: event.title,
+          description: event.description,
+          content: event.content,
+          startsAt: event.starts_at,
+          endsAt: event.ends_at ?? event.starts_at,
+          updatedAt: now.toISOString(),
+        }))
+        if (!cancelled) setWeekRows(buildWeekRows([...cachedEvents, ...computedEvents], now))
       } catch (err) {
         if (!cancelled) setWeekRows(buildWeekRows([], now))
         trackEvent('sync_failed', { stage: 'landing_week_events', error: String(err) })
