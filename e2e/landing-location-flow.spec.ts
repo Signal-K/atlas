@@ -78,7 +78,7 @@ test('index stays on the landing page for a returning signed-out visitor', async
 
   await expect(page).toHaveURL('/')
   await expect(
-    page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' }),
+    page.getByRole('heading', { name: 'Know what is worth looking up for.' }),
   ).toBeVisible()
   await expect(page.getByRole('button', { name: 'See tonight’s sky' }).first()).toBeVisible()
   await expect(page.getByText('Signed in as')).toHaveCount(0)
@@ -95,7 +95,7 @@ test('index stays on the landing page for a signed-in visitor and identifies the
 
   await expect(page).toHaveURL('/')
   await expect(
-    page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' }),
+    page.getByRole('heading', { name: 'Know what is worth looking up for.' }),
   ).toBeVisible()
   await expect(page.getByText('Signed in as')).toContainText('signed-in@example.com')
   await expect(page.getByRole('button', { name: 'Open Atlas' }).first()).toBeVisible()

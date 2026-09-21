@@ -24,7 +24,7 @@ test('captures product screenshots for the Atlas state-of-product doc', async ({
   await page.setViewportSize({ width: 1440, height: 1200 })
   await page.goto('/')
   await prepareScreenshotMode(page)
-  await expect(page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Know what is worth looking up for.' })).toBeVisible()
   await capture(page, '01-landing-location.png')
 
   await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
@@ -175,4 +175,3 @@ async function mockDeviceOrientation(page: Page) {
     })
   })
 }
-

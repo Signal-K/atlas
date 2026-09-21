@@ -103,7 +103,7 @@ test('signup happens via the auth gate before onboarding, then observations save
   try {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: 'Every week the sky puts on something worth walking outside for.' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Know what is worth looking up for.' })).toBeVisible()
     await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
 
     // Straight into the product as a guest -- no account demanded first.
