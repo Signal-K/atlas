@@ -45,15 +45,17 @@ function formatLocalTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }
 
-// The landing page is a cover, not a calendar. Show the five strongest real
-// events in the next month, so a quiet stretch can stay quiet and a conjunction
-// or planetary event is not buried under a row of routine Moon phases.
+// The landing page is a cover, not a calendar. Show five strong real events in
+// the next month, with a different kind of sky event in each slot where the
+// catalogue allows it. Moon phases belong in the mix; they just should not
+// crowd every other kind of astronomy out of the list.
 function buildEventRows(events: SkyEvent[]): EventRow[] {
   const landingPriority = (event: SkyEvent) => {
     if (event.kind === 'eclipse') return 1
     if (event.kind === 'meteor_shower') return 2
     if (event.kind === 'conjunction') return 3
     if (event.kind === 'planet_event') return 4
+    if (event.kind === 'moon_phase') return 5
     return Number.POSITIVE_INFINITY
   }
   const uniqueEvents = new Map<string, SkyEvent>()
@@ -62,13 +64,33 @@ function buildEventRows(events: SkyEvent[]): EventRow[] {
     if (!uniqueEvents.has(key)) uniqueEvents.set(key, event)
   }
 
-  return Array.from(uniqueEvents.values())
+  const rankedEvents = Array.from(uniqueEvents.values())
     .filter((event) => Number.isFinite(landingPriority(event)))
     .sort((a, b) => {
       const priorityDiff = landingPriority(a) - landingPriority(b)
       return priorityDiff !== 0 ? priorityDiff : a.startsAt.localeCompare(b.startsAt)
     })
-    .slice(0, 5)
+  const selected: SkyEvent[] = []
+  const kindCounts = new Map<string, number>()
+
+  // First take one of every available kind. This is what prevents five Moon
+  // phases, or five conjunctions, from becoming the whole landing page.
+  for (const event of rankedEvents) {
+    if (selected.length >= 5 || kindCounts.has(event.kind)) continue
+    selected.push(event)
+    kindCounts.set(event.kind, 1)
+  }
+  // If fewer than five kinds exist in the window, fill the remaining slots,
+  // but cap any one kind at two entries.
+  for (const event of rankedEvents) {
+    if (selected.length >= 5) break
+    const count = kindCounts.get(event.kind) ?? 0
+    if (count >= 2 || selected.includes(event)) continue
+    selected.push(event)
+    kindCounts.set(event.kind, count + 1)
+  }
+
+  return selected
     .map((event, index) => {
       const meta = metaFor(event.kind)
       const eventDate = new Date(event.startsAt)
