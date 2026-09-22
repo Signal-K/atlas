@@ -38,6 +38,7 @@ function App() {
   const isTonightRoute = routerLocation.pathname === '/tonight' || routerLocation.pathname.startsWith('/tonight/')
   const isAppRoute = routerLocation.pathname.startsWith('/app') || isTonightRoute
   const { user } = useAuth()
+  const [showEntryChoice, setShowEntryChoice] = useState(false)
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const {
     showOnboardingFlow,
@@ -87,6 +88,21 @@ function App() {
     navigate(APP_HOME, { replace: true })
   }
 
+  function handleLandingEntry() {
+    if (user) {
+      enterApp()
+      return
+    }
+    setShowEntryChoice(true)
+  }
+
+  function enterSignIn() {
+    markEntered()
+    setAccountDefaultMode('sign-in')
+    setShowEntryChoice(false)
+    navigate('/app/journal', { replace: true })
+  }
+
   // ASV-51: the Sky Pass CTA must land somewhere that actually offers
   // checkout. /app/planner is already wrapped in PaywallGate, so a visitor
   // signs up (AuthGate gates any non-guest route) or, if already signed in,
@@ -101,7 +117,29 @@ function App() {
 
   if (showLanding) {
     return (
-      <LandingPage authenticatedEmail={user?.email} onEnter={enterApp} onEnterPaid={enterPaidApp} />
+      <>
+        <LandingPage authenticatedEmail={user?.email} onEnter={handleLandingEntry} onEnterPaid={enterPaidApp} />
+        {showEntryChoice && !user && (
+          <div className="entry-choice-overlay" role="presentation">
+            <section className="entry-choice-modal" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
+              <p className="entry-choice-kicker">Open Atlas</p>
+              <h2 id="entry-choice-title">How would you like to begin?</h2>
+              <p>Sign in to pick up your plans and journal, or take a look around first.</p>
+              <div className="entry-choice-actions">
+                <button type="button" className="am-btn am-btn-primary" onClick={enterSignIn}>
+                  Sign in first
+                </button>
+                <button type="button" className="am-btn" onClick={() => { setShowEntryChoice(false); enterApp() }}>
+                  View preview
+                </button>
+              </div>
+              <button type="button" className="entry-choice-cancel" onClick={() => setShowEntryChoice(false)}>
+                Not now
+              </button>
+            </section>
+          </div>
+        )}
+      </>
     )
   }
 
