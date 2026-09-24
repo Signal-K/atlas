@@ -2,6 +2,7 @@ import { db, type CameraPreset, type Favourite, type ObservationLogEntry, type W
 import { getEquipmentChoice, listLocalTargetTaps } from './firstPlanJourney'
 import { pb } from './pocketbase'
 import { pushObservation } from './sync'
+import { syncGuestFirstTourToAccount } from './tourProgress'
 
 const LOCAL_USER_ID = 'local'
 
@@ -12,6 +13,7 @@ export interface MergeResult {
   cameraPresets: number
   targetTaps: number
   equipmentChoice: number
+  tourUnlock: number
   total: number
 }
 
@@ -107,6 +109,7 @@ export async function mergeLocalDataIntoAccount(newUserId: string): Promise<Merg
 
   const targetTaps = listLocalTargetTaps().length
   const equipmentChoice = getEquipmentChoice() ? 1 : 0
+  const tourUnlock = await syncGuestFirstTourToAccount().then((merged) => merged ? 1 : 0).catch(() => 0)
 
   return {
     favourites: mergedFavourites.length,
@@ -115,6 +118,7 @@ export async function mergeLocalDataIntoAccount(newUserId: string): Promise<Merg
     cameraPresets: mergedPresets.length,
     targetTaps,
     equipmentChoice,
-    total: mergedFavourites.length + mergedWatchlist.length + mergedObservations.length + mergedPresets.length + targetTaps + equipmentChoice,
+    tourUnlock,
+    total: mergedFavourites.length + mergedWatchlist.length + mergedObservations.length + mergedPresets.length + targetTaps + equipmentChoice + tourUnlock,
   }
 }

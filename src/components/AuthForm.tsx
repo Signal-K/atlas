@@ -195,7 +195,7 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
       const userId = pb.authStore.record?.id as string | undefined
       const result = userId
         ? await mergeLocalDataIntoAccount(userId)
-        : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, targetTaps: 0, equipmentChoice: 0, total: 0 }
+        : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, targetTaps: 0, equipmentChoice: 0, tourUnlock: 0, total: 0 }
       trackEvent('Sign up completed', { source, mergedCount: result.total, demoAccess })
       trackEvent('Merge result', {
         source,
@@ -205,6 +205,7 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
         cameraPresets: result.cameraPresets,
         targetTaps: result.targetTaps,
         equipmentChoice: result.equipmentChoice,
+        tourUnlock: result.tourUnlock,
         total: result.total,
         demoAccess,
       })

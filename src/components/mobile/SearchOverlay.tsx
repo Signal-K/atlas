@@ -4,8 +4,9 @@ import { Starfield } from './Starfield'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../../views/mobile/EntryDetailView'
 import { getEventsInRange, pullSkyEvents } from '../../lib/sync'
 import { isVisibleLocalEvent, diversifyEvents } from '../../lib/eventFilters'
-import { buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
-import { categoryForKind } from '../../lib/eventCategories'
+import { buildDailyObservingTargets, buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../../lib/visiblePlanets'
+import { findObjectEventResults, type SearchableSkyObject } from '../../lib/objectEventSearch.mjs'
+import { GUIDE_KIND_IDS, categoryForKind } from '../../lib/eventCategories'
 import { CELESTIAL_CATALOG } from '../../data/celestialCatalog'
 import { MESSIER_OBJECTS } from '../../data/messierCatalog'
 import { CITIES, cityLabel, type City } from '../../lib/cities'
@@ -26,6 +27,12 @@ const LOCAL_USER_ID = 'local'
 const SCOPES = ['all', 'events', 'targets', 'places', 'journal'] as const
 type Scope = (typeof SCOPES)[number]
 const SCOPE_LABEL: Record<Scope, string> = { all: 'Everything', events: 'Events', targets: 'Targets', places: 'Places', journal: 'Journal' }
+
+function targetName(target: string): string {
+  return target
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
 
 export function SearchOverlay({
   city,
@@ -60,7 +67,9 @@ export function SearchOverlay({
         db.observations.where('userId').equals(user?.id ?? LOCAL_USER_ID).reverse().sortBy('observedAt'),
       ])
       if (cancelled) return
-      setEvents(upcoming.filter((e) => isVisibleLocalEvent(e, city.lat, city.lon)))
+      const localCatalogue = upcoming.filter((e) => isVisibleLocalEvent(e, city.lat, city.lon))
+      const localTargets = buildDailyObservingTargets(now, SKY_GUIDE_WINDOW_DAYS, city.lat, city.lon)
+      setEvents([...localCatalogue, ...localTargets])
       setJournalEntries(entries)
     }
     load()
@@ -71,15 +80,39 @@ export function SearchOverlay({
 
   const q = query.trim().toLowerCase()
 
-  const eventMatches = useMemo(() => (q ? events.filter((e) => e.title.toLowerCase().includes(q)) : events.slice(0, 6)), [events, q])
-  const targetMatches = useMemo(() => {
-    const catalog = [
-      ...CELESTIAL_CATALOG.map((t) => ({ id: t.id, name: t.name, sub: `${t.kind} · ${t.difficulty}${t.magnitude != null ? ` · mag ${t.magnitude}` : ''}` })),
-      ...MESSIER_OBJECTS.slice(0, 40).map((t) => ({ id: t.id, name: t.name, sub: `${t.type} · mag ${t.magnitude.toFixed(1)}` })),
+  const eventMatches = useMemo(
+    () => (q
+      ? events.filter((event) => `${event.title} ${event.target} ${event.description ?? ''}`.toLowerCase().includes(q)).slice(0, 12)
+      : events.slice(0, 6)),
+    [events, q],
+  )
+  const searchableObjects = useMemo<SearchableSkyObject[]>(() => {
+    const catalogue: SearchableSkyObject[] = [
+      ...CELESTIAL_CATALOG.map((target) => ({
+        id: target.id,
+        name: target.name,
+        kind: target.kind,
+        detail: `${target.difficulty}${target.magnitude != null ? ` · mag ${target.magnitude}` : ''}`,
+      })),
+      ...MESSIER_OBJECTS.map((target) => ({
+        id: target.id,
+        name: target.name,
+        kind: target.type,
+        detail: `mag ${target.magnitude.toFixed(1)}`,
+      })),
     ]
-    const pool = q ? catalog.filter((t) => t.name.toLowerCase().includes(q)) : catalog.slice(0, 6)
-    return pool.slice(0, 12)
-  }, [q])
+    const knownIds = new Set(catalogue.map((target) => target.id.toLowerCase()))
+    for (const event of events) {
+      if (knownIds.has(event.target.toLowerCase()) || GUIDE_KIND_IDS.has(event.kind)) continue
+      knownIds.add(event.target.toLowerCase())
+      catalogue.push({ id: event.target, name: targetName(event.target), kind: categoryForKind(event.kind)?.label ?? 'Sky object' })
+    }
+    return catalogue
+  }, [events])
+  const objectMatches = useMemo(
+    () => findObjectEventResults(searchableObjects, events, q, { objectLimit: 8, eventLimit: 3 }),
+    [searchableObjects, events, q],
+  )
   const placeMatches = useMemo(() => (q ? CITIES.filter((c) => c.name.toLowerCase().includes(q)) : CITIES.slice(0, 6)), [q])
   const journalMatches = useMemo(
     () => (q ? journalEntries.filter((e) => (e.targetName ?? '').toLowerCase().includes(q) || (e.note ?? '').toLowerCase().includes(q)) : journalEntries.slice(0, 6)),
@@ -219,20 +252,39 @@ export function SearchOverlay({
               </ResultGroup>
             )}
 
-            {(scope === 'all' || scope === 'targets') && targetMatches.length > 0 && (
-              <ResultGroup title="Targets">
-                {targetMatches.map((t) => (
-                  <div key={t.id} className="az-row" style={{ cursor: 'default' }}>
-                    <span className="az-row-icon">
-                      <MobileIcon name="telescope" size={15} />
-                    </span>
-                    <span className="az-row-main">
-                      <span className="az-row-title">{t.name}</span>
-                      <span className="az-muted" style={{ fontSize: '0.71875rem' }}>{t.sub}</span>
-                    </span>
-                  </div>
+            {(scope === 'all' || scope === 'targets') && objectMatches.length > 0 && (
+              <ResultGroup title={`Objects · next from ${city.name}`}>
+                {objectMatches.map((target) => (
+                  <section key={target.id} className="az-object-result">
+                    <div className="az-object-result-head">
+                      <span className="az-row-icon"><MobileIcon name="telescope" size={15} /></span>
+                      <span className="az-row-main">
+                        <span className="az-row-title">{target.name}</span>
+                        <span className="az-muted">{target.kind}{target.detail ? ` · ${target.detail}` : ''}</span>
+                      </span>
+                    </div>
+                    {target.events.length > 0 ? (
+                      <div className="az-object-events">
+                        {target.events.map((event) => (
+                          <button type="button" key={event.id} className="az-object-event" onClick={() => selectEvent(event)}>
+                            <span>
+                              {new Date(event.startsAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                            </span>
+                            <strong>{event.title}</strong>
+                            <MobileIcon name="chevron" size={14} />
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="az-object-empty">No local event in the next 30 days.</p>
+                    )}
+                  </section>
                 ))}
               </ResultGroup>
+            )}
+
+            {q && (scope === 'all' || scope === 'targets') && objectMatches.length === 0 && (
+              <p className="az-search-empty">No matching object with upcoming events near {city.name}.</p>
             )}
 
             {(scope === 'all' || scope === 'places') && placeMatches.length > 0 && (

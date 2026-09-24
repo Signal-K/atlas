@@ -41,6 +41,11 @@ export interface EntryDetailActions {
   // arming a watch + reminder in the process. Undefined hides the button --
   // not every caller has trip context to wire it with.
   onAddToItinerary?: () => Promise<QuickActionOutcome | void>
+  tourCompletion?: {
+    whenLabel: string
+    whereLabel: string
+    onComplete: () => Promise<void>
+  }
 }
 
 interface EntryDetailViewProps {
@@ -77,6 +82,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
   const [reminderActive, setReminderActive] = useState(actions?.reminderActive ?? false)
   const [tagged, setTagged] = useState(actions?.tagged ?? false)
   const [quickActionMessage, setQuickActionMessage] = useState<string | null>(null)
+  const [tourCompleting, setTourCompleting] = useState(false)
 
   useEffect(() => {
     setWatching(actions?.watching ?? false)
@@ -131,10 +137,20 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
     }
   }
 
+  async function handleCompleteTour() {
+    if (!actions?.tourCompletion) return
+    setTourCompleting(true)
+    try {
+      await actions.tourCompletion.onComplete()
+    } finally {
+      setTourCompleting(false)
+    }
+  }
+
   return (
-    <div className="az-overlay">
+    <div className="az-overlay az-entry-detail">
       <div className="az-overlay-bg">
-        <Starfield dark={dark} />
+        <Starfield dark={dark} palette="mono" density={110} />
       </div>
       <div className="az-overlay-header">
         <button type="button" className="az-back-btn" onClick={onClose}>
@@ -142,9 +158,9 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
           Back
         </button>
       </div>
-      <div className="az-overlay-body">
-        <div className="az-hero-media">EVENT IMAGERY</div>
-        <span className="az-kicker" style={{ display: 'block', margin: '0.875rem 0 0', color: 'var(--az-violet-strong)' }}>
+      <div className="az-overlay-body az-entry-detail-body">
+        <div className="az-hero-media az-entry-detail-hero">LOCAL VIEWING WINDOW</div>
+        <span className="az-kicker az-entry-detail-kicker" style={{ display: 'block', margin: '0.875rem 0 0' }}>
           {subject.subtitleLine}
           {subject.isGuide && <span className="az-badge-guide" style={{ marginLeft: '0.375rem' }}>GUIDE</span>}
         </span>
@@ -155,6 +171,21 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
           {dateLabel && <>{dateLabel} · </>}
           {subject.why}
         </p>
+
+        {actions?.tourCompletion && (
+          <section className="az-tour-finish" aria-labelledby="az-tour-finish-title">
+            <p className="az-kicker">Your guided look</p>
+            <h2 id="az-tour-finish-title">When, where and what — ready.</h2>
+            <div className="az-tour-checks">
+              <span><MobileIcon name="check" size={14} /> <strong>When</strong> {actions.tourCompletion.whenLabel}</span>
+              <span><MobileIcon name="check" size={14} /> <strong>Where</strong> {actions.tourCompletion.whereLabel}</span>
+              <span><MobileIcon name="check" size={14} /> <strong>What</strong> {subject.title}</span>
+            </div>
+            <button type="button" className="az-btn az-btn-primary az-btn-block" disabled={tourCompleting} onClick={handleCompleteTour}>
+              {tourCompleting ? 'Finishing…' : 'Complete guided look'}
+            </button>
+          </section>
+        )}
 
         <div style={{ marginTop: '1rem' }}>
           <StatGrid

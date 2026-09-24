@@ -65,7 +65,11 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --port ${e2ePort}`,
     url: e2eBaseURL,
-    reuseExistingServer: false,
+    // Local visual work often already has Vite running for browser inspection.
+    // Reuse that exact base URL instead of failing before a spec can run;
+    // CI still owns a clean server lifecycle and must never attach to an
+    // unrelated process left on the runner.
+    reuseExistingServer: process.env.CI !== '1',
     env: {
       VITE_PB_URL: pbUrl,
       VITE_POLAR_CHECKOUT_URL: process.env.VITE_POLAR_CHECKOUT_URL || `${e2eBaseURL}/fallback-checkout`,

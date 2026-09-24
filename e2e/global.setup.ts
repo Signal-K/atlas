@@ -11,6 +11,10 @@ import { checkPocketBaseReachable, pocketBaseHelp, resolvePbUrl } from './suppor
 setup.describe.configure({ mode: 'serial' })
 
 setup('clerk global setup', async () => {
+  // CI/preview runs that deliberately exclude every live-Clerk-backed spec
+  // must not fail before discovery by fetching a token none of the remaining
+  // tests use. The same flag owns testIgnore in playwright.config.ts.
+  if (process.env.CLERK_BACKEND_UNAVAILABLE === '1') return
   if (!process.env.VITE_CLERK_PUBLISHABLE_KEY || !process.env.CLERK_SECRET_KEY) {
     throw new Error(
       'VITE_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY must be set (see atlas/.env.local) to run the Clerk-backed e2e specs.',

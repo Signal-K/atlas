@@ -37,6 +37,7 @@ function App() {
   const navigate = useNavigate()
   const isTonightRoute = routerLocation.pathname === '/tonight' || routerLocation.pathname.startsWith('/tonight/')
   const isAppRoute = routerLocation.pathname.startsWith('/app') || isTonightRoute
+  const isGuidedTour = routerLocation.pathname === APP_HOME && new URLSearchParams(routerLocation.search).get('tour') === 'tonight'
   const { user } = useAuth()
   const [showEntryChoice, setShowEntryChoice] = useState(false)
   const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
@@ -82,15 +83,15 @@ function App() {
   // choose to open it. "/landing" remains a permanent alias.
   const showLanding = routerLocation.pathname === '/' || routerLocation.pathname === '/landing'
 
-  function enterApp() {
+  function enterApp(startTour = false) {
     markEntered()
     setAccountDefaultMode('sign-up')
-    navigate(APP_HOME, { replace: true })
+    navigate(startTour ? `${APP_HOME}?tour=tonight` : APP_HOME, { replace: true })
   }
 
   function handleLandingEntry() {
     if (user) {
-      enterApp()
+      enterApp(true)
       return
     }
     setShowEntryChoice(true)
@@ -129,8 +130,8 @@ function App() {
                 <button type="button" className="am-btn am-btn-primary" onClick={enterSignIn}>
                   Sign in first
                 </button>
-                <button type="button" className="am-btn" onClick={() => { setShowEntryChoice(false); enterApp() }}>
-                  View preview
+                <button type="button" className="am-btn" onClick={() => { setShowEntryChoice(false); enterApp(true) }}>
+                  Start guided tour
                 </button>
               </div>
               <button type="button" className="entry-choice-cancel" onClick={() => setShowEntryChoice(false)}>
@@ -208,7 +209,7 @@ function App() {
           accountDefaultMode,
         }}
       />
-      {!showOnboardingFlow && (
+      {!showOnboardingFlow && !isGuidedTour && (
         <>
           <FeedbackDock />
           <InstallPrompt />

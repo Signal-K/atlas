@@ -105,9 +105,10 @@ test('signup happens via the auth gate before onboarding, then observations save
 
     await expect(page.getByRole('heading', { name: 'Know what is worth looking up for.' })).toBeVisible()
     await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Start guided tour' }).click()
 
     // Straight into the product as a guest -- no account demanded first.
-    await expect(page).toHaveURL('/app/hub')
+    await expect(page).toHaveURL('/app/hub?tour=tonight')
 
     // Guests are not put through onboarding; it waits for an account.
     await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
@@ -179,7 +180,8 @@ test('an existing account is re-run through the current onboarding flow', async 
     await page.goto('/')
 
     await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
-    await expect(page).toHaveURL('/app/hub')
+    await page.getByRole('button', { name: 'Start guided tour' }).click()
+    await expect(page).toHaveURL('/app/hub?tour=tonight')
 
     // Guests get Hub; an account-owned area still puts up the gate (ASV-47).
     // Navigated directly rather than via the rail, since onboarding is

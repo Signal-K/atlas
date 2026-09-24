@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
@@ -16,11 +17,15 @@ import { db } from '../lib/db'
 import { useAuth } from '../lib/auth'
 import { useThemeState } from '../lib/theme'
 import { trackEvent } from '../lib/analytics'
+import { recordLocalTargetTap } from '../lib/firstPlanJourney'
+import { completeFirstTour, getFirstTourCompletion, tourProperties } from '../lib/tourProgress'
+import { FIRST_TOUR_BADGE, pickNextTourTarget, type FirstTourCompletion } from '../lib/tourJourney.mjs'
 import { dayGroupLabel, localDateKey } from '../lib/weather'
+import { buildDailyObservingTargets } from '../lib/visiblePlanets'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { ObservationLogEntry, SkyEvent } from '../lib/db'
-import type { TonightPlan } from '../lib/tonightTargets'
+import type { TonightPlan, TonightTarget } from '../lib/tonightTargets'
 
 const LOCAL_USER_ID = 'local'
 
@@ -49,6 +54,9 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
   const hasLocation = city.source !== 'default'
   const [theme] = useThemeState()
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sharedTour = searchParams.get('shared') === '1'
+  const sharedTargetId = searchParams.get('target')
   const [plan, setPlan] = useState<TonightPlan | null>(null)
   const [events, setEvents] = useState<SkyEvent[]>([])
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
@@ -59,6 +67,56 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
   const [loadError, setLoadError] = useState(false)
   const [retryTick, setRetryTick] = useState(0)
   const [upcomingFilter, setUpcomingFilter] = useState<HubFilterKey>('all')
+  const [tourActive, setTourActive] = useState(() => searchParams.get('tour') === 'tonight')
+  const [tourTargetId, setTourTargetId] = useState<string | null>(sharedTargetId)
+  const [tourCompletion, setTourCompletion] = useState<FirstTourCompletion | null>(
+    () => getFirstTourCompletion(user?.firstTourCompletedAt),
+  )
+  const [tourCelebration, setTourCelebration] = useState<{ completion: FirstTourCompletion; next: TonightTarget | null } | null>(null)
+  const tourStartedRef = useRef(false)
+  const tourStepRefs = useRef(new Set<string>())
+  const tourCompletedRef = useRef(Boolean(tourCompletion))
+
+  useEffect(() => {
+    const accountCompletion = getFirstTourCompletion(user?.firstTourCompletedAt)
+    if (accountCompletion) {
+      setTourCompletion(accountCompletion)
+      tourCompletedRef.current = true
+    }
+  }, [user?.firstTourCompletedAt])
+
+  useEffect(() => {
+    if (!tourActive || tourStartedRef.current) return
+    tourStartedRef.current = true
+    const properties = tourProperties(hasLocation, Boolean(user))
+    trackEvent('Tour started', { ...properties, source: sharedTour ? 'shared_link' : 'hub' })
+    trackEvent('Tour step viewed', { ...properties, step_id: 'entry' })
+    if (sharedTour) trackEvent('Tour share opened', { ...properties, target_id: sharedTargetId })
+  }, [hasLocation, sharedTargetId, sharedTour, tourActive, user])
+
+  useEffect(() => {
+    if (!tourActive || !hasLocation || tourStepRefs.current.has('where')) return
+    tourStepRefs.current.add('where')
+    trackEvent('Tour step viewed', { ...tourProperties(true, Boolean(user)), step_id: 'where' })
+  }, [hasLocation, tourActive, user])
+
+  useEffect(() => {
+    if (!tourActive || !plan || tourStepRefs.current.has('when')) return
+    tourStepRefs.current.add('when')
+    trackEvent('Tour step viewed', { ...tourProperties(hasLocation, Boolean(user)), step_id: 'when' })
+  }, [hasLocation, plan, tourActive, user])
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      if (!tourActive || !tourStartedRef.current || tourCompletedRef.current) return
+      trackEvent('Tour abandoned', {
+        ...tourProperties(hasLocation, Boolean(user)),
+        last_step_id: tourTargetId ? 'what' : plan ? 'when' : hasLocation ? 'where' : 'entry',
+      })
+    }
+    window.addEventListener('pagehide', handlePageHide)
+    return () => window.removeEventListener('pagehide', handlePageHide)
+  }, [hasLocation, plan, tourActive, tourTargetId, user])
 
   useEffect(() => {
     let cancelled = false
@@ -197,7 +255,9 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
     if (!plan) return
     const target = plan.targets.find((t) => t.eventId === event.id) ?? syntheticTarget(event)
     const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, event, city), plan.todayAdvisory)
-    openSubject(subject, event, 'list_item')
+    const isTourTarget = tourActive
+    if (isTourTarget) selectTourTarget(target)
+    openSubject(subject, event, 'list_item', isTourTarget)
   }
 
   function openHeroTarget() {
@@ -205,10 +265,57 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
     const target = plan.targets[0]
     const sourceEvent = events.find((e) => e.id === target.eventId)
     const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, sourceEvent, city), plan.todayAdvisory)
-    openSubject(subject, sourceEvent, 'hero_target')
+    if (tourActive) selectTourTarget(target)
+    openSubject(subject, sourceEvent, 'hero_target', tourActive)
   }
 
-  function openSubject(subject: EntryDetailSubject, sourceEvent?: SkyEvent, source: 'list_item' | 'hero_target' | 'subject' = 'subject') {
+  function selectTourTarget(target: TonightTarget) {
+    setTourTargetId(target.eventId)
+    if (!tourStepRefs.current.has('what')) {
+      tourStepRefs.current.add('what')
+      trackEvent('Tour step viewed', {
+        ...tourProperties(hasLocation, Boolean(user)),
+        step_id: 'what',
+        target_id: target.eventId,
+      })
+    }
+    recordLocalTargetTap(target, 'mobile_hub', city.name)
+  }
+
+  async function finishTour(targetId: string, targetTitle: string) {
+    if (!plan || !hasLocation) return
+    const result = await completeFirstTour({
+      targetId,
+      targetTitle,
+      locationPresent: hasLocation,
+      authenticated: Boolean(user),
+      accountCompletedAt: user?.firstTourCompletedAt,
+    })
+    tourCompletedRef.current = true
+    setTourCompletion(result.completion)
+    setEntryDetail(null)
+    const generatedNext = buildDailyObservingTargets(
+      new Date(Date.now() + 86_400_000),
+      14,
+      city.lat,
+      city.lon,
+    )
+      .map((event) => syntheticTarget(event))
+      .find((target) => target.eventId !== targetId) ?? null
+    const next = pickNextTourTarget(plan.targets, targetId) ?? generatedNext
+    trackEvent('Return nudge shown', {
+      ...tourProperties(hasLocation, Boolean(user)),
+      target_id: next?.eventId,
+    })
+    setTourCelebration({ completion: result.completion, next })
+  }
+
+  function openSubject(
+    subject: EntryDetailSubject,
+    sourceEvent?: SkyEvent,
+    source: 'list_item' | 'hero_target' | 'subject' = 'subject',
+    isTourTarget = false,
+  ) {
     trackEvent('detail_sheet_opened', { source, kind: sourceEvent?.kind })
     const reminder = sourceEvent ? reminders.find((r) => r.eventId === sourceEvent.id) : undefined
     setEntryDetail({
@@ -218,8 +325,67 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
         onToggleWatch: subject.sourceEvent ? () => toggleWatch(subject.sourceEvent!.target) : undefined,
         reminderActive: !!reminder,
         onRemind: sourceEvent ? () => addReminder(sourceEvent) : undefined,
+        tourCompletion: isTourTarget && plan && hasLocation
+          ? {
+              whenLabel: timeLabel(subject.bestTimeIso, city.timeZone),
+              whereLabel: city.name,
+              onComplete: () => finishTour(subject.id, subject.title),
+            }
+          : undefined,
       },
     })
+  }
+
+  function startTour() {
+    setTourActive(true)
+    const next = new URLSearchParams(searchParams)
+    next.set('tour', 'tonight')
+    setSearchParams(next, { replace: true })
+  }
+
+  function leaveTour() {
+    if (!tourCompletedRef.current) {
+      trackEvent('Tour abandoned', {
+        ...tourProperties(hasLocation, Boolean(user)),
+        last_step_id: tourTargetId ? 'what' : plan ? 'when' : hasLocation ? 'where' : 'entry',
+      })
+    }
+    setTourActive(false)
+    const next = new URLSearchParams(searchParams)
+    next.delete('tour')
+    next.delete('shared')
+    next.delete('target')
+    setSearchParams(next, { replace: true })
+  }
+
+  async function shareTour(completion: FirstTourCompletion) {
+    const url = new URL('/app/hub', window.location.origin)
+    url.searchParams.set('tour', 'tonight')
+    url.searchParams.set('shared', '1')
+    url.searchParams.set('target', completion.targetId)
+    const shareData = {
+      title: 'A guided look with Atlas',
+      text: `Try this guided look at ${completion.targetTitle}.`,
+      url: url.toString(),
+    }
+    const shareMethod = typeof navigator.share === 'function' ? 'native' : 'clipboard'
+    if (shareMethod === 'native') await navigator.share(shareData)
+    else await navigator.clipboard.writeText(url.toString())
+    trackEvent('Tour shared', {
+      ...tourProperties(hasLocation, Boolean(user)),
+      target_id: completion.targetId,
+      method: shareMethod,
+    })
+  }
+
+  function openNextTour(target: TonightTarget) {
+    if (!plan) return
+    setTourCelebration(null)
+    setTourActive(true)
+    const sourceEvent = events.find((event) => event.id === target.eventId)
+    const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, sourceEvent, city), plan.todayAdvisory)
+    selectTourTarget(target)
+    openSubject(subject, sourceEvent, 'subject', true)
   }
 
   function syntheticTarget(event: SkyEvent) {
@@ -338,6 +504,60 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
           {timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)}–
           {timeLabel(plan.darknessWindow.astronomicalDawnAt ?? plan.darknessWindow.civilDawnAt, city.timeZone)}.
         </p>
+      )}
+
+      {tourActive ? (
+        <section className="az-tour-card" aria-labelledby="az-tour-title">
+          <div className="az-tour-card-head">
+            <div>
+              <p className="az-kicker">{sharedTour ? 'Shared guided look' : 'Guided sky for tonight'}</p>
+              <h2 id="az-tour-title">One useful plan. When, where, what.</h2>
+            </div>
+            <button type="button" className="az-tour-close" onClick={leaveTour} aria-label="Leave guided tour">×</button>
+          </div>
+          <div className="az-tour-checks">
+            <span className={hasLocation ? 'is-done' : ''}>
+              <MobileIcon name={hasLocation ? 'check' : 'pin'} size={14} />
+              <strong>Where</strong> {hasLocation ? city.name : 'Set your location'}
+            </span>
+            <span className={plan ? 'is-done' : ''}>
+              <MobileIcon name={plan ? 'check' : 'calendar'} size={14} />
+              <strong>When</strong> {plan ? `${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)} after dark` : 'Building your window'}
+            </span>
+            <span className={tourTargetId ? 'is-done' : ''}>
+              <MobileIcon name={tourTargetId ? 'check' : 'telescope'} size={14} />
+              <strong>What</strong> {tourTargetId ? 'Target chosen' : 'Choose one thing to find'}
+            </span>
+          </div>
+          {!hasLocation && onRequestLocation ? (
+            <button type="button" className="az-btn az-btn-primary" onClick={onRequestLocation}>Use my location</button>
+          ) : plan?.targets.length ? (
+            <button type="button" className="az-btn az-btn-primary" onClick={openHeroTarget}>
+              {tourTargetId ? 'Review tonight’s target' : `Choose ${plan.targets[0].title}`}
+            </button>
+          ) : plan && events.length > 0 ? (
+            <button type="button" className="az-btn az-btn-primary" onClick={() => openEventDetail(events[0])}>
+              {tourTargetId ? 'Review tonight’s target' : `Choose ${events[0].title}`}
+            </button>
+          ) : loadError ? (
+            <button type="button" className="az-btn az-btn-outline" onClick={() => setRetryTick((n) => n + 1)}>Try again</button>
+          ) : (
+            <p className="az-muted">No useful target is visible yet. Atlas will keep checking tonight’s sky.</p>
+          )}
+        </section>
+      ) : (
+        <button type="button" className="az-tour-invite" onClick={startTour}>
+          <span><span className="az-kicker">New here?</span><strong>Take one guided look at tonight’s sky.</strong></span>
+          <span>Start →</span>
+        </button>
+      )}
+
+      {tourCompletion && !tourCelebration && (
+        <div className="az-tour-badge" role="status">
+          <span aria-hidden="true">✦</span>
+          <span><strong>First light</strong> — your first guided look is complete.</span>
+          <button type="button" onClick={() => void shareTour(tourCompletion)}>Share</button>
+        </div>
       )}
 
       {plan && (
@@ -494,6 +714,30 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
           onLogAttempt={logEntryDetailAttempt}
           dark={theme === 'dark'}
         />
+      )}
+      {tourCelebration && (
+        <div className="az-tour-celebration" role="dialog" aria-modal="true" aria-labelledby="az-tour-celebration-title">
+          <section>
+            <span className="az-tour-celebration-mark" aria-hidden="true">✦</span>
+            <p className="az-kicker">{FIRST_TOUR_BADGE.replace('_', ' ')}</p>
+            <h2 id="az-tour-celebration-title">Your first guided look is ready.</h2>
+            <p>You now know when to step outside, where you are observing from, and what to find. Atlas will remember this without turning the sky into a streak.</p>
+            {tourCelebration.next && (
+              <div className="az-tour-next">
+                <span>Next guided look</span>
+                <strong>{tourCelebration.next.title}</strong>
+                <small>{new Date(tourCelebration.next.bestTime).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}</small>
+              </div>
+            )}
+            <div className="az-btn-grid-2">
+              {tourCelebration.next && (
+                <button type="button" className="az-btn az-btn-primary" onClick={() => openNextTour(tourCelebration.next!)}>Plan next look</button>
+              )}
+              <button type="button" className="az-btn az-btn-outline" onClick={() => void shareTour(tourCelebration.completion)}>Share this look</button>
+            </div>
+            <button type="button" className="az-tour-done" onClick={() => setTourCelebration(null)}>Done for tonight</button>
+          </section>
+        </div>
       )}
     </div>
   )

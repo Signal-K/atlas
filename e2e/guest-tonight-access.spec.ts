@@ -54,7 +54,8 @@ test("a visitor with no account reaches tonight's sky from the landing page", as
 
   // The label repeats across the masthead, hero, membership card and footer.
   await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
-  await expect(page).toHaveURL('/app/hub')
+  await page.getByRole('button', { name: 'Start guided tour' }).click()
+  await expect(page).toHaveURL('/app/hub?tour=tonight')
 
   await expect(page.getByText("You're browsing as a guest.")).toBeVisible()
   // Not a signup form.

@@ -1,4 +1,4 @@
-# Atlas value moment + activation funnel: analytics contract (ASV-23, ASV-24)
+# Atlas value moment + guided-tour funnel: analytics contract (ASV-23, ASV-24, ASV-55, ASV-59)
 
 All events go through `trackEvent(name, properties)` in `src/lib/analytics.ts`,
 which forwards to PostHog. Naming follows the sentence-case convention already
@@ -28,7 +28,25 @@ Required properties: `hasLocation` (boolean — `false` when `city.source ===
 'default'`, i.e. no geolocation/manual/trip location was ever set). `city`,
 `rating`, `targetCount` ride along for free segmentation.
 
-## Core activation funnel (ASV-24), in order
+## Primary value moment (ASV-59)
+
+The primary Atlas value moment is now **the first guided tour completed with a real location and an explicit when/where/what plan**. The canonical event is `Tour completed`; `tour_id`, `location_present`, `account_state`, and `incentive_eligible` are required on every tour funnel event. A generated Tonight plan remains useful diagnostic context, but is no longer the conversion itself.
+
+## Core guided-tour funnel (ASV-55), in order
+
+| Step | Event | Required properties |
+| --- | --- | --- |
+| Entry | `Tour started` | `tour_id`, `location_present`, `account_state`, `incentive_eligible`, `source` |
+| Progress | `Tour step viewed` | core properties + `step_id` (`entry`, `where`, `when`, `what`) |
+| Value moment | `Tour completed` | core properties + `target_id` |
+| Exit context | `Tour abandoned` | core properties + `last_step_id` |
+| Unlock | `Incentive unlocked` | core properties + `type=first_tour`, `badge=first_light` |
+| Return | `Return nudge shown` | core properties + next `target_id` when available |
+| Sharing | `Tour shared` / `Tour share opened` | core properties + `target_id` |
+
+The saved PostHog insight is provisioned idempotently with `scripts/posthog-tour-funnel-setup.mjs`; it filters `$host=youratlas.cc` and measures `Tour started → Tour completed` over 30 days without an invented target rate.
+
+## Legacy activation funnel (ASV-24), in order
 
 Filter every step to Atlas traffic (`$host = youratlas.cc`, see ASV-20) —
 without it, Landnam's game events dilute the funnel.

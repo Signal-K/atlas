@@ -49,6 +49,8 @@ export interface AuthUser {
   // eight-step one", which is exactly the distinction the re-run needs.
   onboardingVersion: number
   deviceModels: string[]
+  firstTourCompletedAt: string | null
+  firstTourBadge: 'first_light' | null
 }
 
 // An expired token (the users collection issues 5-day tokens) is dead: every
@@ -74,6 +76,10 @@ function currentUser(): AuthUser | null {
     // would be false.
     onboardingVersion: Number(model.onboarding_version) || 0,
     deviceModels: Array.isArray(model.device_models) ? (model.device_models as string[]) : [],
+    firstTourCompletedAt: typeof model.first_tour_completed_at === 'string' && model.first_tour_completed_at
+      ? model.first_tour_completed_at
+      : null,
+    firstTourBadge: model.first_tour_badge === 'first_light' ? 'first_light' : null,
   }
 }
 

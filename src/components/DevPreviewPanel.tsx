@@ -16,6 +16,8 @@ const DEV_USER: AuthUser = {
   // localStorage instead when the flow itself is what you want to look at.
   onboardingVersion: ONBOARDING_VERSION,
   deviceModels: [],
+  firstTourCompletedAt: null,
+  firstTourBadge: null,
 }
 
 export function DevPreviewPanel() {
