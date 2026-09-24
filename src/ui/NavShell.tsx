@@ -30,22 +30,35 @@ export function NavShell({ items, children, topBar, dark = false }: NavShellProp
   return (
     <div className="nav-shell">
       <nav id="primary-navigation" className="nav-shell-nav" aria-label="Primary">
-        {items.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `nav-shell-item az-rail-item${isActive ? ' nav-shell-item-active' : ''}${item.locked ? ' nav-shell-item-locked' : ''}`
-            }
-            title={item.locked ? `${item.label} needs a free account` : undefined}
-          >
-            <span className="nav-shell-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-            <span className="nav-shell-label">{item.label}</span>
-            {item.locked && <span className="nav-shell-lock" aria-label="needs an account">&#9679;</span>}
-          </NavLink>
-        ))}
+        <NavLink className="az-rail-brand" to="/app/hub" aria-label="Atlas home">
+          <span className="az-rail-brand-mark" aria-hidden="true">✦</span>
+          <span>Atlas</span>
+        </NavLink>
+        <div className="az-rail-workspace">
+          <span className="az-rail-workspace-dot" aria-hidden="true" />
+          <span>My sky</span>
+          <span className="az-rail-workspace-caret" aria-hidden="true">⌄</span>
+        </div>
+        <p className="az-rail-label">Workspace</p>
+        <div className="az-rail-links">
+          {items.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `nav-shell-item az-rail-item${isActive ? ' nav-shell-item-active' : ''}${item.locked ? ' nav-shell-item-locked' : ''}`
+              }
+              title={item.locked ? `${item.label} needs a free account` : undefined}
+            >
+              <span className="nav-shell-icon" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span className="nav-shell-label">{item.label}</span>
+              {item.locked && <span className="nav-shell-lock" aria-label="needs an account">&#9679;</span>}
+            </NavLink>
+          ))}
+        </div>
+        <p className="az-rail-note">Your local sky,<br />in one place.</p>
       </nav>
       <div className="nav-shell-body">
         <div className="az-shell-bg">

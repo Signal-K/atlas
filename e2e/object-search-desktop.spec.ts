@@ -56,6 +56,19 @@ test('object search shows the next local event and opens a readable desktop deta
   }
 })
 
+test('desktop workspace keeps secondary routes and quick search within reach', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/app/hub')
+
+  const navigation = page.getByRole('navigation', { name: 'Primary' })
+  await expect(navigation.getByRole('link', { name: 'Calendar' })).toBeVisible()
+  await expect(navigation.getByRole('link', { name: 'Ask Atlas' })).toBeVisible()
+  await expect(page.getByText('Search anything')).toBeVisible()
+
+  await page.keyboard.press('Meta+K')
+  await expect(page.getByPlaceholder('Events, targets, places, entries')).toBeVisible()
+})
+
 test('the desktop auth route renders the Atlas gate rather than browser-default controls', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/app/events')

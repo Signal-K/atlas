@@ -51,6 +51,8 @@ export function TopBar({
         <div className="az-topbar-actions">
           <button type="button" onClick={onOpenSearch} aria-label="Search" className="az-icon-btn">
             <MobileIcon name="search" />
+            <span className="az-search-button-label">Search anything</span>
+            <kbd className="az-search-button-key">⌘ K</kbd>
           </button>
           <button type="button" onClick={onToggleTheme} aria-label="Toggle theme" className="az-icon-btn">
             <MobileIcon name={theme === 'dark' ? 'sun' : 'moon'} />

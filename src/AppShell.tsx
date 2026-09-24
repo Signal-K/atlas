@@ -22,8 +22,10 @@ import type { ObservationDraft } from './lib/observationDraft'
 const NAV_ITEMS: NavItem[] = [
   { path: '/app/hub', label: 'Hub', icon: <MobileIcon name="sparkle" /> },
   { path: '/app/events', label: 'All events', icon: <MobileIcon name="calendar" /> },
+  { path: '/app/calendar', label: 'Calendar', icon: <MobileIcon name="calendar" /> },
   { path: '/app/planner', label: 'Planner', icon: <MobileIcon name="route" /> },
   { path: '/app/journal', label: 'Journal', icon: <MobileIcon name="journal" /> },
+  { path: '/app/ask', label: 'Ask Atlas', icon: <MobileIcon name="sparkle" /> },
   { path: '/app/profile', label: 'You', icon: <MobileIcon name="person" /> },
 ]
 
@@ -81,6 +83,21 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
   const [searchOpen, setSearchOpen] = useState(false)
   const [navDrawerOpen, setNavDrawerOpen] = useState(false)
   const navItems = navItemsFor(Boolean(user))
+
+  // The desktop search affordance advertises its shortcut, so keep the
+  // command useful as well as visible. Avoid stealing a browser/editor
+  // shortcut while the person is already typing into a control.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k')) return
+      const target = event.target as HTMLElement | null
+      if (target?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName ?? '')) return
+      event.preventDefault()
+      setSearchOpen(true)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return (
     <ToastProvider>
