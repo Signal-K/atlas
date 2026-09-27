@@ -167,8 +167,10 @@ export async function deleteAccount(): Promise<void> {
 const RECONCILE_COOLDOWN_MS = 5 * 60_000
 let reconcileRetryAfter = 0
 
-// `force` skips the failure cooldown -- used right after a purchase, where a
-// prompt reconciliation matters more than avoiding a repeat failure.
+// `force` permits reconciliation for a newly-returned checkout even though
+// its cached account is still free. It deliberately does not bypass a recent
+// failure cooldown: a rejected billing request cannot become six retries in
+// forty seconds while the post-checkout recovery loop is running.
 export function refreshEntitlement({ force = false }: { force?: boolean } = {}): Promise<AuthUser | null> {
   if (!pb.authStore.isValid) return Promise.resolve(null)
   // App boot, Settings, focus and the post-checkout return can all request a
@@ -186,7 +188,12 @@ export function refreshEntitlement({ force = false }: { force?: boolean } = {}):
     // 401 from an expired token) was retried -- and reported -- on every tab
     // switch: 17 failures from one user in four days. After a failure, skip
     // it for a few minutes; authRefresh below still runs every time.
-    if (force || Date.now() >= reconcileRetryAfter) {
+    // Routine app boot/focus only needs the billing service for an account
+    // that already has Sky Pass. A free account's entitlement can only
+    // change through the post-checkout force path; PocketBase authRefresh
+    // below still runs for everyone and picks up a completed webhook.
+    const shouldReconcile = force || currentUser()?.entitled === true
+    if (shouldReconcile && Date.now() >= reconcileRetryAfter) {
       try {
         // Webhooks are the fast path, but reconciliation makes paid access
         // self-healing if Polar's asynchronous delivery was missed or delayed.

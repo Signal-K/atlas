@@ -520,7 +520,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
               <p className="az-kicker">{sharedTour ? 'Shared guided look' : 'Guided sky for tonight'}</p>
               <h2 id="az-tour-title">One useful plan. When, where, what.</h2>
             </div>
-            <button type="button" className="az-tour-close" onClick={leaveTour} aria-label="Back to upcoming events">
+            <button type="button" className="az-tour-close" onClick={() => leaveTour()} aria-label="Back to upcoming events">
               <MobileIcon name="back" size={14} /> Back
             </button>
           </div>

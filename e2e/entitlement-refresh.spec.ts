@@ -73,7 +73,7 @@ test('refreshes Sky Pass access after webhook-updated entitlement', async ({ pag
 
 test('trusts a paid reconciliation result when auth-refresh returns a stale entitlement field', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await seedSignedInUser(page, false)
+  await seedSignedInUser(page, true)
 
   await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
     await route.fulfill({
@@ -101,6 +101,52 @@ test('trusts a paid reconciliation result when auth-refresh returns a stale enti
   await page.getByRole('button', { name: /^Account/ }).click()
   await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com', { timeout: 10_000 })
   await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible()
+})
+
+test('a routine free session refreshes PocketBase without calling atlas-billing', async ({ page }) => {
+  await seedSignedInUser(page, false)
+  let billingRequests = 0
+
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
+    billingRequests += 1
+    await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'should not reconcile' }) })
+  })
+  await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ token: E2E_TOKEN, record: { id: 'e2e-user', email: 'atlas-entitlement-e2e@example.com', entitled: false } }),
+    })
+  })
+
+  await page.goto('/app/settings')
+  await page.getByRole('button', { name: /^Account/ }).click()
+  await expect(page.locator('.settings-account-email')).toHaveText('atlas-entitlement-e2e@example.com')
+  expect(billingRequests).toBe(0)
+})
+
+test('a post-checkout return reconciles even before the cached account is entitled', async ({ page }) => {
+  await seedSignedInUser(page, false)
+  let billingRequests = 0
+
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
+    billingRequests += 1
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ entitled: true }) })
+  })
+  await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ token: E2E_TOKEN, record: { id: 'e2e-user', email: 'atlas-entitlement-e2e@example.com', entitled: false } }),
+    })
+  })
+
+  // Use the canonical profile route. The legacy Settings alias redirects,
+  // which is unrelated to processing Polar's checkout return.
+  await page.goto('/app/profile?checkout=returned')
+  await page.getByRole('button', { name: /^Account/ }).click()
+  await expect(page.locator('.settings-status--pill', { hasText: 'Sky Pass active' })).toBeVisible()
+  expect(billingRequests).toBeGreaterThan(0)
 })
 
 test('desktop settings shows one page heading and grouped account status', async ({ page }) => {
