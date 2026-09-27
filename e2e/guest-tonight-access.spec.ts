@@ -84,10 +84,12 @@ test('a guest with no location sees global events, never a Melbourne default', a
   await expect(page.getByText('Melbourne')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Location not set' })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Use my location' }).click()
+  await page.getByRole('button', { name: 'Set your location' }).click()
+  await expect(page.getByRole('dialog', { name: 'Observing location' })).toBeVisible()
+  await page.getByRole('button', { name: 'Enable' }).click()
 
   await expect(page.getByRole('heading', { name: 'Flagship events, worldwide' })).toHaveCount(0, { timeout: 15_000 })
-  await expect(page.getByRole('button', { name: 'Use my location' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Set your location' })).toHaveCount(0)
 })
 
 test('everything beyond tonight still requires an account', async ({ page }) => {

@@ -369,14 +369,13 @@ test('location switching stays reachable via Settings after onboarding', async (
   await expect(page).toHaveURL('/app/events')
 })
 
-test('a free account is offered Sky Pass instead of the Settings location search', async ({ page }) => {
+test('a free account can search for a location when browser location is unavailable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await seedSignedInUser(page, { onboardingComplete: true })
 
   await page.goto('/app/profile')
   await page.getByRole('button', { name: /^Location & sensors/ }).click()
 
-  await expect(page.getByPlaceholder('Search city, region, or country')).toHaveCount(0)
-  await expect(page.getByText('Free accounts keep the location Atlas detects for you.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Get Sky Pass', exact: true })).toBeVisible()
+  await expect(page.getByPlaceholder('Search city, region, or country')).toBeVisible()
+  await expect(page.getByText('Your location')).toBeVisible()
 })

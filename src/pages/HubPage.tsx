@@ -44,13 +44,14 @@ const HUB_FILTERS: Array<{ key: HubFilterKey; label: string }> = [
 
 export interface HubPageProps {
   city: CurrentLocation
-  // Asks the browser for the device's location. Shown as a prompt while no
-  // location is set, in place of a personal plan.
-  onRequestLocation?: () => void
+  // Opens the shared location sheet. Starting with a choice rather than an
+  // immediate browser-permission prompt lets a first-time visitor search for
+  // a city, use their device, or simply return to the global sky.
+  onOpenLocation?: () => void
   onLogAttempt: (draft: ObservationDraft) => void
 }
 
-export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps) {
+export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
   const hasLocation = city.source !== 'default'
   const [theme] = useThemeState()
   const { user } = useAuth()
@@ -343,11 +344,17 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
     setSearchParams(next, { replace: true })
   }
 
-  function leaveTour() {
+  function openLocationSetup(source: 'global_context' | 'guided_tour') {
+    trackEvent('Location setup opened', { source, account_state: user ? 'authed' : 'guest' })
+    onOpenLocation?.()
+  }
+
+  function leaveTour(exitMethod: 'back_to_upcoming' | 'keep_global_browsing' = 'back_to_upcoming') {
     if (!tourCompletedRef.current) {
       trackEvent('Tour abandoned', {
         ...tourProperties(hasLocation, Boolean(user)),
         last_step_id: tourTargetId ? 'what' : plan ? 'when' : hasLocation ? 'where' : 'entry',
+        exit_method: exitMethod,
       })
     }
     setTourActive(false)
@@ -469,7 +476,7 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
               ? "Couldn't load tonight"
               : 'Loading tonight…'}
       </h1>
-      {!hasLocation && (
+      {!hasLocation && !tourActive && (
         <div
           className="az-card"
           role="note"
@@ -481,9 +488,9 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
               Share your location to unlock more: tonight&rsquo;s plan for your sky, local weather and visibility, and events near you.
             </p>
           </div>
-          {onRequestLocation && (
-            <button type="button" className="az-btn az-btn-outline" onClick={onRequestLocation}>
-              Use my location
+          {onOpenLocation && (
+            <button type="button" className="az-btn az-btn-outline" onClick={() => openLocationSetup('global_context')}>
+              Set your location
             </button>
           )}
         </div>
@@ -513,7 +520,9 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
               <p className="az-kicker">{sharedTour ? 'Shared guided look' : 'Guided sky for tonight'}</p>
               <h2 id="az-tour-title">One useful plan. When, where, what.</h2>
             </div>
-            <button type="button" className="az-tour-close" onClick={leaveTour} aria-label="Leave guided tour">×</button>
+            <button type="button" className="az-tour-close" onClick={leaveTour} aria-label="Back to upcoming events">
+              <MobileIcon name="back" size={14} /> Back
+            </button>
           </div>
           <div className="az-tour-checks">
             <span className={hasLocation ? 'is-done' : ''}>
@@ -529,8 +538,12 @@ export function HubPage({ city, onLogAttempt, onRequestLocation }: HubPageProps)
               <strong>What</strong> {tourTargetId ? 'Target chosen' : 'Choose one thing to find'}
             </span>
           </div>
-          {!hasLocation && onRequestLocation ? (
-            <button type="button" className="az-btn az-btn-primary" onClick={onRequestLocation}>Use my location</button>
+          {!hasLocation && onOpenLocation ? (
+            <div className="az-tour-location-step">
+              <p className="az-muted">Start with where you are. You can use your device or search for a city.</p>
+              <button type="button" className="az-btn az-btn-primary" onClick={() => openLocationSetup('guided_tour')}>Choose your location</button>
+              <button type="button" className="az-tour-secondary" onClick={() => leaveTour('keep_global_browsing')}>Keep browsing global events</button>
+            </div>
           ) : plan?.targets.length ? (
             <button type="button" className="az-btn az-btn-primary" onClick={openHeroTarget}>
               {tourTargetId ? 'Review tonight’s target' : `Choose ${plan.targets[0].title}`}

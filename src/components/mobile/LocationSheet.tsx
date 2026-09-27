@@ -18,8 +18,6 @@ export function LocationSheet({
   setManualLocation,
   needsMotionPermission,
   requestMotionPermission,
-  entitled,
-  onUpgrade,
 }: {
   open: boolean
   onClose: () => void
@@ -30,8 +28,6 @@ export function LocationSheet({
   setManualLocation: (city: City | null) => void
   needsMotionPermission: boolean
   requestMotionPermission: () => void
-  entitled: boolean
-  onUpgrade: () => void
 }) {
   return (
     <Sheet open={open} title="Observing location" onClose={onClose}>
@@ -46,8 +42,6 @@ export function LocationSheet({
         setManualLocation={setManualLocation}
         needsMotionPermission={needsMotionPermission}
         requestMotionPermission={requestMotionPermission}
-        entitled={entitled}
-        onUpgrade={onUpgrade}
       />
     </Sheet>
   )

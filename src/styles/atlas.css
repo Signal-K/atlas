@@ -2223,9 +2223,14 @@
 }
 
 .az-tour-close {
-  padding: 0.125rem 0.375rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.45rem;
   color: var(--muted);
-  font-size: 1.5rem;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
 }
 
 .az-tour-checks {
@@ -2254,6 +2259,29 @@
 .az-tour-checks > span.is-done svg,
 .az-tour-finish .az-tour-checks svg {
   color: var(--az-teal);
+}
+
+.az-tour-location-step {
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+}
+
+.az-tour-location-step .az-muted {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.8125rem;
+}
+
+.az-tour-secondary {
+  border: 0;
+  padding: 0.2rem 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: 500 0.75rem var(--az-font-mono);
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
 }
 
 .az-tour-invite {

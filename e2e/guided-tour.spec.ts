@@ -107,3 +107,13 @@ test('a shared tour link lands in the guided entry rather than a blank hub', asy
   await expect(page.getByText('Shared guided look')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'One useful plan. When, where, what.' })).toBeVisible()
 })
+
+test('a guest can leave the guided tour and keep browsing the global sky', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript(() => localStorage.removeItem('atlas-manual-location'))
+  await page.goto('/app/hub?tour=tonight')
+
+  await page.getByRole('button', { name: 'Back to upcoming events' }).click()
+  await expect(page).toHaveURL('/app/hub')
+  await expect(page.getByRole('heading', { name: 'Flagship events, worldwide' })).toBeVisible()
+})

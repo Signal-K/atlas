@@ -131,7 +131,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
           </div>
         )}
         <Routes>
-          <Route path="/app/hub" element={<HubPage city={currentLocation} onLogAttempt={onLogAttempt} onRequestLocation={() => void profileProps.requestLocation()} />} />
+          <Route path="/app/hub" element={<HubPage city={currentLocation} onLogAttempt={onLogAttempt} onOpenLocation={() => setLocationSheetOpen(true)} />} />
           <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
           <Route path="/app/calendar" element={<CalendarPage city={currentLocation} />} />
           <Route path="/app/planner" element={<PlannerPage />} />
@@ -159,11 +159,6 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
         setManualLocation={profileProps.setManualLocation}
         needsMotionPermission={profileProps.needsMotionPermission}
         requestMotionPermission={profileProps.requestMotionPermission}
-        entitled={Boolean(user?.entitled)}
-        onUpgrade={() => {
-          setLocationSheetOpen(false)
-          navigate('/app/profile')
-        }}
       />
 
       {searchOpen && (

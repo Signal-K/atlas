@@ -18,6 +18,20 @@ let loading: Promise<PostHog> | null = null
 
 type AnalyticsUser = { id: string; email: string; entitled: boolean }
 
+// Checkout and recovery links legitimately carry one-time query parameters.
+// Analytics and replay need the route, never those credentials. Use the same
+// logical URL for page events and replay URL targeting so a sensitive query
+// can neither be captured nor decide whether a recording starts.
+function analyticsUrl(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl, window.location.origin)
+    url.search = ''
+    return url.toString()
+  } catch {
+    return rawUrl.split('?')[0]
+  }
+}
+
 // Product surfaces the replay URL trigger is meant to cover. Landing (`/`,
 // `/landing`) is deliberately excluded so anonymous marketing traffic is
 // not specially started from the client.
@@ -80,6 +94,18 @@ export function initAnalytics() {
       // 'history_change' hooks the History API directly instead of
       // requiring a manual $pageview capture() on every navigate() call.
       capture_pageview: 'history_change',
+      get_current_url: analyticsUrl,
+      before_send: (event) => {
+        if (!event) return event
+        const properties = event.properties
+        if (!properties) return event
+        const currentUrl = properties.$current_url
+        const referrer = properties.$referrer
+        if (typeof currentUrl !== 'string' && typeof referrer !== 'string') return event
+        if (typeof currentUrl === 'string') properties.$current_url = analyticsUrl(currentUrl)
+        if (typeof referrer === 'string') properties.$referrer = analyticsUrl(referrer)
+        return event
+      },
       persistence: 'localStorage',
       // Autocapture unhandled JS errors/promise rejections as PostHog
       // exception events. Atlas has plan generation, camera-recipe imports,
