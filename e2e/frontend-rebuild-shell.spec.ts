@@ -71,7 +71,7 @@ test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
 test('trip stay ordering and overlap detection are chronological', async ({ page }) => {
   await page.goto('/app/planner')
   const result = await page.evaluate(async () => {
-    const { activeLegFor, sortTripLegs, tripLegIssues } = await import('/src/lib/tripPlans.ts')
+    const { activeLegFor, dateKeyForTimeZone, sortTripLegs, tripLegIssues } = await import('/src/lib/tripPlans.ts')
     const legs = [
       { id: 'tallinn-return', cityKey: 'tallinn', cityName: 'Tallinn', lat: 59.437, lon: 24.754, startDate: '2026-10-10', endDate: '2026-10-12' },
       { id: 'riga-outbound', cityKey: 'riga', cityName: 'Riga', lat: 56.9496, lon: 24.1052, startDate: '2026-10-03', endDate: '2026-10-05' },
@@ -82,11 +82,13 @@ test('trip stay ordering and overlap detection are chronological', async ({ page
       route: sorted.map((leg) => leg.cityName),
       active: activeLegFor({ id: 'trip', startDate: '2026-10-03', endDate: '2026-10-12', legs: sorted, equipment: [], interests: [], guides: {} }, new Date('2026-10-04T12:00:00Z'))?.cityName,
       overlapIssues: tripLegIssues(overlapping),
+      perthDate: dateKeyForTimeZone(new Date('2026-10-04T23:30:00Z'), 'Australia/Perth'),
     }
   })
   expect(result.route).toEqual(['Riga', 'Tallinn'])
   expect(result.active).toBe('Riga')
   expect(result.overlapIssues).toEqual(['Riga and Vilnius overlap on the same nights.'])
+  expect(result.perthDate).toBe('2026-10-05')
 })
 
 test('nav links switch between areas without a full reload', async ({ page }) => {

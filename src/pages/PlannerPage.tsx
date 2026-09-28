@@ -4,7 +4,7 @@ import { MobileIcon } from '../components/mobile/MobileIcon'
 import { ItineraryBuilderSheet } from '../components/mobile/ItineraryBuilderSheet'
 import { PaywallGate } from '../components/PaywallGate'
 import { useAuth } from '../lib/auth'
-import { activeLegFor, deleteTripPlan, getActiveTripPlan, saveTripLegGuide, sortTripLegs, type TripLeg, type TripPlan } from '../lib/tripPlans'
+import { activeLegFor, dateKeyForTimeZone, deleteTripPlan, getActiveTripPlan, saveTripLegGuide, sortTripLegs, type TripLeg, type TripPlan } from '../lib/tripPlans'
 import { requestTripLegGuide } from '../lib/tripGuide'
 import { listGetReadyReminders } from '../lib/getReadyReminders'
 import { trackEvent } from '../lib/analytics'
@@ -42,9 +42,12 @@ export function PlannerPage() {
   useEffect(() => {
     if (!trip) return
     const reminders = listGetReadyReminders()
-    const start = new Date(trip.startDate).getTime()
-    const end = new Date(trip.endDate).getTime() + 86_400_000
-    setReminderCount(reminders.filter((r) => { const t = new Date(r.startsAt).getTime(); return t >= start && t <= end }).length)
+    // A trip can have gaps. Count a reminder only when it belongs to an
+    // actual destination night, evaluated in that destination's civil time.
+    setReminderCount(reminders.filter((reminder) => trip.legs.some((leg) => {
+      const date = dateKeyForTimeZone(new Date(reminder.startsAt), leg.timeZone)
+      return leg.startDate <= date && date <= leg.endDate
+    })).length)
   }, [trip])
 
   async function handleEndTrip() {

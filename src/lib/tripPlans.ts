@@ -77,9 +77,23 @@ export function sortTripLegs(legs: TripLeg[]): TripLeg[] {
   )
 }
 
+function isDateKey(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const date = new Date(`${value}T12:00:00Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
 export function tripLegIssues(legs: TripLeg[]): string[] {
   const issues: string[] = []
   const ordered = sortTripLegs(legs)
+  const seenIds = new Set<string>()
+  for (const leg of ordered) {
+    if (!leg.id || seenIds.has(leg.id)) issues.push('Every stay needs its own identity.')
+    seenIds.add(leg.id)
+    if (!isDateKey(leg.startDate) || !isDateKey(leg.endDate) || leg.endDate < leg.startDate) {
+      issues.push(`${leg.cityName || 'This stay'} needs valid arrival and departure dates.`)
+    }
+  }
   for (let i = 1; i < ordered.length; i++) {
     if (ordered[i].startDate <= ordered[i - 1].endDate) {
       issues.push(`${ordered[i - 1].cityName} and ${ordered[i].cityName} overlap on the same nights.`)
@@ -153,12 +167,20 @@ export interface SaveTripPlanInput {
 export async function saveTripPlan(input: SaveTripPlanInput): Promise<TripPlan> {
   const userId = pb.authStore.record?.id
   if (!userId || !pb.authStore.isValid) throw new Error('Sign in to plan a trip.')
+  const legs = sortTripLegs(input.legs)
+  const issues = tripLegIssues(legs)
+  if (legs.length === 0) throw new Error('Add at least one stay before saving your trip.')
+  if (issues.length > 0) throw new Error(issues.join(' '))
+  const startDate = legs[0].startDate
+  const endDate = legs.at(-1)!.endDate
 
   const payload = {
     user: userId,
-    start_date: input.startDate,
-    end_date: input.endDate,
-    legs_json: JSON.stringify(sortTripLegs(input.legs)),
+    // The enclosing dates are derived from the canonical legs. Never trust a
+    // stale builder summary to describe a saved itinerary.
+    start_date: startDate,
+    end_date: endDate,
+    legs_json: JSON.stringify(legs),
     equipment_json: JSON.stringify(input.equipment),
     interests_json: JSON.stringify(input.interests),
     guide_json: '{}',
@@ -212,7 +234,7 @@ export function parseGuideGeneratedAt(raw: string | undefined): Date | null {
 // Dates on an itinerary are dates at the destination, not UTC dates and not
 // necessarily the viewer's device date. A late-evening flight can otherwise
 // make Atlas switch a stop a calendar day early or late.
-function dateKeyForTimeZone(date: Date, timeZone?: string): string {
+export function dateKeyForTimeZone(date: Date, timeZone?: string): string {
   if (!timeZone) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   }

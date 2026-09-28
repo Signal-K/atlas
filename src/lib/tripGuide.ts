@@ -6,7 +6,6 @@ import { fetchViewingForecast } from './weather'
 import { getEventsInRange, pullSkyEvents } from './sync'
 import { isVisibleLocalEvent } from './eventFilters'
 import { categoryForKind } from './eventCategories'
-import { localDateKey } from './weather'
 
 // Client for the Sky Pass "personalized trip guide" endpoint
 // (pocketbase/pb_hooks/trip-guide.pb.js). That endpoint requires a
@@ -34,6 +33,18 @@ interface TripLegSignals {
   cloudCoverPct: number | null
   highlights: { title: string; kind: string; date: string }[]
   nearbyDarkSites: { name: string; bortleClass: number; distanceKm: number }[]
+  nightlyConditions: { date: string; moonIlluminationPct: number; cloudCoverPct: number | null }[]
+}
+
+function datesInStay(startDate: string, endDate: string): string[] {
+  const dates: string[] = []
+  const cursor = new Date(`${startDate}T12:00:00Z`)
+  const last = new Date(`${endDate}T12:00:00Z`)
+  while (cursor <= last) {
+    dates.push(cursor.toISOString().slice(0, 10))
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  }
+  return dates
 }
 
 // Composes existing signals for one leg -- no new astronomy math, this just
@@ -41,18 +52,29 @@ interface TripLegSignals {
 // sky-events mirror the same way tonightTargets.ts's getTonightPlan() does
 // for a single location.
 async function computeTripLegSignals(leg: TripLeg, interests: string[]): Promise<TripLegSignals> {
-  const startDate = new Date(`${leg.startDate}T12:00:00`)
+  // Stay dates are already destination-local calendar dates. Keep that key
+  // through the forecast lookup instead of converting it via the viewer's
+  // device timezone, which can shift it a day at the International Date Line.
+  const stayDates = datesInStay(leg.startDate, leg.endDate)
   const lightPollution = estimateLightPollution(leg.lat, leg.lon)
-  const moonIlluminationPct = moonIlluminationPctAt(startDate)
+  const moonByNight = stayDates.map((date) => ({
+    date,
+    moonIlluminationPct: moonIlluminationPctAt(new Date(`${date}T12:00:00Z`)),
+  }))
+  const moonIlluminationPct = Math.round(moonByNight.reduce((sum, night) => sum + night.moonIlluminationPct, 0) / moonByNight.length)
   const milkyWayVisible = computeMilkyWayVisibility(lightPollution.bortleClass, moonIlluminationPct)
 
   const forecast = await fetchViewingForecast(leg.lat, leg.lon, 14).catch(() => ({ days: [], timeZone: leg.timeZone }))
-  const startKey = localDateKey(startDate.toISOString(), leg.timeZone ?? forecast.timeZone)
-  const cloudCoverPct = forecast.days.find((day) => day.date === startKey)?.cloudCoverPct ?? null
+  const nightlyConditions = moonByNight.map((night) => ({
+    ...night,
+    cloudCoverPct: forecast.days.find((day) => day.date === night.date)?.cloudCoverPct ?? null,
+  }))
+  const cloudValues = nightlyConditions.flatMap((night) => night.cloudCoverPct == null ? [] : [night.cloudCoverPct])
+  const cloudCoverPct = cloudValues.length ? Math.round(cloudValues.reduce((sum, value) => sum + value, 0) / cloudValues.length) : null
 
   await pullSkyEvents()
-  const rangeStart = new Date(`${leg.startDate}T00:00:00`)
-  const rangeEnd = new Date(`${leg.endDate}T23:59:59`)
+  const rangeStart = new Date(`${leg.startDate}T00:00:00Z`)
+  const rangeEnd = new Date(`${leg.endDate}T23:59:59Z`)
   const events = await getEventsInRange(rangeStart, rangeEnd)
   const highlights = events
     .filter((event) => isVisibleLocalEvent(event, leg.lat, leg.lon))
@@ -72,6 +94,7 @@ async function computeTripLegSignals(leg: TripLeg, interests: string[]): Promise
     cloudCoverPct,
     highlights,
     nearbyDarkSites,
+    nightlyConditions,
   }
 }
 
