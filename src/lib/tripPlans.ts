@@ -167,11 +167,16 @@ export async function saveTripPlan(input: SaveTripPlanInput): Promise<TripPlan> 
 
   const existing = await getActiveTripPlan()
   const record = existing ? await pb.collection('atlas_trip_plans').update(existing.id, payload) : await pb.collection('atlas_trip_plans').create(payload)
-  return parseTripRecord(record)
+  const trip = parseTripRecord(record)
+  // A paid itinerary is also an active location source. Notify the running
+  // shell immediately rather than waiting for its periodic re-check.
+  window.dispatchEvent(new Event('atlas:trip-plan-changed'))
+  return trip
 }
 
 export async function deleteTripPlan(id: string): Promise<void> {
   await pb.collection('atlas_trip_plans').delete(id)
+  window.dispatchEvent(new Event('atlas:trip-plan-changed'))
 }
 
 // Persists a freshly generated guide for one leg, merging into whatever
@@ -188,8 +193,10 @@ export async function saveTripLegGuide(trip: TripPlan, legId: string, guide: Tri
 // The leg covering `date` (defaults to now), if any -- mirrors trips.ts's
 // activeTripFor() but across a multi-city plan's legs.
 export function activeLegFor(trip: TripPlan, date: Date = new Date()): TripLeg | null {
-  const key = date.toISOString().slice(0, 10)
-  return sortTripLegs(trip.legs).find((leg) => leg.startDate <= key && key <= leg.endDate) ?? null
+  return sortTripLegs(trip.legs).find((leg) => {
+    const key = dateKeyForTimeZone(date, leg.timeZone)
+    return leg.startDate <= key && key <= leg.endDate
+  }) ?? null
 }
 
 export function tripCoversDate(trip: TripPlan, date: Date = new Date()): boolean {
@@ -200,4 +207,25 @@ export function tripCoversDate(trip: TripPlan, date: Date = new Date()): boolean
 // into pocketbaseDate.ts themselves.
 export function parseGuideGeneratedAt(raw: string | undefined): Date | null {
   return raw ? parsePbDate(raw) : null
+}
+
+// Dates on an itinerary are dates at the destination, not UTC dates and not
+// necessarily the viewer's device date. A late-evening flight can otherwise
+// make Atlas switch a stop a calendar day early or late.
+function dateKeyForTimeZone(date: Date, timeZone?: string): string {
+  if (!timeZone) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  }
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date)
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+    return `${values.year}-${values.month}-${values.day}`
+  } catch {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  }
 }

@@ -29,6 +29,8 @@ export function PlannerPage() {
   const [loading, setLoading] = useState(true)
   const [builderOpen, setBuilderOpen] = useState(false)
   const [reminderCount, setReminderCount] = useState(0)
+  const [confirmingEnd, setConfirmingEnd] = useState(false)
+  const [endError, setEndError] = useState('')
 
   useEffect(() => {
     getActiveTripPlan().then((active) => {
@@ -47,9 +49,15 @@ export function PlannerPage() {
 
   async function handleEndTrip() {
     if (!trip) return
-    await deleteTripPlan(trip.id)
-    trackEvent('Deleted trip plan', {})
-    setTrip(null)
+    setEndError('')
+    try {
+      await deleteTripPlan(trip.id)
+      trackEvent('Deleted trip plan', {})
+      setTrip(null)
+      setConfirmingEnd(false)
+    } catch {
+      setEndError("Couldn't end this trip. Please try again.")
+    }
   }
 
   return (
@@ -129,14 +137,30 @@ export function PlannerPage() {
               </div>
             )}
 
-            <button
-              type="button"
-              className="az-btn az-btn-outline az-btn-block"
-              style={{ marginTop: '1.125rem' }}
-              onClick={handleEndTrip}
-            >
-              End trip
-            </button>
+            {confirmingEnd ? (
+              <div className="az-card" style={{ marginTop: '1.125rem' }}>
+                <div className="az-card-body">
+                  <strong style={{ display: 'block', marginBottom: '0.25rem' }}>End this trip?</strong>
+                  <p className="az-muted" style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem' }}>
+                    This removes the itinerary and its saved guides. Your observations stay in your journal.
+                  </p>
+                  {endError && <p style={{ color: 'var(--az-flagship)', fontSize: '0.75rem', margin: '0 0 0.5rem' }}>{endError}</p>}
+                  <div className="az-btn-row">
+                    <button type="button" className="az-btn az-btn-outline" style={{ flex: 1 }} onClick={() => setConfirmingEnd(false)}>Keep trip</button>
+                    <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleEndTrip}>Yes, end trip</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="az-btn az-btn-outline az-btn-block"
+                style={{ marginTop: '1.125rem' }}
+                onClick={() => setConfirmingEnd(true)}
+              >
+                End trip
+              </button>
+            )}
           </>
         )}
       </div>
