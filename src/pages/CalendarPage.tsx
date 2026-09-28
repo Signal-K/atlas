@@ -43,7 +43,9 @@ export function CalendarPage({ city }: { city: CurrentLocation }) {
     const todayKey = localDateKey(today.toISOString(), city.timeZone)
     return {
       leadingBlanks: Array.from({ length: firstWeekday }, () => null),
-      monthLabel: today.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      // The pager controls `cursor`, not `today`. Keeping this label tied to
+      // today made a successful next/previous click appear to do nothing.
+      monthLabel: cursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
       days: Array.from({ length: daysInMonth }, (_, index) => {
         const day = index + 1
         const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
