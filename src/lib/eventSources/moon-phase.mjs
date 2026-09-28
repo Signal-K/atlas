@@ -23,7 +23,10 @@ function toEvent(title, date) {
         ? 'A quarter moon is high in a dark sky for part of the night. Point binoculars or a small telescope along the day-night boundary (the terminator): long shadows make craters and mountain ranges much easier to see than at full moon.'
         : 'A new moon is not visible at all, since it rises and sets with the Sun. With no moonlight to wash out the sky, this is the best few nights of the month for viewing faint deep-sky objects like galaxies and nebulae.',
     starts_at: startsAt,
-    ends_at: startsAt,
+    // A phase peak is an instant, but lunar observing is not. Keeping the
+    // full/quarter Moon active for several nights makes a 96%-illuminated
+    // Moon discoverable after the exact astronomical peak has passed.
+    ends_at: new Date(date.getTime() + (isFullMoon || isQuarterMoon ? 3 : 1) * 86_400_000).toISOString(),
     ...(isFullMoon
       ? { image_url: 'https://upload.wikimedia.org/wikipedia/commons/e/e1/FullMoon2010.jpg', image_credit: 'Gregory H. Revera, Wikimedia Commons' }
       // A new moon itself isn't visible, so its photo is of what a new-moon
@@ -41,12 +44,13 @@ export async function fetchEvents({ now = new Date(), windowDays = 90 } = {}) {
   const end = now.getTime() + windowDays * 86_400_000
   const events = []
 
-  // SearchMoonQuarter finds the first quarter phase *after* dateStart, so
-  // start a day early to also catch a quarter phase that lands right at `now`.
-  let mq = Astronomy.SearchMoonQuarter(new Date(now.getTime() - 86_400_000))
+  // Look back far enough to retain the useful observing window after an
+  // exact phase peak; SearchMoonQuarter otherwise only emits future peaks.
+  let mq = Astronomy.SearchMoonQuarter(new Date(now.getTime() - 3 * 86_400_000))
   while (mq.time.date.getTime() <= end) {
     const title = QUARTER_TITLE[mq.quarter]
-    if (title && mq.time.date.getTime() >= now.getTime()) {
+    const activeUntil = mq.time.date.getTime() + (title === 'Full Moon' || title === 'First Quarter' || title === 'Last Quarter' ? 3 : 1) * 86_400_000
+    if (title && activeUntil >= now.getTime()) {
       events.push(toEvent(title, mq.time.date))
     }
     mq = Astronomy.NextMoonQuarter(mq)
