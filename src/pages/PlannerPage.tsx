@@ -4,7 +4,7 @@ import { MobileIcon } from '../components/mobile/MobileIcon'
 import { ItineraryBuilderSheet } from '../components/mobile/ItineraryBuilderSheet'
 import { PaywallGate } from '../components/PaywallGate'
 import { useAuth } from '../lib/auth'
-import { activeLegFor, deleteTripPlan, getActiveTripPlan, saveTripLegGuide, type TripLeg, type TripPlan } from '../lib/tripPlans'
+import { activeLegFor, deleteTripPlan, getActiveTripPlan, saveTripLegGuide, sortTripLegs, type TripLeg, type TripPlan } from '../lib/tripPlans'
 import { requestTripLegGuide } from '../lib/tripGuide'
 import { listGetReadyReminders } from '../lib/getReadyReminders'
 import { trackEvent } from '../lib/analytics'
@@ -97,15 +97,15 @@ export function PlannerPage() {
                   ACTIVE ITINERARY · {trip.legs.length} {trip.legs.length === 1 ? 'NIGHT' : 'NIGHTS'} · {new Set(trip.legs.map((l) => l.cityKey)).size} LOCATION{new Set(trip.legs.map((l) => l.cityKey)).size === 1 ? '' : 'S'}
                 </span>
                 <strong style={{ display: 'block', fontFamily: 'var(--az-font-display)', fontSize: '1.3125rem', margin: '0.3125rem 0 0.25rem' }}>
-                  {trip.legs[0]?.cityName}{trip.legs.length > 1 ? ` → ${trip.legs[trip.legs.length - 1].cityName}` : ''}
+                  {sortTripLegs(trip.legs)[0]?.cityName}{trip.legs.length > 1 ? ` → ${sortTripLegs(trip.legs).at(-1)?.cityName}` : ''}
                 </strong>
                 <p className="az-muted" style={{ margin: 0, fontSize: '0.8125rem' }}>
                   {trip.startDate} to {trip.endDate}
                 </p>
               </div>
               <div className="az-row-group" style={{ borderRadius: 0, borderLeft: 0, borderRight: 0 }}>
-                {trip.legs.map((leg) => (
-                  <LegRow key={leg.cityKey} trip={trip} leg={leg} onGuideSaved={setTrip} />
+                {sortTripLegs(trip.legs).map((leg) => (
+                  <LegRow key={leg.id} trip={trip} leg={leg} onGuideSaved={setTrip} />
                 ))}
               </div>
               <div className="az-btn-row" style={{ padding: '0.75rem 0.9375rem' }}>
@@ -149,15 +149,17 @@ export function PlannerPage() {
 function LegRow({ trip, leg, onGuideSaved }: { trip: TripPlan; leg: TripLeg; onGuideSaved: (trip: TripPlan) => void }) {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
-  const isActive = activeLegFor(trip, new Date())?.cityKey === leg.cityKey
-  const guide = trip.guides[leg.cityKey]
+  const isActive = activeLegFor(trip, new Date())?.id === leg.id
+  // cityKey was used before ASV-71. Retain those guides for existing plans;
+  // every newly generated guide is isolated to this individual stay.
+  const guide = trip.guides[leg.id] ?? trip.guides[leg.cityKey]
 
   async function generate() {
     setGenerating(true)
     setError('')
     try {
       const generated = await requestTripLegGuide(leg, trip.equipment, trip.interests)
-      const updated = await saveTripLegGuide(trip, leg.cityKey, generated)
+      const updated = await saveTripLegGuide(trip, leg.id, generated)
       trackEvent('Generated trip guide', { city: leg.cityName })
       onGuideSaved(updated)
     } catch (err) {

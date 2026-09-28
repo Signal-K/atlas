@@ -6,7 +6,7 @@ import { MAKER_LABELS, MAKER_ORDER, modelsForMaker, type DeviceId, deviceIdFromP
 import { InterestsPicker } from '../InterestsPicker'
 import { LocationSearchInput } from '../LocationSearchInput'
 import { getPreferredEventTypes } from '../../lib/eventPreferences'
-import { TRIP_MAX_LEGS, VIEWING_INSTRUMENTS, makeLeg, saveTripPlan, type TripLeg, type TripPlan } from '../../lib/tripPlans'
+import { TRIP_MAX_LEGS, VIEWING_INSTRUMENTS, makeLeg, saveTripPlan, sortTripLegs, tripLegIssues, type TripLeg, type TripPlan } from '../../lib/tripPlans'
 import { trackEvent } from '../../lib/analytics'
 import { useAuth } from '../../lib/auth'
 
@@ -39,16 +39,10 @@ function deriveTripDates(legs: TripLeg[]): { startDate: string; endDate: string 
   return { startDate: starts[0], endDate: ends[ends.length - 1] }
 }
 
-// Non-blocking sanity check: pairs of stays whose nights overlap.
-function tripLegIssues(legs: TripLeg[]): string[] {
-  const issues: string[] = []
-  const ordered = [...legs].sort((a, b) => a.startDate.localeCompare(b.startDate))
-  for (let i = 1; i < ordered.length; i++) {
-    if (ordered[i].startDate <= ordered[i - 1].endDate) {
-      issues.push(`${ordered[i - 1].cityName} and ${ordered[i].cityName} overlap on the same nights.`)
-    }
-  }
-  return issues
+function nextDate(day: string): string {
+  const date = new Date(`${day}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString().slice(0, 10)
 }
 
 // Bottom-sheet itinerary builder, matching the Atlas Mobile mockup's
@@ -110,11 +104,11 @@ export function ItineraryBuilderSheet({
   const legIssues = useMemo(() => tripLegIssues(legs), [legs])
   const step = STEPS[stepIndex]
   const atMax = legs.length >= TRIP_MAX_LEGS
-  const canContinue = step === 'itinerary' ? legs.length > 0 : true
+  const canContinue = step === 'itinerary' ? legs.length > 0 && legIssues.length === 0 : true
 
   function addLeg() {
     if (!selectedCity || !legStart || !legEnd || legEnd < legStart || atMax) return
-    setLegs((current) => [...current, makeLeg(selectedCity, legStart, legEnd)])
+    setLegs((current) => sortTripLegs([...current, makeLeg(selectedCity, legStart, legEnd)]))
     setCityQuery('')
     setSelectedCity(null)
     setLegStart('')
@@ -125,7 +119,8 @@ export function ItineraryBuilderSheet({
     setSelectedCity(city)
     setCityQuery(cityLabel(city))
     if (!legStart) {
-      const defaultStart = legs.length > 0 ? legs[legs.length - 1].endDate : todayKey()
+      const latestStay = sortTripLegs(legs).at(-1)
+      const defaultStart = latestStay ? nextDate(latestStay.endDate) : todayKey()
       setLegStart(defaultStart)
       if (!legEnd) setLegEnd(defaultStart)
     }
@@ -143,7 +138,7 @@ export function ItineraryBuilderSheet({
   }
 
   async function handleSave() {
-    if (legs.length === 0) return
+    if (legs.length === 0 || legIssues.length > 0) return
     setSaving(true)
     setError('')
     try {
@@ -184,8 +179,8 @@ export function ItineraryBuilderSheet({
           </p>
           {legs.length > 0 && (
             <div className="az-row-group" style={{ marginBottom: '0.75rem' }}>
-              {legs.map((leg) => (
-                <div key={`${leg.cityKey}-${leg.startDate}`} className="az-row" style={{ cursor: 'default' }}>
+              {sortTripLegs(legs).map((leg) => (
+                <div key={leg.id} className="az-row" style={{ cursor: 'default' }}>
                   <span className="az-row-icon">
                     <MobileIcon name="pin" size={15} />
                   </span>
@@ -265,8 +260,8 @@ export function ItineraryBuilderSheet({
             {formatDayLabel(startDate)} – {formatDayLabel(endDate)} · {legs.length} {legs.length === 1 ? 'stop' : 'stops'}
           </p>
           <div className="az-row-group">
-            {legs.map((leg) => (
-              <div key={leg.cityKey} className="az-row" style={{ cursor: 'default' }}>
+            {sortTripLegs(legs).map((leg) => (
+              <div key={leg.id} className="az-row" style={{ cursor: 'default' }}>
                 <span className="az-row-main">
                   <span className="az-row-title">{leg.cityName}</span>
                   <span className="az-muted" style={{ fontSize: '0.75rem' }}>{formatDayLabel(leg.startDate)} – {formatDayLabel(leg.endDate)}</span>

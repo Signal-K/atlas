@@ -68,6 +68,27 @@ test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled()
 })
 
+test('trip stay ordering and overlap detection are chronological', async ({ page }) => {
+  await page.goto('/app/planner')
+  const result = await page.evaluate(async () => {
+    const { activeLegFor, sortTripLegs, tripLegIssues } = await import('/src/lib/tripPlans.ts')
+    const legs = [
+      { id: 'tallinn-return', cityKey: 'tallinn', cityName: 'Tallinn', lat: 59.437, lon: 24.754, startDate: '2026-10-10', endDate: '2026-10-12' },
+      { id: 'riga-outbound', cityKey: 'riga', cityName: 'Riga', lat: 56.9496, lon: 24.1052, startDate: '2026-10-03', endDate: '2026-10-05' },
+    ]
+    const overlapping = [...legs, { id: 'vilnius-overlap', cityKey: 'vilnius', cityName: 'Vilnius', lat: 54.6872, lon: 25.2797, startDate: '2026-10-05', endDate: '2026-10-07' }]
+    const sorted = sortTripLegs(legs)
+    return {
+      route: sorted.map((leg) => leg.cityName),
+      active: activeLegFor({ id: 'trip', startDate: '2026-10-03', endDate: '2026-10-12', legs: sorted, equipment: [], interests: [], guides: {} }, new Date('2026-10-04T12:00:00Z'))?.cityName,
+      overlapIssues: tripLegIssues(overlapping),
+    }
+  })
+  expect(result.route).toEqual(['Riga', 'Tallinn'])
+  expect(result.active).toBe('Riga')
+  expect(result.overlapIssues).toEqual(['Riga and Vilnius overlap on the same nights.'])
+})
+
 test('nav links switch between areas without a full reload', async ({ page }) => {
   await page.goto('/app/events')
   await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible()
