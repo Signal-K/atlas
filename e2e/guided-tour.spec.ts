@@ -73,6 +73,11 @@ test('a guest completes the when/where/what tour, unlocks once, and can share it
 
   await expect(page).toHaveURL('/app/hub?tour=tonight')
   await expect(page.getByRole('heading', { name: 'One useful plan. When, where, what.' })).toBeVisible()
+  // The guided CTA is the one first-look decision. Its target must not also
+  // be rendered as both a highlight card and the only Upcoming row.
+  await expect(page.getByText('Highlight tonight')).toHaveCount(0)
+  await expect(page.getByText('Upcoming', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Choose / })).toHaveCount(1)
   if (process.env.ATLAS_CAPTURE_SCREENSHOTS === '1') {
     await page.screenshot({ path: 'test-results/guided-tour-mobile.png', fullPage: false, animations: 'disabled' })
   }

@@ -447,7 +447,15 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
     week: events.filter(upcomingFilterPredicates.week).length,
     watching: events.filter(upcomingFilterPredicates.watching).length,
   }
-  const upcomingShown = events.filter(upcomingFilterPredicates[upcomingFilter])
+  // A guided look already names the one decision Atlas is asking for. Until
+  // that target has been chosen, repeating it as the highlight card and an
+  // Upcoming row turns a single next step into three competing homes.
+  const guidedChoicePending = Boolean(tourActive && !tourTargetId && plan?.targets[0])
+  const guidedTargetEventId = guidedChoicePending ? plan?.targets[0]?.eventId : null
+  const guidedTargetEvent = guidedTargetEventId ? events.find((event) => event.id === guidedTargetEventId) : null
+  const upcomingShown = events
+    .filter((event) => event.id !== guidedTargetEventId)
+    .filter(upcomingFilterPredicates[upcomingFilter])
   const upcomingGroups = useMemo(() => {
     if (!upcomingShown.length) return []
     const byDay = new Map<string, SkyEvent[]>()
@@ -586,7 +594,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         </div>
       )}
 
-      {plan && plan.targets.length > 0 && (
+      {plan && plan.targets.length > 0 && !guidedChoicePending && (
         <>
           <div className="az-section-head">
             <span className="az-kicker">Highlight tonight</span>
@@ -609,24 +617,28 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         </>
       )}
 
-      <div className="az-section-head" style={{ marginTop: '1.375rem' }}>
-        <span className="az-kicker">Upcoming</span>
-      </div>
-      <div className="az-chip-row">
-        {HUB_FILTERS.map((f) => (
-          <button
-            type="button"
-            key={f.key}
-            className={`az-chip${upcomingFilter === f.key ? ' is-active' : ''}`}
-            onClick={() => setUpcomingFilter(f.key)}
-          >
-            {f.label}
-            <span className="az-chip-count">{upcomingCounts[f.key]}</span>
-          </button>
-        ))}
-      </div>
+      {(!guidedChoicePending || upcomingShown.length > 0) && (
+        <>
+          <div className="az-section-head" style={{ marginTop: '1.375rem' }}>
+            <span className="az-kicker">{guidedChoicePending ? 'More coming up' : 'Upcoming'}</span>
+          </div>
+          <div className="az-chip-row">
+            {HUB_FILTERS.map((f) => (
+              <button
+                type="button"
+                key={f.key}
+                className={`az-chip${upcomingFilter === f.key ? ' is-active' : ''}`}
+                onClick={() => setUpcomingFilter(f.key)}
+              >
+                {f.label}
+                <span className="az-chip-count">{upcomingCounts[f.key] - (guidedTargetEvent && upcomingFilterPredicates[f.key](guidedTargetEvent) ? 1 : 0)}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
-      {upcomingGroups.map((group) => (
+      {(!guidedChoicePending || upcomingShown.length > 0) && upcomingGroups.map((group) => (
         <div key={group.key} style={{ marginTop: '1.125rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.5rem' }}>
             <span className="az-kicker">{group.label}</span>
@@ -655,7 +667,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         </div>
       ))}
 
-      {upcomingGroups.length === 0 && (
+      {(!guidedChoicePending || upcomingShown.length > 0) && upcomingGroups.length === 0 && (
         <div className="az-card-body" style={{ marginTop: '1rem', textAlign: 'center', border: '1px dashed var(--line2)', background: 'none' }}>
           <p style={{ margin: 0, fontWeight: 500, fontSize: '0.875rem' }}>Nothing in this filter</p>
           <p className="az-muted" style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem' }}>
