@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LandingPage } from './views/LandingPage'
+import { HostPage } from './views/HostPage'
 import { AppShell } from './AppShell'
 import { useParallax } from './lib/motion'
 import { useAuth } from './lib/auth'
@@ -69,11 +70,16 @@ function App() {
     if (routerLocation.pathname === '/app' || isTonightRoute) navigate(APP_HOME, { replace: true })
   }, [routerLocation.pathname, isTonightRoute, navigate])
 
-  // Any path that isn't "/", "/landing", "/tonight", or under "/app" is
-  // not a real route. Unknown public URLs resolve to the landing-page alias
-  // rather than silently falling through to the app shell.
+  // Any path that isn't "/", "/landing", "/hosts", "/tonight", or under
+  // "/app" is not a real route. Unknown public URLs resolve to the
+  // landing-page alias rather than silently falling through to the app shell.
   useEffect(() => {
-    if (routerLocation.pathname !== '/' && routerLocation.pathname !== '/landing' && !isAppRoute) {
+    if (
+      routerLocation.pathname !== '/' &&
+      routerLocation.pathname !== '/landing' &&
+      routerLocation.pathname !== '/hosts' &&
+      !isAppRoute
+    ) {
       navigate('/landing', { replace: true })
     }
   }, [routerLocation.pathname, isAppRoute, navigate])
@@ -82,6 +88,9 @@ function App() {
   // session identified here, but are only sent into the product when they
   // choose to open it. "/landing" remains a permanent alias.
   const showLanding = routerLocation.pathname === '/' || routerLocation.pathname === '/landing'
+  // "/hosts" is a public marketing page for prospective event hosts -- no
+  // account required, same as landing.
+  const showHosts = routerLocation.pathname === '/hosts'
 
   function enterApp(startTour = false) {
     markEntered()
@@ -142,6 +151,10 @@ function App() {
         )}
       </>
     )
+  }
+
+  if (showHosts) {
+    return <HostPage />
   }
 
   // Not "/", not "/landing", not a product route -- the redirect effect

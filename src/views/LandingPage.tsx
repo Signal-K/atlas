@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { trackEvent } from '../lib/analytics'
 import { pullSkyEvents, getEventsInRange } from '../lib/sync'
 import type { SkyEvent } from '../lib/db'
 import { metaFor, type TargetDifficulty } from '../lib/tonightTargets'
-import { SKY_PASS_SUMMARY } from '../lib/pricing'
+import { FREE_FEATURES_SUMMARY, SKY_PASS_FEATURES_SUMMARY, SKY_PASS_SUMMARY, SKY_PASS_TIERS } from '../lib/pricing'
 import { localDateKey } from '../lib/weather'
 import { fetchEvents as fetchConjunctionEvents } from '../lib/eventSources/conjunctions.mjs'
 import { fetchEvents as fetchEclipseEvents } from '../lib/eventSources/eclipses.mjs'
@@ -206,7 +207,9 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
         <nav className="am-nav" aria-label="Primary">
           <div className="am-nav-links">
             <a href="#week">Highlights</a>
-            <a href="#membership">Sky Pass</a>
+            <a href="#nights">Sky nights</a>
+            <Link to="/hosts">For hosts</Link>
+            <a href="#access">Sky Pass</a>
           </div>
           <button type="button" className="am-nav-cta" onClick={() => handleEnter('nav')}>
             {primaryLabel} →
@@ -222,21 +225,56 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
             </h1>
             <div className="am-lede-columns">
               <p>
-                <span className="am-dropcap">A</span>tlas picks five real sky events from the next month —
-                Moon phases, bright planets, conjunctions, eclipses, meteor showers and standout stars — and tells you when they happen.
+                <span className="am-dropcap">A</span>tlas helps you pick a sky event worth stepping outside for, see when it is
+                visible from your location, and make a plan around the weather.
               </p>
               <p>
-                Set your location to see what is visible from where you stand.
+                We also bring that sky to life at free public observing nights.
               </p>
             </div>
             <div className="am-lede-actions">
               <button type="button" className="am-btn am-btn-primary" onClick={() => handleEnter('hero')}>
                 {primaryLabel}
               </button>
+              <a href="#nights" className="am-btn am-btn-outline">
+                Explore sky nights
+              </a>
               <span className="am-lede-note">{heroNote}</span>
             </div>
           </div>
 
+        </section>
+
+        <section id="app" className="am-section am-app" aria-labelledby="am-app-title">
+          <div className="am-section-head">
+            <h2 id="am-app-title">A plan for the sky above you.</h2>
+          </div>
+          <div className="am-plan am-plan--compact">
+            <p>
+              Choose your location. See the next events worth watching, the conditions outside, and a simple plan for
+              when and where to look. You can explore tonight's sky without an account; an account keeps your journal,
+              watchlist and reminders.
+            </p>
+          </div>
+          <div className="am-strip">
+            <div>
+              <div className="am-strip-label">1 · Location</div>
+              <div className="am-strip-value">Set where you are</div>
+              <div className="am-strip-sub">So Atlas can tell you what's actually visible from your sky.</div>
+            </div>
+            <div className="am-strip-divider" />
+            <div>
+              <div className="am-strip-label">2 · Tonight</div>
+              <div className="am-strip-value">See what's next</div>
+              <div className="am-strip-sub">The next flagship events, in order, with what you'll need to see them.</div>
+            </div>
+            <div className="am-strip-divider" />
+            <div>
+              <div className="am-strip-label">3 · Weather</div>
+              <div className="am-strip-value">Plan around the weather</div>
+              <div className="am-strip-sub">A simple call on when and where to look before you head outside.</div>
+            </div>
+          </div>
         </section>
 
         <section id="week" className="am-section am-week" aria-labelledby="am-week-title">
@@ -300,21 +338,107 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
           </div>
         </section>
 
-        <section id="membership" className="am-section am-membership" aria-labelledby="am-membership-title">
+        <section id="nights" className="am-section am-nights" aria-labelledby="am-nights-title">
           <div className="am-section-head">
-            <h2 id="am-membership-title">Start with tonight.</h2>
-            <span className="am-section-note">Free to see what is up.</span>
+            <h2 id="am-nights-title">Look up together.</h2>
           </div>
           <div className="am-plan am-plan--compact">
-            <p>Atlas turns your location, weather and the event calendar into a short plan you can actually use.</p>
+            <p>
+              Our free public sky nights start with a short talk about what is visible that week, followed by an
+              Atlas demonstration and outdoor observing or photography if conditions allow. Students and first-time
+              observers are welcome. Each night is shaped around a sky event, not a fixed tour itinerary.
+            </p>
             <div className="am-lede-actions">
-              <button type="button" className="am-btn am-btn-primary" onClick={() => handleEnter('membership-free')}>
-                {primaryLabel}
-              </button>
-              <button type="button" className="am-link-btn" onClick={() => handleEnter('membership-paid')}>
-                Get Sky Pass →
-              </button>
+              <a href="#how-a-sky-night-works" className="am-link-btn">
+                How a sky night works →
+              </a>
+              <Link to="/hosts" className="am-btn am-btn-outline">
+                Host a sky night
+              </Link>
             </div>
+          </div>
+          <details id="how-a-sky-night-works" className="am-faq-item">
+            <summary>
+              <span>What a sky night looks like</span>
+              <span className="am-faq-sign">＋</span>
+            </summary>
+            <p>
+              A 20–30 minute talk on that week's sky, an Atlas demonstration of how to decide what to see and when,
+              then outdoor observing or photography if the weather allows. Bad weather means the talk and demo still
+              happen indoors.
+            </p>
+          </details>
+        </section>
+
+        <section id="access" className="am-section am-access" aria-labelledby="am-access-title">
+          <div className="am-section-head">
+            <h2 id="am-access-title">Start free. Go further if you want.</h2>
+            <span className="am-section-note">See what is up tonight for free. Sky Pass is optional.</span>
+          </div>
+          <div className="am-plans">
+            <div className="am-plan">
+              <div className="am-plan-head">
+                <span>Free</span>
+                <span>No account needed</span>
+              </div>
+              <p>{FREE_FEATURES_SUMMARY}</p>
+            </div>
+            <div className="am-plan-divider" />
+            <div className="am-plan am-plan--paid">
+              <div className="am-plan-head">
+                <span>Sky Pass</span>
+                <span>Optional</span>
+              </div>
+              <ul className="am-plan-tiers">
+                {SKY_PASS_TIERS.map((tier) => (
+                  <li key={tier.id}>
+                    <span>{tier.label}</span>
+                    <span>{tier.price}</span>
+                  </li>
+                ))}
+              </ul>
+              <p>{SKY_PASS_FEATURES_SUMMARY}</p>
+            </div>
+          </div>
+          <div className="am-lede-actions">
+            <button type="button" className="am-btn am-btn-primary" onClick={() => handleEnter('membership-free')}>
+              {primaryLabel}
+            </button>
+            <button type="button" className="am-link-btn" onClick={() => handleEnter('membership-paid')}>
+              Get Sky Pass →
+            </button>
+          </div>
+        </section>
+
+        <section id="hosts" className="am-section am-invite" aria-labelledby="am-invite-title">
+          <div className="am-section-head">
+            <h2 id="am-invite-title">Bring a sky night to your community.</h2>
+          </div>
+          <div className="am-plan am-plan--compact">
+            <p>
+              Atlas is a stargazing app and a series of free public observing nights. If you have a room and an
+              audience, we bring the talk, the app demonstration and a plan for the sky.
+            </p>
+            <div className="am-lede-actions">
+              <Link to="/hosts" className="am-btn am-btn-primary">
+                See how hosting works
+              </Link>
+              <a className="am-link-btn" href="mailto:liam@skinetics.tech">
+                Discuss a sky night →
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section id="about" className="am-section am-about" aria-labelledby="am-about-title">
+          <div className="am-section-head">
+            <h2 id="am-about-title">Built for the night outside.</h2>
+          </div>
+          <div className="am-plan am-plan--compact">
+            <p>
+              Atlas is an Australian-Estonian stargazing project built by Liam Arbuckle and a team bringing sky
+              planning together with public observing nights.
+            </p>
           </div>
         </section>
 
@@ -332,7 +456,13 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
           <div className="am-colophon-col">
             <span>The app</span>
             <a href="#week">Highlights</a>
-            <a href="#membership">Membership</a>
+            <a href="#nights">Sky nights</a>
+            <a href="#access">Sky Pass</a>
+          </div>
+          <div className="am-colophon-col">
+            <span>Events &amp; partners</span>
+            <Link to="/hosts">For hosts</Link>
+            <a href="mailto:liam@skinetics.tech">Discuss a sky night</a>
           </div>
         </div>
         <div className="am-colophon-legal">
