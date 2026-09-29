@@ -1014,9 +1014,15 @@
   background: var(--chip);
   color: inherit;
   cursor: pointer;
-  font: 500 0.8125rem var(--az-font-sans);
-  padding: 0.5625rem 0.9375rem 0.5625rem 0.75rem;
-  box-shadow: 0 10px 28px rgba(8, 7, 16, 0.16);
+  font: 500 0.75rem var(--az-font-sans);
+  padding: 0.4375rem 0.625rem;
+  box-shadow: 0 8px 20px rgba(8, 7, 16, 0.12);
+  opacity: 0.8;
+}
+
+.feedback-dock-trigger:hover,
+.feedback-dock-trigger:focus-visible {
+  opacity: 1;
 }
 
 .feedback-dock-trigger-icon {
@@ -1029,6 +1035,20 @@
   color: var(--bg);
   font-size: 0.8125rem;
   line-height: 1;
+}
+
+@media (max-width: 899px) {
+  .feedback-dock-trigger-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 .feedback-panel {

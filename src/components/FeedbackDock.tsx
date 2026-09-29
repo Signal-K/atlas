@@ -74,6 +74,23 @@ function isVisible(element: Element): boolean {
   return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden'
 }
 
+// Feedback is useful, but it must never become a second modal layered over a
+// decision the person is already making. These are the Atlas-owned blocking
+// surfaces; native <dialog>s are included for share and browser-owned flows.
+const FEEDBACK_BLOCKING_SURFACES = [
+  '[role="dialog"][aria-modal="true"]',
+  'dialog[open]',
+  '.az-overlay',
+  '.az-sheet',
+  '.az-nav-drawer',
+  '.entry-choice-overlay',
+  '.onboarding-overlay',
+].join(', ')
+
+function hasFeedbackBlockingSurface(): boolean {
+  return Array.from(document.querySelectorAll(FEEDBACK_BLOCKING_SURFACES)).some(isVisible)
+}
+
 function collectVisibleText(selector: string, limit: number): string[] {
   return Array.from(document.querySelectorAll(selector))
     .filter(isVisible)
@@ -139,6 +156,33 @@ export function FeedbackDock() {
   // survey here is unconfigured and display falls back to the local
   // trigger/dedup logic exactly as before.
   const [activeSurveyIds, setActiveSurveyIds] = useState<Set<string> | null>(null)
+  const [isBlocked, setIsBlocked] = useState(() => hasFeedbackBlockingSurface())
+
+  // AppShell owns sheets, search, the navigation drawer, and several route
+  // overlays, so FeedbackDock cannot rely on a single React prop to know when
+  // it would obscure another interaction. Watching the rendered surface keeps
+  // the dock deferred even for a dialog opened deep in a route component.
+  useEffect(() => {
+    const updateBlockedState = () => setIsBlocked(hasFeedbackBlockingSurface())
+    const observer = new MutationObserver(updateBlockedState)
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-modal', 'aria-hidden', 'class', 'open', 'style'],
+    })
+    updateBlockedState()
+    return () => observer.disconnect()
+  }, [])
+
+  // Reserve scroll space whenever the persistent affordance is visible. This
+  // is deliberately on the app's scroll owner rather than an individual page,
+  // so a Journal, Profile, or Hub last row cannot be hidden behind the dock.
+  useEffect(() => {
+    const visible = !isBlocked
+    document.body.classList.toggle('has-feedback-dock', visible)
+    return () => document.body.classList.remove('has-feedback-dock')
+  }, [isBlocked])
 
   useEffect(() => {
     getActiveSurveys().then((surveys) => setActiveSurveyIds(new Set(surveys.map((s) => s.id))))
@@ -352,12 +396,12 @@ export function FeedbackDock() {
   }
 
   return (
-    <div className={`feedback-dock${mode ? ' feedback-dock--open' : ''}`} aria-live="polite">
-      <button type="button" className="feedback-dock-trigger" onClick={() => setMode('feature')} aria-label="Request feature">
+    <div className={`feedback-dock${mode ? ' feedback-dock--open' : ''}${isBlocked ? ' feedback-dock--deferred' : ''}`} aria-live="polite" aria-hidden={isBlocked || undefined}>
+      <button type="button" className="feedback-dock-trigger" onClick={() => setMode('feature')} aria-label="Send feedback" tabIndex={isBlocked ? -1 : undefined}>
         <span className="feedback-dock-trigger-icon" aria-hidden="true">
           +
         </span>
-        <span className="feedback-dock-trigger-label">Request feature</span>
+        <span className="feedback-dock-trigger-label">Feedback</span>
       </button>
 
       {mode && (

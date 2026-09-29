@@ -141,7 +141,7 @@ test('narrow viewport uses a hamburger + slide-in drawer for primary navigation'
   await expect(page.locator('.atlas-tab-bar')).toHaveCount(0)
   const trigger = page.getByRole('button', { name: 'Open menu' })
   await expect(trigger).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Request feature' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Send feedback' })).toBeVisible()
 
   await trigger.click()
   const drawer = page.getByRole('dialog', { name: 'Primary navigation' })
