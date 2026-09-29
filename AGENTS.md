@@ -1,5 +1,16 @@
 # AGENTS
 
+## Cycle branch policy
+
+This policy is mandatory for every agent and every implementation task in this repository.
+
+- Work in one dated branch per cycle, named `cycle/YYYY-MM-DD`. Create or switch to the current cycle branch before making any code, test, documentation, or configuration edit.
+- Never commit ordinary work directly to `master`. `master` is the last Friday-approved state; the only permitted direct update is the reviewed Friday-evening cycle merge.
+- At the start of each task, run `git branch --show-current`. If it is not the current `cycle/` branch, stop and create/switch to that branch before editing.
+- Keep all Linear ticket work, validation commits, and cycle evidence on the current cycle branch. Do not create ticket-per-feature branches unless the user explicitly asks for an exception.
+- On Friday evening, merge the verified cycle branch into `master` as one reviewed cycle closeout. Before merging, reconcile Linear status, clean worktree, checks, CI/deployment, and runtime evidence.
+- On Saturday, conduct the cycle review: examine delivery evidence, user friction and feedback, PostHog/replay signals, unresolved reliability issues, and prioritised work for the next cycle.
+
 ## Navigation commit policy
 
 This repository follows the mandatory commit policy for every repository under `~/Navigation`.

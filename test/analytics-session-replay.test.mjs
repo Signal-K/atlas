@@ -15,6 +15,14 @@ test('session replay is not client-sampled or force-started', () => {
   assert.doesNotMatch(analytics, /startSessionRecording\(\s*true\s*\)/)
 })
 
+test('analytics and replay never retain URL query parameters', () => {
+  assert.match(analytics, /function analyticsUrl\(rawUrl: string\)/)
+  assert.match(analytics, /url\.search = ''/)
+  assert.match(analytics, /get_current_url: analyticsUrl/)
+  assert.match(analytics, /before_send:/)
+  assert.match(analytics, /properties\.\$current_url = analyticsUrl\(currentUrl\)/)
+})
+
 test('persisted signed-in users are identified before the first pageview', () => {
   assert.match(analytics, /bootstrap:\s*\{\s*distinctID:\s*persistedUser\.id,\s*isIdentifiedID:\s*true/)
   assert.match(analytics, /loaded:\s*\(loadedPosthog\)\s*=>/)

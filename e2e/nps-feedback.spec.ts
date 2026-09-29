@@ -79,7 +79,7 @@ test('NPS prompt appears only after meaningful activity threshold and submits st
   // which would otherwise collide with the score-9 button in strict mode.
   await dialog.getByRole('button', { name: '9', exact: true }).click()
   await page.getByLabel('Reason').fill('The timing guidance is useful')
-  await page.getByRole('button', { name: 'Send' }).click()
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
 
   await expect(page.getByRole('dialog', { name: 'Quick score' })).toHaveCount(0)
   await expect(page.evaluate(() => localStorage.getItem('atlas-feedback-nps-state'))).resolves.toBe('submitted')

@@ -73,6 +73,11 @@ test('a guest completes the when/where/what tour, unlocks once, and can share it
 
   await expect(page).toHaveURL('/app/hub?tour=tonight')
   await expect(page.getByRole('heading', { name: 'One useful plan. When, where, what.' })).toBeVisible()
+  // The guided CTA is the one first-look decision. Its target must not also
+  // be rendered as both a highlight card and the only Upcoming row.
+  await expect(page.getByText('Highlight tonight')).toHaveCount(0)
+  await expect(page.getByText('Upcoming', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Choose / })).toHaveCount(1)
   if (process.env.ATLAS_CAPTURE_SCREENSHOTS === '1') {
     await page.screenshot({ path: 'test-results/guided-tour-mobile.png', fullPage: false, animations: 'disabled' })
   }
@@ -106,4 +111,14 @@ test('a shared tour link lands in the guided entry rather than a blank hub', asy
   await page.goto('/app/hub?tour=tonight&shared=1&target=tour-saturn')
   await expect(page.getByText('Shared guided look')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'One useful plan. When, where, what.' })).toBeVisible()
+})
+
+test('a guest can leave the guided tour and keep browsing the global sky', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript(() => localStorage.removeItem('atlas-manual-location'))
+  await page.goto('/app/hub?tour=tonight')
+
+  await page.getByRole('button', { name: 'Back to upcoming events' }).click()
+  await expect(page).toHaveURL('/app/hub')
+  await expect(page.getByRole('heading', { name: 'Flagship events, worldwide' })).toBeVisible()
 })

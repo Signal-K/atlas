@@ -368,6 +368,26 @@ button.az-nav-trigger { display: none; }
   transition: bottom 0.1s ease-out;
 }
 
+/* A floating secondary control needs its own space in the scroll region. The
+   dock is mounted beside NavShell, so this cannot be left to individual pages
+   to remember. When the install toast is also present, the two affordances
+   stack rather than occupying the same content edge. */
+body.has-feedback-dock .nav-shell-main {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+body.has-feedback-dock.has-install-prompt .nav-shell-main {
+  padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
+}
+
+body.has-install-prompt .feedback-dock {
+  bottom: calc(5rem + env(safe-area-inset-bottom, 0px) + var(--az-keyboard-inset, 0px));
+}
+
+.feedback-dock--deferred {
+  display: none;
+}
+
 .feedback-panel {
   width: min(calc(100vw - 2rem), 24rem);
   padding: 1rem;
@@ -444,6 +464,10 @@ body.has-install-prompt .nav-shell-main {
   .install-prompt {
     right: .75rem;
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + var(--az-keyboard-inset, 0px));
+  }
+
+  body.has-install-prompt .feedback-dock {
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px) + var(--az-keyboard-inset, 0px));
   }
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { hasValidSession, refreshEntitlement, type AuthUser, useAuth } from '../lib/auth'
 import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { trackEvent } from '../lib/analytics'
-import { SKY_PASS_SUMMARY, SKY_PASS_TIERS } from '../lib/pricing'
+import { FREE_FEATURES_SUMMARY, SKY_PASS_FEATURES_SUMMARY, SKY_PASS_SUMMARY, SKY_PASS_TIERS } from '../lib/pricing'
 
 interface PaywallGateProps {
   user: AuthUser | null
@@ -30,8 +30,8 @@ export function PaywallGate({
   onSignInClick,
   children,
   freeNote,
-  freeBullets = 'Tonight, 14-day event browsing, tonight’s check-ins, and your private journal.',
-  paidBullets = 'Backdated check-ins, 90-day plans, saved targets, reminders, dark sites, gear fit, community, and archive.',
+  freeBullets = FREE_FEATURES_SUMMARY,
+  paidBullets = SKY_PASS_FEATURES_SUMMARY,
 }: PaywallGateProps) {
   const { entitlementRefreshing: authEntitlementRefreshing } = useAuth()
   const isEntitlementRefreshing = entitlementRefreshing || (user != null && authEntitlementRefreshing)

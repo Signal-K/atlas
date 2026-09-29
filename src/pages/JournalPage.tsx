@@ -167,25 +167,40 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
 
       {tab === 'mine' && (
         <>
-          <div style={{ marginTop: '1rem' }}>
-            <StatGrid
-              stats={[
-                { value: String(nightsOut), label: 'NIGHTS OUT' },
-                { value: String(firstSeen), label: 'FIRST SEEN' },
-                { value: String(places), label: 'PLACES' },
-              ]}
-            />
-          </div>
+          {entries.length === 0 ? (
+            <section className="az-first-use" aria-labelledby="journal-first-use-title">
+              <span className="az-kicker">YOUR FIRST ENTRY</span>
+              <h2 id="journal-first-use-title">Keep a record of the sky you actually saw.</h2>
+              <p>Log one session tonight. Atlas keeps the place, time, target and your note together, then this becomes your private observing history.</p>
+              <button type="button" className="az-btn az-btn-primary az-btn-block" onClick={() => setCaptureOpen(true)}>
+                Log tonight's session
+              </button>
+              <div className="az-first-use-secondary" aria-label="Other ways to begin">
+                <button type="button" className="az-text-btn" onClick={() => setPastOpen(true)}>Check in to a past night</button>
+                <button type="button" className="az-text-btn" onClick={() => setPhotoIdOpen(true)}>Identify a sky photo</button>
+              </div>
+            </section>
+          ) : (
+            <>
+              <div style={{ marginTop: '1rem' }}>
+                <StatGrid
+                  stats={[
+                    { value: String(nightsOut), label: 'NIGHTS OUT' },
+                    { value: String(firstSeen), label: 'FIRST SEEN' },
+                    { value: String(places), label: 'PLACES' },
+                  ]}
+                />
+              </div>
 
-          <button type="button" className="az-btn az-btn-dashed az-btn-block" style={{ marginTop: '0.875rem' }} onClick={() => setCaptureOpen(true)}>
-            + Log tonight's session
-          </button>
-          <button type="button" className="az-btn az-btn-outline az-btn-block" style={{ marginTop: '0.5rem' }} onClick={() => setPastOpen(true)}>
-            Check in to a past night
-          </button>
-          <button type="button" className="az-btn az-btn-outline az-btn-block" style={{ marginTop: '0.5rem' }} onClick={() => setPhotoIdOpen(true)}>
-            What's in this photo?
-          </button>
+              <button type="button" className="az-btn az-btn-dashed az-btn-block" style={{ marginTop: '0.875rem' }} onClick={() => setCaptureOpen(true)}>
+                + Log tonight's session
+              </button>
+              <div className="az-first-use-secondary" aria-label="Other journal actions">
+                <button type="button" className="az-text-btn" onClick={() => setPastOpen(true)}>Check in to a past night</button>
+                <button type="button" className="az-text-btn" onClick={() => setPhotoIdOpen(true)}>Identify a sky photo</button>
+              </div>
+            </>
+          )}
 
           <div className="az-section-head">
             <span className="az-kicker">Your entries</span>
@@ -214,9 +229,7 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
             </div>
           )}
 
-          {entries.length === 0 ? (
-            <p className="az-muted">Nothing logged yet — your sky-watching notes will show up here.</p>
-          ) : (
+          {entries.length > 0 && (
             [...byYear.entries()].map(([year, yearEntries]) => (
               <div key={year} style={{ marginBottom: '0.875rem' }}>
                 <div className="az-section-head">

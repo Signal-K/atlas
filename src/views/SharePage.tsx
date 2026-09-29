@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ShareCard } from '../components/ShareCard'
+import { PublicShareRecovery } from '../components/PublicShareRecovery'
 import { getPublicObservation, type PublicObservationCard } from '../lib/sharing'
 import { trackEvent } from '../lib/analytics'
 
@@ -22,11 +23,8 @@ export function SharePage({ remoteId }: { remoteId: string }) {
     }
   }, [remoteId])
 
-  return (
-    <div className="share-page">
-      {state === 'loading' && <p className="share-page-status">Loading…</p>}
-      {state === 'not-found' && <p className="share-page-status">This card isn't available — it may have been unshared or removed.</p>}
-      {state !== 'loading' && state !== 'not-found' && <ShareCard data={state} />}
-    </div>
-  )
+  if (state === 'loading') return <PublicShareRecovery item="observation" state="loading" />
+  if (state === 'not-found') return <PublicShareRecovery item="observation" state="unavailable" />
+
+  return <ShareCard data={state} />
 }

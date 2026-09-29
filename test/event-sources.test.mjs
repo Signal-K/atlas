@@ -48,6 +48,19 @@ test('the 2026-09-14 Moon-Venus conjunction is surfaced as a real sky event', as
   assert.equal(isInCuratedWindow(conjunction, { now, windowDays: 14 }), true)
 })
 
+test('a just-past full Moon remains an observing window rather than vanishing at its peak', async () => {
+  const { fetchEvents } = await import('../src/lib/eventSources/moon-phase.mjs')
+  const peak = new Date('2026-09-27T00:00:00.000Z')
+  const eventsAtPeak = await fetchEvents({ now: peak, windowDays: 1 })
+  const fullMoon = eventsAtPeak.find((event) => event.title === 'Full Moon')
+  assert.ok(fullMoon, 'expected a full Moon fixture in the generated window')
+  const afterPeak = new Date(new Date(fullMoon.starts_at).getTime() + 24 * 60 * 60 * 1000)
+  const activeEvents = await fetchEvents({ now: afterPeak, windowDays: 1 })
+  const activeFullMoon = activeEvents.find((event) => event.title === 'Full Moon')
+  assert.ok(activeFullMoon, 'full Moon should still be offered the following night')
+  assert.ok(new Date(activeFullMoon.ends_at) >= afterPeak)
+})
+
 test('AI caption hook is authenticated, secret-gated, and uses the configured vision model', async () => {
   const hook = await readFile(new URL('../pocketbase/pb_hooks/photo-caption.pb.js', import.meta.url), 'utf8')
 

@@ -4,7 +4,7 @@ import { MobileIcon } from '../components/mobile/MobileIcon'
 import { ItineraryBuilderSheet } from '../components/mobile/ItineraryBuilderSheet'
 import { PaywallGate } from '../components/PaywallGate'
 import { useAuth } from '../lib/auth'
-import { activeLegFor, deleteTripPlan, getActiveTripPlan, saveTripLegGuide, type TripLeg, type TripPlan } from '../lib/tripPlans'
+import { activeLegFor, dateKeyForTimeZone, deleteTripPlan, getActiveTripPlan, saveTripLegGuide, sortTripLegs, type TripLeg, type TripPlan } from '../lib/tripPlans'
 import { requestTripLegGuide } from '../lib/tripGuide'
 import { listGetReadyReminders } from '../lib/getReadyReminders'
 import { trackEvent } from '../lib/analytics'
@@ -29,6 +29,8 @@ export function PlannerPage() {
   const [loading, setLoading] = useState(true)
   const [builderOpen, setBuilderOpen] = useState(false)
   const [reminderCount, setReminderCount] = useState(0)
+  const [confirmingEnd, setConfirmingEnd] = useState(false)
+  const [endError, setEndError] = useState('')
 
   useEffect(() => {
     getActiveTripPlan().then((active) => {
@@ -40,16 +42,25 @@ export function PlannerPage() {
   useEffect(() => {
     if (!trip) return
     const reminders = listGetReadyReminders()
-    const start = new Date(trip.startDate).getTime()
-    const end = new Date(trip.endDate).getTime() + 86_400_000
-    setReminderCount(reminders.filter((r) => { const t = new Date(r.startsAt).getTime(); return t >= start && t <= end }).length)
+    // A trip can have gaps. Count a reminder only when it belongs to an
+    // actual destination night, evaluated in that destination's civil time.
+    setReminderCount(reminders.filter((reminder) => trip.legs.some((leg) => {
+      const date = dateKeyForTimeZone(new Date(reminder.startsAt), leg.timeZone)
+      return leg.startDate <= date && date <= leg.endDate
+    })).length)
   }, [trip])
 
   async function handleEndTrip() {
     if (!trip) return
-    await deleteTripPlan(trip.id)
-    trackEvent('Deleted trip plan', {})
-    setTrip(null)
+    setEndError('')
+    try {
+      await deleteTripPlan(trip.id)
+      trackEvent('Deleted trip plan', {})
+      setTrip(null)
+      setConfirmingEnd(false)
+    } catch {
+      setEndError("Couldn't end this trip. Please try again.")
+    }
   }
 
   return (
@@ -76,19 +87,15 @@ export function PlannerPage() {
         {loading ? (
           <p className="az-muted" style={{ marginTop: '1rem' }}>Loading your trip…</p>
         ) : !trip ? (
-          <div className="az-card" style={{ marginTop: '1.125rem' }}>
-            <div className="az-card-body">
-              <strong style={{ display: 'block', fontFamily: 'var(--az-font-display)', fontSize: '1.1875rem', marginBottom: '0.375rem' }}>
-                No trip yet
-              </strong>
-              <p className="az-muted" style={{ margin: '0 0 0.875rem', fontSize: '0.84375rem' }}>
-                Add the nights you could get out and where from -- Atlas checks each one against forecast and moon.
-              </p>
+          <section className="az-first-use az-first-use--planner" aria-labelledby="planner-first-use-title">
+              <span className="az-kicker">YOUR FIRST ITINERARY</span>
+              <h2 id="planner-first-use-title">Turn a trip into nights worth planning for.</h2>
+              <p>Add a place and the nights you will be there. Atlas will line up the forecast, moon and targets for each stop.</p>
               <button type="button" className="az-btn az-btn-primary az-btn-block" onClick={() => setBuilderOpen(true)}>
                 Start a plan
               </button>
-            </div>
-          </div>
+              <p className="az-first-use-footnote">You can add more stops, gear and interests after the first one.</p>
+          </section>
         ) : (
           <>
             <div className="az-card" style={{ marginTop: '1.125rem' }}>
@@ -97,15 +104,15 @@ export function PlannerPage() {
                   ACTIVE ITINERARY · {trip.legs.length} {trip.legs.length === 1 ? 'NIGHT' : 'NIGHTS'} · {new Set(trip.legs.map((l) => l.cityKey)).size} LOCATION{new Set(trip.legs.map((l) => l.cityKey)).size === 1 ? '' : 'S'}
                 </span>
                 <strong style={{ display: 'block', fontFamily: 'var(--az-font-display)', fontSize: '1.3125rem', margin: '0.3125rem 0 0.25rem' }}>
-                  {trip.legs[0]?.cityName}{trip.legs.length > 1 ? ` → ${trip.legs[trip.legs.length - 1].cityName}` : ''}
+                  {sortTripLegs(trip.legs)[0]?.cityName}{trip.legs.length > 1 ? ` → ${sortTripLegs(trip.legs).at(-1)?.cityName}` : ''}
                 </strong>
                 <p className="az-muted" style={{ margin: 0, fontSize: '0.8125rem' }}>
                   {trip.startDate} to {trip.endDate}
                 </p>
               </div>
               <div className="az-row-group" style={{ borderRadius: 0, borderLeft: 0, borderRight: 0 }}>
-                {trip.legs.map((leg) => (
-                  <LegRow key={leg.cityKey} trip={trip} leg={leg} onGuideSaved={setTrip} />
+                {sortTripLegs(trip.legs).map((leg) => (
+                  <LegRow key={leg.id} trip={trip} leg={leg} onGuideSaved={setTrip} />
                 ))}
               </div>
               <div className="az-btn-row" style={{ padding: '0.75rem 0.9375rem' }}>
@@ -129,14 +136,30 @@ export function PlannerPage() {
               </div>
             )}
 
-            <button
-              type="button"
-              className="az-btn az-btn-outline az-btn-block"
-              style={{ marginTop: '1.125rem' }}
-              onClick={handleEndTrip}
-            >
-              End trip
-            </button>
+            {confirmingEnd ? (
+              <div className="az-card" style={{ marginTop: '1.125rem' }}>
+                <div className="az-card-body">
+                  <strong style={{ display: 'block', marginBottom: '0.25rem' }}>End this trip?</strong>
+                  <p className="az-muted" style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem' }}>
+                    This removes the itinerary and its saved guides. Your observations stay in your journal.
+                  </p>
+                  {endError && <p style={{ color: 'var(--az-flagship)', fontSize: '0.75rem', margin: '0 0 0.5rem' }}>{endError}</p>}
+                  <div className="az-btn-row">
+                    <button type="button" className="az-btn az-btn-outline" style={{ flex: 1 }} onClick={() => setConfirmingEnd(false)}>Keep trip</button>
+                    <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleEndTrip}>Yes, end trip</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="az-btn az-btn-outline az-btn-block"
+                style={{ marginTop: '1.125rem' }}
+                onClick={() => setConfirmingEnd(true)}
+              >
+                End trip
+              </button>
+            )}
           </>
         )}
       </div>
@@ -149,15 +172,17 @@ export function PlannerPage() {
 function LegRow({ trip, leg, onGuideSaved }: { trip: TripPlan; leg: TripLeg; onGuideSaved: (trip: TripPlan) => void }) {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
-  const isActive = activeLegFor(trip, new Date())?.cityKey === leg.cityKey
-  const guide = trip.guides[leg.cityKey]
+  const isActive = activeLegFor(trip, new Date())?.id === leg.id
+  // cityKey was used before ASV-71. Retain those guides for existing plans;
+  // every newly generated guide is isolated to this individual stay.
+  const guide = trip.guides[leg.id] ?? trip.guides[leg.cityKey]
 
   async function generate() {
     setGenerating(true)
     setError('')
     try {
       const generated = await requestTripLegGuide(leg, trip.equipment, trip.interests)
-      const updated = await saveTripLegGuide(trip, leg.cityKey, generated)
+      const updated = await saveTripLegGuide(trip, leg.id, generated)
       trackEvent('Generated trip guide', { city: leg.cityName })
       onGuideSaved(updated)
     } catch (err) {

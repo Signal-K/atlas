@@ -30,3 +30,9 @@ export const SKY_PASS_ENTRY_PRICE = 'CHF 4'
 
 // Used wherever a single figure has to stand in for the whole range.
 export const SKY_PASS_SUMMARY = 'From CHF 4 a month, or CHF 55 once for life.'
+
+// What is actually free vs. paid, shared by PaywallGate and the landing
+// page's "free versus Sky Pass" section so the two surfaces cannot drift
+// into promising a paid feature that free never had, or vice versa.
+export const FREE_FEATURES_SUMMARY = 'Tonight, 14-day event browsing, tonight’s check-ins, and your private journal.'
+export const SKY_PASS_FEATURES_SUMMARY = 'Backdated check-ins, 90-day plans, saved targets, reminders, dark sites, gear fit, community, and archive.'

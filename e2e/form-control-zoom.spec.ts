@@ -182,7 +182,7 @@ test.describe('no form control computes below the iOS auto-zoom threshold', () =
     // likely place for the `font: inherit` fallthrough to bite.
     test('the feedback dock', async ({ page }) => {
       await page.goto('/app/hub')
-      await page.getByRole('button', { name: 'Request feature' }).click()
+      await page.getByRole('button', { name: 'Send feedback' }).click()
       await expect(page.locator('.feedback-panel')).toBeVisible()
       await expectNoZoomTargets(page, 'Feedback dock', 1)
     })

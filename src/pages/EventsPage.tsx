@@ -17,7 +17,6 @@ import { getDarknessWindow } from '../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../lib/timeZone'
 import { eventLookaheadDays } from '../lib/entitlementLimits'
 import { dayGroupLabel, fetchViewingForecast, localDateKey } from '../lib/weather'
-import { buildDailyObservingTargets, buildDailySkyGuideEvents, SKY_GUIDE_WINDOW_DAYS } from '../lib/visiblePlanets'
 import { ensurePushSubscription, queueWatchConfirmation } from '../lib/push'
 import { useThemeState } from '../lib/theme'
 import type { CurrentLocation } from '../lib/currentLocation'
@@ -57,14 +56,10 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
       const [upcoming, watched, tagged] = await Promise.all([getEventsInRange(now, end), getWatchlist(), getTaggedEventIds()])
       if (cancelled) return
       const catalogue = upcoming.filter((event) => isVisibleLocalEvent(event, city.lat, city.lon))
-      // These are recalculated on-device, not saved into Dexie: their
-      // positions belong to this observer rather than to a global event
-      // catalogue. Limit the live observing layer to the near-term feed so a
-      // Sky Pass's year-long calendar remains quick to open.
-      const observingDays = Math.min(lookaheadDays, SKY_GUIDE_WINDOW_DAYS)
-      const localGuides = buildDailySkyGuideEvents(now, observingDays, city.lat, city.lon)
-      const observingTargets = buildDailyObservingTargets(now, observingDays, city.lat, city.lon)
-      setEvents([...catalogue, ...localGuides, ...observingTargets])
+      // Events is a calendar of things that actually happen. Recommendations
+      // and recurring reference guides belong to Tonight/Search, where they
+      // can be useful without pretending to be dated events.
+      setEvents(catalogue.filter((event) => !GUIDE_KIND_IDS.has(event.kind)))
       setWatchlist(watched)
       setTaggedIds(tagged)
     }
@@ -84,13 +79,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
 
   const filtered = useMemo(() => {
     if (!events) return []
-    // Guides (comet tracker, generic night-sky primers) are reference cards,
-    // not a specific reachable target -- always shown regardless of
-    // instrument, matching instrumentNote's carve-out below. Previously the
-    // instrument row only changed this summary line's text; the visible
-    // list itself never actually filtered by reachability.
     return events.filter((e) => {
-      if (GUIDE_KIND_IDS.has(e.kind)) return true
       const meta = metaFor(e.kind)
       if (instrument === 'eye') return meta.nakedEyeVisible
       if (instrument === 'binoculars') return meta.nakedEyeVisible || meta.binocularFriendly === true
@@ -103,7 +92,11 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
     const todayKey = localDateKey(new Date().toISOString(), city.timeZone)
     const byDay = new Map<string, SkyEvent[]>()
     for (const event of filtered) {
-      const key = localDateKey(event.startsAt, city.timeZone)
+      // A multi-night phenomenon is useful on the night it is still active,
+      // rather than disappearing under the date on which its peak began.
+      const key = new Date(event.startsAt) < new Date() && new Date(event.endsAt) >= new Date()
+        ? todayKey
+        : localDateKey(event.startsAt, city.timeZone)
       if (!byDay.has(key)) byDay.set(key, [])
       byDay.get(key)!.push(event)
     }
@@ -115,13 +108,12 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const instrumentNote = useMemo(() => {
     if (!events) return ''
     const todayKey = localDateKey(new Date().toISOString(), city.timeZone)
-    const tonight = events.filter((e) => localDateKey(e.startsAt, city.timeZone) === todayKey)
-    // Guides (comet tracker, generic night-sky primers) are reference cards,
-    // not a specific reachable target, and they're always shown below
-    // regardless of instrument -- counting them here made this line read as
-    // contradicting the list right underneath it (e.g. "0 targets reachable"
-    // printed directly above four guide cards that were still visibly there).
-    const targetsToday = tonight.filter((e) => !GUIDE_KIND_IDS.has(e.kind))
+    const now = new Date()
+    const tonight = events.filter((event) =>
+      localDateKey(event.startsAt, city.timeZone) === todayKey ||
+      (new Date(event.startsAt) < now && new Date(event.endsAt) >= now),
+    )
+    const targetsToday = tonight
     const reachable = targetsToday.filter((e) => {
       const meta = metaFor(e.kind)
       if (instrument === 'eye') return meta.nakedEyeVisible
@@ -129,7 +121,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
       return true
     })
     if (targetsToday.length === 0) {
-      return `No specific targets tonight from ${city.name} — see today's guide below.`
+      return `No scheduled events are visible tonight from ${city.name}. Check Tonight for a recommended target.`
     }
     return `${reachable.length} of ${targetsToday.length} targets reachable tonight from ${city.name}.`
   }, [events, instrument, city.timeZone, city.name])
@@ -242,7 +234,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
         <div>
           <h1 className="az-h1">Events</h1>
-          <p className="az-hero-title">{events ? `${filtered.length} things to see` : 'Finding tonight’s sky…'}</p>
+          <p className="az-hero-title">{events ? `${filtered.length} scheduled event${filtered.length === 1 ? '' : 's'}` : 'Finding scheduled events…'}</p>
         </div>
         <button type="button" className="az-text-btn" onClick={() => navigate('/app/calendar')}>
           Calendar

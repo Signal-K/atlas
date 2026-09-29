@@ -40,6 +40,15 @@ test('Planner route renders the Sky Pass trip planner entry point', async ({ pag
   await page.goto('/app/planner')
   await expect(page).toHaveURL('/app/planner')
   await expect(page.getByRole('heading', { name: 'Planner', exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Turn a trip into nights worth planning for.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start a plan' })).toBeVisible()
+})
+
+test('a new journal presents one primary first-use action', async ({ page }) => {
+  await page.goto('/app/journal')
+  await expect(page.getByRole('heading', { name: 'Keep a record of the sky you actually saw.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: "Log tonight's session" })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Check in to a past night' })).toHaveClass(/az-text-btn/)
 })
 
 test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
@@ -66,6 +75,29 @@ test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
   await addStop.click()
 
   await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled()
+})
+
+test('trip stay ordering and overlap detection are chronological', async ({ page }) => {
+  await page.goto('/app/planner')
+  const result = await page.evaluate(async () => {
+    const { activeLegFor, dateKeyForTimeZone, sortTripLegs, tripLegIssues } = await import('/src/lib/tripPlans.ts')
+    const legs = [
+      { id: 'tallinn-return', cityKey: 'tallinn', cityName: 'Tallinn', lat: 59.437, lon: 24.754, startDate: '2026-10-10', endDate: '2026-10-12' },
+      { id: 'riga-outbound', cityKey: 'riga', cityName: 'Riga', lat: 56.9496, lon: 24.1052, startDate: '2026-10-03', endDate: '2026-10-05' },
+    ]
+    const overlapping = [...legs, { id: 'vilnius-overlap', cityKey: 'vilnius', cityName: 'Vilnius', lat: 54.6872, lon: 25.2797, startDate: '2026-10-05', endDate: '2026-10-07' }]
+    const sorted = sortTripLegs(legs)
+    return {
+      route: sorted.map((leg) => leg.cityName),
+      active: activeLegFor({ id: 'trip', startDate: '2026-10-03', endDate: '2026-10-12', legs: sorted, equipment: [], interests: [], guides: {} }, new Date('2026-10-04T12:00:00Z'))?.cityName,
+      overlapIssues: tripLegIssues(overlapping),
+      perthDate: dateKeyForTimeZone(new Date('2026-10-04T23:30:00Z'), 'Australia/Perth'),
+    }
+  })
+  expect(result.route).toEqual(['Riga', 'Tallinn'])
+  expect(result.active).toBe('Riga')
+  expect(result.overlapIssues).toEqual(['Riga and Vilnius overlap on the same nights.'])
+  expect(result.perthDate).toBe('2026-10-05')
 })
 
 test('nav links switch between areas without a full reload', async ({ page }) => {
@@ -118,7 +150,7 @@ test('narrow viewport uses a hamburger + slide-in drawer for primary navigation'
   await expect(page.locator('.atlas-tab-bar')).toHaveCount(0)
   const trigger = page.getByRole('button', { name: 'Open menu' })
   await expect(trigger).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Request feature' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Send feedback' })).toBeVisible()
 
   await trigger.click()
   const drawer = page.getByRole('dialog', { name: 'Primary navigation' })
