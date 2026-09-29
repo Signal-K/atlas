@@ -87,19 +87,15 @@ export function PlannerPage() {
         {loading ? (
           <p className="az-muted" style={{ marginTop: '1rem' }}>Loading your trip…</p>
         ) : !trip ? (
-          <div className="az-card" style={{ marginTop: '1.125rem' }}>
-            <div className="az-card-body">
-              <strong style={{ display: 'block', fontFamily: 'var(--az-font-display)', fontSize: '1.1875rem', marginBottom: '0.375rem' }}>
-                No trip yet
-              </strong>
-              <p className="az-muted" style={{ margin: '0 0 0.875rem', fontSize: '0.84375rem' }}>
-                Add the nights you could get out and where from -- Atlas checks each one against forecast and moon.
-              </p>
+          <section className="az-first-use az-first-use--planner" aria-labelledby="planner-first-use-title">
+              <span className="az-kicker">YOUR FIRST ITINERARY</span>
+              <h2 id="planner-first-use-title">Turn a trip into nights worth planning for.</h2>
+              <p>Add a place and the nights you will be there. Atlas will line up the forecast, moon and targets for each stop.</p>
               <button type="button" className="az-btn az-btn-primary az-btn-block" onClick={() => setBuilderOpen(true)}>
                 Start a plan
               </button>
-            </div>
-          </div>
+              <p className="az-first-use-footnote">You can add more stops, gear and interests after the first one.</p>
+          </section>
         ) : (
           <>
             <div className="az-card" style={{ marginTop: '1.125rem' }}>

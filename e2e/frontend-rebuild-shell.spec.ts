@@ -40,6 +40,15 @@ test('Planner route renders the Sky Pass trip planner entry point', async ({ pag
   await page.goto('/app/planner')
   await expect(page).toHaveURL('/app/planner')
   await expect(page.getByRole('heading', { name: 'Planner', exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Turn a trip into nights worth planning for.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start a plan' })).toBeVisible()
+})
+
+test('a new journal presents one primary first-use action', async ({ page }) => {
+  await page.goto('/app/journal')
+  await expect(page.getByRole('heading', { name: 'Keep a record of the sky you actually saw.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: "Log tonight's session" })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Check in to a past night' })).toHaveClass(/az-text-btn/)
 })
 
 test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
