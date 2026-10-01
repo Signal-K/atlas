@@ -9,3 +9,5 @@ Kept here as the source-of-truth reference alongside the epics/stories in
 `outbox/`, since several of the acceptance criteria only make sense with
 the original sketch in view (e.g. the day-card layout for the week
 conditions strip, or the greeting/highlights ordering on the feed).
+
+The Coasthack level and training notes (1 Oct 2026) are in [`docs/level-system/`](../level-system/README.md).
