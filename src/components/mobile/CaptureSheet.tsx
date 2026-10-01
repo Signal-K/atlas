@@ -11,7 +11,7 @@ import { optimizeObservationPhoto, PhotoOptimizationError } from '../../lib/phot
 import { isAtlasMediaEnabled } from '../../lib/atlasMedia'
 import { useAuth } from '../../lib/auth'
 import { trackEvent } from '../../lib/analytics'
-import { describeAward } from '../../lib/progress'
+import { describeAward, progressAnalyticsEvents } from '../../lib/progress'
 import { snapshotProgress } from '../../lib/progressSnapshot'
 import type { ObservationDraft } from '../../lib/observationDraft'
 import type { CurrentLocation } from '../../lib/currentLocation'
@@ -144,6 +144,7 @@ export function CaptureSheet({ open, onClose, draft, onDraftConsumed, currentLoc
     }
 
     setSaving(false)
+    for (const event of progressAnalyticsEvents(progressBefore, progressAfter, 'check_in')) trackEvent(event.name, event.properties)
     toast(describeAward(progressBefore, progressAfter))
     if (draft) onDraftConsumed()
     onSaved()

@@ -81,7 +81,7 @@ ASV-28):
 |---|---|---|
 | `Opened camera recipe` | `recipeKey` | `components/CameraRecipe.tsx` |
 | `Added get ready reminder` | `target`, `device` | `views/DeepSkyPlannerView.tsx` |
-| `Shared city stamp` / `Shared public card` | — | share flow (`components/PostShareDialog.tsx` and related) |
+| `Tour shared` / `Tour share opened` | `target_id`, `method` (shared only) | `pages/HubPage.tsx` |
 | `Viewed public share card` | `found` | `views/SharePage.tsx` |
 | `Blocked free plan add` | `action`, `source` | `mobile/SearchOverlay.tsx`, `pages/EventsPage.tsx`, `pages/HubPage.tsx` |
 
@@ -106,3 +106,21 @@ Every event above lists its required properties in the table. None of the
 live events currently include PII beyond a city name (already public,
 user-entered) and an email set only via `posthog.identify()` on sign-in
 (ASV-21) — no email/name is ever passed as a `trackEvent` property.
+
+## Progress events (ASV-91)
+
+| Event | Properties | Fired from |
+|---|---|---|
+| `Progress awarded` | `action` (`check_in` / `past_check_in`), `skill`, `points`, `event_kind` (observing bonus only) | `components/mobile/CaptureSheet.tsx`, `PastCheckInSheet.tsx` |
+| `Milestone unlocked` | `milestone` | same |
+
+Fired only when the projector's points or milestones actually change, so a
+second check-in on an already-counted night, or one sent for review, emits
+nothing.
+
+### Production-only filter
+
+Atlas shares one PostHog project with other apps and with local/preview
+builds. Filter every Atlas insight on `$host = youratlas.cc` (or
+`$host` matches `youratlas.cc`) so dev and preview traffic don't pollute
+the counts.

@@ -176,3 +176,31 @@ export function describeAward(
   if (earned <= 0) return `${label} — that night already counted.${nextCopy}`
   return `${label} · +${earned} pts.${nextCopy}`
 }
+
+export interface ProgressAnalyticsEvent {
+  name: 'Progress awarded' | 'Milestone unlocked'
+  properties: Record<string, string | number>
+}
+
+/**
+ * PostHog events for a save, from summaries either side of it. One
+ * `Progress awarded` per skill that gained points (with the sky-event kind
+ * that earned the observing bonus, when there is one) and one
+ * `Milestone unlocked` per newly achieved milestone.
+ */
+export function progressAnalyticsEvents(before: ProgressSummary, after: ProgressSummary, action: string): ProgressAnalyticsEvent[] {
+  const events: ProgressAnalyticsEvent[] = []
+  for (const skill of PROGRESS_SKILLS) {
+    const points = after.skills[skill] - before.skills[skill]
+    if (points <= 0) continue
+    const eventKind = skill === 'observing'
+      ? Object.keys(after.observingByKind).find((kind) => (after.observingByKind[kind] ?? 0) > (before.observingByKind[kind] ?? 0))
+      : undefined
+    events.push({ name: 'Progress awarded', properties: { action, skill, points, ...(eventKind ? { event_kind: eventKind } : {}) } })
+  }
+  for (const milestone of after.milestones) {
+    const was = before.milestones.find((m) => m.id === milestone.id)
+    if (milestone.achieved && !was?.achieved) events.push({ name: 'Milestone unlocked', properties: { milestone: milestone.id } })
+  }
+  return events
+}

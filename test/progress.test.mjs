@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { describeAward, projectProgress } from '../src/lib/progress.ts'
+import { describeAward, progressAnalyticsEvents, projectProgress } from '../src/lib/progress.ts'
 
 function observation(id, observedAt, extra = {}) {
   return { id, userId: 'user-1', observedAt, ...extra }
@@ -148,4 +148,18 @@ test('a log without camera_recipe_used, or opened after the attempt, gets no adv
   for (const entry of [blank, early, mismatch]) {
     assert.equal(projectProgress({ observations: [entry], recipeOpens: opens }).skills.photography, 0)
   }
+})
+
+test('progressAnalyticsEvents reports gained skills and new milestones only', () => {
+  const before = projectProgress({ observations: [] })
+  const after = projectProgress({
+    observations: [observation('a', '2026-10-01T20:00:00.000Z')],
+    sightingKinds: { a: 'conjunction' },
+  })
+  const events = progressAnalyticsEvents(before, after, 'check_in')
+  assert.deepEqual(events, [
+    { name: 'Progress awarded', properties: { action: 'check_in', skill: 'observing', points: 15, event_kind: 'conjunction' } },
+    { name: 'Milestone unlocked', properties: { milestone: 'first-check-in' } },
+  ])
+  assert.deepEqual(progressAnalyticsEvents(after, after, 'check_in'), [])
 })
