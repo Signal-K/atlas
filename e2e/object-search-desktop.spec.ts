@@ -79,3 +79,20 @@ test('the desktop auth route renders the Atlas gate rather than browser-default 
   await expect(page.locator('.auth-gate-modal')).toHaveCSS('max-height', '800px')
   await expect(page.getByRole('button', { name: 'Continue' })).toHaveCSS('border-radius', '12px')
 })
+
+// ASV-108: the event detail overlay lived inside .nav-shell-main's stacking
+// context, so the sticky topbar painted over its header and back control.
+test('event detail back control is not covered by the topbar', async ({ page }) => {
+  await page.setViewportSize({ width: 406, height: 755 })
+  await page.goto('/app/hub')
+  await page.getByText('Custom Object observing window').first().click()
+
+  const back = page.locator('.az-entry-detail').getByRole('button', { name: 'Back' })
+  await expect(back).toBeVisible()
+  const covered = await back.evaluate((el) => {
+    const box = el.getBoundingClientRect()
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+    return !!hit && el.contains(hit) ? null : `${hit?.tagName}.${hit?.getAttribute('class')}`
+  })
+  expect(covered, 'back button must be the element under its own centre').toBeNull()
+})

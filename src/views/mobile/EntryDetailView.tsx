@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CameraRecipe } from '../../components/CameraRecipe'
 import { MobileIcon } from '../../components/mobile/MobileIcon'
 import { Starfield } from '../../components/mobile/Starfield'
@@ -147,7 +148,10 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
     }
   }
 
-  return (
+  // Portalled to <body>: rendered inside .nav-shell-main it sits in that
+  // element's z-index:1 stacking context and the sticky topbar (z-index:2)
+  // painted over the overlay's header and back control (ASV-108).
+  return createPortal(
     <div className="az-overlay az-entry-detail">
       <div className="az-overlay-bg">
         <Starfield dark={dark} palette="mono" density={110} />
@@ -305,6 +309,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
           </p>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
