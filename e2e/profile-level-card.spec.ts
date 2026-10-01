@@ -72,3 +72,44 @@ test('observing meter lists typed sky-event check-ins on their own line', async 
   await expect(card).toContainText('15 pts')
   await expect(card.locator('[data-observing-kind="conjunction"]')).toContainText('Conjunctions')
 })
+
+test('following camera recipe advice adds the photography bonus', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await seedSignedInUser(page)
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'atlas-recipe-opens',
+      JSON.stringify([{ recipeKey: 'bright_planet', target: 'Jupiter', openedAt: '2000-01-01T00:00:00.000Z' }]),
+    )
+  })
+  await page.goto('/app/profile')
+  await expect(page.getByRole('region', { name: 'Your level' })).toBeVisible()
+
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('atlas')
+        open.onerror = () => reject(open.error)
+        open.onsuccess = () => {
+          const idb = open.result
+          const tx = idb.transaction('observations', 'readwrite')
+          tx.objectStore('observations').put({
+            id: 'e2e-advice-entry',
+            userId: 'e2e-user',
+            observedAt: new Date().toISOString(),
+            targetName: 'Jupiter',
+            cameraRecipeUsed: 'bright_planet',
+          })
+          tx.oncomplete = () => {
+            idb.close()
+            resolve()
+          }
+          tx.onerror = () => reject(tx.error)
+        }
+      }),
+  )
+
+  await page.reload()
+  // 10 for the night + 5 typed (bright_planet recipe resolves to a planet) + 12 for following the recipe.
+  await expect(page.getByRole('region', { name: 'Your level' })).toContainText('27 pts')
+})

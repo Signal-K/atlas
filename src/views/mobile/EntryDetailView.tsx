@@ -265,7 +265,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
           </span>
         </button>
         {recipeOpen && (
-          <div style={{ marginTop: '0.625rem' }}>{subject.recipeKey ? <CameraRecipe recipeKey={subject.recipeKey} /> : null}</div>
+          <div style={{ marginTop: '0.625rem' }}>{subject.recipeKey ? <CameraRecipe recipeKey={subject.recipeKey} target={subject.title} /> : null}</div>
         )}
 
         {actions?.onToggleTag && (

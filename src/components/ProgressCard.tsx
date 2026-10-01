@@ -3,6 +3,7 @@ import { useAuth } from '../lib/auth'
 import { db } from '../lib/db'
 import { getActiveTripPlan } from '../lib/tripPlans'
 import { resolveSightingKinds } from '../lib/progressSnapshot'
+import { getRecipeOpens } from '../lib/recipeOpens'
 import { categoryForKind } from '../lib/eventCategories'
 import { PROGRESS_SKILLS, projectProgress } from '../lib/progress'
 import type { ProgressSkill, ProgressSummary } from '../lib/progress'
@@ -44,7 +45,7 @@ export function ProgressCard() {
         user ? getActiveTripPlan() : Promise.resolve(null),
       ])
       const sightingKinds = await resolveSightingKinds(observations)
-      if (!cancelled) setSummary(projectProgress({ observations, tripPlan, firstTourBadge, sightingKinds }))
+      if (!cancelled) setSummary(projectProgress({ observations, tripPlan, firstTourBadge, sightingKinds, recipeOpens: getRecipeOpens() }))
     }
     load().catch(() => {
       if (!cancelled) setSummary(projectProgress({ observations: [], firstTourBadge }))

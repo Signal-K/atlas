@@ -126,3 +126,26 @@ test('a pending typed check-in earns no typed bonus', () => {
 
   assert.equal(progress.totalPoints, 0)
 })
+
+test('opening recipe R for target T then logging T with R earns the advice bonus exactly once', () => {
+  const entry = observation('a', '2026-10-01T21:00:00.000Z', { targetName: 'Jupiter', cameraRecipeUsed: 'bright_planet' })
+  const opens = [{ recipeKey: 'bright_planet', target: 'jupiter', openedAt: '2026-10-01T18:00:00.000Z' }]
+  const without = projectProgress({ observations: [entry] })
+  const withAdvice = projectProgress({ observations: [entry], recipeOpens: opens })
+  // Duplicate opens of the same pair must not stack.
+  const duplicated = projectProgress({ observations: [entry], recipeOpens: [...opens, ...opens] })
+
+  assert.equal(withAdvice.skills.photography - without.skills.photography, 12)
+  assert.equal(duplicated.skills.photography, withAdvice.skills.photography)
+})
+
+test('a log without camera_recipe_used, or opened after the attempt, gets no advice bonus', () => {
+  const opens = [{ recipeKey: 'bright_planet', target: 'Jupiter', openedAt: '2026-10-01T18:00:00.000Z' }]
+  const blank = observation('b', '2026-10-01T21:00:00.000Z', { targetName: 'Jupiter' })
+  const early = observation('c', '2026-10-01T17:00:00.000Z', { targetName: 'Jupiter', cameraRecipeUsed: 'bright_planet' })
+  const mismatch = observation('d', '2026-10-01T21:00:00.000Z', { targetName: 'Saturn', cameraRecipeUsed: 'bright_planet' })
+
+  for (const entry of [blank, early, mismatch]) {
+    assert.equal(projectProgress({ observations: [entry], recipeOpens: opens }).skills.photography, 0)
+  }
+})

@@ -25,6 +25,15 @@ export interface ProgressSummary {
   milestones: ProgressMilestone[]
 }
 
+// A camera recipe the person opened for a target (see recipeOpens.ts).
+export interface RecipeOpen {
+  recipeKey: string
+  target: string
+  openedAt: string
+}
+
+export const ADVICE_FOLLOWED_POINTS = 12
+
 export interface ProgressInput {
   observations: readonly ObservationLogEntry[]
   // A TripPlan is a PocketBase-backed plan. Local draft/localStorage trips
@@ -34,6 +43,7 @@ export interface ProgressInput {
   // Entry id -> sky-event kind, resolved by the caller (skyEvents join, recipe
   // fallback). Kept as input so this module stays free of Dexie and recipes.
   sightingKinds?: Readonly<Record<string, string>>
+  recipeOpens?: readonly RecipeOpen[]
 }
 
 export const TYPED_SIGHTING_POINTS = 5
@@ -48,6 +58,19 @@ function civilDate(observedAt: string): string {
   // Do not reparse it in the browser's current timezone: a Tallinn night
   // viewed later from another timezone must remain one Tallinn night out.
   return observedAt.slice(0, 10)
+}
+
+function followedRecipeAdvice(entry: ObservationLogEntry, opens: readonly RecipeOpen[]): boolean {
+  if (!entry.cameraRecipeUsed || !entry.targetName) return false
+  const target = entry.targetName.trim().toLowerCase()
+  const loggedAt = Date.parse(entry.observedAt)
+  // The advice has to be opened before the attempt it is credited to.
+  return opens.some(
+    (open) =>
+      open.recipeKey === entry.cameraRecipeUsed &&
+      open.target.trim().toLowerCase() === target &&
+      Date.parse(open.openedAt) <= loggedAt,
+  )
 }
 
 function hasPhoto(entry: ObservationLogEntry): boolean {
@@ -78,7 +101,7 @@ function levelFor(points: number): { level: number; nextLevelAt: number | null }
  * later replace it with a server-backed idempotent ledger without changing the
  * rules represented here.
  */
-export function projectProgress({ observations, tripPlan = null, firstTourBadge = null, sightingKinds = {} }: ProgressInput): ProgressSummary {
+export function projectProgress({ observations, tripPlan = null, firstTourBadge = null, sightingKinds = {}, recipeOpens = [] }: ProgressInput): ProgressSummary {
   const skills: Record<ProgressSkill, number> = {
     observing: 0,
     photography: 0,
@@ -101,6 +124,7 @@ export function projectProgress({ observations, tripPlan = null, firstTourBadge 
     }
     if (hasPhoto(entry)) skills.photography += 8
     if (entry.isPublic === true) skills.photography += 15
+    if (followedRecipeAdvice(entry, recipeOpens)) skills.photography += ADVICE_FOLLOWED_POINTS
   }
 
   if (tripPlan) {

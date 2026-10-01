@@ -3,6 +3,7 @@ import type { ObservationLogEntry } from './db'
 import { projectProgress } from './progress'
 import type { ProgressSummary } from './progress'
 import { recipeKeyForEventKind } from './cameraRecipes'
+import { getRecipeOpens } from './recipeOpens'
 
 // Kinds a recipe can stand in for when an entry's event row is not cached
 // locally. Guides share the starry_sky recipe, so they are deliberately absent.
@@ -30,5 +31,10 @@ export async function resolveSightingKinds(observations: readonly ObservationLog
 // trip-plan read, and a diary save never changes the trip's contribution.
 export async function snapshotProgress(userId: string, firstTourBadge: 'first_light' | null): Promise<ProgressSummary> {
   const observations = await db.observations.where('userId').equals(userId).toArray()
-  return projectProgress({ observations, firstTourBadge, sightingKinds: await resolveSightingKinds(observations) })
+  return projectProgress({
+    observations,
+    firstTourBadge,
+    sightingKinds: await resolveSightingKinds(observations),
+    recipeOpens: getRecipeOpens(),
+  })
 }

@@ -12,6 +12,7 @@ import {
 } from '../lib/cameraProfiles'
 import { CAMERA_RECIPES, TRIPOD_HANDHELD_TIP, TRIPOD_LABEL, deviceRecipeFor, describeLiveConditions, type LiveRecipeConditions, type RecipeKey } from '../lib/cameraRecipes'
 import { trackEvent } from '../lib/analytics'
+import { recordRecipeOpen } from '../lib/recipeOpens'
 import { importPresetFile, PresetImportError, recommendPresetsForTarget } from '../lib/cameraPresets'
 import type { CameraPreset } from '../lib/db'
 import { useAuth } from '../lib/auth'
@@ -49,7 +50,7 @@ const SETUP_STEPS: Record<DeviceMaker, string[]> = {
   ],
 }
 
-export function CameraRecipe({ recipeKey, liveConditions }: { recipeKey: RecipeKey; liveConditions?: LiveRecipeConditions }) {
+export function CameraRecipe({ recipeKey, target, liveConditions }: { recipeKey: RecipeKey; target?: string; liveConditions?: LiveRecipeConditions }) {
   const { user } = useAuth()
   const scopeId = user?.id ?? LOCAL_USER_ID
   const initialDevice = getDefaultDevice()
@@ -60,7 +61,8 @@ export function CameraRecipe({ recipeKey, liveConditions }: { recipeKey: RecipeK
 
   useEffect(() => {
     trackEvent('Opened camera recipe', { recipeKey })
-  }, [recipeKey])
+    if (target) recordRecipeOpen(recipeKey, target)
+  }, [recipeKey, target])
 
   useEffect(() => {
     let cancelled = false
