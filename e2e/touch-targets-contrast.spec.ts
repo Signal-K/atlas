@@ -52,3 +52,25 @@ test('account form inputs meet border and placeholder contrast', async ({ page }
   expect(ratio(colours.placeholder, colours.bg), 'placeholder vs background').toBeGreaterThanOrEqual(4.5)
   expect(Number(colours.placeholderOpacity)).toBe(1)
 })
+
+test('create-account (Clerk) fields have a visible edge and are not clipped', async ({ page }) => {
+  // Create account is the default tab for first-time guests, and Clerk draws the
+  // field edge with box-shadow (border is 0), so measure that ring, not `border`.
+  await page.setViewportSize({ width: 402, height: 874 })
+  await page.addInitScript(() => window.localStorage.setItem('atlas-returning-account', '1'))
+  await page.goto('/app/journal')
+  await page.locator('.account-mode-tabs button', { hasText: 'Create account' }).click()
+  const input = page.locator('.auth-gate-modal .cl-formFieldInput').first()
+  await expect(input).toBeVisible()
+  const { ring, bg, cardOverflow } = await input.evaluate((el) => {
+    const parse = (value: string) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number)
+    const style = getComputedStyle(el)
+    return {
+      ring: parse(style.boxShadow.split(/\)\s*,/)[0]),
+      bg: parse(style.backgroundColor),
+      cardOverflow: getComputedStyle(el.closest('.cl-cardBox') as Element).overflowX,
+    }
+  })
+  expect(ratio(ring, bg), 'Clerk field ring vs background').toBeGreaterThanOrEqual(3)
+  expect(cardOverflow, 'card box must not clip the ring or label').toBe('visible')
+})
