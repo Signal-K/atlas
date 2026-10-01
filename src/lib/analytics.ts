@@ -1,6 +1,7 @@
 import type { PostHog } from 'posthog-js'
 import { pb } from './pocketbase'
 import { describeSyncFailure } from './syncFailure.mjs'
+import { isInjectedWebviewNoise } from './injectedNoise.mjs'
 
 // posthog.init's `loaded` callback is typed as PostHogInterface, not the
 // PostHog class. Helpers only need identify + startSessionRecording.
@@ -98,6 +99,7 @@ export function initAnalytics() {
       get_current_url: analyticsUrl,
       before_send: (event) => {
         if (!event) return event
+        if (isInjectedWebviewNoise(event)) return null
         const properties = event.properties
         if (!properties) return event
         const currentUrl = properties.$current_url
