@@ -68,7 +68,7 @@ export function PlannerPage() {
       user={user}
       entitlementRefreshing={entitlementRefreshing}
       feature="Trip planning"
-      description="Plan a trip across multiple cities, tell Atlas what gear you're bringing and what you're into, and get a personalized per-city sky guide -- including whether you'll catch the Milky Way."
+      description="Plan a trip across multiple cities, tell Atlas what gear you're bringing and what you're into, and get a personalized per-city sky guide — including whether you'll catch the Milky Way."
       freeBullets="Tonight, 14-day event browsing, check-ins, and your private journal."
       paidBullets="Multi-city trip planning with AI-personalized per-city guides."
       onSignInClick={() => navigate('/app/profile')}
