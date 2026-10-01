@@ -13,6 +13,27 @@ export interface ProgressMilestone {
   achieved: boolean
 }
 
+export type ProgressAction =
+  | 'observing_night'
+  | 'typed_sighting'
+  | 'photo_logged'
+  | 'photo_published'
+  | 'advice_followed'
+  | 'trip_planned'
+  | 'trip_leg'
+  | 'first_tour'
+  | 'community_night'
+
+export interface ProgressAward {
+  action: ProgressAction
+  // Stable identity of what earned the points (a date, an entry id, a plan or
+  // leg id), so the same award can never be recorded twice.
+  sourceId: string
+  skill: ProgressSkill
+  points: number
+  eventKind?: string
+}
+
 export interface ProgressSummary {
   totalPoints: number
   level: number
@@ -22,6 +43,9 @@ export interface ProgressSummary {
   // Observing points earned by sky-event kind (conjunction, planet_event, ...),
   // a breakdown of the typed bonus only, not of the per-night base points.
   observingByKind: Record<string, number>
+  // Every point as one row keyed by (action, sourceId). The XP ledger stores
+  // exactly these, so ledger totals equal the projector by construction.
+  awards: ProgressAward[]
   milestones: ProgressMilestone[]
 }
 
@@ -103,41 +127,48 @@ function levelFor(points: number): { level: number; nextLevelAt: number | null }
  * rules represented here.
  */
 export function projectProgress({ observations, tripPlan = null, firstTourBadge = null, sightingKinds = {}, recipeOpens = [] }: ProgressInput): ProgressSummary {
-  const skills: Record<ProgressSkill, number> = {
-    observing: 0,
-    photography: 0,
-    planning: 0,
-    community: 0,
-  }
+  const awards: ProgressAward[] = []
   // A self-reported sky night is community attendance, not a sighting: it must
   // not also read as a check-in, a night out or a photo.
   const counted = observations.filter(countsTowardProgress)
   const communityNights = new Set(counted.filter((entry) => entry.communityNightHost).map((entry) => civilDate(entry.observedAt)))
   const qualifying = counted.filter((entry) => !entry.communityNightHost)
-  skills.community += communityNights.size * COMMUNITY_NIGHT_POINTS
-  const nights = new Set(qualifying.map((entry) => civilDate(entry.observedAt)))
+  for (const date of [...communityNights].sort()) {
+    awards.push({ action: 'community_night', sourceId: date, skill: 'community', points: COMMUNITY_NIGHT_POINTS })
+  }
 
   // A night is the atomic observing action. Multiple check-ins during it may
   // prove separate photos, but never turn into multiple "went outside" awards.
-  skills.observing += nights.size * 10
+  const nights = new Set(qualifying.map((entry) => civilDate(entry.observedAt)))
+  for (const date of [...nights].sort()) {
+    awards.push({ action: 'observing_night', sourceId: date, skill: 'observing', points: 10 })
+  }
 
-  const observingByKind: Record<string, number> = {}
   for (const entry of qualifying) {
     const kind = sightingKinds[entry.id]
     if (isTypedSightingKind(kind)) {
-      skills.observing += TYPED_SIGHTING_POINTS
-      observingByKind[kind] = (observingByKind[kind] ?? 0) + TYPED_SIGHTING_POINTS
+      awards.push({ action: 'typed_sighting', sourceId: entry.id, skill: 'observing', points: TYPED_SIGHTING_POINTS, eventKind: kind })
     }
-    if (hasPhoto(entry)) skills.photography += 8
-    if (entry.isPublic === true) skills.photography += 15
-    if (followedRecipeAdvice(entry, recipeOpens)) skills.photography += ADVICE_FOLLOWED_POINTS
+    if (hasPhoto(entry)) awards.push({ action: 'photo_logged', sourceId: entry.id, skill: 'photography', points: 8 })
+    if (entry.isPublic === true) awards.push({ action: 'photo_published', sourceId: entry.id, skill: 'photography', points: 15 })
+    if (followedRecipeAdvice(entry, recipeOpens)) awards.push({ action: 'advice_followed', sourceId: entry.id, skill: 'photography', points: ADVICE_FOLLOWED_POINTS })
   }
 
   if (tripPlan) {
-    skills.planning += 20
-    skills.planning += Math.max(0, tripPlan.legs.length - 1) * 5
+    awards.push({ action: 'trip_planned', sourceId: tripPlan.id, skill: 'planning', points: 20 })
+    // Legs after the first are extra stops; keyed by leg id so each is paid once.
+    for (const leg of tripPlan.legs.slice(1)) {
+      awards.push({ action: 'trip_leg', sourceId: leg.id, skill: 'planning', points: 5 })
+    }
   }
-  if (firstTourBadge === 'first_light') skills.planning += 15
+  if (firstTourBadge === 'first_light') awards.push({ action: 'first_tour', sourceId: 'first_light', skill: 'planning', points: 15 })
+
+  const skills: Record<ProgressSkill, number> = { observing: 0, photography: 0, planning: 0, community: 0 }
+  const observingByKind: Record<string, number> = {}
+  for (const award of awards) {
+    skills[award.skill] += award.points
+    if (award.eventKind) observingByKind[award.eventKind] = (observingByKind[award.eventKind] ?? 0) + award.points
+  }
 
   const totalPoints = Object.values(skills).reduce((total, points) => total + points, 0)
   const { level, nextLevelAt } = levelFor(totalPoints)
@@ -149,6 +180,7 @@ export function projectProgress({ observations, tripPlan = null, firstTourBadge 
     pointsToNextLevel: nextLevelAt === null ? 0 : Math.max(0, nextLevelAt - totalPoints),
     skills,
     observingByKind,
+    awards,
     milestones: [
       { id: 'first-trip', label: 'First trip planned', achieved: tripPlan !== null },
       { id: 'first-check-in', label: 'First check-in', achieved: qualifying.length > 0 },

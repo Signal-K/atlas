@@ -1,0 +1,51 @@
+name: XP ledger
+
+# Dedicated pipeline for the level / training system and its append-only XP
+# ledger (ASV-82, ASV-93). Fast and PocketBase-free: the projector and ledger
+# rules are unit-tested, and the client write path is e2e-tested against a
+# stubbed atlas_xp_ledger endpoint that enforces the collection's unique key.
+# The migration itself is tested in the Navigation repo (atlas-xp-ledger-ci).
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/progress.ts'
+      - 'src/lib/xpLedger*.ts'
+      - 'src/lib/progressSnapshot.ts'
+      - 'src/components/ProgressCard.tsx'
+      - 'src/components/TrainingPathCard.tsx'
+      - 'src/components/mobile/SkyNightSheet.tsx'
+      - 'test/progress.test.mjs'
+      - 'test/xp-ledger.test.mjs'
+      - 'e2e/xp-ledger-sync.spec.ts'
+      - 'pocketbase/migrations/*xp_ledger*'
+      - '.github/workflows/xp-ledger.yml'
+  push:
+    branches: [master, 'cycle/**']
+  workflow_dispatch: {}
+
+concurrency:
+  group: xp-ledger-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  xp-ledger:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:xp-ledger
+        env:
+          # Same test-mode Clerk pair the main CI uses: the Playwright setup
+          # project always calls clerkSetup(). Never the live deploy key.
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_BACKEND_UNAVAILABLE: '1'

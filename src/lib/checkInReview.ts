@@ -38,6 +38,7 @@ import { fetchPastEventsForDay, isGeneratedPastEventId, PAST_EVENT_ID_PREFIX } f
 import { checkInPolicyFor, PhotoRequiredError } from './checkInRules'
 import { recordWeeklyActivity, weekStart } from './streaks'
 import type { PhotoDaySource } from './exifDateTime.mjs'
+import { syncXpLedgerSoon } from './xpLedger'
 
 const QUEUE = 'atlas_checkin_review_queue'
 
@@ -302,6 +303,7 @@ export async function reconcileApprovedStamps(entries: ObservationLogEntry[]): P
   for (const entry of entries) {
     await pushCityStampFromObservation(entry)
   }
+  void syncXpLedgerSoon()
 }
 
 /**

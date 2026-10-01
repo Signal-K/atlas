@@ -1,6 +1,7 @@
 import { pb } from './pocketbase'
 import { parsePbDate } from './pocketbaseDate'
 import type { City } from './cities'
+import { syncXpLedgerSoon } from './xpLedger'
 
 export const TRIP_MAX_LEGS = 6
 
@@ -193,6 +194,7 @@ export async function saveTripPlan(input: SaveTripPlanInput): Promise<TripPlan> 
   // A paid itinerary is also an active location source. Notify the running
   // shell immediately rather than waiting for its periodic re-check.
   window.dispatchEvent(new Event('atlas:trip-plan-changed'))
+  void syncXpLedgerSoon()
   return trip
 }
 

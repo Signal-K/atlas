@@ -10,6 +10,7 @@ import { fetchPrivateObservationPhoto, isAtlasMediaEnabled, isAtlasMediaUploadBl
 // Both references live inside function bodies, never at module-init scope, so
 // the cycle resolves under ESM. See the note at the top of checkInReview.ts.
 import { pullReviewSubmissions } from './checkInReview'
+import { syncXpLedgerSoon } from './xpLedger'
 
 function eventAtLocalHour(now: Date, hour: number): Date {
   const date = new Date(now)
@@ -499,6 +500,7 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
         trackEvent('sync_failed', { stage: 'push_observation_r2_upload', error: String(error) })
       }
     }
+    void syncXpLedgerSoon()
     return record.id
   } catch (error) {
     // Stays local-only; the user still sees it in their Scrapbook.

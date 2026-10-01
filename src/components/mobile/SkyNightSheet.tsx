@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/auth'
 import { trackEvent } from '../../lib/analytics'
 import { describeAward, progressAnalyticsEvents } from '../../lib/progress'
 import { snapshotProgress } from '../../lib/progressSnapshot'
+import { syncXpLedgerSoon } from '../../lib/xpLedger'
 
 const LOCAL_USER_ID = 'local'
 
@@ -44,6 +45,7 @@ export function SkyNightSheet({ open, onClose, onSaved }: { open: boolean; onClo
     await db.observations.add(entry)
     const after = await snapshotProgress(scopeId, user?.firstTourBadge ?? null)
     for (const event of progressAnalyticsEvents(before, after, 'sky_night')) trackEvent(event.name, event.properties)
+    void syncXpLedgerSoon()
     setSaving(false)
     toast(describeAward(before, after, { label: 'Sky night logged' }))
     setCity('')
