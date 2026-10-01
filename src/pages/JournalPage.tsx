@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MobileIcon } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
 import { CaptureSheet, RATING_HUE, RATING_LABEL } from '../components/mobile/CaptureSheet'
+import { SkyNightSheet } from '../components/mobile/SkyNightSheet'
 import { PastCheckInSheet } from '../components/mobile/PastCheckInSheet'
 import { EntryDetailSheet } from '../components/mobile/JournalSheets'
 import { JournalCommunity } from '../components/mobile/JournalCommunity'
@@ -80,6 +81,10 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
   const [captureOpen, setCaptureOpen] = useState(false)
   const [pastOpen, setPastOpen] = useState(false)
   const [photoIdOpen, setPhotoIdOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // /hosts deep-links here with ?sky-night=1 to open the community action.
+  const skyNightOpen = searchParams.get('sky-night') === '1'
+  const closeSkyNight = () => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete('sky-night'); return next }, { replace: true })
   const [openEntry, setOpenEntry] = useState<ObservationLogEntry | null>(null)
   const [yearFilter, setYearFilter] = useState<string | null>(null)
 
@@ -177,6 +182,7 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
               </button>
               <div className="az-first-use-secondary" aria-label="Other ways to begin">
                 <button type="button" className="az-text-btn" onClick={() => setPastOpen(true)}>Check in to a past night</button>
+                <button type="button" className="az-text-btn" onClick={() => setSearchParams({ 'sky-night': '1' })}>I went to a sky night</button>
                 <button type="button" className="az-text-btn" onClick={() => setPhotoIdOpen(true)}>Identify a sky photo</button>
               </div>
             </section>
@@ -197,6 +203,7 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
               </button>
               <div className="az-first-use-secondary" aria-label="Other journal actions">
                 <button type="button" className="az-text-btn" onClick={() => setPastOpen(true)}>Check in to a past night</button>
+                <button type="button" className="az-text-btn" onClick={() => setSearchParams({ 'sky-night': '1' })}>I went to a sky night</button>
                 <button type="button" className="az-text-btn" onClick={() => setPhotoIdOpen(true)}>Identify a sky photo</button>
               </div>
             </>
@@ -263,6 +270,8 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
         currentLocation={currentLocation}
         onSaved={refresh}
       />
+
+      <SkyNightSheet open={skyNightOpen} onClose={closeSkyNight} onSaved={refresh} />
 
       <PastCheckInSheet
         open={pastOpen}

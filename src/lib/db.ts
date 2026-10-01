@@ -46,6 +46,9 @@ export interface ObservationLogEntry {
   deviceUsed?: string
   cameraRecipeUsed?: string
   locationLabel?: string
+  // ASV-92: set on a self-reported community sky night (host-city label). Local
+  // only and unindexed, so no Dexie bump; the projector reads it for Community.
+  communityNightHost?: string
   conditionSummary?: string
   attemptRating?: AttemptRating
   photo?: Blob

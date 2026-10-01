@@ -11,7 +11,7 @@ test('level card shows the empty state, then points after a qualifying check-in'
 
   const card = page.getByRole('region', { name: 'Your level' })
   await expect(card).toContainText('Log tonight to earn your first points.')
-  await expect(card.locator('[data-milestone="first-community-night"]')).toHaveAttribute('data-state', 'locked')
+  await expect(card.locator('[data-milestone="first-community-night"]')).toHaveAttribute('data-state', 'open')
 
   await page.evaluate(
     () =>
@@ -39,7 +39,7 @@ test('level card shows the empty state, then points after a qualifying check-in'
   await expect(card).toContainText('Level 1')
   await expect(card).toContainText('10 pts')
   await expect(card.locator('[data-milestone="first-check-in"]')).toHaveAttribute('data-state', 'achieved')
-  await expect(card.locator('[data-milestone="first-community-night"]')).toHaveAttribute('data-state', 'locked')
+  await expect(card.locator('[data-milestone="first-community-night"]')).toHaveAttribute('data-state', 'open')
 })
 
 test('observing meter lists typed sky-event check-ins on their own line', async ({ page }) => {

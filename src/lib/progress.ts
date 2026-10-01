@@ -47,6 +47,7 @@ export interface ProgressInput {
 }
 
 export const TYPED_SIGHTING_POINTS = 5
+export const COMMUNITY_NIGHT_POINTS = 25
 
 // Guides (comet tracker, night-sky guides) are pointer cards, not sightings.
 export function isTypedSightingKind(kind: string | undefined): kind is string {
@@ -108,7 +109,12 @@ export function projectProgress({ observations, tripPlan = null, firstTourBadge 
     planning: 0,
     community: 0,
   }
-  const qualifying = observations.filter(countsTowardProgress)
+  // A self-reported sky night is community attendance, not a sighting: it must
+  // not also read as a check-in, a night out or a photo.
+  const counted = observations.filter(countsTowardProgress)
+  const communityNights = new Set(counted.filter((entry) => entry.communityNightHost).map((entry) => civilDate(entry.observedAt)))
+  const qualifying = counted.filter((entry) => !entry.communityNightHost)
+  skills.community += communityNights.size * COMMUNITY_NIGHT_POINTS
   const nights = new Set(qualifying.map((entry) => civilDate(entry.observedAt)))
 
   // A night is the atomic observing action. Multiple check-ins during it may
@@ -148,9 +154,9 @@ export function projectProgress({ observations, tripPlan = null, firstTourBadge 
       { id: 'first-check-in', label: 'First check-in', achieved: qualifying.length > 0 },
       { id: 'first-photo-published', label: 'First photo published', achieved: qualifying.some((entry) => entry.isPublic === true) },
       { id: 'first-guided-look', label: 'First guided look', achieved: firstTourBadge === 'first_light' },
-      // Community attendance has no honest source row yet, so it stays visible
-      // as a future milestone rather than being inferred from a normal night.
-      { id: 'first-community-night', label: 'First community night', achieved: false },
+      // Only the explicit "I went to a sky night" action counts; a normal
+      // night, the First light tour or a host mailto never does.
+      { id: 'first-community-night', label: 'First community night', achieved: communityNights.size > 0 },
     ],
   }
 }

@@ -163,3 +163,30 @@ test('progressAnalyticsEvents reports gained skills and new milestones only', ()
   ])
   assert.deepEqual(progressAnalyticsEvents(after, after, 'check_in'), [])
 })
+
+test('a self-reported sky night earns Community points and the milestone, nothing else', () => {
+  const progress = projectProgress({
+    observations: [observation('sn', '2026-10-01T12:00:00.000Z', { communityNightHost: 'Tallinn', locationLabel: 'Tallinn' })],
+  })
+  assert.equal(progress.skills.community, 25)
+  assert.equal(progress.skills.observing, 0)
+  assert.equal(progress.totalPoints, 25)
+  assert.equal(progress.milestones.find((m) => m.id === 'first-community-night').achieved, true)
+  assert.equal(progress.milestones.find((m) => m.id === 'first-check-in').achieved, false)
+})
+
+test('the First light tour alone leaves the community milestone open', () => {
+  const progress = projectProgress({ observations: [], firstTourBadge: 'first_light' })
+  assert.equal(progress.skills.community, 0)
+  assert.equal(progress.milestones.find((m) => m.id === 'first-community-night').achieved, false)
+})
+
+test('two sky night entries on one date earn Community once', () => {
+  const progress = projectProgress({
+    observations: [
+      observation('a', '2026-10-01T12:00:00.000Z', { communityNightHost: 'Tallinn' }),
+      observation('b', '2026-10-01T12:00:00.000Z', { communityNightHost: 'Tallinn' }),
+    ],
+  })
+  assert.equal(progress.skills.community, 25)
+})

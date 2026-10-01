@@ -119,16 +119,15 @@ export function ProgressCard() {
 
         <ul style={{ listStyle: 'none', margin: '0.875rem 0 0', padding: 0, display: 'grid', gap: '0.375rem' }}>
           {summary.milestones.map((milestone) => {
-            const locked = milestone.id === 'first-community-night'
             return (
               <li
                 key={milestone.id}
                 data-milestone={milestone.id}
-                data-state={milestone.achieved ? 'achieved' : locked ? 'locked' : 'open'}
+                data-state={milestone.achieved ? 'achieved' : 'open'}
                 style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', opacity: milestone.achieved ? 1 : 0.6 }}
               >
                 <span>{milestone.label}</span>
-                <span className="az-muted">{milestone.achieved ? 'Done' : locked ? 'Locked' : 'To do'}</span>
+                <span className="az-muted">{milestone.achieved ? 'Done' : 'To do'}</span>
               </li>
             )
           })}
