@@ -117,3 +117,12 @@ test('the gate names the area a guest tried to open and points new users to Crea
   await expect(page.getByRole('status')).toContainText(/Calendar is part of your free account/)
   await expect(page.getByRole('status')).toContainText(/Create account/)
 })
+
+test('a first-time guest lands on Create account, a returning device on Welcome back', async ({ page }) => {
+  await page.goto('/app/events')
+  await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
+
+  await page.evaluate(() => window.localStorage.setItem('atlas-returning-account', '1'))
+  await page.goto('/app/events')
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+})

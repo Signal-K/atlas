@@ -39,6 +39,19 @@ function lockedAreaLabel(pathname: string) {
   return segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : undefined
 }
 
+// ASV-103: remembers that this device has held an account, so a locked route
+// opened by a first-time guest lands on Create account while a returning user
+// still gets Welcome back.
+const RETURNING_KEY = 'atlas-returning-account'
+
+function isReturningDevice() {
+  try {
+    return window.localStorage.getItem(RETURNING_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -47,7 +60,15 @@ function App() {
   const isGuidedTour = routerLocation.pathname === APP_HOME && new URLSearchParams(routerLocation.search).get('tour') === 'tonight'
   const { user } = useAuth()
   const [showEntryChoice, setShowEntryChoice] = useState(false)
-  const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
+  useEffect(() => {
+    if (!user) return
+    try {
+      window.localStorage.setItem(RETURNING_KEY, '1')
+    } catch {
+      // Storage blocked: guests simply keep seeing Create account.
+    }
+  }, [user])
+  const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>(() => (isReturningDevice() ? 'sign-in' : 'sign-up'))
   const {
     showOnboardingFlow,
     markEntered,

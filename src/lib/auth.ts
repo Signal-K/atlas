@@ -234,9 +234,9 @@ export function refreshEntitlement({ force = false }: { force?: boolean } = {}):
         reconciledAsEntitled = result.entitled === true
         if (storage) recordReconcileSuccess(storage)
       } catch (err) {
-        if (storage) recordReconcileFailure(storage, accountId, Date.now())
+        const failures = storage ? recordReconcileFailure(storage, accountId, Date.now()).failures : 1
         // Best-effort. authRefresh below still picks up a webhook-applied change.
-        trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err) })
+        trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err), attempt: failures })
       }
     }
     try {

@@ -73,7 +73,7 @@ test('the desktop auth route renders the Atlas gate rather than browser-default 
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/app/events')
 
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
   await expect(page.locator('.auth-gate-sky')).toBeVisible()
   await expect(page.locator('.auth-gate-modal')).toHaveCSS('display', 'flex')
   await expect(page.locator('.auth-gate-modal')).toHaveCSS('max-height', '800px')

@@ -37,6 +37,8 @@ function luminance([r, g, b]: number[]) {
 const ratio = (a: number[], b: number[]) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05) }
 
 test('account form inputs meet border and placeholder contrast', async ({ page }) => {
+  // The sign-in form is what this measures; a returning device opens on it.
+  await page.addInitScript(() => window.localStorage.setItem('atlas-returning-account', '1'))
   await page.goto('/app/journal')
   const input = page.locator('.auth-gate-modal .account-form-field input').first()
   await expect(input).toBeVisible()

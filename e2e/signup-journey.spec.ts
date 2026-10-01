@@ -187,6 +187,10 @@ test('an existing account is re-run through the current onboarding flow', async 
     // Navigated directly rather than via the rail, since onboarding is
     // covering the shell at this point in the journey.
     await page.goto('/app/events')
+    // A device that has never held an account opens on Create account (ASV-103);
+    // this visitor already has one, so they switch to the Sign in tab.
+    await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
+    await page.getByRole('tab', { name: 'Sign in', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 
     await fillClerkSignIn(page, email, password)
