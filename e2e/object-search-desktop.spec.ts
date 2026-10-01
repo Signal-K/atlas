@@ -96,3 +96,24 @@ test('event detail back control is not covered by the topbar', async ({ page }) 
   })
   expect(covered, 'back button must be the element under its own centre').toBeNull()
 })
+
+// ASV-101: the detail "Best time" was formatted in the device's timezone while
+// the Hub's "When" used the observing location's, so the same plan showed two
+// different clock times (Perth viewer-side: 19:41 vs 20:12).
+test.describe('device timezone differs from the observing location', () => {
+  test.use({ timezoneId: 'Pacific/Auckland' })
+
+  test('event detail best time is shown in the location timezone', async ({ page }) => {
+    await page.setViewportSize({ width: 406, height: 755 })
+    await page.goto('/app/hub')
+    await page.getByText('Custom Object observing window').first().click()
+
+    const detail = page.locator('.az-entry-detail')
+    const iso = await detail.getAttribute('data-best-time')
+    expect(iso).toBeTruthy()
+    const expected = new Date(iso!).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
+    const deviceLocal = new Date(iso!).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' })
+    expect(expected).not.toBe(deviceLocal)
+    await expect(detail.getByText(expected, { exact: true }).first()).toBeVisible()
+  })
+})

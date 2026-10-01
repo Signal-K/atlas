@@ -140,7 +140,7 @@ export function buildEventDetail(input: EventDetailInput, advisory: DailyViewing
       input.phoneFriendly ? 'phone-friendly' : input.nakedEyeVisible ? 'naked-eye' : 'needs optics'
     }`,
     bestTimeIso: input.bestTimeIso,
-    bestTimeLabel: formatTimeLabel(input.bestTimeIso),
+    bestTimeLabel: formatTimeLabel(input.bestTimeIso, input.location?.timeZone),
     direction: input.direction ? { compassLabel: input.direction.compassLabel, altitudeDeg: input.direction.altitudeDeg } : null,
     moonPct: input.moonPct,
     suitability,

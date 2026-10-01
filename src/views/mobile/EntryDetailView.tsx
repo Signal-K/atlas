@@ -152,7 +152,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
   // element's z-index:1 stacking context and the sticky topbar (z-index:2)
   // painted over the overlay's header and back control (ASV-108).
   return createPortal(
-    <div className="az-overlay az-entry-detail">
+    <div className="az-overlay az-entry-detail" data-best-time={subject.bestTimeIso ?? undefined}>
       <div className="az-overlay-bg">
         <Starfield dark={dark} palette="mono" density={110} />
       </div>
