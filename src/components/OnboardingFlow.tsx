@@ -21,6 +21,7 @@ import {
   reportOnboardingSurveyDismissed,
   reportOnboardingSurveyShown,
   reportOnboardingSurveySubmitted,
+  savePurposeChips,
 } from '../lib/onboardingSurvey'
 import { ClubsStep, EquipmentStep, ExperienceStep, SurveyStep } from './onboarding/AnswerSteps'
 import type { AuthUser } from '../lib/auth'
@@ -278,6 +279,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
   function handleSurveyContinue() {
     if (surveyChoices.length > 0) {
       reportOnboardingSurveySubmitted(surveyChoices)
+      void savePurposeChips(user?.id ?? 'local', surveyChoices)
       trackEvent('Onboarding step advanced', { step: 'survey', choiceCount: surveyChoices.length })
     }
     finish()
