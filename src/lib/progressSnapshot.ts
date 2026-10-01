@@ -4,6 +4,7 @@ import { projectProgress } from './progress'
 import type { ProgressSummary } from './progress'
 import { recipeKeyForEventKind } from './cameraRecipes'
 import { getRecipeOpens } from './recipeOpens'
+import { kindFromTargetName } from './targetKind'
 
 // Kinds a recipe can stand in for when an entry's event row is not cached
 // locally. Guides share the starry_sky recipe, so they are deliberately absent.
@@ -21,7 +22,7 @@ export async function resolveSightingKinds(observations: readonly ObservationLog
 
   const kinds: Record<string, string> = {}
   for (const entry of observations) {
-    const kind = (entry.eventId ? kindByEventId.get(entry.eventId) : undefined) ?? kindFromRecipe(entry.cameraRecipeUsed)
+    const kind = (entry.eventId ? kindByEventId.get(entry.eventId) : undefined) ?? kindFromRecipe(entry.cameraRecipeUsed) ?? kindFromTargetName(entry.targetName)
     if (kind) kinds[entry.id] = kind
   }
   return kinds
