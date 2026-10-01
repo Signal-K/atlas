@@ -122,6 +122,19 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
 
   const step = STEPS[stepIndex]
 
+  // ASV-99: the decline button sits in the same spot on every step, so a run
+  // of quick taps through the earlier steps lands on the notifications "Not
+  // now" and the survey "Skip" before they have been read -- PostHog shows
+  // survey dismissals 0.7s after the step appeared and rage clicks on both
+  // buttons. Hold them disabled for a beat when their step arrives.
+  const [declineSettling, setDeclineSettling] = useState(false)
+  useEffect(() => {
+    if (step !== 'notifications' && step !== 'survey') return
+    setDeclineSettling(true)
+    const timer = window.setTimeout(() => setDeclineSettling(false), 600)
+    return () => window.clearTimeout(timer)
+  }, [step])
+
   // Fires on every step transition (including the first) so the funnel can
   // show view->advance vs. view->abandon per step, not just which steps were
   // ultimately completed.
@@ -579,7 +592,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
         }
         return (
           <>
-            <button type="button" className="az-text-btn" onClick={advance}>
+            <button type="button" className="az-text-btn" onClick={advance} disabled={declineSettling}>
               Not now
             </button>
             <button
@@ -597,7 +610,7 @@ export function OnboardingFlow({ city, user, setManualLocation, requestLocation,
       case 'survey':
         return (
           <>
-            <button type="button" className="az-text-btn" onClick={handleSurveySkip}>
+            <button type="button" className="az-text-btn" onClick={handleSurveySkip} disabled={declineSettling}>
               Skip
             </button>
             <button type="button" className="az-btn az-btn-primary" style={{ flex: 1 }} onClick={handleSurveyContinue}>
