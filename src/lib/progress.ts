@@ -109,3 +109,25 @@ export function projectProgress({ observations, tripPlan = null, firstTourBadge 
     ],
   }
 }
+
+/**
+ * One-line toast copy for a save, from projector summaries taken either side
+ * of it. Pending-review entries are excluded by the projector, so their delta
+ * is 0 by construction; `pendingReview` only picks the explanation.
+ *
+ * "Next" is the first open milestone a check-in can unlock. Trip and community
+ * milestones are skipped: callers snapshot without the PocketBase trip read,
+ * and community has no source row yet.
+ */
+export function describeAward(
+  before: ProgressSummary,
+  after: ProgressSummary,
+  { pendingReview = false, label = 'Session logged' }: { pendingReview?: boolean; label?: string } = {},
+): string {
+  const earned = after.totalPoints - before.totalPoints
+  if (pendingReview) return 'Sent for review — 0 pts now; the night counts once approved.'
+  const next = after.milestones.find((milestone) => !milestone.achieved && milestone.id !== 'first-trip' && milestone.id !== 'first-community-night')
+  const nextCopy = next ? ` Next: ${next.label}.` : ''
+  if (earned <= 0) return `${label} — that night already counted.${nextCopy}`
+  return `${label} · +${earned} pts.${nextCopy}`
+}

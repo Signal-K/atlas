@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { projectProgress } from '../src/lib/progress.ts'
+import { describeAward, projectProgress } from '../src/lib/progress.ts'
 
 function observation(id, observedAt, extra = {}) {
   return { id, userId: 'user-1', observedAt, ...extra }
@@ -67,4 +67,28 @@ test('projects a synced trip and First light badge onto the level curve', () => 
   assert.equal(progress.skills.planning, 40)
   assert.equal(progress.level, 2)
   assert.equal(progress.nextLevelAt, 100)
+})
+
+test('award copy reports the points a save added and the next milestone', () => {
+  const before = projectProgress({ observations: [] })
+  const after = projectProgress({ observations: [observation('a', '2026-10-01T19:30:00.000Z')] })
+
+  assert.equal(describeAward(before, after), 'Session logged · +10 pts. Next: First photo published.')
+})
+
+test('a second check-in the same night reports no new points', () => {
+  const first = observation('a', '2026-10-01T19:30:00.000Z')
+  const before = projectProgress({ observations: [first] })
+  const after = projectProgress({ observations: [first, observation('b', '2026-10-01T22:00:00.000Z')] })
+
+  assert.match(describeAward(before, after), /already counted/)
+})
+
+test('a pending past check-in says it counts once approved with 0 points', () => {
+  const pending = observation('p', '2026-09-01T12:00:00.000Z', { reviewStatus: 'unsent' })
+  const before = projectProgress({ observations: [] })
+  const after = projectProgress({ observations: [pending] })
+
+  assert.equal(after.totalPoints - before.totalPoints, 0)
+  assert.equal(describeAward(before, after, { pendingReview: true }), 'Sent for review — 0 pts now; the night counts once approved.')
 })
