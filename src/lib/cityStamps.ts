@@ -1,6 +1,7 @@
 import type { ObservationLogEntry } from './db'
 import { pb } from './pocketbase'
 import { parsePbDate } from './pocketbaseDate'
+import { countsTowardProgress } from './progress'
 
 export interface CityStamp {
   cityName: string
@@ -59,14 +60,8 @@ export function cityStampShareUrl(slug: string): string {
  * toward a stamp the moment it is introduced. The direction of that default
  * matters -- inflating a count is the failure this function exists to prevent.
  */
-const STAMP_COUNTING_STATUS: ReadonlySet<ObservationLogEntry['reviewStatus']> = new Set([
-  undefined,
-  'not_required',
-  'approved',
-])
-
 export function countsTowardCityStamp(entry: ObservationLogEntry): boolean {
-  return STAMP_COUNTING_STATUS.has(entry.reviewStatus)
+  return countsTowardProgress(entry)
 }
 
 export function cityStampsFromObservations(entries: ObservationLogEntry[]): CityStamp[] {
