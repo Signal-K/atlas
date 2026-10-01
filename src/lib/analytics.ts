@@ -1,5 +1,6 @@
 import type { PostHog } from 'posthog-js'
 import { pb } from './pocketbase'
+import { describeSyncFailure } from './syncFailure.mjs'
 
 // posthog.init's `loaded` callback is typed as PostHogInterface, not the
 // PostHog class. Helpers only need identify + startSessionRecording.
@@ -152,7 +153,12 @@ function withPostHog(fn: (posthog: PostHog) => void) {
   void loading.then(fn).catch(() => {})
 }
 
-export function trackEvent(name: string, properties?: Record<string, unknown>) {
+export function trackEvent(name: string, rawProperties?: Record<string, unknown>) {
+  // ASV-112: every sync_failed gets a reason/status/online/attempt so the
+  // failures are diagnosable without touching each of the call sites.
+  const properties = name === 'sync_failed'
+    ? describeSyncFailure(rawProperties, typeof navigator === 'undefined' ? true : navigator.onLine)
+    : rawProperties
   window.dispatchEvent(new CustomEvent('atlas:analytics-event', { detail: { name, properties } }))
   withPostHog((posthog) => posthog.capture(name, properties))
 }
