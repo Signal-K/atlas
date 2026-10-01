@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { City } from '../lib/cities'
 import { curatedLocationMatches, searchLocations } from '../lib/locationSearch'
 
@@ -15,6 +15,12 @@ export function LocationSearchInput({ id, value, onChange, onSelect, placeholder
   const [results, setResults] = useState<City[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  // ASV-104: in a bottom sheet the results used to render below the fold.
+  useEffect(() => {
+    if (open && results.length > 0) popoverRef.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [open, results.length])
 
   useEffect(() => {
     const query = value.trim()
@@ -90,7 +96,7 @@ export function LocationSearchInput({ id, value, onChange, onSelect, placeholder
         </button>
       )}
       {open && value.trim().length >= 2 && (
-        <div className="location-search-popover" id={listId} role="listbox">
+        <div className="location-search-popover" id={listId} role="listbox" ref={popoverRef}>
           {results.map((city) => (
             <button
               type="button"

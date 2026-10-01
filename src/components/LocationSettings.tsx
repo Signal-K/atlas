@@ -11,8 +11,8 @@ interface LocationSettingsProps {
   currentLocation: CurrentLocation
   manualCity: City | null
   setManualLocation: (city: City | null) => void
-  needsMotionPermission: boolean
-  requestMotionPermission: () => void
+  // Called after the user picks a city so the host sheet can close (ASV-104).
+  onCitySelected?: () => void
 }
 
 const LOCATION_LABEL: Record<LocationStatus, string> = {
@@ -26,7 +26,7 @@ const LOCATION_LABEL: Record<LocationStatus, string> = {
 const SOURCE_LABEL: Record<CurrentLocation['source'], string> = {
   geolocation: 'from your browser’s location',
   manual: 'set manually',
-  default: 'default — no location set yet',
+  default: 'no location set yet',
   trip: 'set by an active trip',
 }
 
@@ -36,8 +36,7 @@ export function LocationSettings({
   currentLocation,
   manualCity,
   setManualLocation,
-  needsMotionPermission,
-  requestMotionPermission,
+  onCitySelected,
 }: LocationSettingsProps) {
   const [locationQuery, setLocationQuery] = useState(() => manualCity ? cityLabel(manualCity) : '')
   // ASV-35: clicking "Use current location" used to clear the manual pick
@@ -99,10 +98,8 @@ export function LocationSettings({
         <div>
           <span className="settings-label">Your location</span>
           <p className="settings-help">
-            Currently <strong>{currentLocation.name}</strong> ({SOURCE_LABEL[currentLocation.source]}). Your location is
-            only stored on this device — we don't see it, and it's only ever sent from your own browser directly to
-            the weather/astronomy services used to build tonight's plan, and (when using your device's location) a
-            reverse-geocoding lookup used only to show its place name.
+            {currentLocation.source === 'default' ? 'No location set yet.' : <>Currently <strong>{currentLocation.name}</strong> ({SOURCE_LABEL[currentLocation.source]}).</>}{' '}
+            Stays on this device; only sent to the weather and astronomy services that build your plan.
           </p>
         </div>
         <div className="settings-choice settings-location-choice">
@@ -114,6 +111,7 @@ export function LocationSettings({
               setManualLocation(city)
               setLocationQuery(cityLabel(city))
               trackEvent('Location changed', { source: 'settings', method: 'manual_search', country: city.country, timeZone: city.timeZone })
+              onCitySelected?.()
             }}
             placeholder="Search city, region, or country"
           />
@@ -139,20 +137,6 @@ export function LocationSettings({
                 ? 'Search for your city instead.'
                 : 'Location is blocked. Search for your city instead, or update browser permissions and retry.'}
             </p>
-          )}
-        </div>
-      </div>
-
-      <div className="settings-row">
-        <span className="settings-label">Motion parallax</span>
-        <div className="settings-choice">
-          <span className={`settings-status ${needsMotionPermission ? 'settings-status--warning' : 'settings-status--positive'}`}>
-            {needsMotionPermission ? 'Not yet enabled' : 'Enabled / not required on this device'}
-          </span>
-          {needsMotionPermission && (
-            <button type="button" onClick={requestMotionPermission}>
-              Enable
-            </button>
           )}
         </div>
       </div>

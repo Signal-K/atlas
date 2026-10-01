@@ -157,8 +157,6 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
         currentLocation={currentLocation}
         manualCity={profileProps.manualCity}
         setManualLocation={profileProps.setManualLocation}
-        needsMotionPermission={profileProps.needsMotionPermission}
-        requestMotionPermission={profileProps.requestMotionPermission}
       />
 
       {searchOpen && (

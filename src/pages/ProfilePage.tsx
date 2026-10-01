@@ -40,7 +40,7 @@ function initialsFor(email?: string): string {
   return local.slice(0, 2).toUpperCase()
 }
 
-export function ProfilePage({ currentLocation, accountDefaultMode, onOpenLocation }: ProfilePageProps) {
+export function ProfilePage({ currentLocation, accountDefaultMode, onOpenLocation, needsMotionPermission, requestMotionPermission }: ProfilePageProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
@@ -182,6 +182,21 @@ export function ProfilePage({ currentLocation, accountDefaultMode, onOpenLocatio
             <MobileIcon name="chevron" size={14} />
           </span>
         </button>
+
+        {/* ASV-104: moved here from the location sheet. Only shown where the
+            browser needs an explicit permission (iOS) -- elsewhere there is
+            nothing to enable. */}
+        {needsMotionPermission && (
+          <button type="button" className="az-row" onClick={requestMotionPermission}>
+            <span className="az-row-icon">
+              <MobileIcon name="orbit" />
+            </span>
+            <span className="az-row-main">
+              <span className="az-row-title">Sky motion</span>
+              <span className="az-row-value">Tilt-to-move background is off. Tap to allow.</span>
+            </span>
+          </button>
+        )}
 
         <div className="az-row">
           <span className="az-row-icon">
