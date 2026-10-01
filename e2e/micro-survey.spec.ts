@@ -22,8 +22,12 @@ async function dispatchSurveyTrigger(page: Page, name = 'Submitted reminder feed
   }, name)
 }
 
-async function latestEvent(page: Page, name: string) {
-  return page.evaluate((eventName) => window.__atlasCapturedEvents.findLast((event) => event.name === eventName), name)
+// With PostHog survey IDs configured (VITE_POSTHOG_SURVEY_*_ID, as in a normal
+// .env) FeedbackDock reports `survey sent` / `survey dismissed` keyed by
+// $survey_id; without them it falls back to the legacy event names. Accept both
+// so the spec does not depend on the developer's env file.
+async function latestEvent(page: Page, ...names: string[]) {
+  return page.evaluate((eventNames) => window.__atlasCapturedEvents.findLast((event) => eventNames.includes(event.name)), names)
 }
 
 test('contextual micro-survey submits one-tap answer with optional note', async ({ page }) => {
@@ -39,13 +43,12 @@ test('contextual micro-survey submits one-tap answer with optional note', async 
   await expect(page.getByRole('dialog', { name: 'Was that reminder/check-in useful?' })).toHaveCount(0)
   await expect(page.evaluate(() => localStorage.getItem('atlas-feedback-micro-state:reminder_feedback_helpfulness'))).resolves.toBe('submitted')
 
-  const event = await latestEvent(page, 'Micro survey submitted')
-  expect(event?.properties).toMatchObject({
-    surveyId: 'reminder_feedback_helpfulness',
-    answer: 'Somewhat',
-    note: 'Clear and timely',
-    source: 'feedback_dock',
-  })
+  const event = await latestEvent(page, 'Micro survey submitted', 'survey sent')
+  expect(event?.properties).toMatchObject(
+    event?.name === 'survey sent'
+      ? { surveyKey: 'reminder_feedback_helpfulness', $survey_response: 'Somewhat', note: 'Clear and timely', source: 'feedback_dock' }
+      : { surveyId: 'reminder_feedback_helpfulness', answer: 'Somewhat', note: 'Clear and timely', source: 'feedback_dock' },
+  )
 })
 
 test('contextual micro-survey is locally throttled after dismissal', async ({ page }) => {
@@ -63,6 +66,8 @@ test('contextual micro-survey is locally throttled after dismissal', async ({ pa
   await dispatchSurveyTrigger(page)
   await expect(page.getByRole('dialog', { name: 'Was that reminder/check-in useful?' })).toHaveCount(0)
 
-  const event = await latestEvent(page, 'Micro survey dismissed')
-  expect(event?.properties).toMatchObject({ surveyId: 'reminder_feedback_helpfulness' })
+  const event = await latestEvent(page, 'Micro survey dismissed', 'survey dismissed')
+  expect(event?.properties).toMatchObject(
+    event?.name === 'survey dismissed' ? { surveyKey: 'reminder_feedback_helpfulness' } : { surveyId: 'reminder_feedback_helpfulness' },
+  )
 })

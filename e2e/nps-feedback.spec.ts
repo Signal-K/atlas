@@ -24,8 +24,10 @@ async function dispatchMeaningfulActivity(page: Page, count: number, name = 'fir
   }
 }
 
-async function latestEvent(page: Page, name: string) {
-  return page.evaluate((eventName) => window.__atlasCapturedEvents.findLast((event) => event.name === eventName), name)
+// Legacy event names are used only when no PostHog survey ID is configured; a
+// normal .env has one, so accept the `survey sent` / `survey dismissed` shape too.
+async function latestEvent(page: Page, ...names: string[]) {
+  return page.evaluate((eventNames) => window.__atlasCapturedEvents.findLast((event) => eventNames.includes(event.name)), names)
 }
 
 // /app/tonight redirects to HubPage, which itself fires a real, once-only
@@ -84,9 +86,9 @@ test('NPS prompt appears only after meaningful activity threshold and submits st
   await expect(page.getByRole('dialog', { name: 'Quick score' })).toHaveCount(0)
   await expect(page.evaluate(() => localStorage.getItem('atlas-feedback-nps-state'))).resolves.toBe('submitted')
 
-  const event = await latestEvent(page, 'NPS survey submitted')
+  const event = await latestEvent(page, 'NPS survey submitted', 'survey sent')
   expect(event?.properties).toMatchObject({
-    score: 9,
+    ...(event?.name === 'survey sent' ? { $survey_response: 9 } : { score: 9 }),
     reason: 'The timing guidance is useful',
     trigger: 'first_plan_equipment_selected',
     activityCount: 4,
@@ -110,6 +112,6 @@ test('NPS dismissal is locally throttled', async ({ page }) => {
   await dispatchMeaningfulActivity(page, 4)
   await expect(page.getByRole('dialog', { name: 'Quick score' })).toHaveCount(0)
 
-  const event = await latestEvent(page, 'NPS prompt dismissed')
+  const event = await latestEvent(page, 'NPS prompt dismissed', 'survey dismissed')
   expect(event?.properties).toMatchObject({ activityCount: 4 })
 })
