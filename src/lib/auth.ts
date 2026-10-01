@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ClientResponseError } from 'pocketbase'
 import { pb, atlasBillingFetch } from './pocketbase'
 import { trackEvent } from './analytics'
+import { reconcileAllowed, recordReconcileFailure, recordReconcileSuccess } from './reconcileBackoff.mjs'
 import { ONBOARDING_VERSION, clearOnboardingAnswers, getOnboardingAnswers } from './onboarding'
 
 const entitlementListeners = new Set<() => void>()
@@ -185,8 +186,14 @@ export async function deleteAccount(): Promise<void> {
 // Re-fetches the signed-in user's record (e.g. `entitled`, flipped
 // server-side by the Polar webhook after a purchase) since the cached
 // authStore snapshot only otherwise updates on the next sign-in.
-const RECONCILE_COOLDOWN_MS = 5 * 60_000
-let reconcileRetryAfter = 0
+// Failure backoff is persisted (ASV-113) -- see lib/reconcileBackoff.mjs.
+function reconcileStorage(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
 
 // `force` permits reconciliation for a newly-returned checkout even though
 // its cached account is still free. It deliberately does not bypass a recent
@@ -214,14 +221,20 @@ export function refreshEntitlement({ force = false }: { force?: boolean } = {}):
     // change through the post-checkout force path; PocketBase authRefresh
     // below still runs for everyone and picks up a completed webhook.
     const shouldReconcile = force || currentUser()?.entitled === true
-    if (shouldReconcile && Date.now() >= reconcileRetryAfter) {
+    const storage = reconcileStorage()
+    const accountId = pb.authStore.record?.id ?? ''
+    // An offline device cannot reach billing: skip rather than record a
+    // failure that only reflects connectivity.
+    const canReconcile = navigator.onLine !== false && (!storage || reconcileAllowed(storage, accountId, Date.now()))
+    if (shouldReconcile && canReconcile) {
       try {
         // Webhooks are the fast path, but reconciliation makes paid access
         // self-healing if Polar's asynchronous delivery was missed or delayed.
         const result = await atlasBillingFetch<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
         reconciledAsEntitled = result.entitled === true
+        if (storage) recordReconcileSuccess(storage)
       } catch (err) {
-        reconcileRetryAfter = Date.now() + RECONCILE_COOLDOWN_MS
+        if (storage) recordReconcileFailure(storage, accountId, Date.now())
         // Best-effort. authRefresh below still picks up a webhook-applied change.
         trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err) })
       }
