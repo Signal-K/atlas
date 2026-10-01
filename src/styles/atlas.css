@@ -915,6 +915,7 @@
   border-radius: 8px;
   font: 500 0.75rem var(--az-font-mono);
   color: var(--ink);
+  min-height: 2.75rem;
 }
 .az-calendar-cell.is-empty {
   visibility: hidden;
@@ -2152,11 +2153,16 @@
   height: 3rem;
   padding: 0 0.875rem;
   box-sizing: border-box;
-  border: 1px solid #2c2d36;
+  /* ASV-107: 3.9:1 border and 7.9:1 placeholder on the #0b0c10 card. */
+  border: 1px solid #6b6e80;
   border-radius: 0.75rem;
   background: #0b0c10;
   color: #f1f1f3;
   font-size: 1rem;
+}
+.auth-gate-modal .account-form-field input::placeholder {
+  color: #a3a4b0;
+  opacity: 1;
 }
 .auth-gate-modal .account-form-field input:focus-visible {
   outline: 2px solid oklch(0.78 0.12 200);
@@ -2652,6 +2658,12 @@
   font: 500 0.8125rem var(--az-font-sans);
   cursor: pointer;
   padding: 0.5rem 0.125rem;
+  /* ASV-107: 44px minimum touch target. */
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ------------------------------------------------------------- landing
