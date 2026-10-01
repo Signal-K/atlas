@@ -103,8 +103,8 @@ test('signup happens via the auth gate before onboarding, then observations save
   try {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: 'Know what is worth looking up for.' })).toBeVisible()
-    await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+    await expect(page.getByRole('heading', { name: 'There is something worth going outside for.' })).toBeVisible()
+    await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
     await page.getByRole('button', { name: 'Start guided tour' }).click()
 
     // Straight into the product as a guest -- no account demanded first.
@@ -179,7 +179,7 @@ test('an existing account is re-run through the current onboarding flow', async 
 
     await page.goto('/')
 
-    await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+    await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
     await page.getByRole('button', { name: 'Start guided tour' }).click()
     await expect(page).toHaveURL('/app/hub?tour=tonight')
 

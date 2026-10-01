@@ -53,7 +53,7 @@ test("a visitor with no account reaches tonight's sky from the landing page", as
   await page.goto('/')
 
   // The label repeats across the masthead, hero, membership card and footer.
-  await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+  await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
   await page.getByRole('button', { name: 'Start guided tour' }).click()
   await expect(page).toHaveURL('/app/hub?tour=tonight')
 

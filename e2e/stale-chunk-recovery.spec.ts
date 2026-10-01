@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('recovers once from a stale Vite chunk and never leaves a blank screen', async ({ page }) => {
   await page.goto('/')
   await expect(
-    page.getByRole('heading', { name: 'Know what is worth looking up for.' }),
+    page.getByRole('heading', { name: 'There is something worth going outside for.' }),
   ).toBeVisible()
 
   await page
@@ -20,7 +20,7 @@ test('recovers once from a stale Vite chunk and never leaves a blank screen', as
 
   await page.waitForURL(/_atlas_recovery=/)
   await expect(
-    page.getByRole('heading', { name: 'Know what is worth looking up for.' }),
+    page.getByRole('heading', { name: 'There is something worth going outside for.' }),
   ).toBeVisible()
 
   await page.evaluate(() => {

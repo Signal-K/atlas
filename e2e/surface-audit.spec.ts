@@ -86,7 +86,7 @@ test('captures public, guest, onboarding, and paywall states', async ({ browser 
 
   const guest = await freshPage(browser)
   await guest.page.goto('/')
-  await guest.page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+  await guest.page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
   await expect(guest.page.getByRole('heading', { name: 'How would you like to begin?' })).toBeVisible()
   await guest.page.screenshot({ path: path.join(CAPTURE_DIR, 'mobile-landing-entry-choice.png'), fullPage: false, animations: 'disabled' })
   await guest.page.goto('/app/events')

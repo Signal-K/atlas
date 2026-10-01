@@ -24,10 +24,10 @@ test('captures product screenshots for the Atlas state-of-product doc', async ({
   await page.setViewportSize({ width: 1440, height: 1200 })
   await page.goto('/')
   await prepareScreenshotMode(page)
-  await expect(page.getByRole('heading', { name: 'Know what is worth looking up for.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'There is something worth going outside for.' })).toBeVisible()
   await capture(page, '01-landing-location.png')
 
-  await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+  await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
   await page.getByRole('button', { name: 'Start guided tour' }).click()
   await expect(page.getByRole('heading', { name: 'One useful plan. When, where, what.' })).toBeVisible({ timeout: 15_000 })
   await capture(page, '02-tonight-feed.png')

@@ -68,7 +68,7 @@ test.beforeEach(async ({ page }) => {
 test('a guest completes the when/where/what tour, unlocks once, and can share it', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+  await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
   await page.getByRole('button', { name: 'Start guided tour' }).click()
 
   await expect(page).toHaveURL('/app/hub?tour=tonight')
