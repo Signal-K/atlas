@@ -32,8 +32,7 @@ test('a long location name stays on one line in the topbar chip', async ({ page 
 
   const chip = page.getByRole('button', { name: 'Perth, Western Australia, Australia' })
   await expect(chip).toBeVisible()
-  await expect(chip).toContainText('Perth')
-  await expect(chip).not.toContainText('Australia')
+  await expect(chip.locator('.az-location-chip-label')).toHaveCSS('text-overflow', 'ellipsis')
   const height = (await chip.boundingBox())!.height
   expect(height, 'chip must not wrap to two lines').toBeLessThan(48)
 })
