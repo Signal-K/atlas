@@ -895,8 +895,20 @@
   gap: 4px;
 }
 
+.az-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+  text-align: center;
+  font: 500 0.6875rem var(--az-font-mono);
+  color: var(--muted);
+}
+
 .az-calendar-cell {
   position: relative;
+  border: 1px solid var(--line);
+  background: transparent;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -913,6 +925,10 @@
 .az-calendar-cell.is-today {
   background: var(--ink);
   color: var(--bg);
+}
+.az-calendar-cell[aria-pressed='true'] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 .az-calendar-cell .az-cal-dot {
   position: absolute;

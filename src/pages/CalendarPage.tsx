@@ -6,6 +6,13 @@ import { GUIDE_KIND_IDS } from '../lib/eventCategories'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { SkyEvent } from '../lib/db'
 
+const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
+function dayLabel(key: string, count: number) {
+  const date = new Date(`${key}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+  return count ? `${date}, ${count} ${count === 1 ? 'event' : 'events'}` : date
+}
+
 export function CalendarPage({ city }: { city: CurrentLocation }) {
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [cursor, setCursor] = useState(() => new Date())
@@ -74,10 +81,13 @@ export function CalendarPage({ city }: { city: CurrentLocation }) {
           <strong>{calendar.monthLabel}</strong>
           <button type="button" className="az-text-btn" onClick={() => moveMonth(1)} aria-label="Next month">→</button>
         </div>
-        <div className="az-calendar-grid">
+        <div className="az-calendar-weekdays" aria-hidden="true">
+          {WEEKDAY_INITIALS.map((label, index) => <span key={index}>{label}</span>)}
+        </div>
+        <div className="az-calendar-grid" role="group" aria-label={calendar.monthLabel}>
           {calendar.leadingBlanks.map((_, index) => <div key={`blank-${index}`} className="az-calendar-cell is-empty" />)}
           {calendar.days.map((day) => (
-            <button type="button" key={day.key} onClick={() => setSelectedDay(day.key)} className={`az-calendar-cell${day.count ? ' has-event' : ''}${day.isToday ? ' is-today' : ''}${selectedDay === day.key ? ' is-selected' : ''}`} aria-pressed={selectedDay === day.key}>
+            <button type="button" key={day.key} onClick={() => setSelectedDay(day.key)} className={`az-calendar-cell${day.count ? ' has-event' : ''}${day.isToday ? ' is-today' : ''}${selectedDay === day.key ? ' is-selected' : ''}`} aria-pressed={selectedDay === day.key} aria-current={day.isToday ? 'date' : undefined} aria-label={dayLabel(day.key, day.count)}>
               {day.day}
               {day.count > 0 && <span className="az-cal-dot" style={{ background: 'var(--az-violet)' }} />}
             </button>
