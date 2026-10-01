@@ -92,6 +92,13 @@ function App() {
   // account required, same as landing.
   const showHosts = routerLocation.pathname === '/hosts'
 
+  useEffect(() => {
+    if (!showEntryChoice) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowEntryChoice(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showEntryChoice])
+
   function enterApp(startTour = false) {
     markEntered()
     setAccountDefaultMode('sign-up')
@@ -130,13 +137,13 @@ function App() {
       <>
         <LandingPage authenticatedEmail={user?.email} onEnter={handleLandingEntry} onEnterPaid={enterPaidApp} />
         {showEntryChoice && !user && (
-          <div className="entry-choice-overlay" role="presentation">
+          <div className="entry-choice-overlay atlas-almanac" role="presentation">
             <section className="entry-choice-modal" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
               <p className="entry-choice-kicker">Open Atlas</p>
               <h2 id="entry-choice-title">How would you like to begin?</h2>
               <p>Sign in to pick up your plans and journal, or take a look around first.</p>
               <div className="entry-choice-actions">
-                <button type="button" className="am-btn am-btn-primary" onClick={enterSignIn}>
+                <button type="button" className="am-btn am-btn-primary" autoFocus onClick={enterSignIn}>
                   Sign in first
                 </button>
                 <button type="button" className="am-btn" onClick={() => { setShowEntryChoice(false); enterApp(true) }}>
