@@ -536,15 +536,18 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
           <div className="az-tour-checks">
             <span className={hasLocation ? 'is-done' : ''}>
               <MobileIcon name={hasLocation ? 'check' : 'pin'} size={14} />
-              <strong>Where</strong> {hasLocation ? city.name : 'Set your location'}
+              <strong>Where</strong>
+              <span>{hasLocation ? city.name : 'Set your location'}</span>
             </span>
             <span className={plan ? 'is-done' : ''}>
               <MobileIcon name={plan ? 'check' : 'calendar'} size={14} />
-              <strong>When</strong> {plan ? `${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)} after dark` : 'Building your window'}
+              <strong>When</strong>
+              <span>{plan ? `${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)} after dark` : 'Building your window'}</span>
             </span>
             <span className={tourTargetId ? 'is-done' : ''}>
               <MobileIcon name={tourTargetId ? 'check' : 'telescope'} size={14} />
-              <strong>What</strong> {tourTargetId ? 'Target chosen' : 'Choose one thing to find'}
+              <strong>What</strong>
+              <span>{tourTargetId ? 'Target chosen' : 'Choose one thing to find'}</span>
             </span>
           </div>
           {!hasLocation && onOpenLocation ? (

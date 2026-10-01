@@ -181,9 +181,9 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
             <p className="az-kicker">Your guided look</p>
             <h2 id="az-tour-finish-title">When, where and what — ready.</h2>
             <div className="az-tour-checks">
-              <span><MobileIcon name="check" size={14} /> <strong>When</strong> {actions.tourCompletion.whenLabel}</span>
-              <span><MobileIcon name="check" size={14} /> <strong>Where</strong> {actions.tourCompletion.whereLabel}</span>
-              <span><MobileIcon name="check" size={14} /> <strong>What</strong> {subject.title}</span>
+              <span><MobileIcon name="check" size={14} /><strong>When</strong> <span>{actions.tourCompletion.whenLabel}</span></span>
+              <span><MobileIcon name="check" size={14} /><strong>Where</strong> <span>{actions.tourCompletion.whereLabel}</span></span>
+              <span><MobileIcon name="check" size={14} /><strong>What</strong> <span>{subject.title}</span></span>
             </div>
             <button type="button" className="az-btn az-btn-primary az-btn-block" disabled={tourCompleting} onClick={handleCompleteTour}>
               {tourCompleting ? 'Finishing…' : 'Complete guided look'}

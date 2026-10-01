@@ -2382,8 +2382,8 @@
 .az-tour-checks > span {
   display: grid;
   grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 0.25rem 0.4rem;
+  align-items: start;
+  gap: 0.1rem 0.4rem;
   padding: 0.65rem;
   border: 1px solid var(--line);
   border-radius: 0.7rem;
@@ -2393,6 +2393,16 @@
 
 .az-tour-checks > span strong {
   color: var(--ink);
+}
+
+/* ASV-109: icon spans both lines; label and detail share one left edge. */
+.az-tour-checks > span > svg {
+  grid-row: 1 / span 2;
+  margin-top: 0.1rem;
+}
+
+.az-tour-checks > span > span {
+  grid-column: 2;
 }
 
 .az-tour-checks > span.is-done svg,
