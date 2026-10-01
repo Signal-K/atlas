@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
+import { TrainingPathCard } from '../components/TrainingPathCard'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { getTonightPlan } from '../lib/tonightTargets'
 import { tonightRatingLabel } from '../lib/tonightScore'
@@ -593,6 +594,8 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
           />
         </div>
       )}
+
+      {plan && !guidedChoicePending && <TrainingPathCard />}
 
       {plan && plan.targets.length > 0 && !guidedChoicePending && (
         <>
