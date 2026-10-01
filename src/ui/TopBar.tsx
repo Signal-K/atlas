@@ -40,9 +40,12 @@ export function TopBar({
       <div className="az-topbar">
         <div className="az-topbar-lead">
           <MobileNavTrigger open={navDrawerOpen} onOpen={onOpenNavDrawer} />
-          <button type="button" onClick={onOpenLocation} className="az-location-chip">
+          <button type="button" onClick={onOpenLocation} className="az-location-chip" aria-label={locationName} title={locationName}>
             <span className="az-dot" aria-hidden="true" />
-            {locationName}
+            {/* ASV-110: show the city only; the full "City, Region, Country"
+                wrapped to two lines on a phone. The full name stays as the
+                accessible name and tooltip. */}
+            <span className="az-location-chip-label">{locationName.split(',')[0]}</span>
             <span className="az-caret" aria-hidden="true">
               ▾
             </span>

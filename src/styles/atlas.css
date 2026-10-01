@@ -210,8 +210,16 @@
   cursor: pointer;
   font: 500 0.8125rem var(--az-font-sans);
   min-height: 2.25rem;
+  min-width: 0;
+  max-width: 100%;
+}
+.az-location-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .az-location-chip .az-dot {
+  flex: none;
   width: 6px;
   height: 6px;
   border-radius: 50%;

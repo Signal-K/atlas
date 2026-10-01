@@ -136,7 +136,14 @@ export function MobileNavDrawer({ items, open, onClose }: { items: NavItem[]; op
           Categories
         </div>
         <nav className="az-nav-drawer-links" aria-label="Browse by category">
-          {EVENT_CATEGORIES.map((category) => (
+          {/* ASV-110: once counts are known, skip categories with nothing in
+              the window -- they were dead ends. If every one is empty, show
+              them all rather than an empty list. */}
+          {EVENT_CATEGORIES.filter((category) => {
+            if (!categoryCounts) return true
+            const anyEvents = Object.values(categoryCounts).some((count) => count > 0)
+            return !anyEvents || categoryCounts[category.id] > 0
+          }).map((category) => (
             <button
               key={category.id}
               type="button"
