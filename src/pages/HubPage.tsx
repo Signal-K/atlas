@@ -567,12 +567,12 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
             <p className="az-muted">No useful target is visible yet. Atlas will keep checking tonight’s sky.</p>
           )}
         </section>
-      ) : (
+      ) : !tourCompletion ? (
         <button type="button" className="az-tour-invite" onClick={startTour}>
           <span><span className="az-kicker">New here?</span><strong>Take one guided look at tonight’s sky.</strong></span>
           <span>Start →</span>
         </button>
-      )}
+      ) : null}
 
       {tourCompletion && !tourCelebration && (
         <div className="az-tour-badge" role="status">

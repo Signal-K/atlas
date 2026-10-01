@@ -105,6 +105,8 @@ test('a guest completes the when/where/what tour, unlocks once, and can share it
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Your first guided look is ready.' })).toHaveCount(0)
   await expect(page.getByText(/First light.*first guided look is complete/i)).toBeVisible()
+  // ASV-102: the new-here invite must not sit beside the completed badge.
+  await expect(page.getByText(/take one guided look at tonight/i)).toBeHidden()
 })
 
 test('a shared tour link lands in the guided entry rather than a blank hub', async ({ page }) => {
