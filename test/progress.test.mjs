@@ -92,3 +92,37 @@ test('a pending past check-in says it counts once approved with 0 points', () =>
   assert.equal(after.totalPoints - before.totalPoints, 0)
   assert.equal(describeAward(before, after, { pendingReview: true }), 'Sent for review — 0 pts now; the night counts once approved.')
 })
+
+test('conjunction, planet and star check-ins each land on their own observing line', () => {
+  const observations = [
+    observation('c', '2026-10-01T19:00:00.000Z'),
+    observation('p', '2026-10-02T19:00:00.000Z'),
+    observation('s', '2026-10-03T19:00:00.000Z'),
+  ]
+  const progress = projectProgress({
+    observations,
+    sightingKinds: { c: 'conjunction', p: 'planet_event', s: 'bright_star' },
+  })
+
+  assert.deepEqual(progress.observingByKind, { conjunction: 5, planet_event: 5, bright_star: 5 })
+  assert.equal(progress.skills.observing, 3 * 10 + 3 * 5)
+})
+
+test('a night_sky_guide check-in adds no typed bonus', () => {
+  const progress = projectProgress({
+    observations: [observation('g', '2026-10-01T19:00:00.000Z'), observation('l', '2026-10-02T19:00:00.000Z'), observation('k', '2026-10-03T19:00:00.000Z')],
+    sightingKinds: { g: 'night_sky_guide', l: 'local_night_sky', k: 'comet' },
+  })
+
+  assert.deepEqual(progress.observingByKind, {})
+  assert.equal(progress.skills.observing, 30)
+})
+
+test('a pending typed check-in earns no typed bonus', () => {
+  const progress = projectProgress({
+    observations: [observation('p', '2026-10-01T19:00:00.000Z', { reviewStatus: 'pending' })],
+    sightingKinds: { p: 'conjunction' },
+  })
+
+  assert.equal(progress.totalPoints, 0)
+})

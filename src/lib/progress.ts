@@ -1,5 +1,6 @@
 import type { ObservationLogEntry } from './db'
 import type { TripPlan } from './tripPlans'
+import { categoryForKind, GUIDE_KIND_IDS } from './eventCategories.ts'
 
 export const LEVEL_THRESHOLDS = [0, 40, 100, 180, 300] as const
 
@@ -18,6 +19,9 @@ export interface ProgressSummary {
   nextLevelAt: number | null
   pointsToNextLevel: number
   skills: Record<ProgressSkill, number>
+  // Observing points earned by sky-event kind (conjunction, planet_event, ...),
+  // a breakdown of the typed bonus only, not of the per-night base points.
+  observingByKind: Record<string, number>
   milestones: ProgressMilestone[]
 }
 
@@ -27,6 +31,16 @@ export interface ProgressInput {
   // deliberately never reach this projector, so they cannot grant points.
   tripPlan?: TripPlan | null
   firstTourBadge?: 'first_light' | null
+  // Entry id -> sky-event kind, resolved by the caller (skyEvents join, recipe
+  // fallback). Kept as input so this module stays free of Dexie and recipes.
+  sightingKinds?: Readonly<Record<string, string>>
+}
+
+export const TYPED_SIGHTING_POINTS = 5
+
+// Guides (comet tracker, night-sky guides) are pointer cards, not sightings.
+export function isTypedSightingKind(kind: string | undefined): kind is string {
+  return kind !== undefined && !GUIDE_KIND_IDS.has(kind) && categoryForKind(kind) !== undefined
 }
 
 function civilDate(observedAt: string): string {
@@ -64,7 +78,7 @@ function levelFor(points: number): { level: number; nextLevelAt: number | null }
  * later replace it with a server-backed idempotent ledger without changing the
  * rules represented here.
  */
-export function projectProgress({ observations, tripPlan = null, firstTourBadge = null }: ProgressInput): ProgressSummary {
+export function projectProgress({ observations, tripPlan = null, firstTourBadge = null, sightingKinds = {} }: ProgressInput): ProgressSummary {
   const skills: Record<ProgressSkill, number> = {
     observing: 0,
     photography: 0,
@@ -78,7 +92,13 @@ export function projectProgress({ observations, tripPlan = null, firstTourBadge 
   // prove separate photos, but never turn into multiple "went outside" awards.
   skills.observing += nights.size * 10
 
+  const observingByKind: Record<string, number> = {}
   for (const entry of qualifying) {
+    const kind = sightingKinds[entry.id]
+    if (isTypedSightingKind(kind)) {
+      skills.observing += TYPED_SIGHTING_POINTS
+      observingByKind[kind] = (observingByKind[kind] ?? 0) + TYPED_SIGHTING_POINTS
+    }
     if (hasPhoto(entry)) skills.photography += 8
     if (entry.isPublic === true) skills.photography += 15
   }
@@ -98,6 +118,7 @@ export function projectProgress({ observations, tripPlan = null, firstTourBadge 
     nextLevelAt,
     pointsToNextLevel: nextLevelAt === null ? 0 : Math.max(0, nextLevelAt - totalPoints),
     skills,
+    observingByKind,
     milestones: [
       { id: 'first-trip', label: 'First trip planned', achieved: tripPlan !== null },
       { id: 'first-check-in', label: 'First check-in', achieved: qualifying.length > 0 },

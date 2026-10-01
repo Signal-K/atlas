@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { db } from '../lib/db'
 import { getActiveTripPlan } from '../lib/tripPlans'
+import { resolveSightingKinds } from '../lib/progressSnapshot'
+import { categoryForKind } from '../lib/eventCategories'
 import { PROGRESS_SKILLS, projectProgress } from '../lib/progress'
 import type { ProgressSkill, ProgressSummary } from '../lib/progress'
 
@@ -18,6 +20,16 @@ const SKILL_LABELS: Record<ProgressSkill, string> = {
 // a bar reads as "share of the way to the highest level", not a per-skill max.
 const METER_SCALE = 300
 
+const KIND_LABELS: Record<string, string> = {
+  conjunction: 'Conjunctions',
+  planet_event: 'Planets',
+  bright_star: 'Stars',
+}
+
+function kindLabel(kind: string): string {
+  return KIND_LABELS[kind] ?? categoryForKind(kind)?.label ?? kind
+}
+
 export function ProgressCard() {
   const { user } = useAuth()
   const [summary, setSummary] = useState<ProgressSummary | null>(null)
@@ -31,7 +43,8 @@ export function ProgressCard() {
         db.observations.where('userId').equals(userId).toArray(),
         user ? getActiveTripPlan() : Promise.resolve(null),
       ])
-      if (!cancelled) setSummary(projectProgress({ observations, tripPlan, firstTourBadge }))
+      const sightingKinds = await resolveSightingKinds(observations)
+      if (!cancelled) setSummary(projectProgress({ observations, tripPlan, firstTourBadge, sightingKinds }))
     }
     load().catch(() => {
       if (!cancelled) setSummary(projectProgress({ observations: [], firstTourBadge }))
@@ -74,6 +87,13 @@ export function ProgressCard() {
                     <span>{SKILL_LABELS[skill]}</span>
                     <span className="az-muted">{summary.skills[skill]}</span>
                   </div>
+                  {skill === 'observing' &&
+                    Object.entries(summary.observingByKind).map(([kind, points]) => (
+                      <div key={kind} data-observing-kind={kind} className="az-muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', paddingLeft: '0.5rem' }}>
+                        <span>{kindLabel(kind)}</span>
+                        <span>{points}</span>
+                      </div>
+                    ))}
                   <div
                     role="meter"
                     aria-label={SKILL_LABELS[skill]}
