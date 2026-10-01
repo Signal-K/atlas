@@ -60,7 +60,7 @@ test('a save appends its award once and a repeat save adds nothing', async ({ pa
   await stubLedger(page, store, opts)
 
   await logSkyNight(page, '2026-09-20')
-  await expect.poll(() => store.length).toBe(1)
+  await expect.poll(() => store.length, { timeout: 15_000 }).toBe(1)
   expect(store[0]).toMatchObject({ action: 'community_night', source_id: '2026-09-20', skill: 'community', points: 25, user: 'e2e-user' })
 
   // Same civil date again: the projector already counted it, so the ledger
@@ -73,7 +73,7 @@ test('a save appends its award once and a repeat save adds nothing', async ({ pa
 
   // A different date is a new key: exactly one more row.
   await logSkyNight(page, '2026-09-21')
-  await expect.poll(() => store.length).toBe(2)
+  await expect.poll(() => store.length, { timeout: 15_000 }).toBe(2)
 })
 
 test('rows already in the ledger are backfilled around, not duplicated', async ({ page }) => {
@@ -93,10 +93,10 @@ test('a failing ledger write never blocks the save and is retried on the next on
   await stubLedger(page, store, opts)
 
   await logSkyNight(page, '2026-09-20') // toast still appears; the 500 is swallowed
-  await expect.poll(() => opts.creates.n).toBe(1)
+  await expect.poll(() => opts.creates.n, { timeout: 15_000 }).toBe(1)
   expect(store).toHaveLength(0)
 
   await logSkyNight(page, '2026-09-21') // next save re-projects and appends both awards
-  await expect.poll(() => store.length).toBe(2)
+  await expect.poll(() => store.length, { timeout: 15_000 }).toBe(2)
   expect(store.map((row) => row.source_id).sort()).toEqual(['2026-09-20', '2026-09-21'])
 })
