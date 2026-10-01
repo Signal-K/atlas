@@ -15,7 +15,22 @@ let entitlementRefreshPromise: Promise<AuthUser | null> | null = null
 // the DevPreviewPanel that drives it) is dead-code-eliminated -- it cannot
 // reach a real build.
 const DEV = import.meta.env.DEV
-let devPreviewUser: AuthUser | null = null
+// ASV-115: kept in sessionStorage so a full page load (deep link, reload, e2e
+// goto) does not drop the preview. Every touch is behind `DEV`, so the key and
+// helpers are removed with the rest of this branch in production builds.
+const DEV_PREVIEW_KEY = 'atlas-dev-preview-user'
+
+function readStoredDevPreviewUser(): AuthUser | null {
+  if (!DEV) return null
+  try {
+    const raw = window.sessionStorage.getItem(DEV_PREVIEW_KEY)
+    return raw ? (JSON.parse(raw) as AuthUser) : null
+  } catch {
+    return null
+  }
+}
+
+let devPreviewUser: AuthUser | null = readStoredDevPreviewUser()
 const devPreviewListeners = new Set<() => void>()
 
 export function getDevPreviewUser(): AuthUser | null {
@@ -25,6 +40,12 @@ export function getDevPreviewUser(): AuthUser | null {
 export function setDevPreviewUser(user: AuthUser | null): void {
   if (!DEV) return
   devPreviewUser = user
+  try {
+    if (user) window.sessionStorage.setItem(DEV_PREVIEW_KEY, JSON.stringify(user))
+    else window.sessionStorage.removeItem(DEV_PREVIEW_KEY)
+  } catch {
+    // Storage blocked: the preview still works, it just won't survive a reload.
+  }
   devPreviewListeners.forEach((listener) => listener())
 }
 
