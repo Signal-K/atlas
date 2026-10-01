@@ -33,6 +33,12 @@ const APP_HOME = '/app/hub'
 // watchlist, saved plans), costs money, or writes to the account stays gated.
 const GUEST_ROUTES = new Set([APP_HOME])
 
+// Human name for the area a guest was bounced from, e.g. /app/calendar -> "Calendar".
+function lockedAreaLabel(pathname: string) {
+  const segment = pathname.split('/').filter(Boolean)[1]
+  return segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : undefined
+}
+
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -188,6 +194,7 @@ function App() {
           // out of the product.
           backTo={APP_HOME}
           backLabel="Back to tonight"
+          lockedArea={lockedAreaLabel(routerLocation.pathname)}
         />
         <DevPreviewPanel />
       </>

@@ -15,6 +15,9 @@ interface AuthGateProps {
   // back there instead of being ejected from the product.
   backTo?: string
   backLabel?: string
+  // Name of the area the visitor tried to open, so the gate can say why they
+  // are looking at a form (ASV-103) instead of presenting a bare "Welcome back".
+  lockedArea?: string
 }
 
 interface TonightSnapshot {
@@ -44,6 +47,7 @@ export function AuthGate({
   currentLocation,
   backTo = '/',
   backLabel = 'Back to Atlas',
+  lockedArea,
 }: AuthGateProps) {
   const [mode, setMode] = useState(defaultMode)
   const [tonight, setTonight] = useState<TonightSnapshot | null>(null)
@@ -73,6 +77,12 @@ export function AuthGate({
                 ? 'Anything you have already saved on this device comes with you.'
                 : 'Sign in to pick up your plans, journal and watchlist.'}
             </p>
+
+            {lockedArea && (
+              <p className="auth-gate-locked" role="status">
+                {lockedArea} is part of your free account. New here? Choose Create account.
+              </p>
+            )}
 
             <AuthForm
               defaultMode={defaultMode}

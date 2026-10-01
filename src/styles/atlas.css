@@ -1944,6 +1944,24 @@
   color: #9a9aa4;
 }
 
+.auth-gate-locked {
+  margin: 0 0 1rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #2a2a31;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #d4d4dc;
+}
+
+.az-nav-drawer-lock {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .auth-gate-back {
   display: inline-flex !important;
   align-items: center;

@@ -111,3 +111,9 @@ test('the gate returns a guest to tonight rather than ejecting them to the landi
   await page.getByRole('button', { name: /Back to tonight/ }).click()
   await expect(page).toHaveURL('/app/hub')
 })
+
+test('the gate names the area a guest tried to open and points new users to Create account', async ({ page }) => {
+  await page.goto('/app/calendar')
+  await expect(page.getByRole('status')).toContainText(/Calendar is part of your free account/)
+  await expect(page.getByRole('status')).toContainText(/Create account/)
+})

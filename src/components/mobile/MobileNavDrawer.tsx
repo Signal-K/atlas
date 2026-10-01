@@ -128,6 +128,7 @@ export function MobileNavDrawer({ items, open, onClose }: { items: NavItem[]; op
             >
               <span aria-hidden="true">{item.icon}</span>
               <span>{item.label}</span>
+              {item.locked && <span className="az-nav-drawer-lock">Free account</span>}
             </NavLink>
           ))}
         </nav>
