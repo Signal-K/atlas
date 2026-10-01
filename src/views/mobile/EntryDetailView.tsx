@@ -251,25 +251,44 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
           </>
         )}
 
-        <button
-          type="button"
-          className="az-row"
-          style={{ marginTop: '0.75rem', borderRadius: '0.875rem', border: '1px solid var(--line)' }}
-          onClick={() => setRecipeOpen((current) => !current)}
-        >
-          <span className="az-row-icon" style={{ color: 'var(--az-amber)' }}>
-            <MobileIcon name="camera" />
-          </span>
-          <span className="az-row-main">
-            <span className="az-row-title">{recipeOpen ? 'Hide camera recipe' : 'Camera recipe'}</span>
-            <span className="az-row-value">{subject.recipeKey ? 'Suggested phone/telescope settings' : 'Naked eye or binoculars is the way to go'}</span>
-          </span>
-          <span className="az-row-chevron">
-            <MobileIcon name="chevron" size={14} />
-          </span>
-        </button>
-        {recipeOpen && (
-          <div style={{ marginTop: '0.625rem' }}>{subject.recipeKey ? <CameraRecipe recipeKey={subject.recipeKey} target={subject.title} /> : null}</div>
+        {/* ASV-117: with no recipe there is nothing to expand, so this must not
+            be a button -- clicking the "Naked eye or binoculars" text did
+            nothing and showed up as rage clicks. */}
+        {subject.recipeKey ? (
+          <>
+            <button
+              type="button"
+              className="az-row"
+              style={{ marginTop: '0.75rem', borderRadius: '0.875rem', border: '1px solid var(--line)' }}
+              onClick={() => setRecipeOpen((current) => !current)}
+            >
+              <span className="az-row-icon" style={{ color: 'var(--az-amber)' }}>
+                <MobileIcon name="camera" />
+              </span>
+              <span className="az-row-main">
+                <span className="az-row-title">{recipeOpen ? 'Hide camera recipe' : 'Camera recipe'}</span>
+                <span className="az-row-value">Suggested phone/telescope settings</span>
+              </span>
+              <span className="az-row-chevron">
+                <MobileIcon name="chevron" size={14} />
+              </span>
+            </button>
+            {recipeOpen && (
+              <div style={{ marginTop: '0.625rem' }}>
+                <CameraRecipe recipeKey={subject.recipeKey} target={subject.title} />
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="az-row" style={{ marginTop: '0.75rem', borderRadius: '0.875rem', border: '1px solid var(--line)', cursor: 'default' }}>
+            <span className="az-row-icon" style={{ color: 'var(--az-amber)' }}>
+              <MobileIcon name="eye" />
+            </span>
+            <span className="az-row-main">
+              <span className="az-row-title">How to watch</span>
+              <span className="az-row-value">Naked eye or binoculars is the way to go</span>
+            </span>
+          </div>
         )}
 
         {actions?.onToggleTag && (
