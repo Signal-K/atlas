@@ -6,11 +6,21 @@ struct AtlasApp: App {
     private static let client = PocketBaseClient(baseURL: Config.pocketBaseURL)
     private static let fixtures = Fixtures.fromLaunchArguments()
 
-    @State private var session = SessionStore(service: FixtureAuthService.fromLaunchArguments() ?? LiveAuthService(client: client))
+    @State private var session: SessionStore
+    @State private var skyPass: SkyPassStore
+
+    init() {
+        let session = SessionStore(service: FixtureAuthService.fromLaunchArguments() ?? LiveAuthService(client: Self.client))
+        _session = State(initialValue: session)
+        let fixture = FixtureSkyPass.fromLaunchArguments()
+        let provider: SkyPassProvider = fixture ?? StoreKitProvider()
+        let backend: SkyPassBackend = fixture ?? LiveSkyPassBackend(baseURL: Config.billingURL)
+        _skyPass = State(initialValue: SkyPassStore(provider: provider, backend: backend, account: session))
+    }
 
     var body: some Scene {
         WindowGroup {
-            RootView(session: session) {
+            RootView(session: session, skyPass: skyPass) {
                 TonightModel(
                     events: Self.fixtures ?? LiveEventSource(client: Self.client),
                     forecasts: Self.fixtures ?? LiveForecastSource(),

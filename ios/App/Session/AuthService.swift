@@ -2,8 +2,12 @@ import AtlasCore
 import Foundation
 
 struct AuthIdentity: Equatable, Sendable {
+    let userID: String
     let email: String
     let token: String
+    /// `users.entitled` on the shared Atlas account: true for Sky Pass bought through any
+    /// processor (Apple on iOS, Polar on web), so a web purchase unlocks the app and vice versa.
+    var entitled = false
 }
 
 protocol AuthService: Sendable {
@@ -66,7 +70,9 @@ struct LiveAuthService: AuthService {
 
     private func identity(from record: PocketBaseRecord) throws -> AuthIdentity {
         guard let token = client.token else { throw AuthFailure.expired }
-        return AuthIdentity(email: record.fields["email"]?.stringValue ?? "", token: token)
+        return AuthIdentity(
+            userID: record.id, email: record.fields["email"]?.stringValue ?? "", token: token,
+            entitled: record.fields["entitled"]?.boolValue ?? false)
     }
 }
 
@@ -80,14 +86,14 @@ struct FixtureAuthService: AuthService {
     func signIn(email: String, password: String) async throws -> AuthIdentity {
         try await Task.sleep(for: .milliseconds(700))
         guard password != "wrong" else { throw AuthFailure.badCredentials }
-        return AuthIdentity(email: email, token: "fixture")
+        return AuthIdentity(userID: "fixture-user", email: email, token: "fixture")
     }
 
     func register(email: String, password: String) async throws -> AuthIdentity {
         try await Task.sleep(for: .milliseconds(700))
         guard password.count >= 8, !email.contains("taken") else { throw AuthFailure.invalidDetails }
-        return AuthIdentity(email: email, token: "fixture")
+        return AuthIdentity(userID: "fixture-user", email: email, token: "fixture")
     }
 
-    func restore(token: String) async throws -> AuthIdentity { AuthIdentity(email: "stored@atlas.test", token: token) }
+    func restore(token: String) async throws -> AuthIdentity { AuthIdentity(userID: "fixture-user", email: "stored@atlas.test", token: token) }
 }

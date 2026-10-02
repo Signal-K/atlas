@@ -6,11 +6,13 @@ import SwiftUI
 /// into place as it arrives.
 struct TonightView: View {
     let session: SessionStore
+    let skyPass: SkyPassStore
     @State var model: TonightModel
 
     @State private var drift = 0.0
     @State private var detail: DetailItem?
     @State private var showAccount = false
+    @State private var showSkyPass = false
 
     var body: some View {
         ZStack {
@@ -38,13 +40,21 @@ struct TonightView: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) { topBar }
         .task { await model.load() }
+        // `-AtlasOpenSkyPass` (testing / screenshots): present the Sky Pass sheet on arrival.
+        .task { if ProcessInfo.processInfo.arguments.contains("-AtlasOpenSkyPass") { try? await Task.sleep(for: .seconds(1)); showSkyPass = true } }
         .sheet(item: $detail) { item in
             DetailSheet(item: item, timeZone: model.plan?.timeZone ?? .current)
                 .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showAccount) {
-            AccountSheet(session: session) { showAccount = false }
-                .presentationDetents([.height(300)])
+            AccountSheet(session: session, skyPass: skyPass,
+                         openSkyPass: { showAccount = false; Task { try? await Task.sleep(for: .milliseconds(350)); showSkyPass = true } },
+                         dismiss: { showAccount = false })
+                .presentationDetents([.height(380)])
+        }
+        .sheet(isPresented: $showSkyPass) {
+            SkyPassView(store: skyPass, signedIn: session.userID != nil) { showSkyPass = false }
+                .presentationDetents([.large]).presentationDragIndicator(.visible)
         }
     }
 
@@ -182,6 +192,8 @@ private struct Skeleton: View {
 
 private struct AccountSheet: View {
     let session: SessionStore
+    let skyPass: SkyPassStore
+    let openSkyPass: () -> Void
     let dismiss: () -> Void
     var body: some View {
         VStack(spacing: 16) {
@@ -189,6 +201,13 @@ private struct AccountSheet: View {
             Text(session.email ?? "Looking as a guest").font(.serif(20)).foregroundStyle(Brand.ink)
             Text(session.email == nil ? "Sign in to keep your watchlist and journal." : "Signed in to Atlas.")
                 .font(.system(size: 14)).foregroundStyle(Brand.muted)
+            Button { Haptics.tap(); openSkyPass() } label: {
+                Text(skyPass.isEntitled ? "Sky Pass · active" : "Get Sky Pass")
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(skyPass.isEntitled ? Brand.green : Brand.violet)
+                    .padding(.horizontal, 24).frame(minHeight: 46)
+                    .background(Brand.surface, in: Capsule()).overlay(Capsule().strokeBorder(Brand.line2))
+            }
+            .buttonStyle(PressableStyle())
             Button {
                 dismiss(); session.signOut()
             } label: {

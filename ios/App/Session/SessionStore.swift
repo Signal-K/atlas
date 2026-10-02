@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import AtlasCore
 import SwiftUI
 
 @Observable @MainActor
@@ -19,7 +20,11 @@ final class SessionStore {
     private(set) var warp: Double = 0
 
     private let service: AuthService
-    private let tokenKey = "pb.token", emailKey = "pb.email"
+    private let tokenKey = "pb.token", emailKey = "pb.email", userKey = "pb.uid", entitledKey = "pb.entitled"
+
+    /// The Atlas account id (PocketBase `users` id); nil for guests.
+    private(set) var userID: String?
+    private(set) var isEntitled = false
 
     init(service: AuthService) { self.service = service }
 
@@ -31,8 +36,17 @@ final class SessionStore {
         guard state == .launching else { return }
         // `-AtlasGuest`: skip the welcome screen (testing / screenshots).
         if ProcessInfo.processInfo.arguments.contains("-AtlasGuest") { state = .guest; return }
+        // `-AtlasFixtureSignedIn`: a signed-in fixture account without the welcome flow.
+        if ProcessInfo.processInfo.arguments.contains("-AtlasFixtureSignedIn") {
+            userID = "fixture-user"
+            state = .signedIn(email: "stargazer@atlas.test")
+            return
+        }
         guard let token = Keychain.read(tokenKey) else { state = .signedOut; return }
         let cachedEmail = Keychain.read(emailKey) ?? ""
+        // Offline launches keep what the account last said, so a paid user isn't locked out on a plane.
+        userID = Keychain.read(userKey)
+        isEntitled = Keychain.read(entitledKey) == "1"
         do {
             let id = try await service.restore(token: token)
             persist(id)
@@ -58,6 +72,8 @@ final class SessionStore {
 
     func signOut() {
         clearStored()
+        userID = nil
+        isEntitled = false
         state = .signedOut
     }
 
@@ -72,10 +88,23 @@ final class SessionStore {
     private func persist(_ id: AuthIdentity) {
         Keychain.write(id.token, for: tokenKey)
         Keychain.write(id.email, for: emailKey)
+        Keychain.write(id.userID, for: userKey)
+        Keychain.write(id.entitled ? "1" : "0", for: entitledKey)
+        userID = id.userID
+        isEntitled = id.entitled
     }
 
     private func clearStored() {
-        Keychain.delete(tokenKey)
-        Keychain.delete(emailKey)
+        for key in [tokenKey, emailKey, userKey, entitledKey] { Keychain.delete(key) }
+    }
+}
+
+extension SessionStore: SkyPassAccount {
+    /// Read fresh each time: `restore()` rotates the token.
+    var bearerToken: String? { Keychain.read(tokenKey) }
+
+    func markEntitled() {
+        isEntitled = true
+        Keychain.write("1", for: entitledKey)
     }
 }

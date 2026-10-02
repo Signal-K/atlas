@@ -10,11 +10,16 @@ targets:
   Atlas:
     type: application
     platform: iOS
-    sources: [App]
+    sources:
+      - App
+      - path: Atlas.storekit
+        buildPhase: none
     info:
       path: App/Info.plist
       properties:
         AtlasPBURL: $(ATLAS_PB_URL)
+        AtlasBillingURL: $(ATLAS_BILLING_URL)
+        AtlasPrivacyURL: https://youratlas.cc/privacy
         NSLocationWhenInUseUsageDescription: Atlas uses your location to work out what is above you tonight and when it gets dark.
         UILaunchScreen: {}
         CFBundleDisplayName: Atlas
@@ -31,3 +36,14 @@ targets:
         # Local Atlas PocketBase (`make pb` in the repo root -> :8094, matching .env VITE_PB_URL).
         # :8090 is a different project's server. Override per build config.
         ATLAS_PB_URL: "http://127.0.0.1:8094"
+        # Local atlas-billing (the web app's VITE_ATLAS_BILLING_URL default). Production builds must point at
+        # https://signal-k-atlas-billing.fly.dev, which is where purchases are verified.
+        ATLAS_BILLING_URL: "http://127.0.0.1:8093"
+schemes:
+  Atlas:
+    build:
+      targets:
+        Atlas: all
+    run:
+      # Local StoreKit testing: products without App Store Connect (Xcode > Debug > StoreKit).
+      storeKitConfiguration: Atlas.storekit

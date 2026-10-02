@@ -10,6 +10,7 @@ const DEV_USER: AuthUser = {
   id: 'dev-preview-user',
   email: 'dev-preview@local.test',
   entitled: false,
+  entitlementSource: '',
   onboarded: true,
   // Stamped at the current version so previewing the signed-in state shows the
   // app rather than dropping the 8-step first-run flow over it. Clear

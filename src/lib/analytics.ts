@@ -18,7 +18,7 @@ const apiKey = import.meta.env.VITE_POSTHOG_KEY as string | undefined
 // still lands before the capture() that follows it).
 let loading: Promise<PostHog> | null = null
 
-type AnalyticsUser = { id: string; email: string; entitled: boolean }
+type AnalyticsUser = { id: string; email: string; entitled: boolean; entitlementSource?: string }
 
 // Checkout and recovery links legitimately carry one-time query parameters.
 // Analytics and replay need the route, never those credentials. Use the same
@@ -56,6 +56,7 @@ function persistedAnalyticsUser(): AnalyticsUser | null {
     id: model.id as string,
     email: model.email as string,
     entitled: Boolean(model.entitled),
+    entitlementSource: String(model.entitlement_source || ''),
   }
 }
 
@@ -64,6 +65,9 @@ function applyIdentifiedUser(posthog: SessionReplayClient, user: AnalyticsUser) 
     email: user.email,
     atlas_user_id: user.id,
     entitled: user.entitled,
+    // Which processor granted Sky Pass (polar | apple | ...); matches the
+    // server-side entitlement_changed event so web and iOS share one person.
+    entitlement_source: user.entitlementSource || (user.entitled ? 'unknown' : 'none'),
   })
 }
 

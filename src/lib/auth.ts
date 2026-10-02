@@ -63,6 +63,8 @@ export interface AuthUser {
   id: string
   email: string
   entitled: boolean
+  // Which processor granted Sky Pass: 'polar', 'apple', ... ('' = unknown/legacy).
+  entitlementSource: string
   onboarded: boolean
   // Which version of the onboarding flow this account last completed; 0 if
   // never. The versioned replacement for `onboarded` as a gate input -- see
@@ -91,6 +93,7 @@ function currentUser(): AuthUser | null {
     id: model.id as string,
     email: model.email as string,
     entitled: Boolean(model.entitled),
+    entitlementSource: String(model.entitlement_source || ''),
     onboarded: Boolean(model.onboarded),
     // `|| 0` rather than a plain Number(): the field is absent from the auth
     // record until migration 39 has run *and* this record has been re-fetched,
