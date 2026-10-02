@@ -29,6 +29,8 @@ final class SessionStore {
     /// keeps the user signed in so Tonight still opens on a plane.
     func restore() async {
         guard state == .launching else { return }
+        // `-AtlasGuest`: skip the welcome screen (testing / screenshots).
+        if ProcessInfo.processInfo.arguments.contains("-AtlasGuest") { state = .guest; return }
         guard let token = Keychain.read(tokenKey) else { state = .signedOut; return }
         let cachedEmail = Keychain.read(emailKey) ?? ""
         do {

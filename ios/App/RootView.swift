@@ -4,14 +4,14 @@ import SwiftUI
 /// change of foreground rather than a page swap.
 struct RootView: View {
     let session: SessionStore
-    let makeTonight: () -> HubViewModel
+    let makeTonight: () -> TonightModel
 
-    @State private var tonight: HubViewModel?
+    @State private var tonight: TonightModel?
 
     var body: some View {
         ZStack {
             // Tonight draws its own backdrop (it needs scroll drift); both share the same warp.
-            if !isSignedIn { SkyBackdrop(warp: session.warp) }
+            if !isSignedIn { PaperBackdrop(warp: session.warp) }
             switch session.state {
             case .launching:
                 Color.clear
@@ -24,8 +24,7 @@ struct RootView: View {
                 }
             }
         }
-        .background(Sky.zenith.ignoresSafeArea())
-        .preferredColorScheme(.dark)
+        .background(Brand.bg.ignoresSafeArea())
         .task { await session.restore() }
         .onChange(of: session.state) { _, state in
             if state == .guest || state.isSignedIn { tonight = tonight ?? makeTonight() } else { tonight = nil }

@@ -4,11 +4,6 @@ import Foundation
 /// degrees of elongation, which is plenty for naming a phase. The web app uses
 /// astronomy-engine for exact values; swap this out if that precision is needed.
 public enum MoonPhase {
-    public static let names = [
-        "New moon", "Waxing crescent", "First quarter", "Waxing gibbous",
-        "Full moon", "Waning gibbous", "Last quarter", "Waning crescent",
-    ]
-
     /// Moon-minus-sun ecliptic longitude in degrees: 0 new, 90 first quarter,
     /// 180 full, 270 last quarter.
     public static func elongation(at date: Date) -> Double {
@@ -25,8 +20,19 @@ public enum MoonPhase {
         return ((angle.truncatingRemainder(dividingBy: 360)) + 360).truncatingRemainder(dividingBy: 360)
     }
 
+    /// Named from the elongation with narrow quarter/new/full bands, so the name never contradicts
+    /// the illumination shown beside it (a 60% lit moon is gibbous, not "quarter").
     public static func name(at date: Date) -> String {
-        names[Int((elongation(at: date) / 45).rounded()) % 8]
+        let e = elongation(at: date)
+        let waxing = e < 180
+        let a = waxing ? e : 360 - e // degrees from new, 0...180
+        switch a {
+        case ..<10: return "New moon"
+        case ..<84: return waxing ? "Waxing crescent" : "Waning crescent"
+        case ..<96: return waxing ? "First quarter" : "Last quarter"
+        case ..<170: return waxing ? "Waxing gibbous" : "Waning gibbous"
+        default: return "Full moon"
+        }
     }
 
     public static func isWaxing(at date: Date) -> Bool { elongation(at: date) < 180 }

@@ -4,7 +4,7 @@ Native SwiftUI app (iOS 17+). `AtlasCore/` is a SwiftPM package (PocketBase clie
 
 - Needs full Xcode: `xcodegen generate && open Atlas.xcodeproj`
 - Core tests: `cd AtlasCore && swift test` (XCTest, requires Xcode's toolchain)
-- PocketBase URL: `ATLAS_PB_URL` build setting (defaults to local `http://127.0.0.1:8090`)
+- PocketBase URL: `ATLAS_PB_URL` build setting (defaults to local `http://127.0.0.1:8094`, what `make pb` starts)
 
 ## App structure (ASV-121)
 

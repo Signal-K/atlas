@@ -1,9 +1,8 @@
 import AtlasCore
 import SwiftUI
 
-/// Auth as an arrival, not a form page: the Moon hangs over the horizon, the wordmark resolves
-/// letter by letter, and a glass panel rises from the ridge. Signing in flings the stars into
-/// hyperspace (see `SessionStore.warp`).
+/// Sign in as Atlas's own front door: the hedgehog mark, a serif question, a calm form on paper.
+/// Signing in flings the paper stars into hyperspace (see `SessionStore.warp`).
 struct WelcomeView: View {
     let session: SessionStore
 
@@ -14,70 +13,57 @@ struct WelcomeView: View {
     @State private var busy = false
     @State private var errorText: String?
     @State private var shake = 0
+    @State private var rock = false
     @FocusState private var focus: Field?
     @Namespace private var modeNS
 
     private enum Field { case email, password }
-    private let word = Array("ATLAS")
-    private var moonAt: Double { MoonPhase.elongation(at: .now) }
+    private let headline = "What can I see in the sky tonight?".split(separator: " ").map(String.init)
+    private var compact: Bool { focus != nil }
 
     var body: some View {
         GeometryReader { geo in
             VStack(spacing: 0) {
-                hero
-                    .frame(maxHeight: .infinity)
-                    // the hero yields to the keyboard instead of being pushed off screen
-                    .opacity(focus == nil ? 1 : 0.0)
-                    .scaleEffect(focus == nil ? 1 : 0.8, anchor: .top)
+                hero.frame(maxHeight: .infinity)
                 panel
-                    .keyframeAnimator(initialValue: 0.0, trigger: shake) { view, x in
-                        view.offset(x: x)
-                    } keyframes: { _ in
+                    .keyframeAnimator(initialValue: 0.0, trigger: shake) { view, x in view.offset(x: x) } keyframes: { _ in
                         KeyframeTrack {
-                            CubicKeyframe(-12, duration: 0.06)
-                            CubicKeyframe(10, duration: 0.08)
-                            CubicKeyframe(-7, duration: 0.08)
-                            CubicKeyframe(4, duration: 0.08)
-                            CubicKeyframe(0, duration: 0.08)
+                            CubicKeyframe(-12, duration: 0.06); CubicKeyframe(10, duration: 0.08)
+                            CubicKeyframe(-7, duration: 0.08); CubicKeyframe(4, duration: 0.08); CubicKeyframe(0, duration: 0.08)
                         }
                     }
-                    .offset(y: arrived ? 0 : geo.size.height * 0.5)
+                    .offset(y: arrived ? 0 : geo.size.height * 0.4)
                     .opacity(arrived ? 1 : 0)
             }
             .padding(.horizontal, 20)
         }
-        .animation(.smooth(duration: 0.4), value: focus)
+        .animation(.smooth(duration: 0.4), value: compact)
         .task {
-            withAnimation(.spring(response: 1.0, dampingFraction: 0.82).delay(0.55)) { arrived = true }
+            withAnimation(.spring(response: 1.0, dampingFraction: 0.82).delay(0.5)) { arrived = true }
+            withAnimation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true)) { rock = true }
         }
     }
 
     // MARK: Hero
 
     private var hero: some View {
-        VStack(spacing: 22) {
-            Spacer(minLength: 24)
-            MoonHero(elongation: moonAt)
-                .frame(width: 148, height: 148)
-            HStack(spacing: 6) {
-                ForEach(Array(word.enumerated()), id: \.offset) { i, ch in
-                    Text(String(ch))
-                        .font(.system(size: 46, weight: .thin, design: .rounded))
-                        .foregroundStyle(Sky.ink)
-                        .opacity(arrived ? 1 : 0)
-                        .blur(radius: arrived ? 0 : 14)
-                        .offset(y: arrived ? 0 : 18)
-                        .animation(.spring(response: 0.9, dampingFraction: 0.8).delay(0.15 + Double(i) * 0.09), value: arrived)
-                }
+        VStack(spacing: compact ? 12 : 22) {
+            Spacer(minLength: 16)
+            AtlasMark(size: compact ? 64 : 112)
+                .rotationEffect(.degrees(rock ? 3 : -3))
+                .offset(y: rock ? -4 : 4)
+                .scaleEffect(arrived ? 1 : 0.6).opacity(arrived ? 1 : 0)
+                .animation(.spring(response: 0.9, dampingFraction: 0.6), value: arrived)
+            Text("Atlas").font(.display(compact ? 26 : 34)).foregroundStyle(Brand.ink)
+                .accessibilityAddTraits(.isHeader)
+            // Word-by-word reveal; wraps naturally.
+            WrappingWords(words: headline, arrived: arrived, size: compact ? 24 : 32)
+            if !compact {
+                Text("Atlas shows what's visible, when to go outside and what to point your phone at.")
+                    .font(.system(size: 15)).foregroundStyle(Brand.muted).multilineTextAlignment(.center)
+                    .opacity(arrived ? 1 : 0).animation(.easeOut(duration: 0.8).delay(1.1), value: arrived)
+                    .transition(.opacity)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Atlas")
-            .accessibilityAddTraits(.isHeader)
-            Text("What's above you tonight")
-                .font(.callout).tracking(1.4).textCase(.uppercase)
-                .foregroundStyle(Sky.dim)
-                .opacity(arrived ? 1 : 0)
-                .animation(.easeOut(duration: 0.8).delay(0.9), value: arrived)
             Spacer(minLength: 8)
         }
     }
@@ -85,35 +71,33 @@ struct WelcomeView: View {
     // MARK: Panel
 
     private var panel: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 14) {
             modePicker
             VStack(spacing: 10) {
                 field("Email", text: $email, secure: false)
-                    .focused($focus, equals: .email)
-                    .submitLabel(.next)
-                    .onSubmit { focus = .password }
+                    .focused($focus, equals: .email).submitLabel(.next).onSubmit { focus = .password }
                 field("Password", text: $password, secure: true)
-                    .focused($focus, equals: .password)
-                    .submitLabel(.go)
-                    .onSubmit(submit)
+                    .focused($focus, equals: .password).submitLabel(.go).onSubmit(submit)
             }
             if let errorText {
                 Label(errorText, systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote).foregroundStyle(Color(red: 1, green: 0.65, blue: 0.55))
+                    .font(.footnote).foregroundStyle(Brand.flagship)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.move(edge: .top).combined(with: .opacity))
-                    .accessibilityAddTraits(.isStaticText)
             }
             primaryButton
-            Button("Just look at the sky") { Task { await session.continueAsGuest() } }
-                .font(.subheadline).foregroundStyle(Sky.dim)
-                .disabled(busy)
+            Button { Task { await session.continueAsGuest() } } label: {
+                Text("Just look at the sky").font(.system(size: 14, weight: .medium))
+                    .padding(.horizontal, 18).frame(minHeight: 40)
+                    .foregroundStyle(Brand.ink).background(Brand.surface2, in: Capsule())
+                    .overlay(Capsule().strokeBorder(Brand.line))
+            }
+            .buttonStyle(PressableStyle()).disabled(busy)
         }
-        .padding(18)
-        .background(.ultraThinMaterial.opacity(0.9), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(.white.opacity(0.14)))
+        .padding(16)
+        .brandCard(radius: 22)
+        .shadow(color: .black.opacity(0.06), radius: 18, y: 8)
         .padding(.bottom, 12)
-        .environment(\.colorScheme, .dark)
         .animation(.smooth, value: errorText)
     }
 
@@ -126,22 +110,16 @@ struct WelcomeView: View {
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) { mode = m }
                     errorText = nil
                 } label: {
-                    Text(m.rawValue)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(mode == m ? Color.black : Sky.dim)
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background {
-                            if mode == m {
-                                Capsule().fill(Sky.moonlight).matchedGeometryEffect(id: "pill", in: modeNS)
-                            }
-                        }
+                    Text(m.rawValue).font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(mode == m ? Brand.bg : Brand.ink)
+                        .frame(maxWidth: .infinity).frame(minHeight: 36)
+                        .background { if mode == m { Capsule().fill(Brand.ink).matchedGeometryEffect(id: "pill", in: modeNS) } }
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(4)
-        .background(Capsule().fill(.white.opacity(0.08)))
+        .padding(3).background(Capsule().fill(Brand.chip))
     }
 
     @ViewBuilder private func field(_ title: String, text: Binding<String>, secure: Bool) -> some View {
@@ -149,27 +127,26 @@ struct WelcomeView: View {
             if secure { SecureField(title, text: text).textContentType(mode == .register ? .newPassword : .password) }
             else { TextField(title, text: text).emailEntry() }
         }
-        .font(.body)
-        .padding(.horizontal, 16).padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white.opacity(0.08)))
-        .foregroundStyle(Sky.ink)
+        .font(.system(size: 16))
+        .padding(.horizontal, 14).frame(minHeight: 48)
+        .background(Brand.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line))
+        .foregroundStyle(Brand.ink)
     }
 
     private var primaryButton: some View {
         Button(action: submit) {
             ZStack {
-                Text(mode == .signIn ? "Sign in" : "Create account")
-                    .opacity(busy ? 0 : 1)
-                if busy { ProgressView().tint(.black) }
+                Text(mode == .signIn ? "Sign in" : "Create account").opacity(busy ? 0 : 1)
+                if busy { ProgressView().tint(Brand.bg) }
             }
-            .font(.headline).foregroundStyle(.black)
-            .frame(maxWidth: busy ? 56 : .infinity).frame(height: 54)
-            .background(Capsule().fill(Sky.moonlight))
-            .shadow(color: Sky.ember.opacity(0.4), radius: busy ? 0 : 16, y: 4)
+            .font(.system(size: 16, weight: .semibold)).foregroundStyle(Brand.bg)
+            .frame(maxWidth: busy ? 56 : .infinity).frame(height: 50)
+            .background(Capsule().fill(Brand.violet))
         }
         .buttonStyle(PressableStyle())
         .disabled(!canSubmit || busy)
-        .opacity(canSubmit || busy ? 1 : 0.5)
+        .opacity(canSubmit || busy ? 1 : 0.45)
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: busy)
     }
 
@@ -177,9 +154,7 @@ struct WelcomeView: View {
 
     private func submit() {
         guard canSubmit, !busy else { return }
-        focus = nil
-        errorText = nil
-        busy = true
+        focus = nil; errorText = nil; busy = true
         Task {
             do {
                 try await session.authenticate(mode: mode, email: email, password: password)
@@ -194,29 +169,64 @@ struct WelcomeView: View {
     }
 }
 
-/// The Moon sweeping from new to tonight's phase, with a slow breathing halo.
-private struct MoonHero: View {
-    let elongation: Double
-    @State private var shown = 0.0
-    @State private var breathe = false
+/// Serif headline whose words rise into place one after another.
+private struct WrappingWords: View {
+    let words: [String]
+    let arrived: Bool
+    let size: CGFloat
 
     var body: some View {
-        ZStack {
-            Circle().fill(Sky.moonlight.opacity(0.10)).scaleEffect(breathe ? 1.55 : 1.25).blur(radius: 18)
-            MoonDisc(elongation: shown)
+        // Text concatenation can't animate per word, so lay words out as a flexible flow.
+        FlowLayout(spacing: 7) {
+            ForEach(Array(words.enumerated()), id: \.offset) { i, word in
+                Text(word).font(.serif(size)).foregroundStyle(Brand.ink)
+                    .opacity(arrived ? 1 : 0).blur(radius: arrived ? 0 : 8).offset(y: arrived ? 0 : 14)
+                    .animation(.spring(response: 0.8, dampingFraction: 0.8).delay(0.35 + Double(i) * 0.07), value: arrived)
+            }
         }
-        .task {
-            withAnimation(.easeOut(duration: 2.2).delay(0.3)) { shown = elongation }
-            withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) { breathe = true }
-        }
-        .accessibilityLabel("The Moon, \(MoonPhase.name(at: .now))")
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(words.joined(separator: " "))
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
-struct PressableStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
+/// Centered wrapping layout.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+    var alignment: HorizontalAlignment = .center
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = layoutRows(width: proposal.width ?? .infinity, subviews: subviews)
+        return CGSize(width: proposal.width ?? rows.map(\.width).max() ?? 0, height: rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(0, rows.count - 1)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in layoutRows(width: bounds.width, subviews: subviews) {
+            var x = bounds.minX + (alignment == .center ? (bounds.width - row.width) / 2 : 0)
+            for item in row.items {
+                subviews[item.index].place(at: CGPoint(x: x, y: y), proposal: .unspecified)
+                x += item.size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private struct Row { var items: [(index: Int, size: CGSize)] = []; var width: CGFloat = 0; var height: CGFloat = 0 }
+
+    private func layoutRows(width: CGFloat, subviews: Subviews) -> [Row] {
+        var rows = [Row()]
+        for (i, sub) in subviews.enumerated() {
+            let size = sub.sizeThatFits(.unspecified)
+            let needed = rows[rows.count - 1].items.isEmpty ? size.width : rows[rows.count - 1].width + spacing + size.width
+            if needed > width, !rows[rows.count - 1].items.isEmpty { rows.append(Row()) }
+            var row = rows.removeLast()
+            row.width = row.items.isEmpty ? size.width : row.width + spacing + size.width
+            row.height = max(row.height, size.height)
+            row.items.append((i, size))
+            rows.append(row)
+        }
+        return rows
     }
 }

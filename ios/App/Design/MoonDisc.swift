@@ -25,7 +25,7 @@ struct MoonDisc: View, Animatable {
             ctx.drawLayer { layer in
                 layer.clip(to: lit)
                 layer.fill(Path(ellipseIn: disc), with: .radialGradient(
-                    Gradient(colors: [Sky.moonlight, Color(red: 0.78, green: 0.78, blue: 0.74)]),
+                    Gradient(colors: [Brand.moonlight, Color(red: 0.78, green: 0.78, blue: 0.74)]),
                     center: CGPoint(x: c.x - r * 0.2, y: c.y - r * 0.25), startRadius: 0, endRadius: r * 1.2))
                 // a few maria so it reads as the Moon, not a white blob
                 for m in Self.maria {
@@ -34,7 +34,7 @@ struct MoonDisc: View, Animatable {
                 }
             }
         }
-        .shadow(color: Sky.moonlight.opacity(0.35), radius: 28)
+        .shadow(color: Brand.moonlight.opacity(0.35), radius: 28)
         .aspectRatio(1, contentMode: .fit)
     }
 
