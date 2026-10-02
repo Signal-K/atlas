@@ -11,15 +11,19 @@ targets:
     type: application
     platform: iOS
     sources: [App]
+    info:
+      path: App/Info.plist
+      properties:
+        AtlasPBURL: $(ATLAS_PB_URL)
+        UILaunchScreen: {}
+        CFBundleDisplayName: Atlas
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     dependencies:
       - package: AtlasCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: tech.skinetics.atlas
         SWIFT_VERSION: "6.0"
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Atlas
         # Local PocketBase by default (same as VITE_PB_URL fallback); override per build config.
         ATLAS_PB_URL: "http://127.0.0.1:8090"
-        INFOPLIST_KEY_AtlasPBURL: $(ATLAS_PB_URL)

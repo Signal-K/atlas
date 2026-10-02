@@ -36,3 +36,60 @@ final class AtlasCoreTests: XCTestCase {
         XCTAssertEqual(record.fields["title"], .string("Eclipse"))
     }
 }
+
+final class HubFeedTests: XCTestCase {
+    private let perth = TimeZone(identifier: "Australia/Perth")! // UTC+8
+    private func event(_ id: String, _ iso: String, kind: String = "meteor_shower") -> SkyEvent {
+        let d = parsePbDate(iso)!
+        return SkyEvent(id: id, kind: kind, title: id, startsAt: d, endsAt: d.addingTimeInterval(3600))
+    }
+
+    func testDayKeysUseTheViewersTimeZoneNotUTC() {
+        // 22:00 UTC on the 1st is 06:00 on the 2nd in Perth.
+        let feed = HubFeed(now: parsePbDate("2026-10-01T22:00:00Z")!, timeZone: perth)
+        XCTAssertEqual(feed.todayKey, "2026-10-02")
+        XCTAssertEqual(feed.dateKey(parsePbDate("2026-10-02T17:00:00Z")!), "2026-10-03")
+    }
+
+    func testFiltersGroupsAndLabels() {
+        let feed = HubFeed(now: parsePbDate("2026-10-02T04:00:00Z")!, timeZone: perth) // 12:00 Oct 2
+        let events = [
+            event("later", "2026-10-20T10:00:00Z"),
+            event("tomorrow", "2026-10-03 02:00:00.000Z"),
+            event("tonightB", "2026-10-02T14:00:00Z"),
+            event("tonightA", "2026-10-02T11:00:00Z"),
+        ]
+        XCTAssertEqual(feed.count(events, filter: .all), 4)
+        XCTAssertEqual(feed.count(events, filter: .tonight), 2)
+        XCTAssertEqual(feed.count(events, filter: .week), 3)
+        let groups = feed.groups(events, filter: .all)
+        XCTAssertEqual(groups.map(\.label).prefix(2), ["Today", "Tomorrow"])
+        XCTAssertEqual(groups[0].events.map(\.id), ["tonightA", "tonightB"])
+        XCTAssertEqual(groups.count, 3)
+    }
+}
+
+final class SkyEventTests: XCTestCase {
+    private func record(_ json: String) throws -> PocketBaseRecord {
+        try JSONDecoder().decode(PocketBaseRecord.self, from: Data(json.utf8))
+    }
+
+    func testMapsRecordAndTreatsZeroZeroAsNoLocation() throws {
+        let r = try record(#"{"id":"e1","kind":"eclipse","target":"moon","title":"Total eclipse","description":"d","starts_at":"2026-08-12 17:00:00.000Z","ends_at":"2026-08-12 19:00:00.000Z","latitude":0,"longitude":0}"#)
+        let e = try XCTUnwrap(SkyEvent(record: r))
+        XCTAssertEqual(e.title, "Total eclipse")
+        XCTAssertEqual(e.endsAt.timeIntervalSince(e.startsAt), 7200)
+        XCTAssertNil(e.latitude)
+        let placed = try XCTUnwrap(SkyEvent(record: try record(#"{"id":"e2","starts_at":"2026-08-12 17:00:00.000Z","ends_at":"2026-08-12 19:00:00.000Z","latitude":-31.9,"longitude":115.8}"#)))
+        XCTAssertEqual(placed.latitude, -31.9)
+    }
+
+    func testSkipsRecordsWithoutDates() throws {
+        XCTAssertNil(SkyEvent(record: try record(#"{"id":"bad","title":"x"}"#)))
+    }
+
+    func testCategoryLookup() {
+        XCTAssertEqual(EventCategory.forKind("iss_pass")?.label, "Satellites")
+        XCTAssertNil(EventCategory.forKind("nope"))
+    }
+}

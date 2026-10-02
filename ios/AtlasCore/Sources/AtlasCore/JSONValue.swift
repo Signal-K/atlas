@@ -21,3 +21,8 @@ public enum JSONValue: Decodable, Sendable, Equatable {
         else { self = .object(try c.decode([String: JSONValue].self)) }
     }
 }
+
+extension JSONValue {
+    public var stringValue: String? { if case .string(let s) = self { s } else { nil } }
+    public var doubleValue: Double? { if case .number(let n) = self { n } else { nil } }
+}
