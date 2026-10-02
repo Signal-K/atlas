@@ -19,61 +19,90 @@ struct StarsCard: View {
     private let paper = Color(red: 0.95, green: 0.94, blue: 0.91)
     private let dim = Color(red: 0.95, green: 0.94, blue: 0.91).opacity(0.6)
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Kicker(text: "Live sky", color: dim)
-                    Text("Sky at \(shown.clock(in: plan.timeZone))").font(.serif(22)).foregroundStyle(paper)
-                }
-                Spacer()
-                Text("\(plan.stars.count) well placed").font(.mono(11)).foregroundStyle(dim)
-            }
-            SkyDome(plan: plan, offset: offset, start: start, selected: selected)
-                .aspectRatio(1, contentMode: .fit)
-            VStack(spacing: 4) {
-                Slider(value: $offset, in: 0...span).tint(Brand.violet)
-                HStack { Text(start.clock(in: plan.timeZone)); Spacer(); Text(end.clock(in: plan.timeZone)) }
-                    .font(.mono(11)).foregroundStyle(dim)
-            }
-            .accessibilityLabel("Time of night")
+    @State private var showChart = false
+    @State private var showAll = false
+    private var visible: [StarPick] { showAll ? plan.stars : Array(plan.stars.prefix(5)) }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) { ForEach(plan.stars) { card($0) } }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(visible.enumerated()), id: \.element.id) { i, pick in
+                if i > 0 { Rectangle().fill(Brand.line).frame(height: 1) }
+                row(pick)
             }
-            .contentMargins(.horizontal, 16, for: .scrollContent)
-            .padding(.horizontal, -16) // run edge to edge inside the card
+            if plan.stars.count > 5 {
+                Rectangle().fill(Brand.line).frame(height: 1)
+                Button {
+                    Haptics.tap()
+                    withAnimation(.smooth(duration: 0.4)) { showAll.toggle() }
+                } label: {
+                    Text(showAll ? "Show fewer" : "Show all \(plan.stars.count) stars").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Brand.violet).frame(maxWidth: .infinity).padding(12).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            Rectangle().fill(Brand.line).frame(height: 1)
+            Button {
+                Haptics.tap()
+                withAnimation(.smooth(duration: 0.5)) { showChart.toggle() }
+            } label: {
+                HStack {
+                    Image(systemName: showChart ? "chevron.up" : "scope")
+                    Text(showChart ? "Hide sky chart" : "Show on sky chart").font(.system(size: 14, weight: .medium))
+                    Spacer()
+                }
+                .foregroundStyle(Brand.violet).padding(14).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if showChart { chart.transition(.opacity.combined(with: .move(edge: .top))) }
         }
-        .padding(16)
-        .background(LinearGradient(colors: [Brand.night, Brand.nightMid], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .environment(\.colorScheme, .dark)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .brandCard()
         .task {
             let target = min(max(Date().timeIntervalSince(start), 0), span)
-            withAnimation(.easeOut(duration: 1.6).delay(0.2)) { offset = target }
+            offset = target
         }
     }
 
-    private func card(_ pick: StarPick) -> some View {
+    private var chart: some View {
+        VStack(spacing: 8) {
+            Text("Sky at \(shown.clock(in: plan.timeZone))").font(.serif(18)).foregroundStyle(paper)
+            SkyDome(plan: plan, offset: offset, start: start, selected: selected).aspectRatio(1, contentMode: .fit).frame(maxWidth: 360)
+            Slider(value: $offset, in: 0...span).tint(Brand.violet)
+            HStack { Text(start.clock(in: plan.timeZone)); Spacer(); Text(end.clock(in: plan.timeZone)) }.font(.mono(11)).foregroundStyle(dim)
+        }
+        .padding(16).frame(maxWidth: .infinity)
+        .background(LinearGradient(colors: [Brand.night, Brand.nightMid], startPoint: .top, endPoint: .bottom))
+        .environment(\.colorScheme, .dark)
+    }
+
+    private func row(_ pick: StarPick) -> some View {
         let on = selected == pick.id
+        let alt = Int(pick.bestPosition.altitudeDeg.rounded())
         return Button {
             Haptics.tap()
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                selected = on ? nil : pick.id
+            withAnimation(.smooth(duration: 0.4)) {
+                selected = on ? nil : pick.id; showChart = true
                 offset = max(0, min(span, pick.bestTime.timeIntervalSince(start)))
             }
         } label: {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(pick.star.name).font(.serif(16)).foregroundStyle(paper)
-                Text("\(pick.star.constellation) · mag \(pick.star.magnitude.formatted(.number.precision(.fractionLength(1))))").font(.mono(10)).foregroundStyle(dim)
-                Text("\(Int(pick.bestPosition.altitudeDeg.rounded()))° \(pick.bestPosition.compass) · \(pick.bestTime.clock(in: plan.timeZone))").font(.mono(11)).foregroundStyle(paper)
-                Text(pick.colour).font(.system(size: 11)).foregroundStyle(Color(red: 0.88, green: 0.66, blue: 0.30))
+            HStack(spacing: 12) {
+                Image(systemName: "location.north.fill").rotationEffect(.degrees(pick.bestPosition.azimuthDeg))
+                    .foregroundStyle(Brand.violet).frame(width: 34, height: 34)
+                    .background(Brand.violet.opacity(0.1), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pick.star.name).font(.serif(17)).foregroundStyle(Brand.ink)
+                    Text("\(pick.star.constellation) · \(pick.colour)").font(.system(size: 13)).foregroundStyle(Brand.muted)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(pick.bestTime.clock(in: plan.timeZone)).font(.mono(13)).foregroundStyle(Brand.ink)
+                    Text("\(alt)° \(pick.bestPosition.compass)").font(.mono(11, medium: false)).foregroundStyle(Brand.muted)
+                }
             }
-            .padding(12).frame(width: 176, alignment: .leading)
-            .background(on ? Brand.violet.opacity(0.28) : Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? Brand.violet : Color.white.opacity(0.08)))
+            .padding(.horizontal, 14).padding(.vertical, 10).contentShape(Rectangle())
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityLabel("\(pick.star.name), \(pick.star.constellation), \(Int(pick.bestPosition.altitudeDeg.rounded())) degrees \(pick.bestPosition.compass) at \(pick.bestTime.clock(in: plan.timeZone))")
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(pick.star.name), \(pick.star.constellation), \(alt) degrees \(pick.bestPosition.compass) at \(pick.bestTime.clock(in: plan.timeZone))")
     }
 }
 

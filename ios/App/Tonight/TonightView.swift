@@ -20,10 +20,10 @@ struct TonightView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         offsetReader
                         header
-                        chips(proxy)
                         if let plan = model.plan, model.phase == .ready { feed(plan) } else { Skeleton() }
                     }
                     .padding(.horizontal, 16).padding(.bottom, 40)
+                    .frame(maxWidth: 640).frame(maxWidth: .infinity)
                 }
                 .coordinateSpace(name: "feed")
                 .onPreferenceChange(OffsetKey.self) { drift = -$0 }
@@ -69,35 +69,18 @@ struct TonightView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let place = model.place {
-                Kicker(text: "Tonight near \(place.name)" + (place.isFallback ? " · location off" : ""))
-            } else { Kicker(text: "Tonight") }
-            Text("Is tonight worth going outside?").font(.serif(32)).foregroundStyle(Brand.ink).fixedSize(horizontal: false, vertical: true)
-            Text("…and what to point your phone at.").font(.system(size: 15)).foregroundStyle(Brand.muted)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(model.place.map { "Tonight in \($0.name)" } ?? "Tonight").font(.serif(28)).foregroundStyle(Brand.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(headerSubtitle).font(.mono(11, medium: false)).foregroundStyle(Brand.muted)
         }
-        .padding(.top, 18).padding(.bottom, 16)
+        .padding(.top, 18).padding(.bottom, 14)
     }
 
-    private func chips(_ proxy: ScrollViewProxy) -> some View {
-        let plan = model.plan
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 7) {
-                jump("Tonight", symbol: "moon.stars", id: "tonight", proxy)
-                jump("Photo ops", count: plan?.targets.count, symbol: "camera", id: "photo", proxy)
-                jump("Stars", symbol: "sparkle", id: "stars", proxy)
-                jump("Coming up", count: model.upcoming.isEmpty ? nil : model.upcoming.count, symbol: "calendar", id: "coming", proxy)
-            }
-        }
-        .scrollClipDisabled()
-    }
-
-    private func jump(_ label: String, count: Int? = nil, symbol: String, id: String, _ proxy: ScrollViewProxy, active: Bool = false) -> some View {
-        Button {
-            Haptics.tap()
-            withAnimation(.smooth(duration: 0.7)) { proxy.scrollTo(id, anchor: .top) }
-        } label: { BrandChip(label: label, count: count, symbol: symbol, active: active) }
-            .buttonStyle(PressableStyle())
+    private var headerSubtitle: String {
+        let zone = model.plan?.timeZone ?? .current
+        let day = Date().formatted(Date.FormatStyle(timeZone: zone).weekday(.wide).day().month(.abbreviated))
+        return day + (model.place?.isFallback == true ? " · location off, showing a default city" : "")
     }
 
     // MARK: Feed
@@ -111,7 +94,7 @@ struct TonightView: View {
     }
 
     @ViewBuilder private func dispatchSection(_ plan: TonightPlan) -> some View {
-        SectionHead(kicker: "Tonight").id("tonight")
+        Color.clear.frame(height: 0).id("tonight")
         VStack(spacing: 12) {
             VerdictCard(plan: plan, weatherProblem: model.weatherProblem).feedEntrance()
             NightCard(plan: plan).feedEntrance()
