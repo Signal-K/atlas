@@ -77,14 +77,31 @@ public final class PocketBaseClient: @unchecked Sendable {
         try await send(try request(path: "api/collections/\(collection)/records/\(id)"), as: PocketBaseRecord.self)
     }
 
+    struct AuthResponse: Decodable { let token: String; let record: PocketBaseRecord }
+
     /// Password auth against an auth collection; stores the returned token.
     @discardableResult
     public func authWithPassword(collection: String = "users", identity: String, password: String) async throws -> PocketBaseRecord {
-        struct AuthResponse: Decodable { let token: String; let record: PocketBaseRecord }
         let body = try JSONEncoder().encode(["identity": identity, "password": password])
         let res = try await send(
             try request(path: "api/collections/\(collection)/auth-with-password", method: "POST", body: body),
             as: AuthResponse.self)
+        token = res.token
+        return res.record
+    }
+
+    /// Creates an account, then signs in with it (PocketBase create does not return a token).
+    @discardableResult
+    public func register(collection: String = "users", email: String, password: String) async throws -> PocketBaseRecord {
+        let body = try JSONEncoder().encode(["email": email, "password": password, "passwordConfirm": password])
+        _ = try await send(try request(path: "api/collections/\(collection)/records", method: "POST", body: body), as: PocketBaseRecord.self)
+        return try await authWithPassword(collection: collection, identity: email, password: password)
+    }
+
+    /// Exchanges a stored token for a fresh one; throws `.http(401)` when it is no longer valid.
+    @discardableResult
+    public func authRefresh(collection: String = "users") async throws -> PocketBaseRecord {
+        let res = try await send(try request(path: "api/collections/\(collection)/auth-refresh", method: "POST"), as: AuthResponse.self)
         token = res.token
         return res.record
     }

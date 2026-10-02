@@ -3,10 +3,14 @@ import SwiftUI
 
 @main
 struct AtlasApp: App {
-    private let source: EventSource = FixtureEventSource.fromLaunchArguments()
-        ?? LiveEventSource(client: PocketBaseClient(baseURL: Config.pocketBaseURL))
+    private static let client = PocketBaseClient(baseURL: Config.pocketBaseURL)
+    private static let source: EventSource = FixtureEventSource.fromLaunchArguments() ?? LiveEventSource(client: client)
+
+    @State private var session = SessionStore(service: FixtureAuthService.fromLaunchArguments() ?? LiveAuthService(client: client))
 
     var body: some Scene {
-        WindowGroup { HubView(model: HubViewModel(source: source)) }
+        WindowGroup {
+            RootView(session: session) { HubViewModel(source: Self.source) }
+        }
     }
 }

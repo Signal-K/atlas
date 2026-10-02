@@ -79,4 +79,13 @@ public struct HubFeed: Sendable {
             HubDayGroup(key: key, label: dayLabel(for: key), events: byDay[key]!.sorted { $0.startsAt < $1.startsAt })
         }
     }
+
+    /// The Tonight screen's pages: today's events, or -- on a quiet night -- the next few upcoming
+    /// ones so the screen is never empty while the calendar isn't.
+    public func tonightOrNext(_ events: [SkyEvent], limit: Int = 6) -> (events: [SkyEvent], isTonight: Bool) {
+        let sorted = events.sorted { $0.startsAt < $1.startsAt }
+        let tonight = sorted.filter { matches($0, filter: .tonight) }
+        if !tonight.isEmpty { return (tonight, true) }
+        return (Array(sorted.filter { $0.endsAt >= now }.prefix(limit)), false)
+    }
 }

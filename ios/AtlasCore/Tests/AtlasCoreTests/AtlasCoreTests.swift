@@ -29,6 +29,18 @@ final class AtlasCoreTests: XCTestCase {
         XCTAssertEqual(req.value(forHTTPHeaderField: "Authorization"), "abc")
     }
 
+    func testBuildsRegisterAndRefreshRequests() throws {
+        let client = PocketBaseClient(baseURL: URL(string: "http://127.0.0.1:8090")!)
+        client.token = "tok"
+        let refresh = try client.request(path: "api/collections/users/auth-refresh", method: "POST")
+        XCTAssertEqual(refresh.httpMethod, "POST")
+        XCTAssertEqual(refresh.value(forHTTPHeaderField: "Authorization"), "tok")
+        let body = try JSONEncoder().encode(["email": "a@b.co", "password": "pw", "passwordConfirm": "pw"])
+        let create = try client.request(path: "api/collections/users/records", method: "POST", body: body)
+        XCTAssertEqual(create.value(forHTTPHeaderField: "Content-Type"), "application/json")
+        XCTAssertEqual(create.httpBody, body)
+    }
+
     func testDecodesRecordWithArbitraryFields() throws {
         let json = Data(#"{"id":"r1","title":"Eclipse","score":3,"tags":["a"]}"#.utf8)
         let record = try JSONDecoder().decode(PocketBaseRecord.self, from: json)
@@ -66,6 +78,19 @@ final class HubFeedTests: XCTestCase {
         XCTAssertEqual(groups.map(\.label).prefix(2), ["Today", "Tomorrow"])
         XCTAssertEqual(groups[0].events.map(\.id), ["tonightA", "tonightB"])
         XCTAssertEqual(groups.count, 3)
+    }
+
+    func testTonightPagesFallBackToNextUpcomingOnAQuietNight() {
+        let feed = HubFeed(now: parsePbDate("2026-10-02T04:00:00Z")!, timeZone: perth)
+        let busy = [event("b", "2026-10-02T14:00:00Z"), event("a", "2026-10-02T11:00:00Z"), event("far", "2026-10-20T10:00:00Z")]
+        let tonight = feed.tonightOrNext(busy)
+        XCTAssertTrue(tonight.isTonight)
+        XCTAssertEqual(tonight.events.map(\.id), ["a", "b"])
+
+        let quiet = [event("far", "2026-10-20T10:00:00Z"), event("soon", "2026-10-05T10:00:00Z"), event("gone", "2026-09-01T10:00:00Z")]
+        let next = feed.tonightOrNext(quiet, limit: 1)
+        XCTAssertFalse(next.isTonight)
+        XCTAssertEqual(next.events.map(\.id), ["soon"])
     }
 }
 

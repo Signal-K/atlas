@@ -19,6 +19,9 @@ final class HubViewModel {
 
     var groups: [HubDayGroup] { feed.groups(events, filter: filter) }
 
+    /// Pages for the Tonight screen (today's events, else the next few).
+    var tonight: (events: [SkyEvent], isTonight: Bool) { feed.tonightOrNext(events) }
+
     func count(_ f: HubFilter) -> Int { feed.count(events, filter: f) }
 
     func load() async {
