@@ -62,10 +62,10 @@ private func signed(_ jws: String = "jws", user: String? = "abc123def456ghi", fi
 
     func testTiersMapToTheStoreProductIDs() {
         XCTAssertEqual(SkyPass.productIDs, [
-            "tech.skinetics.atlas.skypass.monthly", "tech.skinetics.atlas.skypass.yearly", "tech.skinetics.atlas.skypass.lifetime",
+            "com.atlasskyventures.atlas.skypass.monthly", "com.atlasskyventures.atlas.skypass.yearly", "com.atlasskyventures.atlas.skypass.lifetime",
         ])
-        XCTAssertEqual(SkyPassTier(productID: "tech.skinetics.atlas.skypass.yearly"), .yearly)
-        XCTAssertNil(SkyPassTier(productID: "tech.skinetics.atlas.coins"))
+        XCTAssertEqual(SkyPassTier(productID: "com.atlasskyventures.atlas.skypass.yearly"), .yearly)
+        XCTAssertNil(SkyPassTier(productID: "com.atlasskyventures.atlas.coins"))
         XCTAssertFalse(SkyPassTier.lifetime.isSubscription)
     }
 

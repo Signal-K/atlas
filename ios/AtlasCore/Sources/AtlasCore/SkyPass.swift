@@ -36,7 +36,7 @@ public enum SkyPassTier: String, CaseIterable, Sendable, Identifiable {
 }
 
 public enum SkyPass {
-    public static let productPrefix = "tech.skinetics.atlas.skypass"
+    public static let productPrefix = "com.atlasskyventures.atlas.skypass"
     public static var productIDs: [String] { SkyPassTier.allCases.map(\.productID) }
 
     /// How far ahead the Coming up feed looks. Mirrors the web tiers: 14 days free, 90 with Sky Pass.

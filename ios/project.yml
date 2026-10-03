@@ -31,8 +31,7 @@ targets:
       - package: AtlasCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: tech.skinetics.atlas
-        DEVELOPMENT_TEAM: NDP87SHHDT
+        PRODUCT_BUNDLE_IDENTIFIER: com.atlasskyventures.atlas
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "6.0"

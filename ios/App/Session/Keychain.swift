@@ -3,7 +3,7 @@ import Security
 
 /// Tiny generic-password wrapper for the PocketBase token and the signed-in email.
 enum Keychain {
-    private static let service = "tech.skinetics.atlas"
+    private static let service = "com.atlasskyventures.atlas"
 
     static func read(_ account: String) -> String? {
         var query = base(account)

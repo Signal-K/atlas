@@ -9,7 +9,7 @@
       "localizations" : [
         { "description" : "Sky Pass for life. One purchase, every Atlas app.", "displayName" : "Sky Pass Lifetime", "locale" : "en_US" }
       ],
-      "productID" : "tech.skinetics.atlas.skypass.lifetime",
+      "productID" : "com.atlasskyventures.atlas.skypass.lifetime",
       "referenceName" : "Sky Pass Lifetime",
       "type" : "NonConsumable"
     }
@@ -32,7 +32,7 @@
           "localizations" : [
             { "description" : "Sky Pass, billed monthly.", "displayName" : "Sky Pass Monthly", "locale" : "en_US" }
           ],
-          "productID" : "tech.skinetics.atlas.skypass.monthly",
+          "productID" : "com.atlasskyventures.atlas.skypass.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Sky Pass Monthly",
           "subscriptionGroupID" : "21540001",
@@ -50,7 +50,7 @@
           "localizations" : [
             { "description" : "Sky Pass, billed yearly.", "displayName" : "Sky Pass Yearly", "locale" : "en_US" }
           ],
-          "productID" : "tech.skinetics.atlas.skypass.yearly",
+          "productID" : "com.atlasskyventures.atlas.skypass.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Sky Pass Yearly",
           "subscriptionGroupID" : "21540001",
