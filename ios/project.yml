@@ -22,6 +22,7 @@ targets:
         AtlasPrivacyURL: https://youratlas.cc/privacy
         NSLocationWhenInUseUsageDescription: Atlas uses your location to work out what is above you tonight and when it gets dark.
         UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: Atlas
         UIAppFonts: [IBMPlexMono-Regular.ttf, IBMPlexMono-Medium.ttf, Oxanium.ttf]
         NSAppTransportSecurity:
@@ -31,6 +32,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: tech.skinetics.atlas
+        DEVELOPMENT_TEAM: NDP87SHHDT
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "6.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Local Atlas PocketBase (`make pb` in the repo root -> :8094, matching .env VITE_PB_URL).
@@ -39,6 +43,11 @@ targets:
         # Local atlas-billing (the web app's VITE_ATLAS_BILLING_URL default). Production builds must point at
         # https://signal-k-atlas-billing.fly.dev, which is where purchases are verified.
         ATLAS_BILLING_URL: "http://127.0.0.1:8093"
+      configs:
+        # Release builds (TestFlight / App Store) must never ship localhost endpoints.
+        Release:
+          ATLAS_PB_URL: "https://signal-k-starsailors.fly.dev"
+          ATLAS_BILLING_URL: "https://signal-k-atlas-billing.fly.dev"
 schemes:
   Atlas:
     build:
