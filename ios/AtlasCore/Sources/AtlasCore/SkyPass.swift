@@ -39,6 +39,11 @@ public enum SkyPass {
     public static let productPrefix = "tech.skinetics.atlas.skypass"
     public static var productIDs: [String] { SkyPassTier.allCases.map(\.productID) }
 
+    /// How far ahead the Coming up feed looks. Mirrors the web tiers: 14 days free, 90 with Sky Pass.
+    public static let freeHorizonDays = 14
+    public static let passHorizonDays = 90
+    public static func horizonDays(entitled: Bool) -> Int { entitled ? passHorizonDays : freeHorizonDays }
+
     /// The `appAccountToken` attached to every purchase for an Atlas user. Derived (not stored) as
     /// SHA-256("atlas-user:" + userID), first 16 bytes, shaped like a v5 UUID, so the app, the
     /// App Store and atlas-billing (which derives the same value) agree without a lookup table, and

@@ -198,4 +198,9 @@ private func signed(_ jws: String = "jws", user: String? = "abc123def456ghi", fi
         await store.run()
         XCTAssertTrue(backend.verified.isEmpty)
     }
+
+    func testHorizonIsLongerWithSkyPass() {
+        XCTAssertEqual(SkyPass.horizonDays(entitled: false), 14)
+        XCTAssertEqual(SkyPass.horizonDays(entitled: true), 90)
+    }
 }

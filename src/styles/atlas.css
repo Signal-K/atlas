@@ -4137,3 +4137,11 @@
   .az-search-button-label,
   .az-search-button-key { display: none; }
 }
+
+/* Public legal pages (privacy, terms) -- .atlas-almanac supplies the palette. */
+.atlas-almanac .am-legal { max-width: 720px; margin: 0 auto; padding: 32px 20px 72px; line-height: 1.6; }
+.atlas-almanac .am-legal h2 { margin: 32px 0 8px; font-size: 1.25rem; }
+.atlas-almanac .am-legal ul { padding-left: 1.2em; }
+.atlas-almanac .am-legal li { margin: 6px 0; }
+.atlas-almanac .am-legal-updated { opacity: 0.7; font-size: 0.85rem; }
+.atlas-almanac .am-legal-links { margin-top: 40px; }

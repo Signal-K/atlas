@@ -15,6 +15,8 @@ final class TonightModel {
     private(set) var place: Place?
     /// Later relevant events (after tonight), for the feed's "Coming up".
     private(set) var upcoming: [SkyEvent] = []
+    /// Days the last load looked ahead (14 free, 90 with Sky Pass).
+    private(set) var horizonDays = SkyPass.freeHorizonDays
     /// Human-readable notes about sources that failed, shown where their data would have been.
     private(set) var eventsProblem: String?
     private(set) var weatherProblem: String?
@@ -27,12 +29,13 @@ final class TonightModel {
         self.events = events; self.forecasts = forecasts; self.location = location
     }
 
-    func load() async {
+    func load(horizonDays: Int = SkyPass.freeHorizonDays) async {
+        self.horizonDays = horizonDays
         if plan == nil { phase = .loading }
         let place = await location.current()
         self.place = place
         let now = Date()
-        let end = now.addingTimeInterval(7 * 86400)
+        let end = now.addingTimeInterval(Double(horizonDays) * 86400)
 
         async let eventResult = Result { try await events.events(from: now, to: end) }
         async let forecastResult = Result { try await forecasts.forecast(latitude: place.latitude, longitude: place.longitude) }

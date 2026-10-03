@@ -98,6 +98,15 @@ public final class PocketBaseClient: @unchecked Sendable {
         return try await authWithPassword(collection: collection, identity: email, password: password)
     }
 
+    /// Permanently deletes a record the signed-in user owns (204, no body). Used for account
+    /// deletion; the server's delete rule decides who may.
+    public func delete(collection: String, id: String) async throws {
+        let (_, response) = try await session.data(for: try request(path: "api/collections/\(collection)/records/\(id)", method: "DELETE"))
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            throw PocketBaseError.http(status: http.statusCode)
+        }
+    }
+
     /// Exchanges a stored token for a fresh one; throws `.http(401)` when it is no longer valid.
     @discardableResult
     public func authRefresh(collection: String = "users") async throws -> PocketBaseRecord {

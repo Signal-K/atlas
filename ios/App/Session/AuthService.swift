@@ -15,6 +15,8 @@ protocol AuthService: Sendable {
     func register(email: String, password: String) async throws -> AuthIdentity
     /// Validates a stored token; throws `AuthFailure.expired` when it is no longer good.
     func restore(token: String) async throws -> AuthIdentity
+    /// Permanently deletes the signed-in account (App Store guideline 5.1.1(v)).
+    func deleteAccount(userID: String, token: String) async throws
 }
 
 /// User-facing auth failures. Everything shown on the welcome screen comes through here.
@@ -68,6 +70,13 @@ struct LiveAuthService: AuthService {
         }
     }
 
+    func deleteAccount(userID: String, token: String) async throws {
+        client.token = token
+        do { try await client.delete(collection: "users", id: userID) }
+        catch { throw AuthFailure.map(error) }
+        client.token = nil
+    }
+
     private func identity(from record: PocketBaseRecord) throws -> AuthIdentity {
         guard let token = client.token else { throw AuthFailure.expired }
         return AuthIdentity(
@@ -96,4 +105,6 @@ struct FixtureAuthService: AuthService {
     }
 
     func restore(token: String) async throws -> AuthIdentity { AuthIdentity(userID: "fixture-user", email: "stored@atlas.test", token: token) }
+
+    func deleteAccount(userID: String, token: String) async throws { try await Task.sleep(for: .milliseconds(700)) }
 }

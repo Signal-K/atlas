@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LandingPage } from './views/LandingPage'
 import { HostPage } from './views/HostPage'
+import { LegalPage } from './views/LegalPage'
 import { AppShell } from './AppShell'
 import { useParallax } from './lib/motion'
 import { useAuth } from './lib/auth'
@@ -97,6 +98,9 @@ function App() {
     if (routerLocation.pathname === '/app' || isTonightRoute) navigate(APP_HOME, { replace: true })
   }, [routerLocation.pathname, isTonightRoute, navigate])
 
+  // Public legal pages (App Store requires reachable privacy + terms URLs).
+  const showLegal = routerLocation.pathname === '/privacy' || routerLocation.pathname === '/terms'
+
   // Any path that isn't "/", "/landing", "/hosts", "/tonight", or under
   // "/app" is not a real route. Unknown public URLs resolve to the
   // landing-page alias rather than silently falling through to the app shell.
@@ -105,11 +109,12 @@ function App() {
       routerLocation.pathname !== '/' &&
       routerLocation.pathname !== '/landing' &&
       routerLocation.pathname !== '/hosts' &&
+      !showLegal &&
       !isAppRoute
     ) {
       navigate('/landing', { replace: true })
     }
-  }, [routerLocation.pathname, isAppRoute, navigate])
+  }, [routerLocation.pathname, isAppRoute, showLegal, navigate])
 
   // "/" is the landing page, full stop. Signed-in visitors see their active
   // session identified here, but are only sent into the product when they
@@ -189,6 +194,10 @@ function App() {
 
   if (showHosts) {
     return <HostPage />
+  }
+
+  if (showLegal) {
+    return <LegalPage kind={routerLocation.pathname === '/privacy' ? 'privacy' : 'terms'} />
   }
 
   // Not "/", not "/landing", not a product route -- the redirect effect

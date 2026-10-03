@@ -132,7 +132,7 @@ struct SkyPassView: View {
     private var includes: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("INCLUDED").font(.mono(10)).foregroundStyle(Brand.muted).tracking(1)
-            Text("Backdated check-ins, 90-day plans, saved targets, reminders, dark sites, gear fit, community and the archive. Some of these arrive in the iPhone app over time; all of them are unlocked on the web today.")
+            Text("In the iPhone app: a 90-day outlook of sky events (free accounts see 14 days). On the web: backdated check-ins, saved targets, reminders, dark sites, gear fit, community and the archive. One purchase unlocks Sky Pass everywhere you sign in to Atlas.")
                 .font(.system(size: 14)).foregroundStyle(Brand.ink)
         }
     }

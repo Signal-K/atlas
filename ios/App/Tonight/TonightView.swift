@@ -29,7 +29,7 @@ struct TonightView: View {
                 }
                 .coordinateSpace(name: "feed")
                 .onPreferenceChange(OffsetKey.self) { drift = -$0 }
-                .refreshable { await model.load() }
+                .refreshable { await reload() }
                 .onChange(of: model.phase) { _, phase in
                     // `-AtlasScrollTo <section>` (testing / screenshots): tonight, photo, stars, coming.
                     let args = ProcessInfo.processInfo.arguments
@@ -39,7 +39,7 @@ struct TonightView: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) { topBar }
-        .task { await model.load() }
+        .task(id: skyPass.isEntitled) { await reload() }
         // `-AtlasOpenSkyPass` (testing / screenshots): present the Sky Pass sheet on arrival.
         .task { if ProcessInfo.processInfo.arguments.contains("-AtlasOpenSkyPass") { try? await Task.sleep(for: .seconds(1)); showSkyPass = true } }
         .sheet(item: $detail) { item in
@@ -50,12 +50,16 @@ struct TonightView: View {
             AccountSheet(session: session, skyPass: skyPass,
                          openSkyPass: { showAccount = false; Task { try? await Task.sleep(for: .milliseconds(350)); showSkyPass = true } },
                          dismiss: { showAccount = false })
-                .presentationDetents([.height(380)])
+                .presentationDetents([.height(440)])
         }
         .sheet(isPresented: $showSkyPass) {
             SkyPassView(store: skyPass, signedIn: session.userID != nil) { showSkyPass = false }
                 .presentationDetents([.large]).presentationDragIndicator(.visible)
         }
+    }
+
+    private func reload() async {
+        await model.load(horizonDays: SkyPass.horizonDays(entitled: skyPass.isEntitled))
     }
 
     // MARK: Chrome
@@ -134,7 +138,7 @@ struct TonightView: View {
                 .feedEntrance())
         }
         return AnyView(MessageCard(symbol: "wifi.exclamationmark", kicker: "Events unavailable", title: "Couldn't load sky events", detail: detailText,
-                                   actionTitle: "Try again", action: { Task { await model.load() } })
+                                   actionTitle: "Try again", action: { Task { await reload() } })
             .feedEntrance())
     }
 
@@ -144,19 +148,26 @@ struct TonightView: View {
     }
 
     @ViewBuilder private func comingSection(_ plan: TonightPlan) -> some View {
-        SectionHead(kicker: "Coming up", trailing: model.upcoming.isEmpty ? nil : "next 7 days").id("coming")
+        SectionHead(kicker: "Coming up", trailing: model.upcoming.isEmpty ? nil : "next \(model.horizonDays) days").id("coming")
         if model.upcoming.isEmpty {
-            Text(model.eventsProblem == nil ? "No other events in the next week." : "Events will appear here once Atlas can reach the calendar.")
+            Text(model.eventsProblem == nil ? "No other events in the next \(model.horizonDays) days." : "Events will appear here once Atlas can reach the calendar.")
                 .font(.system(size: 14)).foregroundStyle(Brand.muted)
         } else {
             let groups = DayGroup.make(model.upcoming, zone: plan.timeZone)
-            VStack(alignment: .leading, spacing: 0) {
+            LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(groups) { group in
                     DayPill(label: group.label)
                     RowGroup(items: group.events) { e in EventRow(event: e, timeZone: plan.timeZone) { detail = .event(e) } }
                         .feedEntrance()
                 }
             }
+        }
+        if !skyPass.isEntitled {
+            MessageCard(symbol: "lock.fill", kicker: "Sky Pass",
+                        title: "See \(SkyPass.passHorizonDays) days ahead",
+                        detail: "Atlas shows the next \(SkyPass.freeHorizonDays) days free. Sky Pass extends the outlook to \(SkyPass.passHorizonDays) days so you can plan trips around eclipses, conjunctions and meteor showers.",
+                        actionTitle: "Get Sky Pass", action: { Haptics.tap(); showSkyPass = true })
+                .padding(.top, 12)
         }
     }
 
@@ -195,6 +206,10 @@ private struct AccountSheet: View {
     let skyPass: SkyPassStore
     let openSkyPass: () -> Void
     let dismiss: () -> Void
+    @State private var confirmDelete = false
+    @State private var deleting = false
+    @State private var deleteError: String?
+    @Environment(\.openURL) private var openURL
     var body: some View {
         VStack(spacing: 16) {
             AtlasMark(size: 56)
@@ -216,7 +231,38 @@ private struct AccountSheet: View {
                     .padding(.horizontal, 24).frame(minHeight: 46).background(Brand.violet, in: Capsule())
             }
             .buttonStyle(PressableStyle())
+            if session.email != nil {
+                Button { confirmDelete = true } label: {
+                    HStack(spacing: 8) {
+                        if deleting { ProgressView().controlSize(.small) }
+                        Text("Delete account").font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundStyle(Brand.flagship).frame(minHeight: 36)
+                }
+                .disabled(deleting)
+                if let deleteError { Text(deleteError).font(.system(size: 12)).foregroundStyle(Brand.flagship) }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity).background(Brand.bg)
+        .confirmationDialog("Delete your Atlas account?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete account permanently", role: .destructive) { performDelete() }
+            if skyPass.isEntitled {
+                Button("Manage subscription first") {
+                    if let url = URL(string: "https://apps.apple.com/account/subscriptions") { openURL(url) }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes your account, journal, watchlist and check-ins on every Atlas app and the website. It cannot be undone. Deleting your account does not cancel an App Store subscription; cancel it in Settings → Apple ID → Subscriptions.")
+        }
+    }
+
+    private func performDelete() {
+        deleting = true; deleteError = nil
+        Task {
+            do { try await session.deleteAccount(); dismiss() }
+            catch { deleteError = error.localizedDescription }
+            deleting = false
+        }
     }
 }

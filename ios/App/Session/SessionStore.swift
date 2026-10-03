@@ -39,6 +39,7 @@ final class SessionStore {
         // `-AtlasFixtureSignedIn`: a signed-in fixture account without the welcome flow.
         if ProcessInfo.processInfo.arguments.contains("-AtlasFixtureSignedIn") {
             userID = "fixture-user"
+            Keychain.write("fixture", for: tokenKey)
             state = .signedIn(email: "stargazer@atlas.test")
             return
         }
@@ -75,6 +76,14 @@ final class SessionStore {
         userID = nil
         isEntitled = false
         state = .signedOut
+    }
+
+    /// Deletes the account on the server, then forgets everything on this device. Throws (and keeps
+    /// the session) if the server refuses, so a failed deletion is never reported as done.
+    func deleteAccount() async throws {
+        guard let id = userID, let token = Keychain.read(tokenKey) else { throw AuthFailure.expired }
+        try await service.deleteAccount(userID: id, token: token)
+        signOut()
     }
 
     /// Accelerate the stars, swap the screen at peak speed, then settle into the new one.

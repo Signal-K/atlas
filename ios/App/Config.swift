@@ -14,8 +14,8 @@ enum Config {
         return URL(string: raw ?? "") ?? URL(string: "http://127.0.0.1:8093")!
     }
 
-    /// Apple's standard EULA, which covers apps that don't supply their own terms.
-    static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
+    /// Atlas's own Terms of Use / EULA (web route `/terms`); deploy the web app before App Review.
+    static let termsURL = URL(string: "https://youratlas.cc/terms")!
 
     /// Privacy Policy from Info.plist `AtlasPrivacyURL`; must be a live page before App Review.
     static var privacyURL: URL {
