@@ -50,6 +50,61 @@ test.describe('PocketBase-backed write actions', () => {
   // readable in it has to be reviewed before it counts. They share a signup
   // because the queue-row assertion is about what the *first* path left behind,
   // which only holds if both run against the same user.
+  // ASV-93: the XP ledger against a real PocketBase. Two sessions on the same
+  // night must leave exactly one observing_night row (the unique key), the
+  // ledger total must equal what the Profile card shows, and the owner-only
+  // rules must forbid rewriting a row (append-only).
+  test('records a check-in in the XP ledger once and keeps it append-only', async ({ page, request }) => {
+    const pbUrl = process.env.E2E_WRITE_PB_URL!
+    const email = clerkTestEmail('xp-ledger')
+    const password = `Atlas-e2e-${Date.now()}!`
+    const stamp = Date.now()
+
+    await setupClerkTestingToken({ page })
+
+    try {
+      const auth = await signUpAndExchange(page, email, password)
+      await page.goto('/app/journal')
+      for (const note of [`Ledger first ${stamp}`, `Ledger second ${stamp}`]) {
+        await page.getByRole('button', { name: /Log tonight's session/ }).first().click()
+        await page.locator('textarea').fill(note)
+        await page.getByRole('button', { name: 'Save session' }).click()
+        await expect(page.getByText(note)).toBeVisible({ timeout: 10_000 })
+      }
+
+      let rows: LedgerRecord[] = []
+      await expect
+        .poll(async () => {
+          rows = await getLedgerRecords(request, pbUrl, auth.token)
+          return rows.length
+        }, 'Expected the ledger to hold the night')
+        .toBeGreaterThan(0)
+      // Two sessions, one night, one award.
+      expect(rows.filter((row) => row.action === 'observing_night')).toHaveLength(1)
+      expect(new Set(rows.map((row) => `${row.action}:${row.source_id}`)).size).toBe(rows.length)
+
+      // Ledger total equals the projector the Profile card renders.
+      const ledgerTotal = rows.reduce((sum, row) => sum + row.points, 0)
+      await page.goto('/app/profile')
+      await expect(page.getByRole('region', { name: 'Your level' })).toContainText(`${ledgerTotal} pts`)
+
+      // Append-only: the owner cannot rewrite or delete a row, and a duplicate
+      // key is refused by the unique index.
+      const headers = { Authorization: `Bearer ${auth.token}` }
+      const url = `${pbUrl}/api/collections/atlas_xp_ledger/records`
+      const first = rows[0]
+      expect((await request.patch(`${url}/${first.id}`, { headers, data: { points: 999 } })).ok()).toBe(false)
+      expect((await request.delete(`${url}/${first.id}`, { headers })).ok()).toBe(false)
+      const duplicate = await request.post(url, {
+        headers,
+        data: { user: auth.record.id, action: first.action, source_id: first.source_id, skill: first.skill, points: first.points },
+      })
+      expect(duplicate.ok()).toBe(false)
+    } finally {
+      await deleteClerkTestUser({ email })
+    }
+  })
+
   test('backdates a check-in from a photo, then sends an unplaceable one to review', async ({ page, request }) => {
     const pbUrl = process.env.E2E_WRITE_PB_URL!
     const email = clerkTestEmail('backdated-checkin')
@@ -287,4 +342,20 @@ async function getReviewQueueRecords(request: import('@playwright/test').APIRequ
   return (await response.json()) as {
     items: Array<{ id: string; status: string; day_key: string; location_label: string }>
   }
+}
+
+interface LedgerRecord {
+  id: string
+  action: string
+  source_id: string
+  skill: string
+  points: number
+}
+
+async function getLedgerRecords(request: import('@playwright/test').APIRequestContext, pbUrl: string, token: string) {
+  const response = await request.get(`${pbUrl}/api/collections/atlas_xp_ledger/records?perPage=200`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  expect(response.ok(), await response.text()).toBe(true)
+  return ((await response.json()) as { items: LedgerRecord[] }).items
 }

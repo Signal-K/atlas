@@ -14,6 +14,7 @@
 // both the step count the progress bars promise and the "always ask" intent.
 // The id only decides which schema the answer is reported under.
 import { trackEvent } from './analytics'
+import { db } from './db'
 
 export const ONBOARDING_SURVEY_ID = import.meta.env.VITE_POSTHOG_ONBOARDING_SURVEY_ID as string | undefined
 
@@ -94,4 +95,23 @@ export function reportOnboardingSurveySubmitted(choices: string[]): void {
 export function reportOnboardingSurveyDismissed(): void {
   if (!ONBOARDING_SURVEY_ID) return
   trackEvent('survey dismissed', { $survey_id: ONBOARDING_SURVEY_ID, source: 'onboarding' })
+}
+
+// Persisted next to (never instead of) the PostHog report: PostHog stays the
+// analytics record, this is the copy the app itself can read back.
+export async function savePurposeChips(userId: string, choices: string[]): Promise<void> {
+  try {
+    await db.purposeChips.put({ userId, choices, savedAt: new Date().toISOString() })
+  } catch {
+    // Best-effort, like the survey marker: a storage failure must not block
+    // finishing onboarding.
+  }
+}
+
+export async function getPurposeChips(userId: string): Promise<string[]> {
+  try {
+    return (await db.purposeChips.get(userId))?.choices ?? []
+  } catch {
+    return []
+  }
 }

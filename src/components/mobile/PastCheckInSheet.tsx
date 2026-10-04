@@ -15,6 +15,8 @@ import { rankPastEventCandidates, type CheckInConfidence, type RankedCandidate }
 import { anchorsForDate, needsAnchorChoice, type PastAnchor } from '../../lib/pastCheckInAnchors'
 import { checkInPolicyFor, PhotoRequiredError } from '../../lib/checkInRules'
 import { savePastCheckIn } from '../../lib/checkInReview'
+import { describeAward, progressAnalyticsEvents } from '../../lib/progress'
+import { snapshotProgress } from '../../lib/progressSnapshot'
 import { findNearestCity, cityLabel, haversineKm } from '../../lib/cities'
 import { categoryForKind } from '../../lib/eventCategories'
 import { LocationSearchInput } from '../LocationSearchInput'
@@ -388,6 +390,8 @@ export function PastCheckInSheet({ open, onClose, currentLocation, onUpgradeClic
       photo == null || instantMs == null ? 'manual' : exif?.headingDeg != null ? 'photo-exif-heading' : 'photo-exif'
 
     try {
+      const badge = user?.firstTourBadge ?? null
+      const progressBefore = await snapshotProgress(scopeId, badge)
       const result = await savePastCheckIn({
         userId: scopeId,
         dayKey,
@@ -411,11 +415,9 @@ export function PastCheckInSheet({ open, onClose, currentLocation, onUpgradeClic
       // The two outcomes read differently on purpose: one is a diary entry, the
       // other is a claim waiting on a person. Calling both "saved" would keep
       // the review queue invisible until it silently did nothing.
-      toast(
-        result.sentToReview
-          ? 'Sent for review — we’ll add it to your city stamps once it’s approved.'
-          : 'Night added to your diary.',
-      )
+      const progressAfter = await snapshotProgress(scopeId, badge)
+      for (const event of progressAnalyticsEvents(progressBefore, progressAfter, 'past_check_in')) trackEvent(event.name, event.properties)
+      toast(describeAward(progressBefore, progressAfter, { pendingReview: result.sentToReview, label: 'Night added' }))
       onSaved()
       onClose()
     } catch (error) {

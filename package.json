@@ -11,6 +11,7 @@
     "test:unit": "node --test test/**/*.test.mjs",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:xp-ledger": "node --test test/xp-ledger.test.mjs test/progress.test.mjs && playwright test e2e/xp-ledger-sync.spec.ts e2e/sky-night-stub.spec.ts e2e/checkin-points-toast.spec.ts e2e/profile-level-card.spec.ts",
     "test:e2e:writes": "E2E_WRITE_TESTS=1 playwright test e2e/pocketbase-write-actions.spec.ts",
     "stars": "node scripts/generate-bright-stars.mjs",
     "messier": "node scripts/generate-messier-catalog.mjs",

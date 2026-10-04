@@ -35,7 +35,9 @@ const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
 const clerkAppearance = {
   elements: {
     rootBox: { width: '100%' },
-    cardBox: { width: '100%' },
+    // Clerk's card box is overflow:hidden and flush with the form edge, which
+    // shaved the field ring and the first letter of each label on the left.
+    cardBox: { width: '100%', overflow: 'visible' },
     card: { width: '100%', border: 'none', padding: 0, backgroundColor: 'transparent' },
     header: { display: 'none' },
     footer: { display: 'none' },
@@ -50,10 +52,18 @@ const clerkAppearance = {
       boxSizing: 'border-box',
       height: '48px',
       borderRadius: '12px',
-      border: '1px solid #2c2d36',
+      // ASV-107: 3.9:1 border and 7.9:1 placeholder on the #0b0c10 card,
+      // matching the hand-rolled sign-in field in atlas.css.
+      // Clerk draws the field edge with box-shadow (its border is 0) and its
+      // own rule wins on specificity, so the ring needs !important or it stays
+      // a near-invisible black on the dark card.
+      border: 'none',
+      boxShadow: '0 0 0 1px #6b6e80 !important',
       background: '#0b0c10',
       color: '#f1f1f3',
       fontSize: '16px',
+      '&:focus': { boxShadow: '0 0 0 2px oklch(0.78 0.12 200) !important' },
+      '&::placeholder': { color: '#a3a4b0', opacity: 1 },
     },
     formButtonPrimary: {
       width: '100%',
@@ -72,7 +82,7 @@ const clerkAppearance = {
     otpCodeFieldInput: {
       boxSizing: 'border-box',
       background: '#0b0c10',
-      borderColor: '#2c2d36',
+      borderColor: '#6b6e80',
       color: '#f1f1f3',
     },
     alert: {

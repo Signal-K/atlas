@@ -15,6 +15,10 @@ const NPS_DISMISSED_KEY = 'atlas-feedback-nps-dismissed-at'
 const MICRO_STATE_KEY = 'atlas-feedback-micro-state'
 const ACTIVITY_THRESHOLD = 4
 const DISMISS_COOLDOWN_DAYS = 30
+// ASV-116: a survey is queued by its trigger and only shown once nothing else
+// is on screen for this long, so it lands after the outcome rather than on top
+// of it. PostHog showed 14 shown / 8 dismissed within 1-20s / 0 answered.
+const SURVEY_SETTLE_MS = 2500
 
 // PostHog survey object IDs -- set once scripts/posthog-surveys-setup.mjs
 // has created the matching survey in the dashboard. Undefined is fine:
@@ -25,6 +29,12 @@ const NPS_SURVEY_ID = import.meta.env.VITE_POSTHOG_NPS_SURVEY_ID as string | und
 const POSTPLAN_SURVEY_ID = import.meta.env.VITE_POSTHOG_POSTPLAN_SURVEY_ID as string | undefined
 const WTP_SURVEY_ID = import.meta.env.VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID as string | undefined
 const POSTPLAN_STATE_KEY = 'atlas-feedback-postplan-state'
+// ASV-116: the post-plan question used to pop up on first Hub load, straight
+// after the plan generated and before the person had done anything with it.
+// It now waits until a plan has been seen AND an outcome has happened.
+const PLAN_SEEN_KEY = 'atlas-feedback-plan-seen'
+const OUTCOME_KEY = 'atlas-feedback-outcome'
+const OUTCOME_EVENTS = new Set(['Tour completed', 'Logged observation'])
 const WTP_STATE_KEY = 'atlas-feedback-wtp-state'
 
 // Event names below must match src/lib/analytics.ts trackEvent() call sites
@@ -50,7 +60,10 @@ const MICRO_SURVEY_TRIGGERS: Record<string, { id: string; question: string; opti
     options: ['Yes', 'Somewhat', 'No'],
     surveyId: import.meta.env.VITE_POSTHOG_SURVEY_REMINDER_ID as string | undefined,
   },
-  first_plan_target_tapped: {
+  // ASV-116: this used to fire on `first_plan_target_tapped` -- the moment a
+  // person tapped a target, i.e. mid-flow -- and was dismissed within seconds.
+  // It now waits for the guided look to be finished.
+  'Tour completed': {
     id: 'target_detail_clarity',
     question: 'Did this help you decide what to look for?',
     options: ['Yes', 'Not sure', 'No'],
@@ -136,6 +149,7 @@ function daysSince(iso: string | null): number {
 export function FeedbackDock() {
   const { user } = useAuth()
   const [mode, setMode] = useState<FeedbackMode>(null)
+  const [queued, setQueued] = useState<FeedbackMode>(null)
   const [activityCount, setActivityCount] = useState(() => readNumber(ACTIVITY_KEY))
   const [npsTrigger, setNpsTrigger] = useState<string | null>(null)
   const [npsScore, setNpsScore] = useState<number | null>(null)
@@ -206,10 +220,7 @@ export function FeedbackDock() {
 
         if (!npsSubmitted && !npsDismissedRecently && nextCount >= ACTIVITY_THRESHOLD && surveyIsActive(NPS_SURVEY_ID)) {
           setNpsTrigger(detail.name)
-          setMode((current) => {
-            if (current == null && NPS_SURVEY_ID) trackEvent('survey shown', { $survey_id: NPS_SURVEY_ID })
-            return current ?? 'nps'
-          })
+          setQueued((current) => current ?? 'nps')
         }
       }
 
@@ -217,23 +228,21 @@ export function FeedbackDock() {
       if (survey && !localStorage.getItem(`${MICRO_STATE_KEY}:${survey.id}`) && surveyIsActive(survey.surveyId)) {
         setMicroSurvey(survey)
         setMicroNote('')
-        setMode((current) => {
-          if (current == null && survey.surveyId) trackEvent('survey shown', { $survey_id: survey.surveyId })
-          return current ?? 'micro'
-        })
+        setQueued((current) => current ?? 'micro')
       }
 
-      // ASV-26: once per user, right after the value moment (Tonight plan
-      // generated) while the friction or gap that got them there is fresh.
+      // ASV-26: once per user, after the value moment (a plan was generated)
+      // AND a completed outcome (guided look finished / observation logged).
+      if (detail.name === 'Tonight plan generation succeeded') localStorage.setItem(PLAN_SEEN_KEY, '1')
+      if (OUTCOME_EVENTS.has(detail.name)) localStorage.setItem(OUTCOME_KEY, '1')
       if (
-        detail.name === 'Tonight plan generation succeeded' &&
+        (detail.name === 'Tonight plan generation succeeded' || OUTCOME_EVENTS.has(detail.name)) &&
+        localStorage.getItem(PLAN_SEEN_KEY) &&
+        localStorage.getItem(OUTCOME_KEY) &&
         !localStorage.getItem(POSTPLAN_STATE_KEY) &&
         surveyIsActive(POSTPLAN_SURVEY_ID)
       ) {
-        setMode((current) => {
-          if (current == null && POSTPLAN_SURVEY_ID) trackEvent('survey shown', { $survey_id: POSTPLAN_SURVEY_ID })
-          return current ?? 'postplan'
-        })
+        setQueued((current) => current ?? 'postplan')
       }
 
       // ASV-27: once per user, the first time they actually reach a
@@ -241,16 +250,29 @@ export function FeedbackDock() {
       // "Paywall checkout clicked" feature breakdown as the
       // stated-preference half of the WTP question.
       if (detail.name === 'Paywall viewed' && !localStorage.getItem(WTP_STATE_KEY) && surveyIsActive(WTP_SURVEY_ID)) {
-        setMode((current) => {
-          if (current == null && WTP_SURVEY_ID) trackEvent('survey shown', { $survey_id: WTP_SURVEY_ID })
-          return current ?? 'wtp'
-        })
+        setQueued((current) => current ?? 'wtp')
       }
     }
 
     window.addEventListener('atlas:analytics-event', onAnalyticsEvent)
     return () => window.removeEventListener('atlas:analytics-event', onAnalyticsEvent)
   }, [npsDismissedRecently, npsSubmitted, activeSurveyIds])
+
+  useEffect(() => {
+    if (!queued || mode || isBlocked) return
+    const timer = window.setTimeout(() => {
+      const surveyId =
+        queued === 'nps' ? NPS_SURVEY_ID
+          : queued === 'micro' ? microSurvey?.surveyId
+            : queued === 'postplan' ? POSTPLAN_SURVEY_ID
+              : queued === 'wtp' ? WTP_SURVEY_ID
+                : undefined
+      if (surveyId) trackEvent('survey shown', { $survey_id: surveyId })
+      setMode(queued)
+      setQueued(null)
+    }, SURVEY_SETTLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [queued, mode, isBlocked, microSurvey])
 
   useEffect(() => {
     function openFeatureRequest() {

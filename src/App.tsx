@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LandingPage } from './views/LandingPage'
 import { HostPage } from './views/HostPage'
+import { LegalPage } from './views/LegalPage'
 import { AppShell } from './AppShell'
 import { useParallax } from './lib/motion'
 import { useAuth } from './lib/auth'
@@ -33,6 +34,25 @@ const APP_HOME = '/app/hub'
 // watchlist, saved plans), costs money, or writes to the account stays gated.
 const GUEST_ROUTES = new Set([APP_HOME])
 
+// Human name for the area a guest was bounced from, e.g. /app/calendar -> "Calendar".
+function lockedAreaLabel(pathname: string) {
+  const segment = pathname.split('/').filter(Boolean)[1]
+  return segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : undefined
+}
+
+// ASV-103: remembers that this device has held an account, so a locked route
+// opened by a first-time guest lands on Create account while a returning user
+// still gets Welcome back.
+const RETURNING_KEY = 'atlas-returning-account'
+
+function isReturningDevice() {
+  try {
+    return window.localStorage.getItem(RETURNING_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -41,7 +61,15 @@ function App() {
   const isGuidedTour = routerLocation.pathname === APP_HOME && new URLSearchParams(routerLocation.search).get('tour') === 'tonight'
   const { user } = useAuth()
   const [showEntryChoice, setShowEntryChoice] = useState(false)
-  const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
+  useEffect(() => {
+    if (!user) return
+    try {
+      window.localStorage.setItem(RETURNING_KEY, '1')
+    } catch {
+      // Storage blocked: guests simply keep seeing Create account.
+    }
+  }, [user])
+  const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>(() => (isReturningDevice() ? 'sign-in' : 'sign-up'))
   const {
     showOnboardingFlow,
     markEntered,
@@ -70,6 +98,9 @@ function App() {
     if (routerLocation.pathname === '/app' || isTonightRoute) navigate(APP_HOME, { replace: true })
   }, [routerLocation.pathname, isTonightRoute, navigate])
 
+  // Public legal pages (App Store requires reachable privacy + terms URLs).
+  const showLegal = routerLocation.pathname === '/privacy' || routerLocation.pathname === '/terms'
+
   // Any path that isn't "/", "/landing", "/hosts", "/tonight", or under
   // "/app" is not a real route. Unknown public URLs resolve to the
   // landing-page alias rather than silently falling through to the app shell.
@@ -78,11 +109,12 @@ function App() {
       routerLocation.pathname !== '/' &&
       routerLocation.pathname !== '/landing' &&
       routerLocation.pathname !== '/hosts' &&
+      !showLegal &&
       !isAppRoute
     ) {
       navigate('/landing', { replace: true })
     }
-  }, [routerLocation.pathname, isAppRoute, navigate])
+  }, [routerLocation.pathname, isAppRoute, showLegal, navigate])
 
   // "/" is the landing page, full stop. Signed-in visitors see their active
   // session identified here, but are only sent into the product when they
@@ -91,6 +123,13 @@ function App() {
   // "/hosts" is a public marketing page for prospective event hosts -- no
   // account required, same as landing.
   const showHosts = routerLocation.pathname === '/hosts'
+
+  useEffect(() => {
+    if (!showEntryChoice) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowEntryChoice(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showEntryChoice])
 
   function enterApp(startTour = false) {
     markEntered()
@@ -130,13 +169,13 @@ function App() {
       <>
         <LandingPage authenticatedEmail={user?.email} onEnter={handleLandingEntry} onEnterPaid={enterPaidApp} />
         {showEntryChoice && !user && (
-          <div className="entry-choice-overlay" role="presentation">
+          <div className="entry-choice-overlay atlas-almanac" role="presentation">
             <section className="entry-choice-modal" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
               <p className="entry-choice-kicker">Open Atlas</p>
               <h2 id="entry-choice-title">How would you like to begin?</h2>
               <p>Sign in to pick up your plans and journal, or take a look around first.</p>
               <div className="entry-choice-actions">
-                <button type="button" className="am-btn am-btn-primary" onClick={enterSignIn}>
+                <button type="button" className="am-btn am-btn-primary" autoFocus onClick={enterSignIn}>
                   Sign in first
                 </button>
                 <button type="button" className="am-btn" onClick={() => { setShowEntryChoice(false); enterApp(true) }}>
@@ -155,6 +194,10 @@ function App() {
 
   if (showHosts) {
     return <HostPage />
+  }
+
+  if (showLegal) {
+    return <LegalPage kind={routerLocation.pathname === '/privacy' ? 'privacy' : 'terms'} />
   }
 
   // Not "/", not "/landing", not a product route -- the redirect effect
@@ -181,6 +224,7 @@ function App() {
           // out of the product.
           backTo={APP_HOME}
           backLabel="Back to tonight"
+          lockedArea={lockedAreaLabel(routerLocation.pathname)}
         />
         <DevPreviewPanel />
       </>

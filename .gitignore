@@ -40,3 +40,8 @@ public/app-video/*_chunks/
 # with npm run capture:video / render:voice / render:video)
 media/app-video/*
 !media/app-video/*.txt
+
+ios/**/.build/
+ios/*.xcodeproj/
+ios/**/xcuserdata/
+.swiftpm/

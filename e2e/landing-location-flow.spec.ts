@@ -78,10 +78,11 @@ test('index stays on the landing page for a returning signed-out visitor', async
 
   await expect(page).toHaveURL('/')
   await expect(
-    page.getByRole('heading', { name: 'Know what is worth looking up for.' }),
+    page.getByRole('heading', { name: 'There is something worth going outside for.' }),
   ).toBeVisible()
-  await expect(page.getByRole('button', { name: 'See tonight’s sky' }).first()).toBeVisible()
-  await expect(page.getByText('Signed in as')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /See my sky/ }).first()).toBeVisible()
+  await expect(page.getByText('Sky Pass is optional')).toBeVisible()
+  await expect(page.getByText(/Sky nights|For hosts|Events & partners/)).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
@@ -95,10 +96,9 @@ test('index stays on the landing page for a signed-in visitor and identifies the
 
   await expect(page).toHaveURL('/')
   await expect(
-    page.getByRole('heading', { name: 'Know what is worth looking up for.' }),
+    page.getByRole('heading', { name: 'There is something worth going outside for.' }),
   ).toBeVisible()
-  await expect(page.getByText('Signed in as')).toContainText('signed-in@example.com')
-  await expect(page.getByRole('button', { name: 'Open Atlas' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: /See my sky/ }).first()).toBeVisible()
 })
 
 // Location is no longer collected on the landing page itself -- it moved
@@ -377,5 +377,5 @@ test('a free account can search for a location when browser location is unavaila
   await page.getByRole('button', { name: /^Location & sensors/ }).click()
 
   await expect(page.getByPlaceholder('Search city, region, or country')).toBeVisible()
-  await expect(page.getByText('Your location')).toBeVisible()
+  await expect(page.getByText('Your location', { exact: true })).toBeVisible()
 })

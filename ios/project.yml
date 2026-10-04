@@ -1,0 +1,58 @@
+name: Atlas
+options:
+  bundleIdPrefix: tech.skinetics
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  AtlasCore:
+    path: AtlasCore
+targets:
+  Atlas:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - path: Atlas.storekit
+        buildPhase: none
+    info:
+      path: App/Info.plist
+      properties:
+        AtlasPBURL: $(ATLAS_PB_URL)
+        AtlasBillingURL: $(ATLAS_BILLING_URL)
+        AtlasPrivacyURL: https://youratlas.cc/privacy
+        NSLocationWhenInUseUsageDescription: Atlas uses your location to work out what is above you tonight and when it gets dark.
+        UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
+        CFBundleDisplayName: Atlas
+        UIAppFonts: [IBMPlexMono-Regular.ttf, IBMPlexMono-Medium.ttf, Oxanium.ttf]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    dependencies:
+      - package: AtlasCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.atlasskyventures.atlas
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: NDP87SHHDT
+        SWIFT_VERSION: "6.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Local Atlas PocketBase (`make pb` in the repo root -> :8094, matching .env VITE_PB_URL).
+        # :8090 is a different project's server. Override per build config.
+        ATLAS_PB_URL: "http://127.0.0.1:8094"
+        # Local atlas-billing (the web app's VITE_ATLAS_BILLING_URL default). Production builds must point at
+        # https://signal-k-atlas-billing.fly.dev, which is where purchases are verified.
+        ATLAS_BILLING_URL: "http://127.0.0.1:8093"
+      configs:
+        # Release builds (TestFlight / App Store) must never ship localhost endpoints.
+        Release:
+          ATLAS_PB_URL: "https://signal-k-starsailors.fly.dev"
+          ATLAS_BILLING_URL: "https://signal-k-atlas-billing.fly.dev"
+schemes:
+  Atlas:
+    build:
+      targets:
+        Atlas: all
+    run:
+      # Local StoreKit testing: products without App Store Connect (Xcode > Debug > StoreKit).
+      storeKitConfiguration: Atlas.storekit

@@ -1,0 +1,64 @@
+{
+  "identifier" : "A71A5C01",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "55.00",
+      "familyShareable" : false,
+      "internalID" : "6740000003",
+      "localizations" : [
+        { "description" : "Sky Pass for life. One purchase, every Atlas app.", "displayName" : "Sky Pass Lifetime", "locale" : "en_US" }
+      ],
+      "productID" : "com.atlasskyventures.atlas.skypass.lifetime",
+      "referenceName" : "Sky Pass Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {},
+  "subscriptionGroups" : [
+    {
+      "id" : "21540001",
+      "localizations" : [],
+      "name" : "Sky Pass",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "4.00",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6740000001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            { "description" : "Sky Pass, billed monthly.", "displayName" : "Sky Pass Monthly", "locale" : "en_US" }
+          ],
+          "productID" : "com.atlasskyventures.atlas.skypass.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Sky Pass Monthly",
+          "subscriptionGroupID" : "21540001",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "40.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            { "description" : "Sky Pass, billed yearly.", "displayName" : "Sky Pass Yearly", "locale" : "en_US" }
+          ],
+          "productID" : "com.atlasskyventures.atlas.skypass.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Sky Pass Yearly",
+          "subscriptionGroupID" : "21540001",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        }
+      ]
+    }
+  ],
+  "version" : { "major" : 4, "minor" : 0 }
+}

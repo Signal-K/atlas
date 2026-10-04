@@ -46,6 +46,9 @@ export interface ObservationLogEntry {
   deviceUsed?: string
   cameraRecipeUsed?: string
   locationLabel?: string
+  // ASV-92: set on a self-reported community sky night (host-city label). Local
+  // only and unindexed, so no Dexie bump; the projector reads it for Community.
+  communityNightHost?: string
   conditionSummary?: string
   attemptRating?: AttemptRating
   photo?: Blob
@@ -126,6 +129,15 @@ export interface PinnedEvent {
 // single event instance). Tagging an event is "I want this specific
 // occurrence in my feed and to be notified about it", not "notify me about
 // every future event like this."
+// ASV-88: what the person said they want Atlas for (onboarding survey chips).
+// Device-local on purpose -- a `users` field would be a production PocketBase
+// migration; this keeps the answer readable for the training path (ASV-89).
+export interface PurposeChips {
+  userId: string
+  choices: string[]
+  savedAt: string
+}
+
 export interface TaggedEvent {
   id: string
   userId: string
@@ -208,6 +220,7 @@ class AtlasDB extends Dexie {
   pinnedEvents!: EntityTable<PinnedEvent, 'eventId'>
   cameraPresets!: EntityTable<CameraPreset, 'id'>
   taggedEvents!: EntityTable<TaggedEvent, 'id'>
+  purposeChips!: EntityTable<PurposeChips, 'userId'>
 
   constructor() {
     super('atlas')
@@ -230,6 +243,9 @@ class AtlasDB extends Dexie {
     })
     this.version(5).stores({
       taggedEvents: 'id, userId, eventId, [userId+eventId]',
+    })
+    this.version(6).stores({
+      purposeChips: 'userId',
     })
     // New observation fields (targetName, deviceUsed, etc.) don't need a
     // schema/index change -- Dexie stores whatever properties are on the

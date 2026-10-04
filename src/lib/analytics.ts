@@ -1,5 +1,7 @@
 import type { PostHog } from 'posthog-js'
 import { pb } from './pocketbase'
+import { describeSyncFailure } from './syncFailure.mjs'
+import { isInjectedWebviewNoise } from './injectedNoise.mjs'
 
 // posthog.init's `loaded` callback is typed as PostHogInterface, not the
 // PostHog class. Helpers only need identify + startSessionRecording.
@@ -16,7 +18,7 @@ const apiKey = import.meta.env.VITE_POSTHOG_KEY as string | undefined
 // still lands before the capture() that follows it).
 let loading: Promise<PostHog> | null = null
 
-type AnalyticsUser = { id: string; email: string; entitled: boolean }
+type AnalyticsUser = { id: string; email: string; entitled: boolean; entitlementSource?: string }
 
 // Checkout and recovery links legitimately carry one-time query parameters.
 // Analytics and replay need the route, never those credentials. Use the same
@@ -54,6 +56,7 @@ function persistedAnalyticsUser(): AnalyticsUser | null {
     id: model.id as string,
     email: model.email as string,
     entitled: Boolean(model.entitled),
+    entitlementSource: String(model.entitlement_source || ''),
   }
 }
 
@@ -62,6 +65,9 @@ function applyIdentifiedUser(posthog: SessionReplayClient, user: AnalyticsUser) 
     email: user.email,
     atlas_user_id: user.id,
     entitled: user.entitled,
+    // Which processor granted Sky Pass (polar | apple | ...); matches the
+    // server-side entitlement_changed event so web and iOS share one person.
+    entitlement_source: user.entitlementSource || (user.entitled ? 'unknown' : 'none'),
   })
 }
 
@@ -97,6 +103,7 @@ export function initAnalytics() {
       get_current_url: analyticsUrl,
       before_send: (event) => {
         if (!event) return event
+        if (isInjectedWebviewNoise(event)) return null
         const properties = event.properties
         if (!properties) return event
         const currentUrl = properties.$current_url
@@ -152,7 +159,12 @@ function withPostHog(fn: (posthog: PostHog) => void) {
   void loading.then(fn).catch(() => {})
 }
 
-export function trackEvent(name: string, properties?: Record<string, unknown>) {
+export function trackEvent(name: string, rawProperties?: Record<string, unknown>) {
+  // ASV-112: every sync_failed gets a reason/status/online/attempt so the
+  // failures are diagnosable without touching each of the call sites.
+  const properties = name === 'sync_failed'
+    ? describeSyncFailure(rawProperties, typeof navigator === 'undefined' ? true : navigator.onLine)
+    : rawProperties
   window.dispatchEvent(new CustomEvent('atlas:analytics-event', { detail: { name, properties } }))
   withPostHog((posthog) => posthog.capture(name, properties))
 }

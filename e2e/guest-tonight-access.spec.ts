@@ -53,7 +53,7 @@ test("a visitor with no account reaches tonight's sky from the landing page", as
   await page.goto('/')
 
   // The label repeats across the masthead, hero, membership card and footer.
-  await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+  await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
   await page.getByRole('button', { name: 'Start guided tour' }).click()
   await expect(page).toHaveURL('/app/hub?tour=tonight')
 
@@ -110,4 +110,19 @@ test('the gate returns a guest to tonight rather than ejecting them to the landi
 
   await page.getByRole('button', { name: /Back to tonight/ }).click()
   await expect(page).toHaveURL('/app/hub')
+})
+
+test('the gate names the area a guest tried to open and points new users to Create account', async ({ page }) => {
+  await page.goto('/app/calendar')
+  await expect(page.getByRole('status')).toContainText(/Calendar is part of your free account/)
+  await expect(page.getByRole('status')).toContainText(/Create account/)
+})
+
+test('a first-time guest lands on Create account, a returning device on Welcome back', async ({ page }) => {
+  await page.goto('/app/events')
+  await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
+
+  await page.evaluate(() => window.localStorage.setItem('atlas-returning-account', '1'))
+  await page.goto('/app/events')
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 })

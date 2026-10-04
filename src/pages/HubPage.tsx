@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
+import { TrainingPathCard } from '../components/TrainingPathCard'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { getTonightPlan } from '../lib/tonightTargets'
 import { tonightRatingLabel } from '../lib/tonightScore'
@@ -535,15 +536,18 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
           <div className="az-tour-checks">
             <span className={hasLocation ? 'is-done' : ''}>
               <MobileIcon name={hasLocation ? 'check' : 'pin'} size={14} />
-              <strong>Where</strong> {hasLocation ? city.name : 'Set your location'}
+              <strong>Where</strong>
+              <span>{hasLocation ? city.name : 'Set your location'}</span>
             </span>
             <span className={plan ? 'is-done' : ''}>
               <MobileIcon name={plan ? 'check' : 'calendar'} size={14} />
-              <strong>When</strong> {plan ? `${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)} after dark` : 'Building your window'}
+              <strong>When</strong>
+              <span>{plan ? `${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)} after dark` : 'Building your window'}</span>
             </span>
             <span className={tourTargetId ? 'is-done' : ''}>
               <MobileIcon name={tourTargetId ? 'check' : 'telescope'} size={14} />
-              <strong>What</strong> {tourTargetId ? 'Target chosen' : 'Choose one thing to find'}
+              <strong>What</strong>
+              <span>{tourTargetId ? 'Target chosen' : 'Choose one thing to find'}</span>
             </span>
           </div>
           {!hasLocation && onOpenLocation ? (
@@ -566,12 +570,12 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
             <p className="az-muted">No useful target is visible yet. Atlas will keep checking tonight’s sky.</p>
           )}
         </section>
-      ) : (
+      ) : !tourCompletion ? (
         <button type="button" className="az-tour-invite" onClick={startTour}>
           <span><span className="az-kicker">New here?</span><strong>Take one guided look at tonight’s sky.</strong></span>
           <span>Start →</span>
         </button>
-      )}
+      ) : null}
 
       {tourCompletion && !tourCelebration && (
         <div className="az-tour-badge" role="status">
@@ -593,6 +597,8 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
           />
         </div>
       )}
+
+      {plan && !guidedChoicePending && <TrainingPathCard />}
 
       {plan && plan.targets.length > 0 && !guidedChoicePending && (
         <>

@@ -7,6 +7,7 @@ import {
   tourAnalyticsProperties,
   type FirstTourCompletion,
 } from './tourJourney.mjs'
+import { syncXpLedgerSoon } from './xpLedger'
 
 const COMPLETION_KEY = 'atlas-first-tour-completion-v1'
 
@@ -74,7 +75,10 @@ export async function completeFirstTour(input: {
   safeWriteCompletion(completion)
   trackEvent('Incentive unlocked', { ...properties, type: 'first_tour', badge: FIRST_TOUR_BADGE })
 
-  if (input.authenticated) await syncFirstTourToAccount(completion)
+  if (input.authenticated) {
+    await syncFirstTourToAccount(completion)
+    void syncXpLedgerSoon()
+  }
   return { completion, firstCompletion: true }
 }
 

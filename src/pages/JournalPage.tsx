@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MobileIcon } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
 import { CaptureSheet, RATING_HUE, RATING_LABEL } from '../components/mobile/CaptureSheet'
+import { SkyNightSheet } from '../components/mobile/SkyNightSheet'
 import { PastCheckInSheet } from '../components/mobile/PastCheckInSheet'
 import { EntryDetailSheet } from '../components/mobile/JournalSheets'
 import { JournalCommunity } from '../components/mobile/JournalCommunity'
@@ -24,6 +25,15 @@ export interface JournalPageProps {
   currentLocation: CurrentLocation
 }
 
+// ASV-111: an entry with no named target used to read just "Observation".
+// Derive a title from what the entry does know: its place, else its time.
+function entryTitle(entry: ObservationLogEntry) {
+  if (entry.targetName) return entry.targetName
+  if (entry.locationLabel) return `Sky session · ${entry.locationLabel.split(',')[0]}`
+  const time = new Date(entry.observedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return `Sky session · ${time}`
+}
+
 function JournalEntryRow({ entry, kindLabel, onOpen }: { entry: ObservationLogEntry; kindLabel?: string; onOpen: () => void }) {
   const photoUrl = useEntryPhotoUrl(entry.photo)
   const tags = [entry.deviceUsed, kindLabel].filter(Boolean) as string[]
@@ -34,7 +44,7 @@ function JournalEntryRow({ entry, kindLabel, onOpen }: { entry: ObservationLogEn
         className={`az-thumb${photoUrl ? '' : ' az-thumb-empty'}`}
         style={photoUrl ? { backgroundImage: `url(${photoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
-        {!photoUrl && 'NOTE'}
+        {!photoUrl && <MobileIcon name="journal" size={18} />}
       </span>
       <span className="az-row-main">
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.1875rem' }}>
@@ -47,7 +57,7 @@ function JournalEntryRow({ entry, kindLabel, onOpen }: { entry: ObservationLogEn
             {new Date(entry.observedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}
           </span>
         </span>
-        <span className="az-row-title">{entry.targetName ?? 'Observation'}</span>
+        <span className="az-row-title">{entryTitle(entry)}</span>
         {entry.note && <span className="az-row-value">{entry.note}</span>}
         {tags.length > 0 && (
           <span className="az-chip-row" style={{ marginTop: '0.375rem' }}>
@@ -80,6 +90,10 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
   const [captureOpen, setCaptureOpen] = useState(false)
   const [pastOpen, setPastOpen] = useState(false)
   const [photoIdOpen, setPhotoIdOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // /hosts deep-links here with ?sky-night=1 to open the community action.
+  const skyNightOpen = searchParams.get('sky-night') === '1'
+  const closeSkyNight = () => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete('sky-night'); return next }, { replace: true })
   const [openEntry, setOpenEntry] = useState<ObservationLogEntry | null>(null)
   const [yearFilter, setYearFilter] = useState<string | null>(null)
 
@@ -177,6 +191,7 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
               </button>
               <div className="az-first-use-secondary" aria-label="Other ways to begin">
                 <button type="button" className="az-text-btn" onClick={() => setPastOpen(true)}>Check in to a past night</button>
+                <button type="button" className="az-text-btn" onClick={() => setSearchParams({ 'sky-night': '1' })}>I went to a sky night</button>
                 <button type="button" className="az-text-btn" onClick={() => setPhotoIdOpen(true)}>Identify a sky photo</button>
               </div>
             </section>
@@ -197,14 +212,18 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
               </button>
               <div className="az-first-use-secondary" aria-label="Other journal actions">
                 <button type="button" className="az-text-btn" onClick={() => setPastOpen(true)}>Check in to a past night</button>
+                <button type="button" className="az-text-btn" onClick={() => setSearchParams({ 'sky-night': '1' })}>I went to a sky night</button>
                 <button type="button" className="az-text-btn" onClick={() => setPhotoIdOpen(true)}>Identify a sky photo</button>
               </div>
             </>
           )}
 
-          <div className="az-section-head">
-            <span className="az-kicker">Your entries</span>
-          </div>
+          {/* Nothing to head until there is a first entry (ASV-111). */}
+          {entries.length > 0 && (
+            <div className="az-section-head">
+              <span className="az-kicker">Your entries</span>
+            </div>
+          )}
 
           {/* Only worth a filter row once the diary genuinely spans years. */}
           {years.length > 1 && (
@@ -263,6 +282,8 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
         currentLocation={currentLocation}
         onSaved={refresh}
       />
+
+      <SkyNightSheet open={skyNightOpen} onClose={closeSkyNight} onSaved={refresh} />
 
       <PastCheckInSheet
         open={pastOpen}

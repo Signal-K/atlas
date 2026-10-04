@@ -20,8 +20,8 @@ import type { CurrentLocation } from './lib/currentLocation'
 import type { ObservationDraft } from './lib/observationDraft'
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/app/hub', label: 'Hub', icon: <MobileIcon name="sparkle" /> },
-  { path: '/app/events', label: 'All events', icon: <MobileIcon name="calendar" /> },
+  { path: '/app/hub', label: 'Hub', icon: <MobileIcon name="orbit" /> },
+  { path: '/app/events', label: 'All events', icon: <MobileIcon name="binoculars" /> },
   { path: '/app/calendar', label: 'Calendar', icon: <MobileIcon name="calendar" /> },
   { path: '/app/planner', label: 'Planner', icon: <MobileIcon name="route" /> },
   { path: '/app/journal', label: 'Journal', icon: <MobileIcon name="journal" /> },
@@ -157,8 +157,6 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
         currentLocation={currentLocation}
         manualCity={profileProps.manualCity}
         setManualLocation={profileProps.setManualLocation}
-        needsMotionPermission={profileProps.needsMotionPermission}
-        requestMotionPermission={profileProps.requestMotionPermission}
       />
 
       {searchOpen && (

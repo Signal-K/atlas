@@ -114,6 +114,9 @@ export function HostPage() {
             <a className="am-link-btn" href={`mailto:${HOST_CONTACT_EMAIL}`}>
               Discuss a sky night →
             </a>
+            <Link className="am-link-btn" to="/app/journal?sky-night=1">
+              I went to a sky night →
+            </Link>
           </div>
         </section>
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ClientResponseError } from 'pocketbase'
 import { pb, atlasBillingFetch } from './pocketbase'
 import { trackEvent } from './analytics'
+import { reconcileAllowed, recordReconcileFailure, recordReconcileSuccess } from './reconcileBackoff.mjs'
 import { ONBOARDING_VERSION, clearOnboardingAnswers, getOnboardingAnswers } from './onboarding'
 
 const entitlementListeners = new Set<() => void>()
@@ -15,7 +16,22 @@ let entitlementRefreshPromise: Promise<AuthUser | null> | null = null
 // the DevPreviewPanel that drives it) is dead-code-eliminated -- it cannot
 // reach a real build.
 const DEV = import.meta.env.DEV
-let devPreviewUser: AuthUser | null = null
+// ASV-115: kept in sessionStorage so a full page load (deep link, reload, e2e
+// goto) does not drop the preview. Every touch is behind `DEV`, so the key and
+// helpers are removed with the rest of this branch in production builds.
+const DEV_PREVIEW_KEY = 'atlas-dev-preview-user'
+
+function readStoredDevPreviewUser(): AuthUser | null {
+  if (!DEV) return null
+  try {
+    const raw = window.sessionStorage.getItem(DEV_PREVIEW_KEY)
+    return raw ? (JSON.parse(raw) as AuthUser) : null
+  } catch {
+    return null
+  }
+}
+
+let devPreviewUser: AuthUser | null = readStoredDevPreviewUser()
 const devPreviewListeners = new Set<() => void>()
 
 export function getDevPreviewUser(): AuthUser | null {
@@ -25,6 +41,12 @@ export function getDevPreviewUser(): AuthUser | null {
 export function setDevPreviewUser(user: AuthUser | null): void {
   if (!DEV) return
   devPreviewUser = user
+  try {
+    if (user) window.sessionStorage.setItem(DEV_PREVIEW_KEY, JSON.stringify(user))
+    else window.sessionStorage.removeItem(DEV_PREVIEW_KEY)
+  } catch {
+    // Storage blocked: the preview still works, it just won't survive a reload.
+  }
   devPreviewListeners.forEach((listener) => listener())
 }
 
@@ -41,6 +63,8 @@ export interface AuthUser {
   id: string
   email: string
   entitled: boolean
+  // Which processor granted Sky Pass: 'polar', 'apple', ... ('' = unknown/legacy).
+  entitlementSource: string
   onboarded: boolean
   // Which version of the onboarding flow this account last completed; 0 if
   // never. The versioned replacement for `onboarded` as a gate input -- see
@@ -69,6 +93,7 @@ function currentUser(): AuthUser | null {
     id: model.id as string,
     email: model.email as string,
     entitled: Boolean(model.entitled),
+    entitlementSource: String(model.entitlement_source || ''),
     onboarded: Boolean(model.onboarded),
     // `|| 0` rather than a plain Number(): the field is absent from the auth
     // record until migration 39 has run *and* this record has been re-fetched,
@@ -164,8 +189,14 @@ export async function deleteAccount(): Promise<void> {
 // Re-fetches the signed-in user's record (e.g. `entitled`, flipped
 // server-side by the Polar webhook after a purchase) since the cached
 // authStore snapshot only otherwise updates on the next sign-in.
-const RECONCILE_COOLDOWN_MS = 5 * 60_000
-let reconcileRetryAfter = 0
+// Failure backoff is persisted (ASV-113) -- see lib/reconcileBackoff.mjs.
+function reconcileStorage(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
 
 // `force` permits reconciliation for a newly-returned checkout even though
 // its cached account is still free. It deliberately does not bypass a recent
@@ -193,16 +224,22 @@ export function refreshEntitlement({ force = false }: { force?: boolean } = {}):
     // change through the post-checkout force path; PocketBase authRefresh
     // below still runs for everyone and picks up a completed webhook.
     const shouldReconcile = force || currentUser()?.entitled === true
-    if (shouldReconcile && Date.now() >= reconcileRetryAfter) {
+    const storage = reconcileStorage()
+    const accountId = pb.authStore.record?.id ?? ''
+    // An offline device cannot reach billing: skip rather than record a
+    // failure that only reflects connectivity.
+    const canReconcile = navigator.onLine !== false && (!storage || reconcileAllowed(storage, accountId, Date.now()))
+    if (shouldReconcile && canReconcile) {
       try {
         // Webhooks are the fast path, but reconciliation makes paid access
         // self-healing if Polar's asynchronous delivery was missed or delayed.
         const result = await atlasBillingFetch<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
         reconciledAsEntitled = result.entitled === true
+        if (storage) recordReconcileSuccess(storage)
       } catch (err) {
-        reconcileRetryAfter = Date.now() + RECONCILE_COOLDOWN_MS
+        const failures = storage ? recordReconcileFailure(storage, accountId, Date.now()).failures : 1
         // Best-effort. authRefresh below still picks up a webhook-applied change.
-        trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err) })
+        trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err), attempt: failures })
       }
     }
     try {

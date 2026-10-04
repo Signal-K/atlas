@@ -73,9 +73,74 @@ test('the desktop auth route renders the Atlas gate rather than browser-default 
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/app/events')
 
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
   await expect(page.locator('.auth-gate-sky')).toBeVisible()
   await expect(page.locator('.auth-gate-modal')).toHaveCSS('display', 'flex')
   await expect(page.locator('.auth-gate-modal')).toHaveCSS('max-height', '800px')
   await expect(page.getByRole('button', { name: 'Continue' })).toHaveCSS('border-radius', '12px')
+})
+
+// ASV-108: the event detail overlay lived inside .nav-shell-main's stacking
+// context, so the sticky topbar painted over its header and back control.
+test('event detail back control is not covered by the topbar', async ({ page }) => {
+  await page.setViewportSize({ width: 406, height: 755 })
+  await page.goto('/app/hub')
+  await page.getByText('Custom Object observing window').first().click()
+
+  const back = page.locator('.az-entry-detail').getByRole('button', { name: 'Back' })
+  await expect(back).toBeVisible()
+  const covered = await back.evaluate((el) => {
+    const box = el.getBoundingClientRect()
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+    return !!hit && el.contains(hit) ? null : `${hit?.tagName}.${hit?.getAttribute('class')}`
+  })
+  expect(covered, 'back button must be the element under its own centre').toBeNull()
+})
+
+// ASV-101: the detail "Best time" was formatted in the device's timezone while
+// the Hub's "When" used the observing location's, so the same plan showed two
+// different clock times (Perth viewer-side: 19:41 vs 20:12).
+test.describe('device timezone differs from the observing location', () => {
+  test.use({ timezoneId: 'Pacific/Auckland' })
+
+  test('event detail best time is shown in the location timezone', async ({ page }) => {
+    await page.setViewportSize({ width: 406, height: 755 })
+    await page.goto('/app/hub')
+    await page.getByText('Custom Object observing window').first().click()
+
+    const detail = page.locator('.az-entry-detail')
+    const iso = await detail.getAttribute('data-best-time')
+    expect(iso).toBeTruthy()
+    const expected = new Date(iso!).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
+    const deviceLocal = new Date(iso!).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' })
+    expect(expected).not.toBe(deviceLocal)
+    await expect(detail.getByText(expected, { exact: true }).first()).toBeVisible()
+  })
+})
+
+// ASV-117: with no camera recipe the row used to be a button that expanded to
+// nothing, so tapping "Naked eye or binoculars is the way to go" did nothing
+// and was flagged as rage clicks.
+test('event detail without a camera recipe shows plain guidance, not a dead button', async ({ page }) => {
+  // asteroid_approach has no entry in RECIPE_KEY_FOR_EVENT_KIND.
+  await page.route('**/api/collections/sky_events/records**', async (route) => {
+    const start = new Date(Date.now() + 24 * 3_600_000)
+    start.setUTCHours(22, 0, 0, 0)
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        page: 1, perPage: 200, totalItems: 1, totalPages: 1,
+        items: [{ id: 'plain-asteroid', kind: 'asteroid_approach', target: 'asteroid', title: 'Plain Asteroid pass', description: 'A close pass.', content: 'A close pass.', starts_at: start.toISOString(), ends_at: new Date(start.getTime() + 3 * 3_600_000).toISOString(), updated: new Date().toISOString() }],
+      }),
+    })
+  })
+  await page.setViewportSize({ width: 406, height: 755 })
+  await page.goto('/app/hub')
+  await page.getByText('Plain Asteroid pass').first().click()
+
+  const detail = page.locator('.az-entry-detail')
+  await expect(detail.getByText('Naked eye or binoculars is the way to go')).toBeVisible()
+  await expect(detail.getByRole('button', { name: /camera recipe/i })).toHaveCount(0)
+  await expect(detail.locator('button', { hasText: 'Naked eye or binoculars' })).toHaveCount(0)
 })

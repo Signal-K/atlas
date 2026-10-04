@@ -103,8 +103,8 @@ test('signup happens via the auth gate before onboarding, then observations save
   try {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: 'Know what is worth looking up for.' })).toBeVisible()
-    await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+    await expect(page.getByRole('heading', { name: 'There is something worth going outside for.' })).toBeVisible()
+    await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
     await page.getByRole('button', { name: 'Start guided tour' }).click()
 
     // Straight into the product as a guest -- no account demanded first.
@@ -179,7 +179,7 @@ test('an existing account is re-run through the current onboarding flow', async 
 
     await page.goto('/')
 
-    await page.getByRole('button', { name: 'See tonight’s sky', exact: true }).first().click()
+    await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
     await page.getByRole('button', { name: 'Start guided tour' }).click()
     await expect(page).toHaveURL('/app/hub?tour=tonight')
 
@@ -187,6 +187,10 @@ test('an existing account is re-run through the current onboarding flow', async 
     // Navigated directly rather than via the rail, since onboarding is
     // covering the shell at this point in the journey.
     await page.goto('/app/events')
+    // A device that has never held an account opens on Create account (ASV-103);
+    // this visitor already has one, so they switch to the Sign in tab.
+    await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
+    await page.getByRole('tab', { name: 'Sign in', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 
     await fillClerkSignIn(page, email, password)

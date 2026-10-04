@@ -246,3 +246,30 @@ test('settings Sky Pass CTA uses dynamic checkout and falls back when unavailabl
 
   await expect(page).toHaveURL(`${APP_URL}/fallback-checkout`)
 })
+
+// ASV-113: a failing billing endpoint must not be retried on every reload. The
+// backoff is persisted, so a "reload" (new page load) inside the cooldown
+// makes no further call.
+test('a failed entitlement reconcile is not retried after a reload inside the cooldown', async ({ page }) => {
+  let calls = 0
+  await seedSignedInUser(page, true)
+  await page.route(`${BILLING_URL}/entitlement/polar/refresh`, async (route) => {
+    calls += 1
+    await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' })
+  })
+  await page.route(`${PB_URL}/api/collections/users/auth-refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ token: E2E_TOKEN, record: { id: 'e2e-user', email: 'atlas-entitlement-e2e@example.com', entitled: true } }),
+    })
+  })
+  await page.goto('/app/profile')
+  await expect.poll(() => calls).toBe(1)
+
+  await page.reload()
+  await page.waitForTimeout(1500)
+  expect(calls, 'reload within the cooldown must not call billing again').toBe(1)
+  const state = await page.evaluate(() => JSON.parse(localStorage.getItem('atlas-entitlement-reconcile') ?? 'null'))
+  expect(state?.failures).toBe(1)
+})

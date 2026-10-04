@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CameraRecipe } from '../../components/CameraRecipe'
 import { MobileIcon } from '../../components/mobile/MobileIcon'
 import { Starfield } from '../../components/mobile/Starfield'
@@ -147,8 +148,11 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
     }
   }
 
-  return (
-    <div className="az-overlay az-entry-detail">
+  // Portalled to <body>: rendered inside .nav-shell-main it sits in that
+  // element's z-index:1 stacking context and the sticky topbar (z-index:2)
+  // painted over the overlay's header and back control (ASV-108).
+  return createPortal(
+    <div className="az-overlay az-entry-detail" data-best-time={subject.bestTimeIso ?? undefined}>
       <div className="az-overlay-bg">
         <Starfield dark={dark} palette="mono" density={110} />
       </div>
@@ -177,9 +181,9 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
             <p className="az-kicker">Your guided look</p>
             <h2 id="az-tour-finish-title">When, where and what — ready.</h2>
             <div className="az-tour-checks">
-              <span><MobileIcon name="check" size={14} /> <strong>When</strong> {actions.tourCompletion.whenLabel}</span>
-              <span><MobileIcon name="check" size={14} /> <strong>Where</strong> {actions.tourCompletion.whereLabel}</span>
-              <span><MobileIcon name="check" size={14} /> <strong>What</strong> {subject.title}</span>
+              <span><MobileIcon name="check" size={14} /><strong>When</strong> <span>{actions.tourCompletion.whenLabel}</span></span>
+              <span><MobileIcon name="check" size={14} /><strong>Where</strong> <span>{actions.tourCompletion.whereLabel}</span></span>
+              <span><MobileIcon name="check" size={14} /><strong>What</strong> <span>{subject.title}</span></span>
             </div>
             <button type="button" className="az-btn az-btn-primary az-btn-block" disabled={tourCompleting} onClick={handleCompleteTour}>
               {tourCompleting ? 'Finishing…' : 'Complete guided look'}
@@ -247,25 +251,44 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
           </>
         )}
 
-        <button
-          type="button"
-          className="az-row"
-          style={{ marginTop: '0.75rem', borderRadius: '0.875rem', border: '1px solid var(--line)' }}
-          onClick={() => setRecipeOpen((current) => !current)}
-        >
-          <span className="az-row-icon" style={{ color: 'var(--az-amber)' }}>
-            <MobileIcon name="camera" />
-          </span>
-          <span className="az-row-main">
-            <span className="az-row-title">{recipeOpen ? 'Hide camera recipe' : 'Camera recipe'}</span>
-            <span className="az-row-value">{subject.recipeKey ? 'Suggested phone/telescope settings' : 'Naked eye or binoculars is the way to go'}</span>
-          </span>
-          <span className="az-row-chevron">
-            <MobileIcon name="chevron" size={14} />
-          </span>
-        </button>
-        {recipeOpen && (
-          <div style={{ marginTop: '0.625rem' }}>{subject.recipeKey ? <CameraRecipe recipeKey={subject.recipeKey} /> : null}</div>
+        {/* ASV-117: with no recipe there is nothing to expand, so this must not
+            be a button -- clicking the "Naked eye or binoculars" text did
+            nothing and showed up as rage clicks. */}
+        {subject.recipeKey ? (
+          <>
+            <button
+              type="button"
+              className="az-row"
+              style={{ marginTop: '0.75rem', borderRadius: '0.875rem', border: '1px solid var(--line)' }}
+              onClick={() => setRecipeOpen((current) => !current)}
+            >
+              <span className="az-row-icon" style={{ color: 'var(--az-amber)' }}>
+                <MobileIcon name="camera" />
+              </span>
+              <span className="az-row-main">
+                <span className="az-row-title">{recipeOpen ? 'Hide camera recipe' : 'Camera recipe'}</span>
+                <span className="az-row-value">Suggested phone/telescope settings</span>
+              </span>
+              <span className="az-row-chevron">
+                <MobileIcon name="chevron" size={14} />
+              </span>
+            </button>
+            {recipeOpen && (
+              <div style={{ marginTop: '0.625rem' }}>
+                <CameraRecipe recipeKey={subject.recipeKey} target={subject.title} />
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="az-row" style={{ marginTop: '0.75rem', borderRadius: '0.875rem', border: '1px solid var(--line)', cursor: 'default' }}>
+            <span className="az-row-icon" style={{ color: 'var(--az-amber)' }}>
+              <MobileIcon name="eye" />
+            </span>
+            <span className="az-row-main">
+              <span className="az-row-title">How to watch</span>
+              <span className="az-row-value">Naked eye or binoculars is the way to go</span>
+            </span>
+          </div>
         )}
 
         {actions?.onToggleTag && (
@@ -305,6 +328,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
           </p>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
