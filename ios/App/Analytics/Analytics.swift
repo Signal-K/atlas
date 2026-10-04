@@ -56,5 +56,8 @@ enum Analytics {
         case photoCaptured = "photo_captured"
         case cameraDenied = "camera_permission_denied"
         case skyPassOpened = "sky_pass_opened"
+        case checkInOpened = "check_in_opened"
+        case checkInCompleted = "check_in_completed"
+        case checkInFailed = "check_in_failed"
     }
 }

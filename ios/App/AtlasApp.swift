@@ -9,6 +9,7 @@ struct AtlasApp: App {
     @State private var session: SessionStore
     @State private var skyPass: SkyPassStore
     @State private var settings = AppSettings()
+    @State private var checkIns = CheckInStore(service: CheckInStore.service(client: AtlasApp.client))
 
     init() {
         Analytics.start()
@@ -23,7 +24,7 @@ struct AtlasApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(session: session, skyPass: skyPass, settings: settings) {
+            RootView(session: session, skyPass: skyPass, settings: settings, checkIns: checkIns) {
                 TonightModel(
                     events: Self.fixtures ?? LiveEventSource(client: Self.client),
                     forecasts: Self.fixtures ?? LiveForecastSource(),

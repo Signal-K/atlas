@@ -58,7 +58,7 @@ public final class PocketBaseClient: @unchecked Sendable {
         return req
     }
 
-    private func send<T: Decodable>(_ req: URLRequest, as type: T.Type) async throws -> T {
+    func send<T: Decodable>(_ req: URLRequest, as type: T.Type) async throws -> T {
         let (data, response) = try await session.data(for: req)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw PocketBaseError.http(status: http.statusCode)

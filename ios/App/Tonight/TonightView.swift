@@ -8,6 +8,7 @@ struct TonightView: View {
     let session: SessionStore
     let skyPass: SkyPassStore
     let settings: AppSettings
+    let checkIns: CheckInStore
     @State var model: TonightModel
 
     @State private var drift = 0.0
@@ -16,6 +17,7 @@ struct TonightView: View {
     @State private var showSkyPass = false
     @State private var showSky = false
     @State private var camera: CameraRequest?
+    @State private var checkInEvent: SkyEvent?
     @State private var showAllTargets = false
     @State private var showAllUpcoming = false
     @State private var showTimeline = false
@@ -48,7 +50,7 @@ struct TonightView: View {
         .task(id: skyPass.isEntitled) { await reload() }
         // `-AtlasOpenSkyPass` (testing / screenshots): present the Sky Pass sheet on arrival.
         .task { if ProcessInfo.processInfo.arguments.contains("-AtlasOpenSkyPass") { try? await Task.sleep(for: .seconds(1)); showSkyPass = true } }
-        // `-AtlasOpenSky` / `-AtlasOpenSettings` (testing / screenshots): open those screens once the plan is ready.
+        // `-AtlasOpenSky` / `-AtlasOpenSettings` / `-AtlasOpenCheckIn` (testing / screenshots): open those screens once the plan is ready.
         .onChange(of: model.phase) { _, phase in
             let args = ProcessInfo.processInfo.arguments
             guard phase == .ready else { return }
@@ -56,6 +58,9 @@ struct TonightView: View {
                 try? await Task.sleep(for: .milliseconds(800))
                 if args.contains("-AtlasOpenSky") { showSky = true }
                 if args.contains("-AtlasOpenSettings") { showSettings = true }
+                if args.contains("-AtlasOpenCheckIn"), let plan = model.plan {
+                    checkInEvent = TonightPlanner.activeNow(model.allEvents, now: Date(), latitude: plan.latitude, longitude: plan.longitude).first
+                }
             }
         }
         .sheet(item: $detail) { item in
@@ -81,6 +86,14 @@ struct TonightView: View {
             if let plan = model.plan { SkyView(plan: plan, settings: settings) { showSky = false } }
         }
         .fullScreenCover(item: $camera) { request in CameraView(plan: request.plan) { camera = nil } }
+        .sheet(item: $checkInEvent) { event in
+            if let userID = session.userID, let plan = model.plan {
+                CheckInSheet(event: event, equipment: settings.equipment ?? .phone, placeName: model.place?.name,
+                             conditions: plan.cloudCoverPct.map { "\(Int($0.rounded()))% cloud, \(plan.moonName)" },
+                             userID: userID, store: checkIns) { checkInEvent = nil }
+                    .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+            }
+        }
         .onChange(of: model.phase) { _, phase in if phase == .ready { Task { await rescheduleAlerts() } } }
     }
 
@@ -136,6 +149,7 @@ struct TonightView: View {
 
     @ViewBuilder private func feed(_ plan: TonightPlan) -> some View {
         Color.clear.frame(height: 0).id("tonight")
+        checkInSection(plan)
         VStack(spacing: 12) {
             VerdictCard(plan: plan, weatherProblem: model.weatherProblem).feedEntrance()
             SkyEntryCard(equipment: settings.equipment ?? .phone, count: visibleCount(plan)) { Haptics.tap(); showSky = true }.feedEntrance()
@@ -143,6 +157,24 @@ struct TonightView: View {
         bestShotSection(plan)
         comingSection(plan)
         Text("Weather by Open-Meteo. Sky positions computed on your device.").font(.system(size: 12)).foregroundStyle(Brand.muted).padding(.top, 28)
+    }
+
+    /// Re-evaluated every minute so the card appears when an event starts and goes when it ends.
+    @ViewBuilder private func checkInSection(_ plan: TonightPlan) -> some View {
+        TimelineView(.everyMinute) { context in
+            let active = TonightPlanner.activeNow(model.allEvents, now: context.date, latitude: plan.latitude, longitude: plan.longitude)
+            if !active.isEmpty {
+                VStack(spacing: 12) {
+                    ForEach(active.prefix(2)) { event in
+                        CheckInCard(event: event, timeZone: plan.timeZone, checkedInAt: checkIns.checkedInAt(event.id), signedIn: session.userID != nil) {
+                            if session.userID == nil { session.signOut() } else { checkInEvent = event }
+                        }
+                        .feedEntrance()
+                    }
+                }
+                .padding(.bottom, 12)
+            }
+        }
     }
 
     private func visibleCount(_ plan: TonightPlan) -> Int {

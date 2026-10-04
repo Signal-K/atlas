@@ -101,7 +101,7 @@ public struct TonightPlan: Sendable {
 public enum TonightPlanner {
     private static let maxTargets = 8
     private static let locationRadiusKm = 80.0
-    private static let optInOrbital: Set<String> = ["iss_pass", "satellite_flare"]
+    static let optInOrbital: Set<String> = ["iss_pass", "satellite_flare"]
     private static let brightKinds: Set<String> = ["moon_phase", "planet_event", "conjunction", "eclipse"]
 
     public static func plan(

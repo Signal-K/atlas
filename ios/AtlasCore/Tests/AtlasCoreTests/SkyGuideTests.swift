@@ -231,4 +231,61 @@ final class SkyGuideTests: XCTestCase {
         XCTAssertEqual(f.hours[0].start, date("2026-10-04T13:00:00Z"), "21:00 in Perth (+8) is 13:00 UTC")
         XCTAssertEqual(f.hours[1].cloudCoverPct, 30)
     }
+
+    // MARK: Check-in
+
+    private func event(_ id: String, _ kind: String, start: Double, end: Double, now: Date, title: String = "T") -> SkyEvent {
+        SkyEvent(id: id, kind: kind, target: "", title: title, startsAt: now.addingTimeInterval(start * 3600), endsAt: now.addingTimeInterval(end * 3600))
+    }
+
+    func testActiveNowKeepsOnlyRelevantRunningEvents() {
+        let now = date("2026-10-04T14:00:00Z")
+        let events = [
+            event("a", "planet_event", start: -1, end: 5, now: now),     // running
+            event("b", "conjunction", start: 1, end: 3, now: now),       // later
+            event("c", "meteor_shower", start: -30, end: -1, now: now),  // over
+            event("d", "fireball", start: -1, end: 1, now: now),         // a record of the past
+            event("e", "iss_pass", start: -1, end: 1, now: now),         // opt-in orbital
+            event("f", "eclipse", start: -0.5, end: 2, now: now),        // running, higher priority
+        ]
+        let active = TonightPlanner.activeNow(events, now: now, latitude: perth.lat, longitude: perth.lon)
+        XCTAssertEqual(active.map(\.id), ["f", "a"], "most important first")
+    }
+
+    func testCheckInFieldsMatchTheWebRecord() {
+        let now = date("2026-10-04T14:00:00Z")
+        let real = SkyEvent(id: "abc123def456ghi", kind: "eclipse", target: "moon", title: "Total lunar eclipse", startsAt: now, endsAt: now)
+        let draft = CheckInDraft(event: real, observedAt: now, rating: .great, note: "  Red moon!  ", deviceUsed: "Binoculars", locationLabel: "Perth", conditionSummary: "")
+        let f = CheckIn.fields(draft, userID: "user1")
+        XCTAssertEqual(f["user"], "user1")
+        XCTAssertEqual(f["observed_at"], "2026-10-04 14:00:00.000Z")
+        XCTAssertEqual(f["event"], "abc123def456ghi")
+        XCTAssertEqual(f["target_name"], "Total lunar eclipse")
+        XCTAssertEqual(f["note"], "Red moon!")
+        XCTAssertEqual(f["attempt_rating"], "great")
+        XCTAssertEqual(f["device_used"], "Binoculars")
+        XCTAssertNil(f["condition_summary"], "blank values are omitted")
+        XCTAssertEqual(parsePbDate(f["observed_at"]!), now)
+    }
+
+    func testGeneratedEventIdsAreNotSentAsRelations() {
+        let now = Date()
+        let derived = SkyEvent(id: "derived-moon", kind: "moon_phase", title: "Waxing Moon", startsAt: now, endsAt: now)
+        let f = CheckIn.fields(CheckInDraft(event: derived), userID: "u")
+        XCTAssertNil(f["event"])
+        XCTAssertEqual(f["target_name"], "Waxing Moon")
+        XCTAssertTrue(CheckIn.isRecordID("abc123def456ghi"))
+        XCTAssertFalse(CheckIn.isRecordID("past-2026-10-04"))
+        XCTAssertNil(f["attempt_rating"])
+    }
+
+    func testCheckInPostsToTheObservationsCollection() throws {
+        let client = PocketBaseClient(baseURL: URL(string: "http://127.0.0.1:8094")!)
+        client.token = "tok"
+        let body = try JSONEncoder().encode(["user": "u"])
+        let req = try client.request(path: "api/collections/atlas_observations/records", method: "POST", body: body)
+        XCTAssertEqual(req.httpMethod, "POST")
+        XCTAssertEqual(req.url?.path, "/api/collections/atlas_observations/records")
+        XCTAssertEqual(req.value(forHTTPHeaderField: "Authorization"), "tok")
+    }
 }
