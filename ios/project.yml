@@ -63,6 +63,9 @@ targets:
         Release:
           ATLAS_PB_URL: "https://signal-k-starsailors.fly.dev"
           ATLAS_BILLING_URL: "https://signal-k-atlas-billing.fly.dev"
+          # Public, write-only PostHog project token (US Cloud, project 199773), the same kind of key the web ships.
+          # Debug builds keep it empty so local runs don't send events. Never put the personal API key (phx_) here.
+          ATLAS_POSTHOG_KEY: "phc_65umDftbbTkrm1V6azue6OeU4u5c8iJcaHm4JtJ95di"
 schemes:
   Atlas:
     build:
