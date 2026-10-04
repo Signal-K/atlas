@@ -58,7 +58,7 @@ struct Kicker: View {
     let text: String
     var color: Color = Brand.muted
     var body: some View {
-        Text(text.uppercased()).font(.mono(11)).tracking(1.4).foregroundStyle(color)
+        Text(text.uppercased()).font(.mono(12)).tracking(1.4).foregroundStyle(color)
     }
 }
 
@@ -133,7 +133,7 @@ struct SectionHead: View {
         HStack(alignment: .firstTextBaseline) {
             Kicker(text: kicker)
             Spacer()
-            if let trailing { Text(trailing).font(.mono(11)).foregroundStyle(Brand.muted) }
+            if let trailing { Text(trailing).font(.mono(13)).foregroundStyle(Brand.muted) }
         }
         .padding(.top, 26).padding(.bottom, 10)
         .accessibilityAddTraits(.isHeader)

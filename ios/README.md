@@ -23,3 +23,13 @@ Sold only through StoreKit 2 (`SkyPass/StoreKitProvider.swift`); no Polar link e
 - Local StoreKit testing: `Atlas.storekit` is wired into the scheme (Xcode -> Debug -> StoreKit). The server rejects Xcode-signed transactions; use a Sandbox account for end to end.
 - Fixtures: `-AtlasFixtureSignedIn`, `-AtlasFixtureStore` (fake offers + purchase), `-AtlasFixtureStoreEmpty`, `-AtlasOpenSkyPass` (open the sheet on arrival).
 - Before App Review: products in App Store Connect, a live privacy policy at `AtlasPrivacyURL`, production `ATLAS_BILLING_URL`/`ATLAS_PB_URL`. See `atlas-billing/DEPLOY.md`.
+
+
+## Equipment, Sky page, alerts, camera, analytics (ASV-124)
+
+- **Equipment** (`Settings/AppSettings`, `Onboarding/`): first run asks phone / binoculars / telescope; Settings changes it. It sets the limiting magnitude (`AtlasCore/Equipment.swift`) that the Sky page and the camera advice use. The phone model is read from `hw.machine` (`DeviceProfile.swift`).
+- **Sky page** (`Sky/`): full-screen chart of what is visible for the chosen equipment. "Point" projects the sky through the screen using CoreMotion's `xTrueNorthZVertical` attitude (`AtlasCore/SkyCamera.swift`); with no sensors (Simulator) you drag. "Map" is the all-sky dome.
+- **Alerts** (`Alerts/`, `AtlasCore/AlertPlanner.swift`): the clearest dark stretch per night and clear-hour event alerts, from Open-Meteo hourly cloud. Scheduled as local notifications on every load, plus a best-effort `BGAppRefreshTask`. Permission is requested only when an alert toggle is turned on.
+- **Camera** (`Camera/`, `AtlasCore/CameraAdvisor.swift`): per-subject ISO / shutter / focus / white balance / lens, applied by an in-app manual camera (iOS cannot launch the system Camera with settings). Manual exposure is clamped to the phone's active format; the UI says when the ideal is longer than that.
+- **Analytics** (`Analytics/`): PostHog via the first-party `/uplink` proxy. Set `ATLAS_POSTHOG_KEY` (the web's public `VITE_POSTHOG_KEY`) per build; empty means every call is a no-op.
+- Fixtures: `-AtlasEquipment <phone|binoculars|telescope>`, `-AtlasResetOnboarding`, `-AtlasOpenSky`, `-AtlasOpenSettings`.

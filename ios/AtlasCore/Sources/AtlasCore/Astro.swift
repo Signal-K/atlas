@@ -4,6 +4,8 @@ public struct HorizontalPosition: Equatable, Sendable {
     public let altitudeDeg: Double
     public let azimuthDeg: Double
 
+    public init(altitudeDeg: Double, azimuthDeg: Double) { self.altitudeDeg = altitudeDeg; self.azimuthDeg = azimuthDeg }
+
     public var compass: String { Astro.compassLabel(azimuthDeg) }
 }
 

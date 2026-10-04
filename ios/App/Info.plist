@@ -6,8 +6,16 @@
 	<string>$(ATLAS_BILLING_URL)</string>
 	<key>AtlasPBURL</key>
 	<string>$(ATLAS_PB_URL)</string>
+	<key>AtlasPostHogHost</key>
+	<string>$(ATLAS_POSTHOG_HOST)</string>
+	<key>AtlasPostHogKey</key>
+	<string>$(ATLAS_POSTHOG_KEY)</string>
 	<key>AtlasPrivacyURL</key>
 	<string>https://youratlas.cc/privacy</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>cc.youratlas.alerts.refresh</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -33,13 +41,23 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Atlas opens the camera with the right exposure, ISO and focus for what you are photographing.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Atlas uses your location to work out what is above you tonight and when it gets dark.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Atlas uses the motion sensors so the sky chart follows where you point your phone.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Atlas saves the photos you take of the sky to your library.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>IBMPlexMono-Regular.ttf</string>
 		<string>IBMPlexMono-Medium.ttf</string>
 		<string>Oxanium.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

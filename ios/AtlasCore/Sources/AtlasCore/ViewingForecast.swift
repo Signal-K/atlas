@@ -13,11 +13,25 @@ public struct NightAdvisory: Equatable, Sendable {
     }
 }
 
+/// One forecast hour, used to find the clearest stretch of a night.
+public struct HourAdvisory: Equatable, Sendable {
+    public let start: Date
+    public let cloudCoverPct: Double
+    public let precipitationChancePct: Double
+
+    public init(start: Date, cloudCoverPct: Double, precipitationChancePct: Double) {
+        self.start = start; self.cloudCoverPct = cloudCoverPct; self.precipitationChancePct = precipitationChancePct
+    }
+}
+
 public struct ViewingForecast: Equatable, Sendable {
     public let nights: [NightAdvisory]
     public let timeZone: String?
+    public let hours: [HourAdvisory]
 
-    public init(nights: [NightAdvisory], timeZone: String?) { self.nights = nights; self.timeZone = timeZone }
+    public init(nights: [NightAdvisory], timeZone: String?, hours: [HourAdvisory] = []) {
+        self.nights = nights; self.timeZone = timeZone; self.hours = hours
+    }
 
     /// The advisory for the evening of `date` in the forecast's own time zone.
     public func night(startingOn date: Date) -> NightAdvisory? {
@@ -47,6 +61,7 @@ public enum ViewingForecastService {
                 let precipitation_probability: [Double?]?
             }
             let timezone: String?
+            let utc_offset_seconds: Int?
             let daily: Daily?
             let hourly: Hourly?
         }
@@ -81,7 +96,18 @@ public enum ViewingForecastService {
                 highCloudCoverPct: nightly(p.hourly?.cloud_cover_high, date),
                 precipitationChancePct: nightly(p.hourly?.precipitation_probability, date) ?? (p.daily?.precipitation_probability_mean?[safe: i]).flatMap { $0 } ?? 0)
         }
-        return ViewingForecast(nights: Array(nights), timeZone: p.timezone)
+
+        // Open-Meteo's hourly times are wall-clock in the place's zone ("2026-10-04T21:00"); convert with its UTC offset.
+        let offset = TimeInterval(p.utc_offset_seconds ?? 0)
+        var utc = Calendar(identifier: .gregorian); utc.timeZone = TimeZone(identifier: "UTC")!
+        let hourFormat = DateFormatter(); hourFormat.calendar = utc; hourFormat.timeZone = utc.timeZone
+        hourFormat.locale = Locale(identifier: "en_US_POSIX"); hourFormat.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        let hours: [HourAdvisory] = hourlyTimes.enumerated().compactMap { i, ts in
+            guard let cloud = p.hourly?.cloud_cover?[safe: i].flatMap({ $0 }), let wall = hourFormat.date(from: ts) else { return nil }
+            let rain = p.hourly?.precipitation_probability?[safe: i].flatMap { $0 } ?? 0
+            return HourAdvisory(start: wall.addingTimeInterval(-offset), cloudCoverPct: cloud, precipitationChancePct: rain)
+        }
+        return ViewingForecast(nights: Array(nights), timeZone: p.timezone, hours: hours)
     }
 
     public static func fetch(latitude: Double, longitude: Double, days: Int = 7, session: URLSession = .shared) async throws -> ViewingForecast {

@@ -6,6 +6,7 @@ import SwiftUI
 struct RootView: View {
     let session: SessionStore
     let skyPass: SkyPassStore
+    let settings: AppSettings
     let makeTonight: () -> TonightModel
 
     @State private var tonight: TonightModel?
@@ -20,8 +21,10 @@ struct RootView: View {
             case .signedOut:
                 WelcomeView(session: session).transition(.opacity.combined(with: .scale(scale: 1.08)))
             case .guest, .signedIn:
-                if let tonight {
-                    TonightView(session: session, skyPass: skyPass, model: tonight)
+                if settings.needsOnboarding {
+                    EquipmentOnboardingView(settings: settings).transition(.opacity.combined(with: .scale(scale: 1.04)))
+                } else if let tonight {
+                    TonightView(session: session, skyPass: skyPass, settings: settings, model: tonight)
                         .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 }
             }
@@ -30,7 +33,11 @@ struct RootView: View {
         .task { await session.restore() }
         // Claims purchases this account already owns and redeems renewals / Ask to Buy approvals
         // for as long as someone is signed in; restarts (and cancels) when the account changes.
-        .task(id: session.userID) { if session.userID != nil { await skyPass.run() } }
+        .task(id: session.userID) {
+            Analytics.identify(userID: session.userID, entitled: session.userID == nil ? nil : skyPass.isEntitled)
+            if session.userID != nil { await skyPass.run() }
+        }
+        .animation(.smooth(duration: 0.45), value: settings.needsOnboarding)
         .onChange(of: session.state) { _, state in
             if state == .guest || state.isSignedIn { tonight = tonight ?? makeTonight() } else { tonight = nil }
         }

@@ -6,6 +6,9 @@ options:
 packages:
   AtlasCore:
     path: AtlasCore
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios.git
+    from: 3.0.0
 targets:
   Atlas:
     type: application
@@ -20,7 +23,15 @@ targets:
         AtlasPBURL: $(ATLAS_PB_URL)
         AtlasBillingURL: $(ATLAS_BILLING_URL)
         AtlasPrivacyURL: https://youratlas.cc/privacy
+        # Empty disables analytics. Set ATLAS_POSTHOG_KEY per build (the public project key, as the web's VITE_POSTHOG_KEY).
+        AtlasPostHogKey: $(ATLAS_POSTHOG_KEY)
+        AtlasPostHogHost: $(ATLAS_POSTHOG_HOST)
         NSLocationWhenInUseUsageDescription: Atlas uses your location to work out what is above you tonight and when it gets dark.
+        NSMotionUsageDescription: Atlas uses the motion sensors so the sky chart follows where you point your phone.
+        NSCameraUsageDescription: Atlas opens the camera with the right exposure, ISO and focus for what you are photographing.
+        NSPhotoLibraryAddUsageDescription: Atlas saves the photos you take of the sky to your library.
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [cc.youratlas.alerts.refresh]
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: Atlas
@@ -29,6 +40,7 @@ targets:
           NSAllowsLocalNetworking: true
     dependencies:
       - package: AtlasCore
+      - package: PostHog
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.atlasskyventures.atlas
@@ -43,6 +55,9 @@ targets:
         # Local atlas-billing (the web app's VITE_ATLAS_BILLING_URL default). Production builds must point at
         # https://signal-k-atlas-billing.fly.dev, which is where purchases are verified.
         ATLAS_BILLING_URL: "http://127.0.0.1:8093"
+        # PostHog: leave the key empty locally. Release builds should pass ATLAS_POSTHOG_KEY on the command line / in CI.
+        ATLAS_POSTHOG_KEY: ""
+        ATLAS_POSTHOG_HOST: "https:/$()/youratlas.cc/uplink"
       configs:
         # Release builds (TestFlight / App Store) must never ship localhost endpoints.
         Release:

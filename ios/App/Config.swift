@@ -22,4 +22,20 @@ enum Config {
         let raw = Bundle.main.object(forInfoDictionaryKey: "AtlasPrivacyURL") as? String
         return URL(string: raw ?? "") ?? URL(string: "https://youratlas.cc/privacy")!
     }
+
+    /// PostHog project key from Info.plist `AtlasPostHogKey` (ATLAS_POSTHOG_KEY in project.yml). Empty
+    /// means analytics are off. The key is a public, write-only capture key, like the web app's.
+    static var postHogKey: String? {
+        let raw = (Bundle.main.object(forInfoDictionaryKey: "AtlasPostHogKey") as? String)?.trimmingCharacters(in: .whitespaces)
+        guard let raw, !raw.isEmpty, !raw.hasPrefix("$(") else { return nil }
+        return raw
+    }
+
+    /// Capture goes through the same first-party proxy as the web app (functions/uplink), so ad
+    /// blockers and DNS filters that match PostHog's hostname don't drop events.
+    static var postHogHost: URL {
+        let raw = Bundle.main.object(forInfoDictionaryKey: "AtlasPostHogHost") as? String
+        if let raw, !raw.isEmpty, !raw.hasPrefix("$("), let url = URL(string: raw) { return url }
+        return URL(string: "https://youratlas.cc/uplink")!
+    }
 }

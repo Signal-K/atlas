@@ -44,46 +44,39 @@ struct VerdictCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 14) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Kicker(text: "Sky dispatch", color: Brand.amber)
+                    Kicker(text: "Tonight's sky", color: Brand.amber)
                     Text(headline).font(.serif(26)).foregroundStyle(Brand.ink).fixedSize(horizontal: false, vertical: true)
-                    if let reason = plan.reasons.first { Text(reason).font(.system(size: 14)).foregroundStyle(Brand.muted) }
+                    if let reason = plan.reasons.first { Text(reason).font(.system(size: 16)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: 0)
                 ZStack {
                     Circle().stroke(Brand.chip, lineWidth: 6)
                     Circle().trim(from: 0, to: fill).stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round)).rotationEffect(.degrees(-90))
-                    Text("\(plan.rating.rawValue)/5").font(.mono(13)).foregroundStyle(Brand.ink)
+                    Text("\(plan.rating.rawValue)/5").font(.mono(15)).foregroundStyle(Brand.ink)
                 }
                 .frame(width: 62, height: 62)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Rated \(plan.rating.label), \(plan.rating.rawValue) out of 5")
             }
 
-            HStack(spacing: 14) {
+            HStack(spacing: 16) {
                 if let c = plan.cloudCoverPct { stat("cloud.fill", "\(Int(c.rounded()))% cloud") }
-                if let r = plan.precipitationChancePct { stat("drop.fill", "\(Int(r.rounded()))% rain") }
-                stat("moon.fill", "\(Int(plan.moonIlluminationPct.rounded()))% moon")
+                if let r = plan.precipitationChancePct, r >= 10 { stat("drop.fill", "\(Int(r.rounded()))% rain") }
+                stat("moon.fill", plan.moonName)
             }
-            if let weatherProblem { Label(weatherProblem, systemImage: "wifi.slash").font(.footnote).foregroundStyle(Brand.muted) }
+            if let weatherProblem { Label(weatherProblem, systemImage: "wifi.slash").font(.system(size: 14)).foregroundStyle(Brand.muted) }
 
-            Divider().overlay(Brand.line)
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Kicker(text: "Dark sky")
-                    if let a = plan.darkness.darkStart, let b = plan.darkness.darkEnd {
-                        Text("\(a.clock(in: plan.timeZone)) – \(b.clock(in: plan.timeZone))").font(.mono(17)).foregroundStyle(Brand.ink)
-                    } else { Text("No full darkness tonight").font(.system(size: 14)).foregroundStyle(Brand.muted) }
-                }
-                Spacer()
-                HStack(spacing: 8) {
-                    MoonDisc(elongation: MoonPhase.elongation(at: plan.nightStart)).frame(width: 34, height: 34)
-                    Text(plan.moonName).font(.system(size: 13)).foregroundStyle(Brand.muted)
+            if let a = plan.darkness.darkStart, let b = plan.darkness.darkEnd {
+                Divider().overlay(Brand.line)
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Dark sky").font(.system(size: 16)).foregroundStyle(Brand.muted)
+                    Spacer()
+                    Text("\(a.clock(in: plan.timeZone)) – \(b.clock(in: plan.timeZone))").font(.mono(18)).foregroundStyle(Brand.ink)
                 }
             }
-            Text(plan.generalAdvice).font(.system(size: 13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-            if let next = plan.nextClearNight {
-                Label("Better: \(Self.dayName(next.date)) — \(Int(next.cloudCoverPct.rounded()))% cloud", systemImage: "arrow.forward.circle")
-                    .font(.system(size: 13, weight: .medium)).foregroundStyle(Brand.green)
+            if plan.rating <= .poor, let next = plan.nextClearNight {
+                Label("Better: \(Self.dayName(next.date)), \(Int(next.cloudCoverPct.rounded()))% cloud", systemImage: "arrow.forward.circle")
+                    .font(.system(size: 15, weight: .medium)).foregroundStyle(Brand.green)
             }
         }
         .padding(16)
@@ -92,7 +85,7 @@ struct VerdictCard: View {
     }
 
     private func stat(_ symbol: String, _ text: String) -> some View {
-        Label(text, systemImage: symbol).font(.mono(11)).textCase(.uppercase).foregroundStyle(Brand.ink.opacity(0.8))
+        Label(text, systemImage: symbol).font(.system(size: 15, weight: .medium)).foregroundStyle(Brand.ink.opacity(0.85))
     }
 
     /// "2026-10-06" -> "Tue 6 Oct" (a calendar date, so no time-zone shifting).
@@ -243,7 +236,7 @@ struct TargetCard: View {
                     Kicker(text: "\(category?.label ?? "Sky event") · \(target.meta.difficulty.rawValue)")
                     Text(target.event.title).font(.serif(19)).foregroundStyle(Brand.ink).multilineTextAlignment(.leading)
                     if !target.event.description.isEmpty {
-                        Text(target.event.description).font(.system(size: 14)).foregroundStyle(Brand.muted).lineLimit(2).multilineTextAlignment(.leading)
+                        Text(target.event.description).font(.system(size: 15)).foregroundStyle(Brand.muted).lineLimit(2).multilineTextAlignment(.leading)
                     }
                     FlowLayout(spacing: 6, alignment: .leading) {
                         Badge(text: "Best \(target.bestTime.clock(in: timeZone))", symbol: "clock", tint: Brand.ink)
@@ -276,7 +269,7 @@ struct MessageCard: View {
             IconTile(symbol: symbol, size: 40)
             Kicker(text: kicker)
             Text(title).font(.serif(20)).foregroundStyle(Brand.ink)
-            Text(detail).font(.system(size: 14)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            Text(detail).font(.system(size: 16)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             if let action, let actionTitle {
                 Button(action: action) {
                     Text(actionTitle).font(.system(size: 14, weight: .semibold)).foregroundStyle(Brand.bg)
@@ -312,7 +305,7 @@ struct DayPill: View {
     let label: String
     var body: some View {
         HStack(spacing: 10) {
-            Text(label.uppercased()).font(.mono(11)).tracking(1.2).foregroundStyle(Brand.ink)
+            Text(label.uppercased()).font(.mono(13)).tracking(1.2).foregroundStyle(Brand.ink)
                 .padding(.horizontal, 10).padding(.vertical, 4).background(Brand.surface2, in: Capsule())
             Rectangle().fill(Brand.line).frame(height: 1)
         }
@@ -331,11 +324,11 @@ struct EventRow: View {
             HStack(spacing: 12) {
                 IconTile(symbol: category?.symbol ?? "sparkles", size: 32)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text((category?.label ?? "Sky event").uppercased()).font(.mono(9.5)).tracking(1).foregroundStyle(Brand.muted)
-                    Text(event.title).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Brand.ink).lineLimit(2).multilineTextAlignment(.leading)
+                    Text((category?.label ?? "Sky event").uppercased()).font(.mono(12)).tracking(1).foregroundStyle(Brand.muted)
+                    Text(event.title).font(.system(size: 16, weight: .medium)).foregroundStyle(Brand.ink).lineLimit(2).multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 8)
-                Text(event.startsAt.clock(in: timeZone)).font(.mono(12)).foregroundStyle(Brand.ink)
+                Text(event.startsAt.clock(in: timeZone)).font(.mono(14)).foregroundStyle(Brand.ink)
                 Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Brand.muted.opacity(0.5))
             }
             .padding(.horizontal, 14).frame(minHeight: 56)
@@ -373,6 +366,10 @@ enum DetailItem: Identifiable {
 struct DetailSheet: View {
     let item: DetailItem
     let timeZone: TimeZone
+    let device: DeviceProfile
+    /// Settings recommended for this event, and the action that opens the camera with them.
+    let camera: CameraPlan
+    let openCamera: (CameraPlan) -> Void
 
     private var event: SkyEvent { switch item { case .target(let t): t.event; case .event(let e): e } }
     private var target: PhotoTarget? { if case .target(let t) = item { t } else { nil } }
@@ -386,7 +383,7 @@ struct DetailSheet: View {
                     Kicker(text: category?.label ?? "Sky event", color: Brand.violet)
                 }
                 Text(event.title).font(.serif(28)).foregroundStyle(Brand.ink)
-                if !event.description.isEmpty { Text(event.description).font(.system(size: 16)).foregroundStyle(Brand.muted) }
+                if !event.description.isEmpty { Text(event.description).font(.system(size: 17)).foregroundStyle(Brand.muted) }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Kicker(text: target == nil ? "When" : "Best at")
@@ -400,10 +397,11 @@ struct DetailSheet: View {
                         Badge(text: t.meta.phoneFriendly ? "Phone-friendly" : "Camera + tripod", symbol: t.meta.phoneFriendly ? "iphone" : "camera.aperture")
                         if t.meta.nakedEye { Badge(text: "Naked eye", symbol: "eye") }
                     }
-                    Text(t.meta.reason).font(.system(size: 15)).foregroundStyle(Brand.ink)
-                    Label(t.viewingNote, systemImage: "cloud.sun").font(.system(size: 14)).foregroundStyle(Brand.muted)
+                    Text(t.meta.reason).font(.system(size: 16)).foregroundStyle(Brand.ink)
+                    Label(t.viewingNote, systemImage: "cloud.sun").font(.system(size: 15)).foregroundStyle(Brand.muted)
                 }
-                if let content = event.content, !content.isEmpty { Text(content).font(.system(size: 15)).foregroundStyle(Brand.muted) }
+                CameraPlanCard(plan: camera, device: device) { openCamera(camera) }
+                if let content = event.content, !content.isEmpty { Text(content).font(.system(size: 16)).foregroundStyle(Brand.muted) }
             }
             .frame(maxWidth: .infinity, alignment: .leading).padding(24)
         }
@@ -423,7 +421,7 @@ struct CompassDial: View {
                 Circle().strokeBorder(Brand.line2, lineWidth: 1.5)
                 ForEach(0..<4, id: \.self) { i in
                     let a = Double(i) * .pi / 2
-                    Text(["N", "E", "S", "W"][i]).font(.mono(10)).foregroundStyle(i == 0 ? Brand.flagship : Brand.muted)
+                    Text(["N", "E", "S", "W"][i]).font(.mono(12)).foregroundStyle(i == 0 ? Brand.flagship : Brand.muted)
                         .offset(x: sin(a) * 50, y: -cos(a) * 50)
                 }
                 Needle().fill(Brand.violet).frame(width: 10, height: 70).rotationEffect(.degrees(azimuth))
@@ -436,9 +434,9 @@ struct CompassDial: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Capsule().fill(Brand.chip).frame(width: 120, height: 6)
                         .overlay(alignment: .leading) { Capsule().fill(Brand.violet).frame(width: 120 * min(1, max(0, altitude / 90)), height: 6) }
-                    Text("\(Int(position.altitudeDeg.rounded()))° above the horizon").font(.mono(11)).foregroundStyle(Brand.muted)
+                    Text("\(Int(position.altitudeDeg.rounded()))° above the horizon").font(.mono(13)).foregroundStyle(Brand.muted)
                 }
-                Text(note).font(.system(size: 12)).foregroundStyle(Brand.muted)
+                Text(note).font(.system(size: 14)).foregroundStyle(Brand.muted)
             }
         }
         .accessibilityElement(children: .ignore)

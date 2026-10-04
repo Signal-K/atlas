@@ -8,8 +8,11 @@ struct AtlasApp: App {
 
     @State private var session: SessionStore
     @State private var skyPass: SkyPassStore
+    @State private var settings = AppSettings()
 
     init() {
+        Analytics.start()
+        AlertRefresh.register(client: Self.client)
         let session = SessionStore(service: FixtureAuthService.fromLaunchArguments() ?? LiveAuthService(client: Self.client))
         _session = State(initialValue: session)
         let fixture = FixtureSkyPass.fromLaunchArguments()
@@ -20,7 +23,7 @@ struct AtlasApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(session: session, skyPass: skyPass) {
+            RootView(session: session, skyPass: skyPass, settings: settings) {
                 TonightModel(
                     events: Self.fixtures ?? LiveEventSource(client: Self.client),
                     forecasts: Self.fixtures ?? LiveForecastSource(),
