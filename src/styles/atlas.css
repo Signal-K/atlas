@@ -1891,7 +1891,7 @@
    like the rest of Settings) is untouched. */
 
 .auth-gate-overlay {
-  background: rgba(4, 4, 8, 0.72);
+  background: rgba(7, 11, 24, 0.8);
 }
 
 .auth-gate-modal {
@@ -1905,11 +1905,11 @@
   max-height: min(94vh, 800px);
   padding: 0;
   overflow: hidden;
-  background: #0b0c10;
-  border: 0;
+  background: var(--house-night);
+  border: 1px solid var(--house-line);
   border-radius: 1.25rem;
   box-shadow: 0 24px 60px rgba(8, 7, 16, 0.5);
-  color: #f1f1f3;
+  color: var(--house-ink);
 }
 
 .auth-gate-form-panel {
@@ -1920,14 +1920,14 @@
   position: relative;
   z-index: 2;
   padding: 2.5rem 2.75rem;
-  background: #0b0c10;
+  background: var(--house-night);
   overflow-y: auto;
 }
 
 .auth-gate-wordmark {
-  font: 700 1.1rem/1 var(--az-font-display);
-  letter-spacing: 0.1em;
-  color: #f1f1f3;
+  font: 700 1rem/1 var(--house-font-mono);
+  letter-spacing: 0.28em;
+  color: var(--house-ink);
 }
 
 .auth-gate-form-body {
@@ -1940,27 +1940,27 @@
 
 .auth-gate-form-body h1 {
   margin: 0 0 0.5rem;
-  font: 700 2rem/1.15 var(--az-font-display);
-  letter-spacing: -0.01em;
-  color: #f1f1f3;
+  font: 400 2rem/1.1 var(--house-font-serif);
+  letter-spacing: -0.04em;
+  color: var(--house-ink);
 }
 
-.auth-gate-subhead {
+.auth-gate-modal .auth-gate-subhead {
   margin: 0 0 1.5rem;
   max-width: 32rem;
   font-size: 0.9375rem;
   line-height: 1.55;
-  color: #9a9aa4;
+  color: var(--house-muted);
 }
 
-.auth-gate-locked {
+.auth-gate-modal .auth-gate-locked {
   margin: 0 0 1rem;
   padding: 0.625rem 0.75rem;
-  border: 1px solid #2a2a31;
+  border: 1px solid var(--house-line);
   border-radius: 0.5rem;
   font-size: 0.875rem;
   line-height: 1.45;
-  color: #d4d4dc;
+  color: var(--house-ink);
 }
 
 .az-nav-drawer-lock {
@@ -1976,14 +1976,14 @@
   align-items: center;
   gap: 0.5rem;
   align-self: flex-start;
-  height: 2.5rem;
+  min-height: 2.75rem;
   margin-top: 0.5rem;
   padding: 0 0.5rem !important;
-  color: #9a9aa4;
+  color: var(--house-muted);
   font-size: 0.875rem;
 }
 .auth-gate-back:hover {
-  color: #f1f1f3;
+  color: var(--house-ink);
 }
 
 .auth-gate-sky {
@@ -1991,10 +1991,7 @@
   position: relative;
   min-width: 0;
   overflow: hidden;
-  background:
-    radial-gradient(900px 620px at 72% 22%, oklch(0.62 0.13 200 / 0.32), transparent 62%),
-    radial-gradient(760px 520px at 18% 86%, rgba(71, 191, 255, 0.16), transparent 60%),
-    #08090d;
+  background: var(--house-sky);
 }
 
 .auth-gate-starfield {
@@ -2050,21 +2047,21 @@
 .auth-gate-sky-copy p {
   margin: 0 0 1rem;
   max-width: 20ch;
-  font: 700 2rem/1.15 var(--az-font-display);
-  letter-spacing: -0.015em;
-  color: #eef8fb;
+  font: 400 2rem/1.1 var(--house-font-serif);
+  letter-spacing: -0.04em;
+  color: var(--house-ink);
 }
 .auth-gate-sky-stats {
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  font-size: 0.8125rem;
-  color: rgba(238, 248, 251, 0.72);
+  font-size: 0.875rem;
+  color: var(--house-muted);
 }
 .auth-gate-sky-divider {
   width: 1px;
   height: 0.75rem;
-  background: rgba(238, 248, 251, 0.28);
+  background: var(--house-line);
 }
 
 @media (max-width: 899px) {
@@ -2118,33 +2115,33 @@
   gap: 4px;
   padding: 4px;
   margin-bottom: 1.5rem;
-  background: #16171d;
-  border: 1px solid #2c2d36;
+  background: var(--house-panel);
+  border: 1px solid var(--house-line);
   border-radius: 999px;
 }
 .auth-gate-modal .account-mode-tabs button {
   flex: 1;
-  height: 2.375rem;
+  height: 2.75rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #9a9aa4;
-  font: 500 0.875rem var(--az-font-sans);
+  color: var(--house-muted);
+  font: 500 0.875rem var(--house-font-sans);
   cursor: pointer;
   transition: color 0.15s ease;
 }
 .auth-gate-modal .account-mode-tabs button:hover {
-  color: #f1f1f3;
+  color: var(--house-ink);
 }
 .auth-gate-modal .account-mode-tabs button.is-active {
-  background: oklch(0.78 0.12 200);
-  color: #08171c;
+  background: var(--house-accent);
+  color: var(--house-accent-ink);
 }
 
 .auth-gate-modal .account-form-field label,
 .auth-gate-modal .account-form-field-label-row {
-  font-size: 0.8125rem;
-  color: #9a9aa4;
+  font-size: 0.875rem;
+  color: var(--house-muted);
 }
 .auth-gate-modal .account-form-field-label-row {
   display: flex;
@@ -2152,8 +2149,11 @@
   justify-content: space-between;
 }
 .auth-gate-modal .account-form-field-label-row a {
-  font-size: 0.8125rem;
-  color: oklch(0.78 0.12 200);
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  font-size: 0.875rem;
+  color: var(--house-accent);
 }
 
 .auth-gate-modal .account-form-field input {
@@ -2161,19 +2161,19 @@
   height: 3rem;
   padding: 0 0.875rem;
   box-sizing: border-box;
-  /* ASV-107: 3.9:1 border and 7.9:1 placeholder on the #0b0c10 card. */
-  border: 1px solid #6b6e80;
+  /* ASV-107: 3.9:1 border and 7.9:1 placeholder on the var(--house-night) card. */
+  border: 1px solid var(--house-field-line);
   border-radius: 0.75rem;
-  background: #0b0c10;
-  color: #f1f1f3;
+  background: var(--house-night);
+  color: var(--house-ink);
   font-size: 1rem;
 }
 .auth-gate-modal .account-form-field input::placeholder {
-  color: #a3a4b0;
+  color: var(--house-muted);
   opacity: 1;
 }
 .auth-gate-modal .account-form-field input:focus-visible {
-  outline: 2px solid oklch(0.78 0.12 200);
+  outline: 2px solid var(--house-accent);
   outline-offset: -1px;
 }
 
@@ -2186,35 +2186,36 @@
 }
 .auth-gate-modal .account-form-password-toggle {
   position: absolute;
-  top: 0.375rem;
-  right: 0.375rem;
-  height: 2rem;
+  top: 0.1875rem;
+  right: 0.25rem;
+  height: 2.75rem;
   padding: 0 0.75rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #9a9aa4;
-  font: 500 0.8125rem var(--az-font-sans);
+  color: var(--house-muted);
+  font: 500 0.875rem var(--house-font-sans);
   cursor: pointer;
 }
 .auth-gate-modal .account-form-password-toggle:hover {
-  background: #16171d;
-  color: #f1f1f3;
+  background: var(--house-panel);
+  color: var(--house-ink);
 }
 
 .auth-gate-modal .account-form-submit {
   width: 100%;
   height: 3.125rem;
   margin-top: 0.375rem;
-  border: 1px solid oklch(0.78 0.12 200);
+  border: 1px solid var(--house-accent);
   border-radius: 0.75rem;
-  background: oklch(0.78 0.12 200);
-  color: #08171c;
-  font: 600 1rem var(--az-font-sans);
+  background: var(--house-accent);
+  color: var(--house-accent-ink);
+  font: 700 0.875rem var(--house-font-mono);
+  letter-spacing: 0.08em;
   cursor: pointer;
 }
 .auth-gate-modal .account-form-submit:hover:not(:disabled) {
-  filter: brightness(1.06);
+  background: var(--house-accent-hover);
 }
 .auth-gate-modal .account-form-submit:disabled {
   opacity: 0.6;
@@ -2230,16 +2231,16 @@
   gap: 0.6875rem;
   padding: 0.8125rem 0.875rem;
   margin: 0 0 0.25rem;
-  border: 1px solid rgba(240, 104, 91, 0.42);
-  background: rgba(240, 104, 91, 0.1);
+  border: 1px solid var(--house-danger);
+  background: rgba(255, 155, 143, 0.1);
   border-radius: 0.75rem;
-  font-size: 0.84375rem;
+  font-size: 0.875rem;
   line-height: 1.5;
-  color: #f1f1f3;
+  color: var(--house-ink);
 }
 
 .auth-gate-modal .settings-help {
-  color: #9a9aa4;
+  color: var(--house-muted);
 }
 
 .auth-gate-modal .account-form-trust {
@@ -2247,15 +2248,15 @@
   align-items: center;
   gap: 0.4375rem;
   margin: 0.75rem 0 0;
-  font-size: 0.78125rem;
-  color: #9a9aa4;
+  font-size: 0.875rem;
+  color: var(--house-muted);
 }
 .auth-gate-modal .account-form-trust span[aria-hidden] {
   width: 5px;
   height: 5px;
   flex: none;
   border-radius: 50%;
-  background: #3ddc97;
+  background: var(--house-accent);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -3485,7 +3486,7 @@
 
 /* ASV-81 landing: a product-first surface, intentionally separate from the
  * retained almanac classes used by the unrelated public host route. */
-.atlas-landing { --landing-ink: #e9edf8; --landing-muted: #aeb9cf; --landing-night: #070b18; --landing-panel: #101a33; --landing-line: rgba(213, 225, 255, .19); --landing-blue: #92b7ff; --landing-accent: #d3ff8d; min-height: 100vh; overflow: hidden; background: var(--landing-night); color: var(--landing-ink); font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+.atlas-landing { --landing-ink: var(--house-ink); --landing-muted: var(--house-muted); --landing-night: var(--house-night); --landing-panel: var(--house-panel); --landing-line: var(--house-line); --landing-blue: var(--house-blue); --landing-accent: var(--house-accent); min-height: 100vh; overflow: hidden; background: var(--landing-night); color: var(--landing-ink); font-family: var(--house-font-sans); }
 .atlas-landing a { color: inherit; text-decoration: none; }
 .landing-nav, .landing-hero, .landing-proof, .landing-section, .landing-pass, .landing-footer { width: min(100% - 3rem, 76rem); margin: 0 auto; }
 .landing-nav { height: 5.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; border-bottom: 1px solid var(--landing-line); }
@@ -3594,6 +3595,188 @@
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
+}
+
+/* ASV-125: /hosts in the house style (src/styles/house.css) -- the same dark
+ * navy + lime tokens and type as the landing page. Opt-in via the
+ * .atlas-house modifier so the other almanac consumers (legal pages, the
+ * entry-choice dialog) keep their own look. Copy and layout are unchanged;
+ * only colour, type and the 14px / 44px accessibility floors differ. */
+
+.atlas-almanac.atlas-house {
+  --am-paper: var(--house-night);
+  --am-paper-alt: var(--house-panel);
+  --am-ink: var(--house-ink);
+  --am-muted: var(--house-muted);
+  --am-muted-soft: var(--house-muted);
+  --am-line: var(--house-line);
+  --am-line-soft: var(--house-line);
+  --am-blue: var(--house-blue);
+  --am-rust: var(--house-accent);
+  --am-serif: var(--house-font-serif);
+  --am-mono: var(--house-font-mono);
+  font-family: var(--house-font-sans);
+  overflow: hidden;
+}
+
+.atlas-house a {
+  color: var(--house-ink);
+}
+.atlas-house a:hover {
+  color: var(--house-accent);
+}
+.atlas-house a:focus-visible,
+.atlas-house summary:focus-visible {
+  outline: 2px solid var(--house-accent);
+  outline-offset: 3px;
+}
+
+.atlas-house .am-wordmark {
+  font: 700 clamp(2rem, 5vw, 3.25rem) / 1 var(--house-font-mono);
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+}
+.atlas-house .am-wordmark--small {
+  font-size: 1rem;
+}
+.atlas-house .am-tagline,
+.atlas-house .am-masthead-meta,
+.atlas-house .am-nav-links,
+.atlas-house .am-nav-cta,
+.atlas-house .am-link-btn,
+.atlas-house .am-btn,
+.atlas-house .am-steps-index,
+.atlas-house .am-brief-label,
+.atlas-house .am-faq-sign,
+.atlas-house .am-colophon-col span:first-child,
+.atlas-house .am-colophon-legal {
+  font-family: var(--house-font-mono);
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+}
+.atlas-house .am-tagline {
+  letter-spacing: 0.15em;
+}
+.atlas-house .am-colophon-col span:first-child,
+.atlas-house .am-colophon-legal {
+  letter-spacing: 0.1em;
+}
+
+.atlas-house .am-masthead-title,
+.atlas-house .am-nav,
+.atlas-house .am-colophon {
+  border-color: var(--house-line);
+}
+.atlas-house .am-masthead-title {
+  border-top-width: 1px;
+}
+.atlas-house .am-section-head,
+.atlas-house .am-colophon {
+  border-top: 1px solid var(--house-line);
+}
+.atlas-house .am-nav {
+  border-bottom-width: 1px;
+}
+
+.atlas-house .am-nav-links a,
+.atlas-house .am-nav-cta,
+.atlas-house .am-link-btn,
+.atlas-house .am-colophon-col a,
+.atlas-house .am-masthead-meta a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+.atlas-house .am-nav-cta,
+.atlas-house .am-link-btn {
+  color: var(--house-accent);
+  font-weight: 700;
+}
+.atlas-house .am-nav-cta:hover,
+.atlas-house .am-link-btn:hover {
+  color: var(--house-ink);
+}
+.atlas-house .am-colophon-col {
+  gap: 0;
+  font-size: 0.875rem;
+}
+
+.atlas-house .am-lede-copy h1,
+.atlas-house .am-section-head h2 {
+  font-family: var(--house-font-serif);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+.atlas-house .am-lede-copy h1 {
+  line-height: 1.05;
+}
+.atlas-house .am-lede-columns p,
+.atlas-house .am-lede-note,
+.atlas-house .am-steps-desc,
+.atlas-house .am-brief-value,
+.atlas-house .am-week-foot span,
+.atlas-house .am-plan--compact p,
+.atlas-house .am-faq-item p,
+.atlas-house .am-colophon-brand p {
+  font-family: var(--house-font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--house-muted);
+}
+.atlas-house .am-week-foot span {
+  font-style: normal;
+}
+.atlas-house .am-steps-title,
+.atlas-house .am-faq-item summary span:first-child {
+  font-family: var(--house-font-serif);
+}
+.atlas-house .am-faq-item summary {
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.atlas-house .am-btn {
+  min-height: 2.75rem;
+  border-color: var(--house-line);
+  color: var(--house-accent);
+  font-weight: 700;
+}
+.atlas-house .am-btn-primary {
+  border-color: var(--house-accent);
+  background: var(--house-accent);
+  color: var(--house-accent-ink);
+}
+.atlas-house .am-btn-primary:hover,
+.atlas-house a.am-btn-primary:hover {
+  border-color: var(--house-accent-hover);
+  background: var(--house-accent-hover);
+  color: var(--house-accent-ink);
+  text-decoration: none;
+}
+.atlas-house .am-btn-outline:hover,
+.atlas-house a.am-btn-outline:hover {
+  border-color: var(--house-accent);
+  background: var(--house-panel);
+  color: var(--house-accent);
+  text-decoration: none;
+}
+.atlas-house a.am-btn-primary {
+  color: var(--house-accent-ink);
+}
+.atlas-house a.am-btn-outline,
+.atlas-house a.am-link-btn,
+.atlas-house a.am-nav-cta {
+  color: var(--house-accent);
+}
+.atlas-house a.am-link-btn:hover,
+.atlas-house a.am-nav-cta:hover {
+  color: var(--house-ink);
+}
+
+.atlas-house .am-steps-index,
+.atlas-house .am-brief-label,
+.atlas-house .am-faq-sign {
+  color: var(--house-accent);
 }
 
 /* ---------------------------------------------------------------------
