@@ -1,0 +1,28 @@
+/* ASV-125: Atlas's single house style -- the dark navy + lime look first
+ * built for the landing page. These tokens are the one source of truth for
+ * the landing page, /hosts, and the sign-in / account gate; change a colour
+ * or typeface here, not in those surfaces' own rules. Signed-in app screens
+ * use the --az-* / --bg theme tokens in atlas.css and are not part of this.
+ *
+ * Contrast on --house-night (#070b18): ink 16:1, muted 9:1, blue 9:1,
+ * accent 15:1, field-line 5.9:1. --house-accent-ink on --house-accent is 13:1.
+ */
+:root {
+  --house-night: #070b18;
+  --house-panel: #101a33;
+  --house-ink: #e9edf8;
+  --house-muted: #aeb9cf;
+  --house-line: rgba(213, 225, 255, 0.19);
+  --house-field-line: #7f8db0;
+  --house-blue: #92b7ff;
+  --house-accent: #d3ff8d;
+  --house-accent-hover: #ecffbf;
+  --house-accent-ink: #11192c;
+  --house-danger: #ff9b8f;
+  --house-font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --house-font-serif: Georgia, 'Times New Roman', serif;
+  --house-font-mono: ui-monospace, SFMono-Regular, monospace;
+  --house-sky: radial-gradient(circle at 70% 28%, rgba(110, 147, 255, 0.25), transparent 6%),
+    radial-gradient(circle at 58% 43%, rgba(86, 95, 236, 0.28), transparent 30%),
+    linear-gradient(145deg, #0d1734, #080b17 72%);
+}
