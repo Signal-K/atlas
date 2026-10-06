@@ -11,8 +11,7 @@ import Foundation
 /// which absorbs noise and still lets real heading corrections land unseen. Once the phone is actually
 /// turning it follows quickly, with just enough smoothing to hide per-frame jitter.
 ///
-/// Pure arithmetic on a row-major 3x3 rotation matrix, so the same algorithm ports line for line to
-/// Kotlin (see `android/sky`), and is shared by golden tests.
+/// Pure arithmetic on a row-major 3x3 rotation matrix, so it builds unchanged for iOS and the Swift Android SDK.
 public struct SkyStabilizer: Sendable {
     public struct Tuning: Sendable, Equatable {
         /// Time constant (s) while the phone is still. Longer is steadier but corrects heading slower.

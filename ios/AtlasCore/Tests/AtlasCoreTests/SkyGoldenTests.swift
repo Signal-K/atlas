@@ -1,9 +1,9 @@
 import XCTest
 @testable import AtlasCore
 
-/// Golden vectors for the sky engine, shared with the Android port (`android/sky`). Both platforms must
-/// reproduce `sky-engine/golden.json`. Regenerate it, only when the algorithm deliberately changes, with
-/// `GENERATE_GOLDEN=1 swift test --filter SkyGoldenTests`, then update the Kotlin side to match.
+/// Golden vectors pinning the sky engine's output, so a refactor cannot silently move the sky. Must
+/// reproduce `sky-engine/golden.json`. Regenerate only when the algorithm deliberately changes, with
+/// `GENERATE_GOLDEN=1 swift test --filter SkyGoldenTests`.
 final class SkyGoldenTests: XCTestCase {
     private var goldenURL: URL {
         URL(fileURLWithPath: #filePath)

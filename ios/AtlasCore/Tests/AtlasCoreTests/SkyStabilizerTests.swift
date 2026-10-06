@@ -86,3 +86,22 @@ final class SkyStabilizerTests: XCTestCase {
         XCTAssertEqual(stabilizer.filter(m, rotationRate: 0, at: 5), m)
     }
 }
+
+final class AndroidFramesTests: XCTestCase {
+    /// Android R (device -> east, north, up) for an upright phone with the back camera toward north.
+    private let upright: [Double] = [1, 0, 0, 0, 0, -1, 0, 1, 0]
+
+    func testUprightPhoneFacingNorthMatchesTheCoreMotionCamera() {
+        let cam = SkyCamera(rotation: AndroidFrames.cameraRotation(androidR: upright))
+        let expected: [Double] = [0, -1, 0, 0, 0, 1, -1, 0, 0]
+        for i in 0..<9 { XCTAssertEqual(cam.rotation[i], expected[i], accuracy: 1e-12) }
+        XCTAssertEqual(cam.lookDirection.azimuthDeg, 0, accuracy: 1e-9)
+    }
+
+    func testDeclinationTurnsMagneticNorthIntoTrueAzimuth() {
+        let east = SkyCamera(rotation: AndroidFrames.cameraRotation(androidR: upright, magneticDeclinationDeg: 10))
+        XCTAssertEqual(east.lookDirection.azimuthDeg, 10, accuracy: 1e-9)
+        let west = SkyCamera(rotation: AndroidFrames.cameraRotation(androidR: upright, magneticDeclinationDeg: -10))
+        XCTAssertEqual(west.lookDirection.azimuthDeg, 350, accuracy: 1e-9)
+    }
+}
