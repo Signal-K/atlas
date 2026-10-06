@@ -27,13 +27,21 @@ struct SkyView: View {
     }
     private var selected: VisibleObject? { objects.first { $0.id == selectedID } }
 
+    /// Height of the bottom sheet when it is tucked away, so the chart can keep its centre clear of it.
+    private let peekHeight: CGFloat = 138
+    @State private var detent: PresentationDetent = .height(138)
+
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            chart.frame(maxWidth: .infinity).frame(height: 360)
-            list
+        GeometryReader { geo in
+            ZStack(alignment: .top) {
+                chart(topInset: geo.safeAreaInsets.top + 64, bottomInset: peekHeight)
+                    .ignoresSafeArea()
+                header.padding(.top, 4)
+            }
         }
         .background(Brand.bg.ignoresSafeArea())
+        .environment(\.colorScheme, .dark)
+        .statusBarHidden()
         .task {
             Analytics.capture(.skyOpened, ["equipment": equipment.rawValue])
             Analytics.screen("Sky")
@@ -44,41 +52,43 @@ struct SkyView: View {
         }
         .onAppear { if mode == .live { motion.start() } }
         .onDisappear { motion.stop() }
-        .fullScreenCover(item: $camera) { request in CameraView(plan: request.plan) { camera = nil } }
+        .sheet(isPresented: .constant(true)) {
+            sheet
+                .presentationDetents([.height(peekHeight), .medium, .large], selection: $detent)
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Brand.bg)
+                .interactiveDismissDisabled()
+                .fullScreenCover(item: $camera) { request in CameraView(plan: request.plan) { camera = nil } }
+        }
     }
 
     // MARK: Header
 
+    /// Floats over the chart: close on the left, view switch on the right.
     private var header: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Button { Haptics.tap(); dismiss() } label: {
-                    Image(systemName: "chevron.down").font(.system(size: 16, weight: .semibold)).foregroundStyle(Brand.ink)
-                        .frame(width: 44, height: 44).background(Brand.surface, in: Circle()).overlay(Circle().strokeBorder(Brand.line))
-                }
-                .accessibilityLabel("Close sky")
-                Spacer()
-                Picker("View", selection: $mode) {
-                    ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented).frame(width: 160)
+        HStack {
+            Button { Haptics.tap(); dismiss() } label: {
+                Image(systemName: "chevron.down").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                    .frame(width: 44, height: 44).background(.black.opacity(0.45), in: Circle()).overlay(Circle().strokeBorder(.white.opacity(0.2)))
             }
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Your sky tonight").font(.serif(28)).foregroundStyle(Brand.ink)
-                Text("\(objects.count) things visible with \(equipment == .phone ? "your phone" : equipment.label.lowercased())")
-                    .font(.system(size: 16)).foregroundStyle(Brand.muted)
+            .accessibilityLabel("Close sky")
+            Spacer()
+            Picker("View", selection: $mode) {
+                ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .pickerStyle(.segmented).frame(width: 160)
         }
-        .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 10)
+        .padding(.horizontal, 16)
     }
 
     // MARK: Chart
 
-    @ViewBuilder private var chart: some View {
+    @ViewBuilder private func chart(topInset: CGFloat, bottomInset: CGFloat) -> some View {
         ZStack {
+            LinearGradient(colors: [Brand.night, Brand.nightMid], startPoint: .top, endPoint: .bottom)
             if mode == .live {
-                LiveSky(plan: plan, objects: objects, camera: liveCamera, fov: fov, selectedID: selectedID, showMoon: true, now: now)
+                LiveSky(plan: plan, objects: objects, camera: liveCamera, fov: fov, selectedID: selectedID, showMoon: true, now: now, topInset: topInset)
                     .gesture(DragGesture(minimumDistance: 4)
                         .onChanged { g in
                             guard !motion.isRunning || motion.camera == nil else { return }
@@ -88,20 +98,19 @@ struct SkyView: View {
                         }
                         .onEnded { _ in dragStart = nil })
                     .gesture(MagnifyGesture().onChanged { fov = min(110, max(25, fov / $0.magnification)) })
-                if motion.isRunning && motion.camera == nil || !motion.isAvailable {
-                    caption(motion.isAvailable ? "Waiting for the motion sensors…" : "No motion sensors here, so drag to look around.")
-                } else {
-                    caption("Hold your phone up to the sky. Pinch to zoom.")
-                }
+                caption(liveCaption, bottomInset: bottomInset)
             } else {
-                SkyMap(plan: plan, objects: objects, selectedID: selectedID, now: now)
+                SkyMap(plan: plan, objects: objects, selectedID: selectedID, now: now, topInset: topInset, bottomInset: bottomInset)
             }
         }
-        .background(LinearGradient(colors: [Brand.night, Brand.nightMid], startPoint: .top, endPoint: .bottom))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .padding(.horizontal, 16)
-        .environment(\.colorScheme, .dark)
         .accessibilityLabel(mode == .live ? "Live sky chart that follows your phone" : "All-sky map")
+    }
+
+    private var liveCaption: String {
+        if !motion.isAvailable { return "No motion sensors here, so drag to look around." }
+        if motion.isRunning && motion.camera == nil { return "Waiting for the motion sensors…" }
+        if motion.needsCompassCalibration { return "Wave your phone in a figure 8 to calibrate the compass." }
+        return "Hold your phone up to the sky. Pinch to zoom."
     }
 
     private var liveCamera: SkyCamera {
@@ -109,13 +118,30 @@ struct SkyView: View {
         return SkyCamera.looking(azimuth: panAz, altitude: panAlt)
     }
 
-    private func caption(_ text: String) -> some View {
+    private func caption(_ text: String, bottomInset: CGFloat) -> some View {
         VStack {
             Spacer()
             Text(text).font(.system(size: 14)).foregroundStyle(.white.opacity(0.9)).multilineTextAlignment(.center)
-                .padding(.horizontal, 12).padding(.vertical, 6).background(.black.opacity(0.55), in: Capsule()).padding(.bottom, 10)
+                .padding(.horizontal, 12).padding(.vertical, 6).background(.black.opacity(0.55), in: Capsule())
+                .padding(.horizontal, 16).padding(.bottom, bottomInset + 12)
         }
-            .allowsHitTesting(false)
+        .allowsHitTesting(false)
+    }
+
+    // MARK: Sheet
+
+    private var sheet: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Your sky tonight").font(.serif(28)).foregroundStyle(Brand.ink)
+                Text("\(objects.count) things visible with \(equipment == .phone ? "your phone" : equipment.label.lowercased())")
+                    .font(.system(size: 16)).foregroundStyle(Brand.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16).padding(.top, 22).padding(.bottom, 8)
+            list
+        }
+        .environment(\.colorScheme, .light)
     }
 
     // MARK: List
@@ -126,6 +152,7 @@ struct SkyView: View {
                 if let s = selected { detail(s).padding(.bottom, 12) }
                 ForEach(objects) { o in
                     Button { Haptics.tap(); withAnimation(.smooth(duration: 0.3)) { selectedID = selectedID == o.id ? nil : o.id }
+                        if selectedID == o.id, detent != .large { detent = .medium }
                         if selectedID == o.id { Analytics.capture(.skyObjectSelected, ["kind": o.object.kind == .star ? "star" : "deep_sky", "equipment": equipment.rawValue]) }
                     } label: { row(o) }
                     .buttonStyle(.plain)
@@ -183,6 +210,8 @@ private struct LiveSky: View {
     let selectedID: String?
     let showMoon: Bool
     let now: Date
+    /// Space under the floating header, so the "where you are looking" readout is not covered.
+    let topInset: CGFloat
 
     var body: some View {
         Canvas { ctx, size in
@@ -232,7 +261,7 @@ private struct LiveSky: View {
             cross.move(to: CGPoint(x: c.x, y: c.y + 5)); cross.addLine(to: CGPoint(x: c.x, y: c.y + 14))
             ctx.stroke(cross, with: .color(paper.opacity(0.55)), lineWidth: 1)
             let look = camera.lookDirection
-            ctx.draw(Text("\(look.compass) \(Int(look.altitudeDeg.rounded()))°").font(.mono(14)).foregroundStyle(paper.opacity(0.9)), at: CGPoint(x: size.width / 2, y: 18))
+            ctx.draw(Text("\(look.compass) \(Int(look.altitudeDeg.rounded()))°").font(.mono(14)).foregroundStyle(paper.opacity(0.9)), at: CGPoint(x: size.width / 2, y: topInset + 6))
         }
     }
 }
@@ -244,11 +273,15 @@ private struct SkyMap: View {
     let objects: [VisibleObject]
     let selectedID: String?
     let now: Date
+    /// Space taken by the floating header and the bottom sheet; the dome is centred in what is left.
+    let topInset: CGFloat
+    let bottomInset: CGFloat
 
     var body: some View {
         Canvas { ctx, size in
-            let r = min(size.width, size.height) / 2 - 22
-            let c = CGPoint(x: size.width / 2, y: size.height / 2)
+            let usable = size.height - topInset - bottomInset
+            let r = min(size.width / 2, usable / 2) - 28
+            let c = CGPoint(x: size.width / 2, y: topInset + usable / 2)
             let paper = Color(red: 0.95, green: 0.94, blue: 0.91)
             func point(_ p: HorizontalPosition) -> CGPoint {
                 let radius = (90 - p.altitudeDeg) / 90 * r, a = p.azimuthDeg * .pi / 180

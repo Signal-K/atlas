@@ -33,6 +33,8 @@ targets:
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [cc.youratlas.alerts.refresh]
         UILaunchScreen: {}
+        # The sky chart projects through a portrait screen; landscape would rotate the camera frame.
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: Atlas
         CFBundleShortVersionString: $(MARKETING_VERSION)
