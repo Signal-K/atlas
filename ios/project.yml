@@ -73,11 +73,26 @@ targets:
           # Public, write-only PostHog project token (US Cloud, project 199773), the same kind of key the web ships.
           # Debug builds keep it empty so local runs don't send events. Never put the personal API key (phx_) here.
           ATLAS_POSTHOG_KEY: "phc_65umDftbbTkrm1V6azue6OeU4u5c8iJcaHm4JtJ95di"
+  AtlasUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: Atlas
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.atlasskyventures.atlas.uitests
+        TEST_TARGET_NAME: Atlas
 schemes:
   Atlas:
     build:
       targets:
         Atlas: all
+    test:
+      targets:
+        - AtlasUITests
     run:
       # Local StoreKit testing: products without App Store Connect (Xcode > Debug > StoreKit).
       storeKitConfiguration: Atlas.storekit
