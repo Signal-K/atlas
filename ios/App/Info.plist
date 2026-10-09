@@ -6,6 +6,8 @@
 	<string>$(ATLAS_BILLING_URL)</string>
 	<key>AtlasPBURL</key>
 	<string>$(ATLAS_PB_URL)</string>
+	<key>AtlasMediaURL</key>
+	<string>$(ATLAS_MEDIA_URL)</string>
 	<key>AtlasPostHogHost</key>
 	<string>$(ATLAS_POSTHOG_HOST)</string>
 	<key>AtlasPostHogKey</key>
@@ -49,6 +51,8 @@
 	<string>Atlas uses the motion sensors so the sky chart follows where you point your phone.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Atlas saves the photos you take of the sky to your library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Atlas uses your photo library so you can pick and upload sky photos.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>IBMPlexMono-Regular.ttf</string>
@@ -58,6 +62,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
+		<string>remote-notification</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

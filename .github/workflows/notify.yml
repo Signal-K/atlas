@@ -24,3 +24,8 @@ jobs:
           PB_ADMIN_PASSWORD: ${{ secrets.PB_ADMIN_PASSWORD }}
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          APNS_TEAM_ID: ${{ secrets.APNS_TEAM_ID }}
+          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          APNS_BUNDLE_ID: ${{ secrets.APNS_BUNDLE_ID }}
+          APNS_PRIVATE_KEY: ${{ secrets.APNS_PRIVATE_KEY }}
+          APNS_USE_SANDBOX: ${{ secrets.APNS_USE_SANDBOX }}
