@@ -24,12 +24,15 @@ struct AtlasApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(session: session, skyPass: skyPass, settings: settings, checkIns: checkIns, client: Self.client) {
-                TonightModel(
-                    events: Self.fixtures ?? LiveEventSource(client: Self.client),
-                    forecasts: Self.fixtures ?? LiveForecastSource(),
-                    location: Self.fixtures == nil ? CoreLocationSource() : FixtureLocation())
-            }
+            RootView(
+                session: session, skyPass: skyPass, settings: settings, checkIns: checkIns,
+                makeTonight: {
+                    TonightModel(
+                        events: Self.fixtures ?? LiveEventSource(client: Self.client),
+                        forecasts: Self.fixtures ?? LiveForecastSource(),
+                        location: Self.fixtures == nil ? CoreLocationSource() : FixtureLocation())
+                },
+                client: Self.client)
         }
     }
 }

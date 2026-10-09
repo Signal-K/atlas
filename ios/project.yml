@@ -51,7 +51,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "1.0"
         # Must increase on every TestFlight upload (App Store Connect rejects a repeat). yyyymmdd + two-digit sequence.
-        CURRENT_PROJECT_VERSION: "2026100401"
+        CURRENT_PROJECT_VERSION: "2026100901"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: NDP87SHHDT
         SWIFT_VERSION: "6.0"
