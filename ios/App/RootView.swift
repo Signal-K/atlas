@@ -7,6 +7,7 @@ struct RootView: View {
     let session: SessionStore
     let skyPass: SkyPassStore
     let makeTonight: () -> TonightModel
+    let client: PocketBaseClient
 
     @State private var tonight: TonightModel?
 
@@ -21,7 +22,7 @@ struct RootView: View {
                 WelcomeView(session: session).transition(.opacity.combined(with: .scale(scale: 1.08)))
             case .guest, .signedIn:
                 if let tonight {
-                    TonightView(session: session, skyPass: skyPass, model: tonight)
+                    AtlasTabShell(session: session, skyPass: skyPass, tonight: tonight, client: client)
                         .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 }
             }
