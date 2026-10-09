@@ -97,8 +97,8 @@ public enum PhotoEXIFParser {
         let explicitOffset = parseOffsetMinutes(raw.offsetTimeOriginal)
         let offset = deriveOffsetMinutes(explicitOffsetMinutes: explicitOffset, naiveUTC: naiveUTC, gpsUTC: gpsUTC, longitude: raw.longitude)
         let taken = naiveUTC.map { date in
-            guard let offset else { return date }
-            return date.addingTimeInterval(TimeInterval(-offset * 60))
+            guard let minutes = offset.value else { return date }
+            return date.addingTimeInterval(TimeInterval(-minutes * 60))
         }
 
         return PhotoEXIFMetadata(

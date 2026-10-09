@@ -114,11 +114,13 @@ final class CaptureViewModel: ObservableObject {
             uploadPhase = .queued
             await refreshQueueCount()
             try await service.processQueue(authProvider: { [weak self] in
-                guard let self,
-                      let token = self.session.bearerToken,
-                      let userID = self.session.userID
-                else { return nil }
-                return CaptureAuthContext(userID: userID, token: token)
+                await MainActor.run {
+                    guard let self,
+                          let token = self.session.bearerToken,
+                          let userID = self.session.userID
+                    else { return nil }
+                    return CaptureAuthContext(userID: userID, token: token)
+                }
             }, onEvent: { [weak self] event in
                 await MainActor.run {
                     self?.handleUploadEvent(event, focusedQueueID: queueID)
@@ -137,11 +139,13 @@ final class CaptureViewModel: ObservableObject {
     func retryPendingUploads() async {
         do {
             _ = try await service.processQueue(authProvider: { [weak self] in
-                guard let self,
-                      let token = self.session.bearerToken,
-                      let userID = self.session.userID
-                else { return nil }
-                return CaptureAuthContext(userID: userID, token: token)
+                await MainActor.run {
+                    guard let self,
+                          let token = self.session.bearerToken,
+                          let userID = self.session.userID
+                    else { return nil }
+                    return CaptureAuthContext(userID: userID, token: token)
+                }
             }, onEvent: { [weak self] event in
                 await MainActor.run {
                     self?.handleUploadEvent(event, focusedQueueID: nil)

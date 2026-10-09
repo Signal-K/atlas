@@ -24,14 +24,20 @@ final class AtlasAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         notificationManager?.didFailAPNSRegistration(error)
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        notificationManager?.handleForegroundNotification(userInfo: notification.request.content.userInfo) ?? [.banner, .sound]
+        nonisolated(unsafe) let info = notification.request.content.userInfo
+        return await MainActor.run {
+            notificationManager?.handleForegroundNotification(userInfo: info) ?? [.banner, .sound]
+        }
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        notificationManager?.handleNotificationTap(userInfo: response.notification.request.content.userInfo)
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        nonisolated(unsafe) let info = response.notification.request.content.userInfo
+        await MainActor.run {
+            notificationManager?.handleNotificationTap(userInfo: info)
+        }
     }
 }
