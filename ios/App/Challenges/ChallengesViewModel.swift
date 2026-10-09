@@ -29,6 +29,19 @@ final class ChallengesViewModel: ObservableObject {
         return challenges.first
     }
 
+    func selectChallenge(matching deepLinkID: String) {
+        let normalized = deepLinkID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return }
+        if let match = challenges.first(where: {
+            $0.id.lowercased() == normalized ||
+                $0.definition.id.lowercased() == normalized ||
+                $0.definition.collectionChallengeID.lowercased() == normalized ||
+                $0.event.id.lowercased() == normalized
+        }) {
+            selectedChallengeID = match.id
+        }
+    }
+
     func onAppear() {
         Task { await refresh() }
     }

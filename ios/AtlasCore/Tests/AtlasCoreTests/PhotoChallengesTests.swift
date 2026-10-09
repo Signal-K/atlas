@@ -4,7 +4,7 @@ import XCTest
 
 final class PhotoChallengesTests: XCTestCase {
     func testBadgeTierGoldInWindowSilverAfter() throws {
-        let challenge = try XCTUnwrap(PhotoChallengeCatalog.definitions.first { $0.id == "wsw-saturn-sky-photo" })
+        let challenge = try XCTUnwrap(PhotoChallengeCatalog.definitions.first { $0.id == "asv-129-wsw-saturn-sky-photo" })
         let middle = challenge.window.start.addingTimeInterval(2 * 86_400)
         XCTAssertEqual(challenge.badgeTier(for: middle), .gold)
         XCTAssertEqual(challenge.badgeTier(for: challenge.window.end.addingTimeInterval(60)), .silver)
@@ -34,5 +34,12 @@ final class PhotoChallengesTests: XCTestCase {
         let secondGate = ChallengeCreditGate(store: store)
         XCTAssertEqual(try await secondGate.claimOnce(key: key), false)
         XCTAssertEqual(try await secondGate.claimOnce(key: key + "-different"), true)
+    }
+
+    func testOrionidsChallengeHasASV130AndPeakWindow() throws {
+        let challenge = try XCTUnwrap(PhotoChallengeCatalog.definitions.first { $0.id == "asv-130-orionids-2026" })
+        XCTAssertEqual(challenge.name, "ASV-130 Orionids challenge")
+        XCTAssertEqual(challenge.window.peak, ISO8601DateFormatter().date(from: "2026-10-21T22:00:00Z"))
+        XCTAssertEqual(challenge.window.end, ISO8601DateFormatter().date(from: "2026-10-24T23:59:59Z"))
     }
 }

@@ -10,6 +10,8 @@ struct RootView: View {
     let checkIns: CheckInStore
     let makeTonight: () -> TonightModel
     let client: PocketBaseClient
+    let notifications: NotificationManager
+    let router: NotificationRouter
 
     @State private var tonight: TonightModel?
 
@@ -32,7 +34,9 @@ struct RootView: View {
                         settings: settings,
                         checkIns: checkIns,
                         tonight: tonight,
-                        client: client)
+                        client: client,
+                        notifications: notifications,
+                        router: router)
                         .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 }
             }

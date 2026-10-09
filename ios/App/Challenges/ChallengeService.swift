@@ -71,13 +71,32 @@ actor ChallengeService {
         let now = Date()
 
         var active: [ActivePhotoChallenge] = []
+        var matchedDefinitionIDs = Set<String>()
         for event in events {
             for definition in PhotoChallengeCatalog.definitions where definition.matches(eventKind: event.kind, target: event.target) {
                 if event.endsAt < now.addingTimeInterval(-60 * 60 * 24 * 14) { continue }
                 let rows = submissions.filter { $0.eventID == event.id && $0.challengeID == definition.collectionChallengeID }
                 active.append(ActivePhotoChallenge(event: event, definition: definition, submissions: rows))
+                matchedDefinitionIDs.insert(definition.id)
             }
         }
+
+        // Keep challenge cards visible when event ingestion lags, so ASV challenge definitions still
+        // appear in-app and can receive submissions within/near their configured windows.
+        for definition in PhotoChallengeCatalog.definitions where !matchedDefinitionIDs.contains(definition.id) {
+            if definition.window.end < now.addingTimeInterval(-60 * 60 * 24 * 14) { continue }
+            let fallbackEvent = ChallengeEvent(
+                id: "catalog-\(definition.id)",
+                kind: definition.matchingKinds.first ?? "challenge",
+                target: definition.objectName,
+                title: definition.name,
+                startsAt: definition.window.start,
+                endsAt: definition.window.end
+            )
+            let rows = submissions.filter { $0.challengeID == definition.collectionChallengeID }
+            active.append(ActivePhotoChallenge(event: fallbackEvent, definition: definition, submissions: rows))
+        }
+
         return active.sorted { lhs, rhs in
             if lhs.event.startsAt == rhs.event.startsAt { return lhs.definition.name < rhs.definition.name }
             return lhs.event.startsAt < rhs.event.startsAt
@@ -101,7 +120,7 @@ actor ChallengeService {
             auth: auth
         )
 
-        if challenge.id == "wsw-saturn-sky-photo" {
+        if challenge.id == "asv-129-wsw-saturn-sky-photo" {
             let key = saturnSharedEventCreditKey(userID: auth.userID, sourceID: submissionID)
             try await createSaturnSharedCredit(sourceID: key, auth: auth)
         }

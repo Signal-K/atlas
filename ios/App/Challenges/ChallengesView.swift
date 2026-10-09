@@ -5,9 +5,11 @@ import UIKit
 
 struct ChallengesView: View {
     @StateObject private var model: ChallengesViewModel
+    let router: NotificationRouter
     @State private var pickerItem: PhotosPickerItem?
 
-    init(session: SessionStore) {
+    init(session: SessionStore, router: NotificationRouter) {
+        self.router = router
         _model = StateObject(wrappedValue: ChallengesViewModel(session: session))
     }
 
@@ -53,7 +55,16 @@ struct ChallengesView: View {
                     }
                 }
             }
-            .task { model.onAppear() }
+            .task {
+                model.onAppear()
+                applyPendingRoute()
+            }
+            .onChange(of: router.changeToken) { _, _ in
+                applyPendingRoute()
+            }
+            .onChange(of: model.challenges) { _, _ in
+                applyPendingRoute()
+            }
         }
     }
 
@@ -235,5 +246,12 @@ struct ChallengesView: View {
     private func anonymized(userID: String) -> String {
         let suffix = userID.suffix(4)
         return "Observer \(suffix)"
+    }
+
+    private func applyPendingRoute() {
+        guard !model.challenges.isEmpty else { return }
+        guard let route = router.consumePendingChallengeRoute() else { return }
+        guard case .challenge(let challengeID) = route, let challengeID else { return }
+        model.selectChallenge(matching: challengeID)
     }
 }

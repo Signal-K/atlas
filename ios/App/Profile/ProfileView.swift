@@ -5,10 +5,12 @@ import SwiftUI
 struct ProfileView: View {
     let session: SessionStore
     let skyPass: SkyPassStore
+    let notifications: NotificationManager
 
     @State private var viewModel: ProfileViewModel
     @State private var showEditProfile = false
     @State private var showSkyPass = false
+    @State private var showNotificationSettings = false
     @State private var deleteConfirm = false
     @State private var deleting = false
     @State private var deleteError: String?
@@ -16,9 +18,10 @@ struct ProfileView: View {
     @State private var editHandle = ""
     @State private var avatarPickerItem: PhotosPickerItem?
 
-    init(session: SessionStore, skyPass: SkyPassStore, service: ProfileService) {
+    init(session: SessionStore, skyPass: SkyPassStore, service: ProfileService, notifications: NotificationManager) {
         self.session = session
         self.skyPass = skyPass
+        self.notifications = notifications
         _viewModel = State(initialValue: ProfileViewModel(service: service))
     }
 
@@ -46,6 +49,13 @@ struct ProfileView: View {
             editProfileSheet
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showNotificationSettings) {
+            NotificationSettingsView(session: session, manager: notifications) {
+                showNotificationSettings = false
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .confirmationDialog("Delete your Atlas account?", isPresented: $deleteConfirm, titleVisibility: .visible) {
             Button("Delete account permanently", role: .destructive) {
@@ -305,6 +315,9 @@ struct ProfileView: View {
             }
             actionButton(snapshot.entitled ? "Sky Pass · active" : "Get Sky Pass", systemImage: "sparkles") {
                 showSkyPass = true
+            }
+            actionButton("Notification settings", systemImage: "bell.badge") {
+                showNotificationSettings = true
             }
             actionButton("Sign out", systemImage: "rectangle.portrait.and.arrow.right") {
                 session.signOut()

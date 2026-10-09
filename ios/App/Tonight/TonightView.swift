@@ -10,6 +10,8 @@ struct TonightView: View {
     let settings: AppSettings
     let checkIns: CheckInStore
     @State var model: TonightModel
+    let notifications: NotificationManager
+    let router: NotificationRouter
 
     @State private var drift = 0.0
     @State private var detail: DetailItem?
@@ -39,11 +41,16 @@ struct TonightView: View {
                 .onPreferenceChange(OffsetKey.self) { drift = -$0 }
                 .refreshable { await reload() }
                 .onChange(of: model.phase) { _, phase in
-                    // `-AtlasScrollTo <section>` (testing / screenshots): tonight, photo, coming.
                     let args = ProcessInfo.processInfo.arguments
-                    guard phase == .ready, let i = args.firstIndex(of: "-AtlasScrollTo"), i + 1 < args.count else { return }
-                    Task { try? await Task.sleep(for: .milliseconds(600)); proxy.scrollTo(args[i + 1], anchor: .top) }
+                    guard phase == .ready else { return }
+                    // `-AtlasScrollTo <section>` (testing / screenshots): tonight, photo, coming.
+                    if let i = args.firstIndex(of: "-AtlasScrollTo"), i + 1 < args.count {
+                        Task { try? await Task.sleep(for: .milliseconds(600)); proxy.scrollTo(args[i + 1], anchor: .top) }
+                    }
+                    Task { await notifications.scheduleLocalFallback(plan: model.plan, upcoming: model.upcoming) }
+                    applyPendingRoute(proxy)
                 }
+                .onChange(of: router.changeToken) { _, _ in applyPendingRoute(proxy) }
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) { topBar }
@@ -253,6 +260,30 @@ struct TonightView: View {
 
     private var offsetReader: some View {
         GeometryReader { geo in Color.clear.preference(key: OffsetKey.self, value: geo.frame(in: .named("feed")).minY) }.frame(height: 0)
+    }
+
+    private func applyPendingRoute(_ proxy: ScrollViewProxy) {
+        guard model.phase == .ready else { return }
+        guard let route = router.consumePendingTonightRoute() else { return }
+        switch route {
+        case .tonight(let section):
+            let anchorID = section == .stars ? "photo" : section.rawValue
+            proxy.scrollTo(anchorID, anchor: .top)
+        case .skyEvent(let eventID):
+            if let target = model.plan?.targets.first(where: { $0.event.id == eventID }) {
+                proxy.scrollTo("photo", anchor: .top)
+                detail = .target(target)
+                return
+            }
+            if let event = model.upcoming.first(where: { $0.id == eventID }) {
+                proxy.scrollTo("coming", anchor: .top)
+                detail = .event(event)
+                return
+            }
+            proxy.scrollTo("coming", anchor: .top)
+        case .challenge:
+            return
+        }
     }
 }
 

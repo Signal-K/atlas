@@ -97,7 +97,7 @@ public enum PhotoChallengeCatalog {
 
     public static let definitions: [PhotoChallengeDefinition] = [
         PhotoChallengeDefinition(
-            id: "wsw-saturn-sky-photo",
+            id: "asv-129-wsw-saturn-sky-photo",
             name: "World Space Week: Saturn sky photo",
             objectName: "Saturn",
             prompt: "Share a sky photo taken while you were observing Saturn, even if Saturn itself is faint in the frame.",
@@ -173,11 +173,11 @@ public enum PhotoChallengeCatalog {
             ]
         ),
         PhotoChallengeDefinition(
-            id: "orionids-2026",
-            name: "Orionids challenge",
+            id: "asv-130-orionids-2026",
+            name: "ASV-130 Orionids challenge",
             objectName: "Meteor shower",
-            prompt: "Log Orionids watch sessions around the peak nights and share your best frame.",
-            tip: "Wide-angle shots are expected; seeing a meteor in-frame is optional.",
+            prompt: "Log Orionids watch sessions around the peak nights (21-22 Oct) and share your best frame.",
+            tip: "Wide-angle shots are expected; seeing a meteor in-frame is optional on 21-22 Oct peak nights.",
             collectionChallengeID: "meteor-watch",
             matchingKinds: ["meteor_shower"],
             targetKeywords: ["orionids"],
@@ -188,7 +188,7 @@ public enum PhotoChallengeCatalog {
             ),
             rules: [
                 ChallengeRule(id: "orionids-submit", title: "Save an Orionids submission", detail: "Saved challenge submissions drive completion and multiplayer totals."),
-                ChallengeRule(id: "orionids-badge-window", title: "Badge tier", detail: "Gold during active Orionids window, silver after.")
+                ChallengeRule(id: "orionids-badge-window", title: "Badge tier", detail: "Gold during active Orionids window (peak 21-22 Oct), silver after.")
             ]
         )
     ]
