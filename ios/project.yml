@@ -19,8 +19,11 @@ targets:
       properties:
         AtlasPBURL: $(ATLAS_PB_URL)
         AtlasBillingURL: $(ATLAS_BILLING_URL)
+        AtlasMediaURL: $(ATLAS_MEDIA_URL)
         AtlasPrivacyURL: https://youratlas.cc/privacy
         NSLocationWhenInUseUsageDescription: Atlas uses your location to work out what is above you tonight and when it gets dark.
+        NSCameraUsageDescription: Atlas uses the camera so you can capture and upload night-sky photos.
+        NSPhotoLibraryUsageDescription: Atlas uses your photo library so you can pick and upload sky photos.
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: Atlas
@@ -43,6 +46,8 @@ targets:
         # Local atlas-billing (the web app's VITE_ATLAS_BILLING_URL default). Production builds must point at
         # https://signal-k-atlas-billing.fly.dev, which is where purchases are verified.
         ATLAS_BILLING_URL: "http://127.0.0.1:8093"
+        # Optional atlas-media worker URL. Leave blank to fall back to PocketBase file uploads.
+        ATLAS_MEDIA_URL: ""
       configs:
         # Release builds (TestFlight / App Store) must never ship localhost endpoints.
         Release:

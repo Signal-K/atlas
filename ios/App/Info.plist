@@ -6,6 +6,8 @@
 	<string>$(ATLAS_BILLING_URL)</string>
 	<key>AtlasPBURL</key>
 	<string>$(ATLAS_PB_URL)</string>
+	<key>AtlasMediaURL</key>
+	<string>$(ATLAS_MEDIA_URL)</string>
 	<key>AtlasPrivacyURL</key>
 	<string>https://youratlas.cc/privacy</string>
 	<key>CFBundleDevelopmentRegion</key>
@@ -35,6 +37,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Atlas uses your location to work out what is above you tonight and when it gets dark.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Atlas uses the camera so you can capture and upload night-sky photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Atlas uses your photo library so you can pick and upload sky photos.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>IBMPlexMono-Regular.ttf</string>

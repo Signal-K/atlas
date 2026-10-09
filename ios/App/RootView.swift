@@ -21,7 +21,7 @@ struct RootView: View {
                 WelcomeView(session: session).transition(.opacity.combined(with: .scale(scale: 1.08)))
             case .guest, .signedIn:
                 if let tonight {
-                    TonightView(session: session, skyPass: skyPass, model: tonight)
+                    AtlasHomeView(session: session, skyPass: skyPass, tonightModel: tonight)
                         .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 }
             }
