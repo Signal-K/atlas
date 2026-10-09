@@ -20,6 +20,9 @@ final class TonightModel {
     /// Human-readable notes about sources that failed, shown where their data would have been.
     private(set) var eventsProblem: String?
     private(set) var weatherProblem: String?
+    /// Kept so alerts can be planned from the same data the screen shows.
+    private(set) var forecast: ViewingForecast?
+    private(set) var allEvents: [SkyEvent] = []
 
     private let events: EventSource
     private let forecasts: ForecastSource
@@ -46,6 +49,9 @@ final class TonightModel {
         weatherProblem = { if case .failure = fetchedForecast { return "Cloud forecast unavailable." } else { return nil } }()
 
         let allEvents = (try? fetchedEvents.get()) ?? []
+        self.allEvents = allEvents
+        self.forecast = try? fetchedForecast.get()
+        if !place.isFallback { PlaceCache.save(place) }
         let built = TonightPlanner.plan(
             events: allEvents, forecast: try? fetchedForecast.get(),
             now: now, latitude: place.latitude, longitude: place.longitude, timeZone: place.timeZone)
@@ -58,5 +64,30 @@ final class TonightModel {
 private extension Result where Failure == Error {
     init(_ body: () async throws -> Success) async {
         do { self = .success(try await body()) } catch { self = .failure(error) }
+    }
+}
+
+extension TonightModel {
+    /// Alerts for the data on screen; empty until a load has produced a forecast.
+    func plannedAlerts(preferences: AlertPreferences, now: Date = Date()) -> [PlannedAlert] {
+        guard let forecast, let place else { return [] }
+        return AlertPlanner.plan(forecast: forecast, events: allEvents, now: now, latitude: place.latitude, longitude: place.longitude,
+                                 timeZone: place.timeZone, preferences: preferences)
+    }
+}
+
+/// The last real location, so a background refresh can reschedule alerts without asking for a fix.
+enum PlaceCache {
+    private static let key = "atlas.lastPlace"
+
+    static func save(_ place: Place) {
+        let value: [String: Any] = ["lat": place.latitude, "lon": place.longitude, "name": place.name, "tz": place.timeZone.identifier]
+        UserDefaults.standard.set(value, forKey: key)
+    }
+
+    static func load() -> Place? {
+        guard let v = UserDefaults.standard.dictionary(forKey: key), let lat = v["lat"] as? Double, let lon = v["lon"] as? Double,
+              let name = v["name"] as? String, let tz = (v["tz"] as? String).flatMap(TimeZone.init(identifier:)) else { return nil }
+        return Place(latitude: lat, longitude: lon, name: name, timeZone: tz, isFallback: false)
     }
 }

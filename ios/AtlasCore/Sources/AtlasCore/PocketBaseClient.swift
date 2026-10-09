@@ -58,7 +58,7 @@ public final class PocketBaseClient: @unchecked Sendable {
         return req
     }
 
-    private func send<T: Decodable>(_ req: URLRequest, as type: T.Type) async throws -> T {
+    func send<T: Decodable>(_ req: URLRequest, as type: T.Type) async throws -> T {
         let (data, response) = try await session.data(for: req)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw PocketBaseError.http(status: http.statusCode)
@@ -75,6 +75,20 @@ public final class PocketBaseClient: @unchecked Sendable {
 
     public func get(collection: String, id: String) async throws -> PocketBaseRecord {
         try await send(try request(path: "api/collections/\(collection)/records/\(id)"), as: PocketBaseRecord.self)
+    }
+
+    public func create<T: Encodable>(collection: String, body: T) async throws -> PocketBaseRecord {
+        let data = try JSONEncoder().encode(body)
+        return try await send(
+            try request(path: "api/collections/\(collection)/records", method: "POST", body: data),
+            as: PocketBaseRecord.self)
+    }
+
+    public func update<T: Encodable>(collection: String, id: String, body: T) async throws -> PocketBaseRecord {
+        let data = try JSONEncoder().encode(body)
+        return try await send(
+            try request(path: "api/collections/\(collection)/records/\(id)", method: "PATCH", body: data),
+            as: PocketBaseRecord.self)
     }
 
     struct AuthResponse: Decodable { let token: String; let record: PocketBaseRecord }

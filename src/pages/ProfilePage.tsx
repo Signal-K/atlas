@@ -9,6 +9,7 @@ import { PushSettings } from '../components/PushSettings'
 import { LeaderboardSettings } from '../components/LeaderboardSettings'
 import { PaywallGate } from '../components/PaywallGate'
 import { ProgressCard } from '../components/ProgressCard'
+import { SpaceWeekBadgesCard } from '../components/SpaceWeekBadgesCard'
 import { useAuth } from '../lib/auth'
 import { useThemeState } from '../lib/theme'
 import { getPushSubscription, isIOSSafariNotStandalone, isPushSupported } from '../lib/push'
@@ -165,6 +166,7 @@ export function ProfilePage({ currentLocation, accountDefaultMode, onOpenLocatio
       )}
 
       <ProgressCard />
+      <SpaceWeekBadgesCard />
 
       <div className="az-section-head">
         <span className="az-kicker">Personal</span>

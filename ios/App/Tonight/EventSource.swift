@@ -156,7 +156,7 @@ struct Fixtures: EventSource, ForecastSource, Sendable {
             ev("f2", "conjunction", "moon_mars", "Moon–Mars Conjunction", "The Moon passes just below Mars before dawn.", hours: 7),
             ev("f3", "deep_sky", "m42", "Orion Nebula (M42) well placed for viewing", "Rises late evening; best in the pre-dawn sky.", hours: 1, dur: 8),
             ev("f4", "meteor_shower", "orionids", "Orionids peak", "Up to 20 meteors per hour from a dark site.", hours: 2, dur: 8),
-            ev("f5", "planet_event", "saturn", "Saturn at Opposition", "Saturn is up all night and at its brightest.", hours: 0.5, dur: 9),
+            ev("f5", "planet_event", "saturn", "Saturn at Opposition", "Saturn is up all night and at its brightest.", hours: -1, dur: 10),
             // Beyond the free 14-day window: only Sky Pass loads these.
             ev("f6", "meteor_shower", "geminids", "Geminids peak", "One of the strongest showers of the year.", hours: 24 * 40, dur: 8),
         ]

@@ -1,6 +1,8 @@
 import Foundation
 import Observation
+import AtlasCore
 import PhotosUI
+import SwiftUI
 
 @Observable @MainActor
 final class ProfileViewModel {
