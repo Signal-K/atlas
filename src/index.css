@@ -1,6 +1,6 @@
 /* The bootstrap recovery check uses this marker to tell a real stylesheet
    from a stale service-worker response. Keep it in the global stylesheet. */
-:root { --atlas-style-revision: atlas-2026-08-12c; }
+:root { --atlas-style-revision: atlas-2026-10-09a; }
 
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }

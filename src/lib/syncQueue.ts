@@ -17,6 +17,13 @@ const handlers: Partial<Record<SyncQueueItem['collection'], (item: SyncQueueItem
   atlas_tagged_events: async (item) => {
     await pb.collection('atlas_tagged_events').create(item.payload as Record<string, unknown>)
   },
+  atlas_observations: async (item) => {
+    const entry = await db.observations.get(item.recordId)
+    if (!entry || entry.remoteId) return
+    const { pushObservation } = await import('./sync')
+    const remoteId = await pushObservation(entry)
+    if (!remoteId) throw new Error('observation still waiting for a successful sync')
+  },
 }
 
 // Same shape of check as auth.ts's isExistingAccountError, generalized to
@@ -40,6 +47,18 @@ export async function enqueueSync(
   payload?: unknown,
 ): Promise<void> {
   await db.syncQueue.add({ collection, op, recordId, payload, queuedAt: new Date().toISOString() })
+}
+
+export async function clearQueuedSyncItems(collection: SyncQueueItem['collection'], recordId: string): Promise<void> {
+  const rows = await db.syncQueue.where('collection').equals(collection).toArray()
+  const matchingIds = rows.filter((row) => row.recordId === recordId).map((row) => row.id).filter((id): id is number => id != null)
+  if (matchingIds.length > 0) await db.syncQueue.bulkDelete(matchingIds)
+}
+
+export async function enqueueObservationRetry(recordId: string): Promise<void> {
+  const rows = await db.syncQueue.where('collection').equals('atlas_observations').toArray()
+  if (rows.some((row) => row.recordId === recordId && row.op === 'create')) return
+  await enqueueSync('atlas_observations', 'create', recordId)
 }
 
 let flushing = false

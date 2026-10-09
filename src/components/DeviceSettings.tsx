@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { updateDeviceModels } from '../lib/auth'
 import { DEVICE_PRESETS, devicePresetFor } from '../lib/devicePresets'
 import { trackEvent } from '../lib/analytics'
+import { FormStatus } from './forms/FormStatus'
 
 export interface DeviceSettingsProps {
   deviceModels: string[]
@@ -14,14 +15,15 @@ export function DeviceSettings({ deviceModels, entitled }: DeviceSettingsProps) 
   const [error, setError] = useState('')
 
   async function toggleDevice(value: string) {
-    const next = selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]
+    const previous = selected
+    const next = previous.includes(value) ? previous.filter((v) => v !== value) : [...previous, value]
     setSelected(next)
     setSaving(true)
     setError('')
     try {
       await updateDeviceModels(next)
     } catch (err) {
-      setSelected(selected)
+      setSelected(previous)
       setError('Could not save your device. Try again shortly.')
       trackEvent('device_settings_save_failed', { error: String(err) })
     } finally {
@@ -42,7 +44,7 @@ export function DeviceSettings({ deviceModels, entitled }: DeviceSettingsProps) 
         ))}
       </div>
 
-      {error && <p className="account-form-error">{error}</p>}
+      <FormStatus message={error} tone={error ? 'error' : 'neutral'} live="assertive" />
 
       {selected.length > 0 && !entitled && <p className="settings-help">Get the Sky Pass above to see camera setup instructions for your device(s).</p>}
 

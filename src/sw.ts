@@ -7,6 +7,7 @@ precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
 const MEDIA_CACHE = 'atlas-portfolio-media-v1'
+const dirtyClientIds = new Set<string>()
 
 // Portfolio previews are remote PocketBase/R2 images, so they are not part
 // of the app-shell precache. Keep successful image responses in a small
@@ -31,6 +32,16 @@ self.addEventListener('fetch', (event) => {
   )
 })
 
+self.addEventListener('message', (event) => {
+  const payload = event.data as { type?: string; dirty?: boolean } | null
+  if (payload?.type !== 'atlas:dirty-forms') return
+  const source = event.source
+  if (!source || !('id' in source)) return
+  const clientId = source.id
+  if (payload.dirty) dirtyClientIds.add(clientId)
+  else dirtyClientIds.delete(clientId)
+})
+
 // Take over immediately on every deploy instead of waiting for all tabs of
 // the old version to close (see vite.config.ts for why this matters).
 self.skipWaiting()
@@ -49,8 +60,19 @@ self.addEventListener('activate', (event) => {
       // running slightly-stale JS until they next background this tab,
       // switch tabs, or reload it themselves.
       const windows = await self.clients.matchAll({ type: 'window' })
+      const activeClientIds = new Set(windows.map((client) => client.id))
+      for (const clientId of [...dirtyClientIds]) {
+        if (!activeClientIds.has(clientId)) dirtyClientIds.delete(clientId)
+      }
       await Promise.all(
-        windows.map((client) => ('navigate' in client && !client.focused ? client.navigate(client.url) : Promise.resolve())),
+        windows.map((client) => {
+          if (dirtyClientIds.has(client.id)) {
+            client.postMessage({ type: 'atlas-update-available' })
+            return Promise.resolve()
+          }
+          if (!('navigate' in client) || client.focused) return Promise.resolve()
+          return client.navigate(client.url)
+        }),
       )
     })(),
   )

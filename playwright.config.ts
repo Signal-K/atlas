@@ -61,6 +61,18 @@ export default defineConfig({
   projects: [
     { name: 'setup', testMatch: /global\.setup\.ts/ },
     { name: 'chromium', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
+    {
+      name: 'chromium-mobile',
+      testMatch: /mobile-stability\.spec\.ts/,
+      use: { ...devices['Pixel 7'] },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'webkit-iphone',
+      testMatch: /mobile-stability\.spec\.ts/,
+      use: { ...devices['iPhone 14'] },
+      dependencies: ['setup'],
+    },
   ],
   webServer: {
     command: `npm run dev -- --port ${e2ePort}`,

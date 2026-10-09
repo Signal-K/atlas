@@ -1,25 +1,15 @@
-// On iOS/Android, the on-screen keyboard shrinks the *visual* viewport
-// while the *layout* viewport -- what `position: fixed` and svh/dvh units
-// are computed against -- stays full height. A bottom-pinned panel holding
-// a text input (the itinerary builder sheet, the feedback dock) can sit
-// behind the keyboard while it's up, then visibly snap back into place the
-// instant focus moves to a button and the keyboard dismisses. Tracking the
-// gap between the two viewports and exposing it as a CSS variable lets
-// those panels track the visible viewport continuously instead of snapping.
-//
-// window.innerHeight and visualViewport.height are NOT reliably equal
-// whenever no keyboard is up -- browser/PWA chrome (toolbars, safe areas)
-// can shift either one independently of any keyboard, and a plain
-// window.scrollTo() is enough to fire a visualViewport resize/scroll event
-// that recomputes this gap. Gate the calculation on an actual focused text
-// input so route changes and ordinary scrolling can never produce a false
-// "keyboard" offset that shoves a fixed panel off the bottom edge.
 let started = false
+let rafId = 0
+let lastEditableFocusAt = 0
 
-function hasEditableFocus(): boolean {
-  const el = document.activeElement as HTMLElement | null
+function isEditableElement(value: unknown): value is HTMLElement {
+  const el = value as HTMLElement | null
   if (!el) return false
   return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+}
+
+function hasEditableFocus(): boolean {
+  return isEditableElement(document.activeElement)
 }
 
 export function startViewportInsetTracking() {
@@ -27,22 +17,36 @@ export function startViewportInsetTracking() {
   started = true
 
   const viewport = window.visualViewport
-  if (!viewport) return
-
   const root = document.documentElement
 
-  function update() {
-    if (!hasEditableFocus()) {
+  function updateNow() {
+    if (!viewport) {
       root.style.setProperty('--az-keyboard-inset', '0px')
       return
     }
-    const inset = Math.max(0, window.innerHeight - viewport!.height - viewport!.offsetTop)
-    root.style.setProperty('--az-keyboard-inset', `${inset}px`)
+
+    const keyboardInset = hasEditableFocus() || Date.now() - lastEditableFocusAt < 1_200
+      ? Math.max(0, window.innerHeight - (viewport.height + viewport.offsetTop))
+      : 0
+    root.style.setProperty('--az-keyboard-inset', `${Math.round(keyboardInset)}px`)
   }
 
-  viewport.addEventListener('resize', update)
-  viewport.addEventListener('scroll', update)
-  document.addEventListener('focusin', update)
-  document.addEventListener('focusout', update)
-  update()
+  function requestUpdate() {
+    if (rafId !== 0) return
+    rafId = window.requestAnimationFrame(() => {
+      rafId = 0
+      updateNow()
+    })
+  }
+
+  viewport?.addEventListener('resize', requestUpdate)
+  viewport?.addEventListener('scroll', requestUpdate)
+  window.addEventListener('resize', requestUpdate)
+  window.addEventListener('orientationchange', requestUpdate)
+  document.addEventListener('focusin', (event) => {
+    if (isEditableElement(event.target)) lastEditableFocusAt = Date.now()
+    requestUpdate()
+  })
+  document.addEventListener('focusout', requestUpdate)
+  requestUpdate()
 }

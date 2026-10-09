@@ -30,6 +30,33 @@ test('journal secondary links are at least 44px tall on mobile', async ({ page }
   for (const height of heights) expect(height).toBeGreaterThanOrEqual(43.5)
 })
 
+test('visible Atlas buttons and chips meet 44px touch targets on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await seedSignedInUser(page, { entitled: true })
+  await page.goto('/app/hub')
+
+  const small = await page.evaluate(() => {
+    const selectors = ['button.az-btn', 'button.az-icon-btn', 'button.az-chip', '.az-location-chip', 'button.az-text-btn']
+    const min = 43.5
+    const failures: string[] = []
+    for (const selector of selectors) {
+      for (const node of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
+        const style = window.getComputedStyle(node)
+        if (style.display === 'none' || style.visibility === 'hidden') continue
+        if (!node.offsetParent) continue
+        const box = node.getBoundingClientRect()
+        if (box.width > 0 && box.height > 0 && (box.width < min || box.height < min)) {
+          const label = (node.getAttribute('aria-label') || node.textContent || selector).trim().slice(0, 48)
+          failures.push(`${label}: ${Math.round(box.width)}x${Math.round(box.height)}`)
+        }
+      }
+    }
+    return failures
+  })
+
+  expect(small).toEqual([])
+})
+
 function luminance([r, g, b]: number[]) {
   const [R, G, B] = [r, g, b].map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 })
   return 0.2126 * R + 0.7152 * G + 0.0722 * B
@@ -40,6 +67,8 @@ test('account form inputs meet border and placeholder contrast', async ({ page }
   // The sign-in form is what this measures; a returning device opens on it.
   await page.addInitScript(() => window.localStorage.setItem('atlas-returning-account', '1'))
   await page.goto('/app/journal')
+  const notConfigured = page.getByText('Sign-in is not configured on this deployment.')
+  if (await notConfigured.isVisible()) test.skip(true, 'Clerk is not configured in this environment')
   const input = page.locator('.auth-gate-modal .account-form-field input').first()
   await expect(input).toBeVisible()
   const colours = await input.evaluate((el) => {
@@ -59,6 +88,8 @@ test('create-account (Clerk) fields have a visible edge and are not clipped', as
   await page.setViewportSize({ width: 402, height: 874 })
   await page.addInitScript(() => window.localStorage.setItem('atlas-returning-account', '1'))
   await page.goto('/app/journal')
+  const notConfigured = page.getByText('Sign-in is not configured on this deployment.')
+  if (await notConfigured.isVisible()) test.skip(true, 'Clerk is not configured in this environment')
   await page.locator('.account-mode-tabs button', { hasText: 'Create account' }).click()
   const input = page.locator('.auth-gate-modal .cl-formFieldInput').first()
   await expect(input).toBeVisible()
