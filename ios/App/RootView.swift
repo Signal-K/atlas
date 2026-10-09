@@ -9,6 +9,7 @@ struct RootView: View {
     let settings: AppSettings
     let checkIns: CheckInStore
     let makeTonight: () -> TonightModel
+    let client: PocketBaseClient
 
     @State private var tonight: TonightModel?
 
@@ -25,7 +26,13 @@ struct RootView: View {
                 if settings.needsOnboarding {
                     EquipmentOnboardingView(settings: settings).transition(.opacity.combined(with: .scale(scale: 1.04)))
                 } else if let tonight {
-                    TonightView(session: session, skyPass: skyPass, settings: settings, checkIns: checkIns, model: tonight)
+                    AtlasTabShell(
+                        session: session,
+                        skyPass: skyPass,
+                        settings: settings,
+                        checkIns: checkIns,
+                        tonight: tonight,
+                        client: client)
                         .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 }
             }

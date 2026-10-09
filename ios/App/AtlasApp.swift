@@ -24,7 +24,7 @@ struct AtlasApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(session: session, skyPass: skyPass, settings: settings, checkIns: checkIns) {
+            RootView(session: session, skyPass: skyPass, settings: settings, checkIns: checkIns, client: Self.client) {
                 TonightModel(
                     events: Self.fixtures ?? LiveEventSource(client: Self.client),
                     forecasts: Self.fixtures ?? LiveForecastSource(),
