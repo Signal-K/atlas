@@ -6,6 +6,8 @@ import SwiftUI
 struct RootView: View {
     let session: SessionStore
     let skyPass: SkyPassStore
+    let notifications: NotificationManager
+    let router: NotificationRouter
     let makeTonight: () -> TonightModel
 
     @State private var tonight: TonightModel?
@@ -21,7 +23,7 @@ struct RootView: View {
                 WelcomeView(session: session).transition(.opacity.combined(with: .scale(scale: 1.08)))
             case .guest, .signedIn:
                 if let tonight {
-                    TonightView(session: session, skyPass: skyPass, model: tonight)
+                    TonightView(session: session, skyPass: skyPass, model: tonight, notifications: notifications, router: router)
                         .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 }
             }

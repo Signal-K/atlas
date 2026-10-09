@@ -8,11 +8,14 @@ struct TonightView: View {
     let session: SessionStore
     let skyPass: SkyPassStore
     @State var model: TonightModel
+    let notifications: NotificationManager
+    let router: NotificationRouter
 
     @State private var drift = 0.0
     @State private var detail: DetailItem?
     @State private var showAccount = false
     @State private var showSkyPass = false
+    @State private var showNotifications = false
 
     var body: some View {
         ZStack {
@@ -31,11 +34,16 @@ struct TonightView: View {
                 .onPreferenceChange(OffsetKey.self) { drift = -$0 }
                 .refreshable { await reload() }
                 .onChange(of: model.phase) { _, phase in
+                    guard phase == .ready else { return }
                     // `-AtlasScrollTo <section>` (testing / screenshots): tonight, photo, stars, coming.
                     let args = ProcessInfo.processInfo.arguments
-                    guard phase == .ready, let i = args.firstIndex(of: "-AtlasScrollTo"), i + 1 < args.count else { return }
-                    Task { try? await Task.sleep(for: .milliseconds(600)); proxy.scrollTo(args[i + 1], anchor: .top) }
+                    if let i = args.firstIndex(of: "-AtlasScrollTo"), i + 1 < args.count {
+                        Task { try? await Task.sleep(for: .milliseconds(600)); proxy.scrollTo(args[i + 1], anchor: .top) }
+                    }
+                    Task { await notifications.scheduleLocalFallback(plan: model.plan, upcoming: model.upcoming) }
+                    applyPendingRoute(proxy)
                 }
+                .onChange(of: router.changeToken) { _, _ in applyPendingRoute(proxy) }
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) { topBar }
@@ -48,9 +56,14 @@ struct TonightView: View {
         }
         .sheet(isPresented: $showAccount) {
             AccountSheet(session: session, skyPass: skyPass,
+                         openNotifications: { showAccount = false; Task { try? await Task.sleep(for: .milliseconds(250)); showNotifications = true } },
                          openSkyPass: { showAccount = false; Task { try? await Task.sleep(for: .milliseconds(350)); showSkyPass = true } },
                          dismiss: { showAccount = false })
                 .presentationDetents([.height(440)])
+        }
+        .sheet(isPresented: $showNotifications) {
+            NotificationSettingsView(session: session, manager: notifications) { showNotifications = false }
+                .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showSkyPass) {
             SkyPassView(store: skyPass, signedIn: session.userID != nil) { showSkyPass = false }
@@ -176,6 +189,29 @@ struct TonightView: View {
     private var offsetReader: some View {
         GeometryReader { geo in Color.clear.preference(key: OffsetKey.self, value: geo.frame(in: .named("feed")).minY) }.frame(height: 0)
     }
+
+    private func applyPendingRoute(_ proxy: ScrollViewProxy) {
+        guard model.phase == .ready else { return }
+        guard let route = router.consumePendingRoute() else { return }
+        switch route {
+        case .tonight(let section):
+            proxy.scrollTo(section.rawValue, anchor: .top)
+        case .skyEvent(let eventID):
+            if let target = model.plan?.targets.first(where: { $0.event.id == eventID }) {
+                proxy.scrollTo("photo", anchor: .top)
+                detail = .target(target)
+                return
+            }
+            if let event = model.upcoming.first(where: { $0.id == eventID }) {
+                proxy.scrollTo("coming", anchor: .top)
+                detail = .event(event)
+                return
+            }
+            proxy.scrollTo("coming", anchor: .top)
+        case .challenge:
+            proxy.scrollTo("photo", anchor: .top)
+        }
+    }
 }
 
 private struct OffsetKey: PreferenceKey {
@@ -204,6 +240,7 @@ private struct Skeleton: View {
 private struct AccountSheet: View {
     let session: SessionStore
     let skyPass: SkyPassStore
+    let openNotifications: () -> Void
     let openSkyPass: () -> Void
     let dismiss: () -> Void
     @State private var confirmDelete = false
@@ -219,6 +256,13 @@ private struct AccountSheet: View {
             Button { Haptics.tap(); openSkyPass() } label: {
                 Text(skyPass.isEntitled ? "Sky Pass · active" : "Get Sky Pass")
                     .font(.system(size: 15, weight: .semibold)).foregroundStyle(skyPass.isEntitled ? Brand.green : Brand.violet)
+                    .padding(.horizontal, 24).frame(minHeight: 46)
+                    .background(Brand.surface, in: Capsule()).overlay(Capsule().strokeBorder(Brand.line2))
+            }
+            .buttonStyle(PressableStyle())
+            Button { Haptics.tap(); openNotifications() } label: {
+                Text("Notification settings")
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Brand.ink)
                     .padding(.horizontal, 24).frame(minHeight: 46)
                     .background(Brand.surface, in: Capsule()).overlay(Capsule().strokeBorder(Brand.line2))
             }

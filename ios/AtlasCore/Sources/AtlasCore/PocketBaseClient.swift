@@ -77,6 +77,20 @@ public final class PocketBaseClient: @unchecked Sendable {
         try await send(try request(path: "api/collections/\(collection)/records/\(id)"), as: PocketBaseRecord.self)
     }
 
+    public func create<T: Encodable>(collection: String, body: T) async throws -> PocketBaseRecord {
+        let data = try JSONEncoder().encode(body)
+        return try await send(
+            try request(path: "api/collections/\(collection)/records", method: "POST", body: data),
+            as: PocketBaseRecord.self)
+    }
+
+    public func update<T: Encodable>(collection: String, id: String, body: T) async throws -> PocketBaseRecord {
+        let data = try JSONEncoder().encode(body)
+        return try await send(
+            try request(path: "api/collections/\(collection)/records/\(id)", method: "PATCH", body: data),
+            as: PocketBaseRecord.self)
+    }
+
     struct AuthResponse: Decodable { let token: String; let record: PocketBaseRecord }
 
     /// Password auth against an auth collection; stores the returned token.
