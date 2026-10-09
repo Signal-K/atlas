@@ -27,13 +27,16 @@ final class PhotoChallengesTests: XCTestCase {
         let key = saturnSharedEventCreditKey(userID: "user-a", sourceID: "upload-1")
 
         let firstGate = ChallengeCreditGate(store: store)
-        XCTAssertEqual(try await firstGate.claimOnce(key: key), true)
-        XCTAssertEqual(try await firstGate.claimOnce(key: key), false)
-
+        let _v2 = try await firstGate.claimOnce(key: key)
+        XCTAssertEqual(_v2, true)
+        let _v3 = try await firstGate.claimOnce(key: key)
+        XCTAssertEqual(_v3, false)
         // Simulate app reload by creating a fresh gate against the same backing store.
         let secondGate = ChallengeCreditGate(store: store)
-        XCTAssertEqual(try await secondGate.claimOnce(key: key), false)
-        XCTAssertEqual(try await secondGate.claimOnce(key: key + "-different"), true)
+        let _v4 = try await secondGate.claimOnce(key: key)
+        XCTAssertEqual(_v4, false)
+        let _v5 = try await secondGate.claimOnce(key: key + "-different")
+        XCTAssertEqual(_v5, true)
     }
 
     func testOrionidsChallengeHasASV130AndPeakWindow() throws {

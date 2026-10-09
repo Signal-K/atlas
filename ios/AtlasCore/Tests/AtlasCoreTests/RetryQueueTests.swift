@@ -18,7 +18,8 @@ final class RetryQueueTests: XCTestCase {
         XCTAssertEqual(report.succeeded, 2)
         XCTAssertEqual(report.failed, 0)
         XCTAssertEqual(report.pending, 0)
-        XCTAssertEqual(try await queue.allItems(), [])
+        let _v1 = try await queue.allItems()
+        XCTAssertEqual(_v1, [])
     }
 
     func testFailureStaysQueuedAndAttemptCountIncrements() async throws {

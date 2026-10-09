@@ -17,8 +17,8 @@ final class PhotoEXIFTests: XCTestCase {
         XCTAssertEqual(parsed.timeZoneKnown, true)
         XCTAssertEqual(parsed.offsetSource, .exifOffset)
         XCTAssertEqual(parsed.offsetMinutes, 120)
-        XCTAssertEqual(parsed.latitude, 59.437, accuracy: 0.0001)
-        XCTAssertEqual(parsed.longitude, 24.7536, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(parsed.latitude), 59.437, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(parsed.longitude), 24.7536, accuracy: 0.0001)
         XCTAssertEqual(parsed.cameraLabel, "Apple iPhone 16 Pro")
         XCTAssertEqual(parsed.dateTaken, Date(timeIntervalSince1970: 1791577800)) // 2026-10-09 20:30:00Z
     }
