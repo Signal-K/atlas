@@ -40,7 +40,7 @@ export function HostPage() {
   }, [])
 
   return (
-    <div className="atlas-almanac">
+    <div className="atlas-almanac atlas-house">
       <header className="am-masthead">
         <div className="am-masthead-meta">
           <span>For hosts</span>

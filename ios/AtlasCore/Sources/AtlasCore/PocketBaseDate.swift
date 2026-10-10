@@ -11,3 +11,11 @@ public func parsePbDate(_ raw: String) -> Date? {
     plain.formatOptions = [.withInternetDateTime]
     return plain.date(from: normalized)
 }
+
+/// The inverse of `parsePbDate`: "YYYY-MM-DD HH:MM:SS.sssZ" in UTC, as PocketBase stores dates.
+public func pbDateString(_ date: Date) -> String {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = TimeZone(identifier: "UTC")
+    f.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS'Z'"
+    return f.string(from: date)
+}

@@ -61,9 +61,18 @@ test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
   // gated on having at least one stop.
   await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled()
 
-  // City search is a live-geocoding combobox (curated fallback covers this
-  // offline); the option's accessible name carries the place plus its
-  // coordinates, so match on the name substring.
+  // City search is a live-geocoding combobox. The real Open-Meteo geocoder
+  // returns several "Tallinn*" places (so a bare /Tallinn/ option match is a
+  // strict-mode violation) and needs the network, so pin it to one result.
+  await page.route('https://geocoding-api.open-meteo.com/**', (route) =>
+    route.fulfill({
+      json: {
+        results: [
+          { id: 588409, name: 'Tallinn', latitude: 59.43696, longitude: 24.75353, admin1: 'Harju', country: 'Estonia', timezone: 'Europe/Tallinn' },
+        ],
+      },
+    }),
+  )
   const citySearch = page.getByPlaceholder('Search any town or city')
   await citySearch.fill('Tallinn')
   await page.getByRole('option', { name: /Tallinn/ }).click()

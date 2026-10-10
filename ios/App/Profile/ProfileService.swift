@@ -37,7 +37,7 @@ enum ProfileServiceError: Error, LocalizedError {
     }
 }
 
-protocol ProfileService {
+protocol ProfileService: Sendable {
     func loadSnapshot(userID: String, email: String, entitled: Bool, token: String?) async throws -> ProfileSnapshot
     func updateProfile(userID: String, token: String, name: String, handle: String) async throws
     func uploadAvatar(userID: String, token: String, imageData: Data, fileName: String, mimeType: String) async throws
