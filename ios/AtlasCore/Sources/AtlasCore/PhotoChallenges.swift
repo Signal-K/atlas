@@ -21,6 +21,27 @@ public enum ChallengeBadgeTier: String, Equatable, Sendable {
     case silver
 }
 
+public struct WorldSpaceWeekDestination: Equatable, Sendable, Identifiable {
+    public let id: String
+    public let label: String
+    public let url: URL
+
+    public init(id: String, label: String, url: URL) {
+        self.id = id
+        self.label = label
+        self.url = url
+    }
+}
+
+public enum WorldSpaceWeekCampaign {
+    /// Player-facing links for the 2026 event drop. These intentionally point to
+    /// the live game surfaces rather than a shared backend or a marketing page.
+    public static let destinations: [WorldSpaceWeekDestination] = [
+        .init(id: "landnam", label: "Play Landnám", url: URL(string: "https://playlandnam.space/?from=atlas-wsw")!),
+        .init(id: "garden", label: "Open Garden sky events", url: URL(string: "https://starsailors.space/game?from=atlas-wsw")!),
+    ]
+}
+
 public struct ChallengeRule: Equatable, Sendable, Identifiable {
     public let id: String
     public let title: String
