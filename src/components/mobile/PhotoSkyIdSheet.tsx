@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Sheet } from './Sheet'
 import { PaywallGate } from '../PaywallGate'
 import { LocationSearchInput } from '../LocationSearchInput'
@@ -8,12 +8,62 @@ import { cityLabel, type City } from '../../lib/cities'
 import { useAuth } from '../../lib/auth'
 import { trackEvent } from '../../lib/analytics'
 import type { CurrentLocation } from '../../lib/currentLocation'
+import { FormSurface } from '../forms/FormSurface'
+import { FormStatus } from '../forms/FormStatus'
+import { useDirtyFormRegistration } from '../../lib/dirtyForms'
 
 export interface PhotoSkyIdSheetProps {
   open: boolean
   onClose: () => void
   currentLocation: CurrentLocation
   onSignInClick: () => void
+}
+
+const PHOTO_ID_DRAFT_KEY_PREFIX = 'atlas-photo-sky-id-draft-v1:'
+
+interface PhotoSkyIdDraft {
+  whenLocal: string
+  manualCityQuery: string
+  lat: number | null
+  lon: number | null
+  headingDeg: number | null
+  timeZoneKnown: boolean
+}
+
+function readPhotoSkyIdDraft(key: string): PhotoSkyIdDraft | null {
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<PhotoSkyIdDraft>
+    if (typeof parsed.whenLocal !== 'string' || typeof parsed.manualCityQuery !== 'string') return null
+    const asNumber = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null)
+    return {
+      whenLocal: parsed.whenLocal,
+      manualCityQuery: parsed.manualCityQuery,
+      lat: asNumber(parsed.lat),
+      lon: asNumber(parsed.lon),
+      headingDeg: asNumber(parsed.headingDeg),
+      timeZoneKnown: parsed.timeZoneKnown !== false,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writePhotoSkyIdDraft(key: string, draft: PhotoSkyIdDraft) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft))
+  } catch {
+    // Storage can be unavailable (private mode); keep the in-memory state.
+  }
+}
+
+function clearPhotoSkyIdDraft(key: string) {
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // Nothing to clear when storage is unavailable.
+  }
 }
 
 // Local input's own [-350, 350ish]-year Date-parsing edge cases don't matter
@@ -30,8 +80,12 @@ function toDatetimeLocalValue(date: Date): string {
 // skyPhotoId.ts for the two pieces of real logic this wires together).
 export function PhotoSkyIdSheet({ open, onClose, currentLocation, onSignInClick }: PhotoSkyIdSheetProps) {
   const { user } = useAuth()
+  const draftStorageKey = useMemo(() => `${PHOTO_ID_DRAFT_KEY_PREFIX}${user?.id ?? 'local'}`, [user?.id])
+  const identifyLockedRef = useRef(false)
   const [photo, setPhoto] = useState<File | null>(null)
   const [reading, setReading] = useState(false)
+  const [identifying, setIdentifying] = useState(false)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [timeZoneKnown, setTimeZoneKnown] = useState(true)
   const [headingDeg, setHeadingDeg] = useState<number | null>(null)
   const [whenLocal, setWhenLocal] = useState('')
@@ -40,69 +94,120 @@ export function PhotoSkyIdSheet({ open, onClose, currentLocation, onSignInClick 
   const [lat, setLat] = useState<number | null>(null)
   const [lon, setLon] = useState<number | null>(null)
   const [result, setResult] = useState<SkyPhotoIdResult | null>(null)
+  const busy = reading || identifying
+  const dirty =
+    photo != null || whenLocal !== '' || manualCityQuery.trim() !== '' || lat != null || lon != null || result != null || headingDeg != null
+
+  useDirtyFormRegistration(`photo-sky-id-sheet:${user?.id ?? 'local'}`, open && dirty)
 
   useEffect(() => {
     if (!open) return
+    const persisted = readPhotoSkyIdDraft(draftStorageKey)
     setPhoto(null)
     setReading(false)
-    setTimeZoneKnown(true)
-    setHeadingDeg(null)
-    setWhenLocal('')
+    setIdentifying(false)
+    setStatusMessage(null)
+    setTimeZoneKnown(persisted?.timeZoneKnown ?? true)
+    setHeadingDeg(persisted?.headingDeg ?? null)
+    setWhenLocal(persisted?.whenLocal ?? '')
     setManualCity(null)
-    setManualCityQuery('')
-    setLat(null)
-    setLon(null)
+    setManualCityQuery(persisted?.manualCityQuery ?? '')
+    setLat(persisted?.lat ?? null)
+    setLon(persisted?.lon ?? null)
     setResult(null)
-  }, [open])
+  }, [open, draftStorageKey])
+
+  useEffect(() => {
+    if (!open) return
+    const hasDraft = whenLocal !== '' || manualCityQuery.trim() !== '' || lat != null || lon != null || headingDeg != null
+    if (!hasDraft) {
+      clearPhotoSkyIdDraft(draftStorageKey)
+      return
+    }
+    writePhotoSkyIdDraft(draftStorageKey, {
+      whenLocal,
+      manualCityQuery,
+      lat,
+      lon,
+      headingDeg,
+      timeZoneKnown,
+    })
+  }, [open, draftStorageKey, whenLocal, manualCityQuery, lat, lon, headingDeg, timeZoneKnown])
+
+  function handleClose() {
+    if (!dirty) {
+      onClose()
+      return
+    }
+    if (!window.confirm('Discard this draft?')) return
+    clearPhotoSkyIdDraft(draftStorageKey)
+    onClose()
+  }
 
   async function handlePhoto(file: File | null) {
     setPhoto(file)
     setResult(null)
+    setStatusMessage(null)
     if (!file) return
     setReading(true)
     trackEvent('photo_sky_id_started', { hasFile: true })
-    const exif = await extractPhotoExif(file)
-    setReading(false)
+    try {
+      const exif = await extractPhotoExif(file)
 
-    const when = exif.dateTimeOriginal ?? new Date()
-    setWhenLocal(toDatetimeLocalValue(when))
-    setTimeZoneKnown(exif.dateTimeOriginal != null && exif.timeZoneKnown)
-    setHeadingDeg(exif.headingDeg)
+      const when = exif.dateTimeOriginal ?? new Date()
+      setWhenLocal(toDatetimeLocalValue(when))
+      setTimeZoneKnown(exif.dateTimeOriginal != null && exif.timeZoneKnown)
+      setHeadingDeg(exif.headingDeg)
 
-    if (exif.lat != null && exif.lon != null) {
-      setLat(exif.lat)
-      setLon(exif.lon)
-    } else {
-      // No GPS in the photo -- fall back to the person's current Atlas
-      // location as a starting point rather than leaving the fields blank;
-      // still fully editable via the city search below.
-      setLat(currentLocation.lat)
-      setLon(currentLocation.lon)
-      setManualCityQuery(currentLocation.name)
-    }
+      if (exif.lat != null && exif.lon != null) {
+        setLat(exif.lat)
+        setLon(exif.lon)
+      } else {
+        // No GPS in the photo -- fall back to the person's current Atlas
+        // location as a starting point rather than leaving the fields blank;
+        // still fully editable via the city search below.
+        setLat(currentLocation.lat)
+        setLon(currentLocation.lon)
+        setManualCityQuery(currentLocation.name)
+      }
 
-    if (exif.dateTimeOriginal == null || exif.lat == null) {
-      trackEvent('photo_sky_id_missing_exif', { hasTime: exif.dateTimeOriginal != null, hasGps: exif.lat != null })
+      if (exif.dateTimeOriginal == null || exif.lat == null) {
+        trackEvent('photo_sky_id_missing_exif', { hasTime: exif.dateTimeOriginal != null, hasGps: exif.lat != null })
+      }
+    } catch {
+      setStatusMessage('This photo metadata could not be read. Try another original image.')
+    } finally {
+      setReading(false)
     }
   }
 
-  function handleIdentify() {
-    if (lat == null || lon == null || !whenLocal) return
-    const date = new Date(whenLocal)
-    const computed = identifySky({ date, lat, lon, headingDeg: headingDeg ?? undefined })
-    setResult(computed)
-    trackEvent('photo_sky_id_succeeded', {
-      objectCount: computed.objects.length,
-      hasConjunction: computed.closestPair != null,
-      timeZoneKnown,
-      hadHeading: headingDeg != null,
-    })
+  async function handleIdentify() {
+    if (lat == null || lon == null || !whenLocal || identifyLockedRef.current) return
+    identifyLockedRef.current = true
+    setIdentifying(true)
+    setStatusMessage(null)
+    try {
+      const date = new Date(whenLocal)
+      const computed = identifySky({ date, lat, lon, headingDeg: headingDeg ?? undefined })
+      setResult(computed)
+      trackEvent('photo_sky_id_succeeded', {
+        objectCount: computed.objects.length,
+        hasConjunction: computed.closestPair != null,
+        timeZoneKnown,
+        hadHeading: headingDeg != null,
+      })
+    } catch {
+      setStatusMessage("We couldn't identify this frame yet. Check the date, place and heading, then try again.")
+    } finally {
+      identifyLockedRef.current = false
+      setIdentifying(false)
+    }
   }
 
   const canIdentify = photo != null && lat != null && lon != null && whenLocal !== ''
 
   return (
-    <Sheet open={open} title="What's in this photo?" onClose={onClose}>
+    <Sheet open={open} title="What's in this photo?" onClose={handleClose}>
       <PaywallGate
         user={user}
         feature="photo_sky_id"
@@ -111,7 +216,23 @@ export function PhotoSkyIdSheet({ open, onClose, currentLocation, onSignInClick 
         freeBullets="Tonight, 14-day event browsing, tonight’s check-ins, and your private journal."
         paidBullets="Backdated check-ins, photo sky ID, 90-day plans, saved targets, reminders, dark sites, and the rest of Sky Pass."
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <FormSurface
+          as="div"
+          footer={
+            photo && !reading ? (
+              <button
+                type="button"
+                className="az-btn az-btn-primary az-btn-block az-btn-stable"
+                onClick={() => void handleIdentify()}
+                disabled={!canIdentify || busy}
+                aria-busy={busy}
+              >
+                <span className="az-btn-label">Identify what's in frame</span>
+                <span className={`az-btn-spinner${busy ? ' is-visible' : ''}`} aria-hidden="true" />
+              </button>
+            ) : null
+          }
+        >
           <p className="az-muted" style={{ margin: 0, fontSize: '0.8125rem' }}>
             Works best on the original photo (not a screenshot) so its time, GPS and compass heading survive. Nothing
             leaves your device — the photo and its metadata are read locally, not uploaded.
@@ -131,8 +252,6 @@ export function PhotoSkyIdSheet({ open, onClose, currentLocation, onSignInClick 
             hidden
             onChange={(event) => void handlePhoto(event.target.files?.[0] ?? null)}
           />
-
-          {reading && <p className="az-muted" style={{ margin: 0, fontSize: '0.8125rem' }}>Reading photo metadata…</p>}
 
           {photo && !reading && (
             <>
@@ -172,10 +291,6 @@ export function PhotoSkyIdSheet({ open, onClose, currentLocation, onSignInClick 
                 />
                 {manualCity && <input type="hidden" value={manualCity.name} readOnly />}
               </div>
-
-              <button type="button" className="az-btn az-btn-primary az-btn-block" onClick={handleIdentify} disabled={!canIdentify}>
-                Identify what's in frame
-              </button>
             </>
           )}
 
@@ -194,7 +309,9 @@ export function PhotoSkyIdSheet({ open, onClose, currentLocation, onSignInClick 
               )}
             </div>
           )}
-        </div>
+
+          <FormStatus message={statusMessage ?? (reading ? 'Reading photo metadata…' : null)} tone={statusMessage ? 'error' : 'neutral'} live={statusMessage ? 'assertive' : 'polite'} />
+        </FormSurface>
       </PaywallGate>
     </Sheet>
   )

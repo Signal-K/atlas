@@ -54,7 +54,18 @@ export function TrainingPathCard() {
     return () => window.removeEventListener('atlas:event-preferences-changed', load)
   }, [load])
 
-  if (!profile || steps.length === 0) return null
+  if (!profile || steps.length === 0) {
+    return (
+      <section className="az-card az-training-path-placeholder" style={{ marginTop: '0.75rem' }} aria-hidden="true">
+        <div className="az-card-body">
+          <span className="az-kicker">Next step on your path</span>
+          <div className="az-skeleton" style={{ height: '1.25rem', marginTop: '0.625rem' }} />
+          <div className="az-skeleton" style={{ height: '0.875rem', marginTop: '0.5rem' }} />
+          <div className="az-skeleton" style={{ height: '4.75rem', marginTop: '0.875rem' }} />
+        </div>
+      </section>
+    )
+  }
 
   const next = nextPathStep(steps)
 

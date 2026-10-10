@@ -68,6 +68,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
   const [reminders, setReminders] = useState(() => listGetReadyReminders())
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
   const [loadError, setLoadError] = useState(false)
+  const [hubLoading, setHubLoading] = useState(true)
   const [retryTick, setRetryTick] = useState(0)
   const [upcomingFilter, setUpcomingFilter] = useState<HubFilterKey>('all')
   const [tourActive, setTourActive] = useState(() => searchParams.get('tour') === 'tonight')
@@ -124,6 +125,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
   useEffect(() => {
     let cancelled = false
     async function load() {
+      if (!cancelled) setHubLoading(true)
       setLoadError(false)
       trackEvent('Tonight plan generation started', { source: 'mobile_hub' })
       try {
@@ -183,6 +185,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         // error, no retry, and no analytics signal that it had happened.
         if (cancelled) return
         setLoadError(true)
+        setHubLoading(false)
         trackEvent('Tonight plan generation failed', { source: 'mobile_hub', error: String(err) })
         return
       }
@@ -196,6 +199,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         if (!cancelled) trackEvent('sync_failed', { stage: 'community_feed_discoveries', error: String(err) })
         // Community feed is best-effort context on Hub -- never blocks the page.
       }
+      if (!cancelled) setHubLoading(false)
     }
     load()
     return () => {
@@ -449,6 +453,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
     week: events.filter(upcomingFilterPredicates.week).length,
     watching: events.filter(upcomingFilterPredicates.watching).length,
   }
+  const showHubSkeleton = hubLoading && hasLocation
   // A guided look already names the one decision Atlas is asking for. Until
   // that target has been chosen, repeating it as the highlight card and an
   // Upcoming row turns a single next step into three competing homes.
@@ -477,7 +482,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
       <p className="az-kicker">
         {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} · after dark
       </p>
-      <h1 className="az-h1">
+      <h1 className="az-h1 az-hub-title">
         {plan
           ? headlineFor(plan)
           : !hasLocation
@@ -486,6 +491,11 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
               ? "Couldn't load tonight"
               : 'Loading tonight…'}
       </h1>
+      <p className="az-hero-title az-hub-advisory">
+        {plan?.todayAdvisory
+          ? `${Math.round(100 - plan.todayAdvisory.cloudCoverPct)}% clear skies expected. Dark window ${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)}–${timeLabel(plan.darknessWindow.astronomicalDawnAt ?? plan.darknessWindow.civilDawnAt, city.timeZone)}.`
+          : '\u00a0'}
+      </p>
       {!hasLocation && !tourActive && (
         <div
           className="az-card"
@@ -515,14 +525,6 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
           </button>
         </div>
       )}
-      {plan?.todayAdvisory && (
-        <p className="az-hero-title">
-          {Math.round(100 - plan.todayAdvisory.cloudCoverPct)}% clear skies expected. Dark window{' '}
-          {timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)}–
-          {timeLabel(plan.darknessWindow.astronomicalDawnAt ?? plan.darknessWindow.civilDawnAt, city.timeZone)}.
-        </p>
-      )}
-
       {tourActive ? (
         <section className="az-tour-card" aria-labelledby="az-tour-title">
           <div className="az-tour-card-head">
@@ -586,7 +588,32 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         </div>
       )}
 
-      {plan && (
+      {showHubSkeleton && (
+        <>
+          <div style={{ marginTop: '1.125rem' }}>
+            <div className="az-skeleton az-hub-skeleton-stat" aria-hidden="true" />
+          </div>
+          <div className="az-skeleton az-hub-skeleton-training" aria-hidden="true" />
+          <div className="az-section-head">
+            <span className="az-kicker">Highlight tonight</span>
+          </div>
+          <div className="az-skeleton az-hub-skeleton-highlight" aria-hidden="true" />
+          <div className="az-section-head">
+            <span className="az-kicker">Your recent frames</span>
+          </div>
+          <div className="az-skeleton az-hub-skeleton-row" aria-hidden="true" />
+          <div className="az-section-head">
+            <span className="az-kicker">Sky dispatch</span>
+          </div>
+          <div className="az-skeleton az-hub-skeleton-dispatch" aria-hidden="true" />
+          <div className="az-section-head" style={{ marginTop: '1.375rem' }}>
+            <span className="az-kicker">Upcoming</span>
+          </div>
+          <div className="az-skeleton az-hub-skeleton-chip-row" aria-hidden="true" />
+        </>
+      )}
+
+      {!showHubSkeleton && plan && (
         <div style={{ marginTop: '1.125rem' }}>
           <StatGrid
             stats={[
@@ -599,10 +626,10 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         </div>
       )}
 
-      {plan && !guidedChoicePending && <TrainingPathCard />}
-      {plan && !guidedChoicePending && <TelescopeSaturnTasksCard />}
+      {!showHubSkeleton && plan && !guidedChoicePending && <TrainingPathCard />}
+      {!showHubSkeleton && plan && !guidedChoicePending && <TelescopeSaturnTasksCard />}
 
-      {plan && plan.targets.length > 0 && !guidedChoicePending && (
+      {!showHubSkeleton && plan && plan.targets.length > 0 && !guidedChoicePending && (
         <>
           <div className="az-section-head">
             <span className="az-kicker">Highlight tonight</span>
@@ -684,32 +711,39 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         </div>
       )}
 
-      {recentEntries.length > 0 && (
+      {!showHubSkeleton && (
         <>
           <div className="az-section-head">
             <span className="az-kicker">Your recent frames</span>
           </div>
-          <div style={{ display: 'flex', gap: '0.5625rem', overflowX: 'auto', paddingBottom: '4px' }}>
-            {recentEntries.map((entry) => (
-              <div key={entry.id} className="az-card" style={{ flex: 'none', width: '7.375rem' }}>
-                <div className="az-thumb-lg" style={{ height: '6rem' }}>
-                  PHOTO
+          {recentEntries.length > 0 ? (
+            <div style={{ display: 'flex', gap: '0.5625rem', overflowX: 'auto', paddingBottom: '4px' }}>
+              {recentEntries.map((entry) => (
+                <div key={entry.id} className="az-card" style={{ flex: 'none', width: '7.375rem' }}>
+                  <div className="az-thumb-lg" style={{ height: '6rem' }}>
+                    PHOTO
+                  </div>
+                  <div style={{ padding: '0.4375rem 0.5625rem 0.5rem' }}>
+                    <span style={{ display: 'block', fontWeight: 500, fontSize: '0.75rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                      {entry.targetName ?? 'Observation'}
+                    </span>
+                    <span className="az-muted" style={{ display: 'block', font: '500 0.59375rem var(--az-font-mono)' }}>
+                      {new Date(entry.observedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ padding: '0.4375rem 0.5625rem 0.5rem' }}>
-                  <span style={{ display: 'block', fontWeight: 500, fontSize: '0.75rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                    {entry.targetName ?? 'Observation'}
-                  </span>
-                  <span className="az-muted" style={{ display: 'block', font: '500 0.59375rem var(--az-font-mono)' }}>
-                    {new Date(entry.observedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="az-card-body az-hub-empty-slot">
+              <p style={{ margin: 0, fontWeight: 500, fontSize: '0.875rem' }}>No recent frames yet</p>
+              <p className="az-muted" style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem' }}>Your next photo check-in will show up here.</p>
+            </div>
+          )}
         </>
       )}
 
-      {(spaceWeatherEvent || topDiscovery) && (
+      {!showHubSkeleton && (
         <>
           <div className="az-section-head">
             <span className="az-kicker">Sky dispatch</span>
@@ -735,6 +769,14 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
                 <p className="az-muted" style={{ margin: 0, fontSize: '0.78125rem' }}>{topDiscovery.caption}</p>
               </div>
             )}
+            {!spaceWeatherEvent && !topDiscovery ? (
+              <div className="az-card-body az-hub-empty-slot" style={{ background: 'var(--surface)' }}>
+                <p style={{ margin: 0, fontWeight: 500, fontSize: '0.875rem' }}>No dispatch yet</p>
+                <p className="az-muted" style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem' }}>
+                  Atlas will show major sky alerts and standout community frames here.
+                </p>
+              </div>
+            ) : null}
           </div>
         </>
       )}

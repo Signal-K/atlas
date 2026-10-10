@@ -16,10 +16,12 @@ const CityStampSharePage = lazy(() =>
 import { initAnalytics } from './lib/analytics.ts'
 import { startSyncQueue } from './lib/syncQueue.ts'
 import { startViewportInsetTracking } from './lib/viewportInset.ts'
+import { startDirtyFormBridge } from './lib/dirtyForms.ts'
 
 initAnalytics()
 startSyncQueue()
 startViewportInsetTracking()
+startDirtyFormBridge()
 
 function SharePageRoute() {
   const { remoteId } = useParams<{ remoteId: string }>()

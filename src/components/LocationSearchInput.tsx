@@ -76,6 +76,11 @@ export function LocationSearchInput({ id, value, onChange, onSelect, placeholder
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         placeholder={placeholder}
         autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="words"
+        spellCheck={false}
+        inputMode="search"
+        enterKeyHint="search"
         role="combobox"
         aria-expanded={open && results.length > 0}
         aria-controls={listId}

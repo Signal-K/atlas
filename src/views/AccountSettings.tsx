@@ -5,6 +5,7 @@ import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { SignupWelcomeBeat } from '../components/SignupWelcomeBeat'
 import { AccountManagement } from '../components/AccountManagement'
 import { AuthForm } from '../components/AuthForm'
+import { FormStatus } from '../components/forms/FormStatus'
 
 export function AccountSettings({
   defaultMode = 'sign-in',
@@ -79,16 +80,30 @@ export function AccountSettings({
           </button>
           {user.entitled || entitlementRefreshing ? null : (
             <>
-              <button type="button" className="paywall-card-cta" onClick={handleCheckoutClick} disabled={startingCheckout}>
-                {startingCheckout ? 'Starting checkout…' : 'Get the Sky Pass'}
+              <button
+                type="button"
+                className="paywall-card-cta az-btn-stable"
+                onClick={handleCheckoutClick}
+                disabled={startingCheckout}
+                aria-busy={startingCheckout}
+              >
+                <span className="az-btn-label">Get the Sky Pass</span>
+                <span className={`az-btn-spinner${startingCheckout ? ' is-visible' : ''}`} aria-hidden="true" />
               </button>
-              <button type="button" onClick={handleRefreshEntitlement} disabled={checkingEntitlement}>
-                {checkingEntitlement ? 'Checking purchase…' : 'Already paid? Check purchase'}
+              <button
+                type="button"
+                className="az-btn-stable"
+                onClick={handleRefreshEntitlement}
+                disabled={checkingEntitlement}
+                aria-busy={checkingEntitlement}
+              >
+                <span className="az-btn-label">Already paid? Check purchase</span>
+                <span className={`az-btn-spinner${checkingEntitlement ? ' is-visible' : ''}`} aria-hidden="true" />
               </button>
             </>
           )}
         </div>
-        {checkoutError && <p className="settings-help settings-status--negative">{checkoutError}</p>}
+        <FormStatus message={checkoutError || null} tone={checkoutError ? 'error' : 'neutral'} live="assertive" />
         <AccountManagement email={user.email} />
       </div>
     )

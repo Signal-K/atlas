@@ -6,6 +6,7 @@ import { trackEvent } from '../lib/analytics'
 import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
 import { pb, pocketBaseUrl } from '../lib/pocketbase'
 import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
+import { FormStatus } from './forms/FormStatus'
 
 export interface AuthFormProps {
   defaultMode?: 'sign-in' | 'sign-up'
@@ -260,19 +261,29 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
         </div>
 
         <div className="account-form">
-          {/* Without an explicit redirect target, Clerk navigates the browser
-              to its Dashboard-configured default path once sign-in/sign-up
-              completes -- a real navigation that unmounts this component
-              before the isSignedIn effect below gets to run the exchange.
-              Redirecting back to wherever this form already is keeps that
-              handoff entirely in our own effect instead. */}
-          {mode === 'sign-in' ? (
-            <ClerkSignInPanel formError={error} setFormError={setError} exchanging={exchanging} />
+          {!isLoaded ? (
+            <div className="account-form-skeleton" aria-live="polite" aria-label="Loading sign-in form">
+              <div />
+              <div />
+              <div />
+            </div>
           ) : (
-            <SignUp routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
+            <div className="account-form-panels" data-mode={mode}>
+              <div className="account-form-panel" hidden={mode !== 'sign-in'}>
+                <ClerkSignInPanel active={mode === 'sign-in'} setFormError={setError} exchanging={exchanging} />
+              </div>
+              {/* Without an explicit redirect target, Clerk navigates the browser
+                  to its Dashboard-configured default path once sign-in/sign-up
+                  completes -- a real navigation that unmounts this component
+                  before the isSignedIn effect below gets to run the exchange.
+                  Redirecting back to wherever this form already is keeps that
+                  handoff entirely in our own effect instead. */}
+              <div className="account-form-panel" hidden={mode !== 'sign-up'}>
+                <SignUp routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
+              </div>
+            </div>
           )}
-          {exchanging && <p className="settings-help">Finishing sign-in…</p>}
-          {error && <p className="account-form-error">{error}</p>}
+          <FormStatus message={error ?? (exchanging ? 'Finishing sign-in…' : null)} tone={error ? 'error' : 'neutral'} live={error ? 'assertive' : 'polite'} />
         </div>
         <p className="account-form-trust">
           <span aria-hidden="true" /> Sign-in is handled by Clerk. Atlas never sees your password.
@@ -289,11 +300,11 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
 // on its first sign-in since Clerk never learned their PocketBase
 // password. See claimLegacyAccount below and backend/clerk_claim.go.
 function ClerkSignInPanel({
-  formError,
+  active,
   setFormError,
   exchanging,
 }: {
-  formError: string | null
+  active: boolean
   setFormError: (error: string | null) => void
   exchanging: boolean
 }) {
@@ -422,7 +433,13 @@ function ClerkSignInPanel({
         <input
           id="clerk-sign-in-email"
           type="email"
+          inputMode="email"
           autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="next"
+          disabled={!active}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
@@ -440,6 +457,11 @@ function ClerkSignInPanel({
             id="clerk-sign-in-password"
             type={passwordVisible ? 'text' : 'password'}
             autoComplete="current-password"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="go"
+            disabled={!active}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -454,13 +476,11 @@ function ClerkSignInPanel({
         </div>
       </div>
       <div className="account-form-actions">
-        <button type="submit" className="account-form-submit" disabled={busy}>
-          {claiming ? 'Signing in…' : 'Continue'}
+        <button type="submit" className="account-form-submit az-btn-stable" disabled={busy || !active} aria-busy={busy}>
+          <span className="az-btn-label">Continue</span>
+          <span className={`az-btn-spinner${busy ? ' is-visible' : ''}`} aria-hidden="true" />
         </button>
       </div>
-      {!formError && !exchanging && claiming && (
-        <p className="settings-help">Setting up your account for the new sign-in…</p>
-      )}
     </form>
   )
 }

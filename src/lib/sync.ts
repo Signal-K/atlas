@@ -437,8 +437,9 @@ export { FLAGSHIP_KINDS } from './pastCheckInMatch.mjs'
 
 // Write path: best-effort immediate push when signed in and online. The
 // entry is already saved locally by the caller before this runs, so a
-// failure here just means it stays local-only rather than being lost —
-// a full offline write queue (retrying failed pushes later) is future work.
+// failure here means "saved locally, sync still pending". CaptureSheet now
+// queues retries via syncQueue.ts, but callers still treat `null` as "not
+// synced yet" either way.
 // Returns the created PocketBase record id (also persisted onto the local
 // entry as `remoteId`) so callers that need the remote id right after
 // saving -- e.g. requesting an AI photo caption, which stores its result
