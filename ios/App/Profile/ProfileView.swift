@@ -356,6 +356,7 @@ struct ProfileView: View {
     }
 
     private var editProfileSheet: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Edit profile")
                 .font(.serif(24))
@@ -365,6 +366,7 @@ struct ProfileView: View {
                 .foregroundStyle(Brand.muted)
 
             TextField("Name", text: $editName)
+                .submitLabel(.done)
                 .font(.system(size: 16))
                 .padding(.horizontal, 12)
                 .frame(minHeight: 46)
@@ -373,6 +375,7 @@ struct ProfileView: View {
                 .accessibilityLabel("Display name")
 
             TextField("Handle", text: $editHandle)
+                .submitLabel(.done)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .font(.system(size: 16))
@@ -410,6 +413,7 @@ struct ProfileView: View {
                     .background(Brand.surface2, in: Capsule())
                     .overlay(Capsule().strokeBorder(Brand.line))
                 Button {
+                    Keyboard.dismiss()
                     Task { await viewModel.saveProfile(session: session, name: editName, handle: editHandle) }
                 } label: {
                     if viewModel.isSaving {
@@ -433,6 +437,8 @@ struct ProfileView: View {
             }
         }
         .padding(20)
+        }
+        .atlasKeyboardChrome()
         .background(Brand.bg)
     }
 

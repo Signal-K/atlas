@@ -106,7 +106,7 @@ struct CheckInSheet: View {
             }
             .padding(24)
         }
-        .scrollDismissesKeyboard(.interactively)
+        .atlasKeyboardChrome()
         .background(Brand.bg)
         .task { Analytics.capture(.checkInOpened, ["kind": event.kind]) }
     }
