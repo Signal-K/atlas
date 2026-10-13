@@ -42,6 +42,7 @@ struct RootView: View {
             }
         }
         .background(Brand.bg.ignoresSafeArea())
+        .background(KeyboardDismissInstaller())
         .task { await session.restore() }
         // Claims purchases this account already owns and redeems renewals / Ask to Buy approvals
         // for as long as someone is signed in; restarts (and cancels) when the account changes.

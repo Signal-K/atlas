@@ -72,7 +72,7 @@ struct TonightView: View {
         }
         .sheet(item: $detail) { item in
             DetailSheet(item: item, timeZone: model.plan?.timeZone ?? .current, device: settings.device,
-                        camera: cameraPlan(for: item)) { plan in
+                        camera: cameraPlan(for: item), guide: eclipseGuide(for: item)) { plan in
                 detail = nil
                 Task { try? await Task.sleep(for: .milliseconds(400)); camera = CameraRequest(plan: plan) }
             }
@@ -102,6 +102,28 @@ struct TonightView: View {
             }
         }
         .onChange(of: model.phase) { _, phase in if phase == .ready { Task { await rescheduleAlerts() } } }
+    }
+
+    private func eclipseGuide(for item: DetailItem) -> EclipseGuideRequest? {
+        let event: SkyEvent = { switch item { case .target(let t): t.event; case .event(let e): e } }()
+        guard event.kind == "eclipse", let plan = model.plan else { return nil }
+        let placeName = model.place?.name ?? "your location"
+        let zone = plan.timeZone.identifier
+        let title = event.title
+        let latitude = plan.latitude
+        let longitude = plan.longitude
+        let entitled = session.isEntitled
+        return EclipseGuideRequest(entitled: entitled) {
+            guard let token = session.bearerToken, !token.isEmpty else { throw AskAtlasError.unauthorized }
+            return try await AtlasAIClient(baseURL: Config.pocketBaseURL).eclipseRoadmap(
+                title: title,
+                locationName: placeName,
+                latitude: latitude,
+                longitude: longitude,
+                timeZoneID: zone,
+                token: token
+            )
+        }
     }
 
     private func cameraPlan(for item: DetailItem) -> CameraPlan {

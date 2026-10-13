@@ -43,6 +43,7 @@ struct ChallengesView: View {
                 .padding(.bottom, 30)
             }
             .background(Brand.bg.ignoresSafeArea())
+            .atlasKeyboardChrome()
             .navigationTitle("Challenges")
             .onChange(of: pickerItem) { _, newItem in
                 guard let newItem else { return }
@@ -210,6 +211,7 @@ struct ChallengesView: View {
                     .accessibilityLabel("Challenge caption")
 
                 Button {
+                    Keyboard.dismiss()
                     Task { await model.submitSelectedChallenge() }
                 } label: {
                     if model.isSubmitting {
