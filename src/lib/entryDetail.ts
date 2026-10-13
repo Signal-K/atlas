@@ -16,6 +16,7 @@ import { recipeKeyForEventKind, type RecipeKey } from './cameraRecipes'
 import { buildEventGuide, type GuideStep } from './eventGuide'
 import { KIND_LABELS } from '../widgets/EventRow'
 import type { BrightStar } from '../data/brightStars'
+import { eventDisplayInstant, formatZonedTime } from './eventTiming.mjs'
 
 export interface EntryDetailLocation {
   lat: number
@@ -51,6 +52,7 @@ export interface EntryDetailSubject {
   // shower peak/moon note, etc.) -- null for kinds buildEventGuide doesn't
   // cover, or when no location was available to compute it against.
   guideSteps: GuideStep[] | null
+  timeZone?: string
 }
 
 const DIFFICULTY_LABEL: Record<TargetDifficulty, string> = {
@@ -71,7 +73,7 @@ const MOON_RELEVANT_EVENT_KINDS = new Set(['moon_phase', 'eclipse', 'meteor_show
 
 export function formatTimeLabel(iso: string | null, timeZone?: string): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
+  return formatZonedTime(iso, timeZone, true)
 }
 
 function markerPctFor(bestTimeIso: string | null, window: DarknessWindow): number {
@@ -152,6 +154,7 @@ export function buildEventDetail(input: EventDetailInput, advisory: DailyViewing
     markerPct: markerPctFor(input.bestTimeIso, input.darknessWindow),
     sourceEvent: input.sourceEvent,
     guideSteps,
+    timeZone: input.location?.timeZone,
   }
 }
 
@@ -165,11 +168,13 @@ export function detailInputFromTonightTarget(
   sourceEvent?: SkyEvent,
   location?: EntryDetailLocation,
 ): EventDetailInput {
+  const bestTimeIso =
+    sourceEvent?.kind === 'meteor_shower' ? eventDisplayInstant(sourceEvent, location?.timeZone).toISOString() : target.bestTime
   return {
     id: target.eventId,
     kind: target.kind,
     title: target.title,
-    bestTimeIso: target.bestTime,
+    bestTimeIso,
     direction: target.direction,
     difficulty: target.difficulty,
     phoneFriendly: target.phoneFriendly,
@@ -187,7 +192,7 @@ export function detailInputFromTonightTarget(
 // anchored to the event's own start time instead of a transit search.
 export function detailInputFromEvent(event: SkyEvent, location: EntryDetailLocation, darknessWindow: DarknessWindow): EventDetailInput {
   const meta = metaFor(event.kind)
-  const bestTime = new Date(event.startsAt)
+  const bestTime = eventDisplayInstant(event, location.timeZone)
   const primary = getPrimarySkyMapObjectForEvent(event, bestTime, location.lat, location.lon)
   return {
     id: event.id,

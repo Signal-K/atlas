@@ -111,7 +111,12 @@ export function LocationSearchInput({ id, value, onChange, onSelect, placeholder
               onClick={() => choose(city)}
             >
               <strong>{city.name}</strong>
-              <span>{[city.admin1, city.country].filter(Boolean).join(', ') || `${city.lat.toFixed(2)}, ${city.lon.toFixed(2)}`}</span>
+              <span>
+                {[
+                  [city.admin1, city.country].filter(Boolean).join(', '),
+                  `${city.lat.toFixed(2)}, ${city.lon.toFixed(2)}`,
+                ].filter(Boolean).join(' · ')}
+              </span>
             </button>
           ))}
           {loading && <span className="location-search-status">Searching places…</span>}

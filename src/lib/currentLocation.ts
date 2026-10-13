@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CITIES, cityLabel, type City } from './cities'
+import { reconcilePlace } from './locationRank.mjs'
 import { reverseGeocodeCity } from './reverseGeocode'
 import type { useLocationSeed } from './geo'
 import { activeTripFor, type Trip } from './trips'
@@ -41,7 +42,13 @@ function getManualCity(): City | null {
   if (!stored) return null
   try {
     const parsed = JSON.parse(stored) as City
-    if (parsed.name && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon)) return parsed
+    if (parsed.name && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon)) {
+      const healed = reconcilePlace(parsed, CITIES)
+      if (cityLabel(healed) !== cityLabel(parsed) || healed.timeZone !== parsed.timeZone) {
+        localStorage.setItem(MANUAL_LOCATION_KEY, JSON.stringify(healed))
+      }
+      return healed
+    }
   } catch {
     // Legacy installs stored only the curated city name.
   }

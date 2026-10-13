@@ -13,6 +13,16 @@ interface LandingPageProps { authenticatedEmail?: string; onEnter: () => void; o
 type CtaSource = 'nav' | 'hero' | 'forecast' | 'free' | 'footer'
 interface Highlight { id: string; date: string; title: string; detail: string; gear: string }
 
+function preferComputed(cached: SkyEvent[], computed: SkyEvent[]): SkyEvent[] {
+  const merged = [...cached]
+  for (const event of computed) {
+    const index = merged.findIndex((item) => item.kind === event.kind && item.target === event.target)
+    if (index >= 0) merged[index] = event
+    else merged.push(event)
+  }
+  return merged
+}
+
 function buildHighlights(events: SkyEvent[]): Highlight[] {
   const priority: Record<string, number> = { eclipse: 0, meteor_shower: 1, conjunction: 2, planet_event: 3, moon_phase: 4, bright_star: 5 }
   const seen = new Set<string>()
@@ -38,7 +48,7 @@ export function LandingPage({ authenticatedEmail, onEnter, onEnterPaid }: Landin
         const end = new Date(now.getTime() + 30 * 86_400_000)
         const [cached, generated] = await Promise.all([getEventsInRange(now, end), Promise.allSettled([fetchConjunctionEvents({ now, windowDays: 30 }), fetchEclipseEvents({ now, windowDays: 30 }), fetchMeteorShowerEvents({ now, windowDays: 30 }), fetchPlanetEvents({ now, windowDays: 30 })])])
         const computed: SkyEvent[] = generated.flatMap((result) => result.status === 'fulfilled' ? result.value : []).map((event, index) => ({ id: `landing-${event.kind}-${event.target}-${event.starts_at}-${index}`, kind: event.kind, target: event.target, title: event.title, description: event.description, content: event.content, startsAt: event.starts_at, endsAt: event.ends_at ?? event.starts_at, updatedAt: now.toISOString() }))
-        if (!cancelled) setHighlights(buildHighlights([...cached, ...computed]))
+        if (!cancelled) setHighlights(buildHighlights(preferComputed(cached, computed)))
       } catch (error) { if (!cancelled) setHighlights([]); trackEvent('sync_failed', { stage: 'landing_highlights', error: String(error) }) }
     }
     void loadHighlights(); return () => { cancelled = true }

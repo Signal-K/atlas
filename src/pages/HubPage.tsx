@@ -24,12 +24,39 @@ import { completeFirstTour, getFirstTourCompletion, tourProperties } from '../li
 import { FIRST_TOUR_BADGE, pickNextTourTarget, type FirstTourCompletion } from '../lib/tourJourney.mjs'
 import { dayGroupLabel, localDateKey } from '../lib/weather'
 import { buildDailyObservingTargets } from '../lib/visiblePlanets'
+import { eventDisplayInstant, formatZonedTime, timeZoneAbbreviation } from '../lib/eventTiming.mjs'
+import { getDarknessWindow } from '../lib/darknessWindow'
+import { tonightWindowForTimeZone } from '../lib/timeZone'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { ObservationLogEntry, SkyEvent } from '../lib/db'
 import type { TonightPlan, TonightTarget } from '../lib/tonightTargets'
 
 const LOCAL_USER_ID = 'local'
+const HUB_SNAPSHOT_MS = 5 * 60_000
+
+interface HubSnapshot {
+  key: string
+  plan: TonightPlan | null
+  events: SkyEvent[]
+  savedAt: number
+}
+
+let hubSnapshot: HubSnapshot | null = null
+
+function hubCacheKey(city: CurrentLocation) {
+  return `${city.lat.toFixed(2)}:${city.lon.toFixed(2)}:${city.timeZone ?? ''}:${city.source}`
+}
+
+function readHubSnapshot(city: CurrentLocation): HubSnapshot | null {
+  if (!hubSnapshot || hubSnapshot.key !== hubCacheKey(city)) return null
+  if (Date.now() - hubSnapshot.savedAt > HUB_SNAPSHOT_MS) return null
+  return hubSnapshot
+}
+
+function rememberHub(city: CurrentLocation, plan: TonightPlan | null, events: SkyEvent[]) {
+  hubSnapshot = { key: hubCacheKey(city), plan, events, savedAt: Date.now() }
+}
 
 // Filter-chip + day-grouped upcoming list, ported from the Claude Design
 // "Minimal Atlas with events" mockup's FocusScreen -- replaces the old
@@ -60,15 +87,16 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const sharedTour = searchParams.get('shared') === '1'
   const sharedTargetId = searchParams.get('target')
-  const [plan, setPlan] = useState<TonightPlan | null>(null)
-  const [events, setEvents] = useState<SkyEvent[]>([])
+  const openingSnapshot = readHubSnapshot(city)
+  const [plan, setPlan] = useState<TonightPlan | null>(openingSnapshot?.plan ?? null)
+  const [events, setEvents] = useState<SkyEvent[]>(openingSnapshot?.events ?? [])
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [recentEntries, setRecentEntries] = useState<ObservationLogEntry[]>([])
   const [topDiscovery, setTopDiscovery] = useState<Discovery | null>(null)
   const [reminders, setReminders] = useState(() => listGetReadyReminders())
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
   const [loadError, setLoadError] = useState(false)
-  const [hubLoading, setHubLoading] = useState(true)
+  const [hubLoading, setHubLoading] = useState(!openingSnapshot)
   const [retryTick, setRetryTick] = useState(0)
   const [upcomingFilter, setUpcomingFilter] = useState<HubFilterKey>('all')
   const [tourActive, setTourActive] = useState(() => searchParams.get('tour') === 'tonight')
@@ -125,41 +153,44 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      if (!cancelled) setHubLoading(true)
+      // Coming back to the hub used to remount onto "Loading tonight…" for
+      // the whole catalogue pull. A snapshot from the last few minutes paints
+      // immediately; the pull still refreshes it in the background.
+      const cachedView = readHubSnapshot(city)
+      if (!cachedView) setHubLoading(true)
       setLoadError(false)
       trackEvent('Tonight plan generation started', { source: 'mobile_hub' })
       try {
-        // Stale-while-revalidate: whatever is already cached locally can fill
-        // the Upcoming list straight away, instead of leaving the page on
-        // "Loading tonight…" for the whole network round trip. The pull below
-        // then refreshes it. A first-ever visit has an empty cache and simply
-        // waits as before.
-        const firstNow = new Date()
-        const cached = await getEventsInRange(firstNow, new Date(firstNow.getTime() + 14 * 86_400_000))
-        if (!cancelled && cached.length > 0) setEvents(cached)
-        await pullSkyEvents()
         const now = new Date()
         const end = new Date(now.getTime() + 14 * 86_400_000)
+        const cached = await getEventsInRange(now, end)
+        if (!cancelled && cached.length > 0 && !cachedView) setEvents(withObservingTargets(cached, city, now))
         // With no location there is no "tonight over you" to compute -- and
         // computing one for a placeholder city would present someone else's
         // sky as theirs. Show the global event list only.
         if (!hasLocation) {
-          const [upcoming, watched] = await Promise.all([getEventsInRange(now, end), getWatchlist()])
+          const watched = await getWatchlist()
           if (cancelled) return
           setPlan(null)
-          setEvents(upcoming)
+          setEvents(cached)
           setWatchlist(watched)
+          rememberHub(city, null, cached)
+          setHubLoading(false)
+          void refreshCatalogue()
           return
         }
-        const [tonightPlan, upcoming, watched] = await Promise.all([
+        const [tonightPlan, watched] = await Promise.all([
           getTonightPlan(city.lat, city.lon, now, city.timeZone),
-          getEventsInRange(now, end),
           getWatchlist(),
         ])
         if (cancelled) return
+        const shown = withObservingTargets(cached, city, now)
         setPlan(tonightPlan)
-        setEvents(upcoming)
+        setEvents(shown)
         setWatchlist(watched)
+        rememberHub(city, tonightPlan, shown)
+        setHubLoading(false)
+        void refreshCatalogue()
         // Canonical Atlas "value moment" event (ASV-23): a Tonight plan
         // generated with a real location set. city/rating ride along so
         // funnels and insights can segment without a second lookup.
@@ -201,6 +232,30 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
       }
       if (!cancelled) setHubLoading(false)
     }
+
+    async function refreshCatalogue() {
+      try {
+        await pullSkyEvents()
+        if (cancelled) return
+        const now = new Date()
+        const end = new Date(now.getTime() + 14 * 86_400_000)
+        const upcoming = await getEventsInRange(now, end)
+        if (cancelled) return
+        const shown = withObservingTargets(upcoming, city, now)
+        setEvents(shown)
+        if (!hasLocation) {
+          rememberHub(city, null, shown)
+          return
+        }
+        const tonightPlan = await getTonightPlan(city.lat, city.lon, now, city.timeZone)
+        if (cancelled) return
+        setPlan(tonightPlan)
+        rememberHub(city, tonightPlan, shown)
+      } catch (err) {
+        if (!cancelled) trackEvent('sync_failed', { stage: 'hub_catalogue_refresh', error: String(err) })
+      }
+    }
+
     load()
     return () => {
       cancelled = true
@@ -258,10 +313,16 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
     return { reminderActive: true, message: hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.' }
   }
 
+  function darknessFor(event: SkyEvent) {
+    const when = eventDisplayInstant(event, city.timeZone)
+    const { start, end } = tonightWindowForTimeZone(when, city.timeZone)
+    return getDarknessWindow(city.lat, city.lon, start, end)
+  }
+
   function openEventDetail(event: SkyEvent) {
     if (!plan) return
     const target = plan.targets.find((t) => t.eventId === event.id) ?? syntheticTarget(event)
-    const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, event, city), plan.todayAdvisory)
+    const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, darknessFor(event), event, city), plan.todayAdvisory)
     const isTourTarget = tourActive
     if (isTourTarget) selectTourTarget(target)
     openSubject(subject, event, 'list_item', isTourTarget)
@@ -406,7 +467,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
       eventId: event.id,
       title: event.title,
       kind: event.kind,
-      bestTime: event.startsAt,
+      bestTime: eventDisplayInstant(event, city.timeZone).toISOString(),
       difficulty: 'moderate' as const,
       phoneFriendly: false,
       nakedEyeVisible: true,
@@ -441,10 +502,11 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
 
   const todayKey = localDateKey(now.toISOString(), city.timeZone)
   const weekEndKey = localDateKey(new Date(now.getTime() + 7 * 86_400_000).toISOString(), city.timeZone)
+  const whenIso = (event: SkyEvent) => eventDisplayInstant(event, city.timeZone).toISOString()
   const upcomingFilterPredicates: Record<HubFilterKey, (e: SkyEvent) => boolean> = {
     all: () => true,
-    tonight: (e) => localDateKey(e.startsAt, city.timeZone) === todayKey,
-    week: (e) => localDateKey(e.startsAt, city.timeZone) <= weekEndKey,
+    tonight: (e) => localDateKey(whenIso(e), city.timeZone) === todayKey,
+    week: (e) => localDateKey(whenIso(e), city.timeZone) <= weekEndKey,
     watching: (e) => matchesWatchlist(e, watchlist),
   }
   const upcomingCounts: Record<HubFilterKey, number> = {
@@ -467,7 +529,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
     if (!upcomingShown.length) return []
     const byDay = new Map<string, SkyEvent[]>()
     for (const event of upcomingShown) {
-      const key = localDateKey(event.startsAt, city.timeZone)
+      const key = localDateKey(whenIso(event), city.timeZone)
       if (!byDay.has(key)) byDay.set(key, [])
       byDay.get(key)!.push(event)
     }
@@ -480,7 +542,8 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
   return (
     <div className="az-page">
       <p className="az-kicker">
-        {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} · after dark
+        {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', timeZone: city.timeZone })}
+        {city.timeZone ? ` · ${timeZoneAbbreviation(now.toISOString(), city.timeZone)}` : ''} · after dark
       </p>
       <h1 className="az-h1 az-hub-title">
         {plan
@@ -693,7 +756,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
                   <span className="az-row-title">{event.title}</span>
                 </span>
                 <span className="az-row-trail">
-                  <span className="az-row-time">{timeLabel(event.startsAt, city.timeZone)}</span>
+                  <span className="az-row-time">{timeLabel(whenIso(event), city.timeZone)}</span>
                   <span className="az-row-note">{reminders.some((r) => r.eventId === event.id) ? 'reminder armed' : ''}</span>
                 </span>
               </button>
@@ -830,7 +893,14 @@ function headlineFor(plan: TonightPlan): string {
 // showed its darkness window shifted by the offset between the two -- Zurich's
 // 21:16 dusk read as "03:16" on a device set to Melbourne. TonightPlan already
 // carries the location's zone; this just has to use it.
+function withObservingTargets(events: SkyEvent[], city: CurrentLocation, now: Date): SkyEvent[] {
+  if (city.source === 'default') return events
+  const extra = buildDailyObservingTargets(now, 1, city.lat, city.lon, city.timeZone)
+  const seen = new Set(events.map((event) => event.id))
+  return [...extra.filter((event) => !seen.has(event.id)), ...events]
+}
+
 function timeLabel(iso: string | null | undefined, timeZone?: string): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone })
+  return formatZonedTime(iso, timeZone, false)
 }

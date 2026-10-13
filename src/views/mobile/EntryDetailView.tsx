@@ -5,6 +5,7 @@ import { MobileIcon } from '../../components/mobile/MobileIcon'
 import { Starfield } from '../../components/mobile/Starfield'
 import { StatGrid } from '../../components/mobile/StatGrid'
 import type { EntryDetailSubject } from '../../lib/entryDetail'
+import { formatZonedDate, formatZonedTime } from '../../lib/eventTiming.mjs'
 
 export interface EntryDetailRoadmap {
   // true when this is a Sky Pass-only feature and the viewer isn't entitled
@@ -57,6 +58,33 @@ interface EntryDetailViewProps {
   dark?: boolean
 }
 
+function ViewingWindow({ subject }: { subject: EntryDetailSubject }) {
+  const dusk = subject.darknessWindow.astronomicalDuskAt ?? subject.darknessWindow.civilDuskAt
+  const dawn = subject.darknessWindow.astronomicalDawnAt ?? subject.darknessWindow.civilDawnAt
+  const zone = subject.timeZone
+  if (!dusk || !dawn) {
+    return (
+      <div className="az-hero-media az-entry-detail-hero az-viewing-window">
+        <span className="az-kicker">Local viewing window</span>
+        <p>No full darkness at this latitude — twilight runs through the night.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="az-hero-media az-entry-detail-hero az-viewing-window" aria-label="Local viewing window">
+      <span className="az-kicker">Local viewing window</span>
+      <div className="az-viewing-track" aria-hidden="true">
+        <span className="az-viewing-marker" style={{ left: `${subject.markerPct}%` }} />
+      </div>
+      <div className="az-viewing-times">
+        <span>Dark {formatZonedTime(dusk, zone, false)}</span>
+        <span>Best {subject.bestTimeLabel}</span>
+        <span>Dawn {formatZonedTime(dawn, zone, false)}</span>
+      </div>
+    </div>
+  )
+}
+
 function stepsFor(subject: EntryDetailSubject): Array<{ n: string; text: string }> {
   if (subject.guideSteps && subject.guideSteps.length > 0) {
     return subject.guideSteps.map((step, i) => ({ n: String(i + 1).padStart(2, '0'), text: `${step.label} — ${step.detail}` }))
@@ -93,9 +121,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject.id])
 
-  const dateLabel = subject.bestTimeIso
-    ? new Date(subject.bestTimeIso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-    : null
+  const dateLabel = subject.bestTimeIso ? formatZonedDate(subject.bestTimeIso, subject.timeZone) : null
   const cloudPct = subject.cloudNote.match(/(\d+)%/)?.[1]
 
   async function handleToggleWatch() {
@@ -163,7 +189,7 @@ export function EntryDetailView({ subject, actions, onClose, onLogAttempt, dark 
         </button>
       </div>
       <div className="az-overlay-body az-entry-detail-body">
-        <div className="az-hero-media az-entry-detail-hero">LOCAL VIEWING WINDOW</div>
+        <ViewingWindow subject={subject} />
         <span className="az-kicker az-entry-detail-kicker" style={{ display: 'block', margin: '0.875rem 0 0' }}>
           {subject.subtitleLine}
           {subject.isGuide && <span className="az-badge-guide" style={{ marginLeft: '0.375rem' }}>GUIDE</span>}

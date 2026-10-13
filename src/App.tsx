@@ -32,7 +32,10 @@ const APP_HOME = '/app/hub'
 // client-side from a location the browser already has; nothing on it needs a
 // server-side identity. Everything that persists across devices (journal,
 // watchlist, saved plans), costs money, or writes to the account stays gated.
-const GUEST_ROUTES = new Set([APP_HOME])
+// Guests get the sky, the event list, the calendar, a device-local journal,
+// and a few Ask Atlas questions. Planner and profile stay behind an account;
+// Watch, camera recipes and Places stay behind Sky Pass inside those screens.
+const GUEST_ROUTES = new Set([APP_HOME, '/app/events', '/app/calendar', '/app/journal', '/app/ask'])
 
 // Human name for the area a guest was bounced from, e.g. /app/calendar -> "Calendar".
 function lockedAreaLabel(pathname: string) {
@@ -149,7 +152,7 @@ function App() {
     markEntered()
     setAccountDefaultMode('sign-in')
     setShowEntryChoice(false)
-    navigate('/app/journal', { replace: true })
+    navigate('/app/profile', { replace: true })
   }
 
   // ASV-51: the Sky Pass CTA must land somewhere that actually offers
@@ -207,10 +210,9 @@ function App() {
     return null
   }
 
-  // Guests get Hub and nothing else. Any other product route still requires
-  // an account before it renders. Local-first data (favourites/watchlist/
-  // observations saved while browsing as a guest) is merged in on sign-up via
-  // mergeLocalDataIntoAccount, so nothing gathered here is lost by waiting.
+  // Events, calendar, the on-device journal and a short Ask Atlas allowance
+  // are open. Anything else still requires an account before it renders.
+  // Local journal rows are merged in on sign-up via mergeLocalDataIntoAccount.
   if (!user && !GUEST_ROUTES.has(routerLocation.pathname)) {
     return (
       <>

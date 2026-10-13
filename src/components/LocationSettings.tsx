@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LocationStatus } from '../lib/geo'
-import { cityLabel, type City } from '../lib/cities'
+import { CITIES, cityLabel, type City } from '../lib/cities'
+import { reconcilePlace } from '../lib/locationRank.mjs'
 import type { CurrentLocation } from '../lib/currentLocation'
 import { LocationSearchInput } from './LocationSearchInput'
 import { trackEvent } from '../lib/analytics'
@@ -108,9 +109,10 @@ export function LocationSettings({
             value={locationQuery}
             onChange={setLocationQuery}
             onSelect={(city) => {
-              setManualLocation(city)
-              setLocationQuery(cityLabel(city))
-              trackEvent('Location changed', { source: 'settings', method: 'manual_search', country: city.country, timeZone: city.timeZone })
+              const place = reconcilePlace(city, CITIES)
+              setManualLocation(place)
+              setLocationQuery(cityLabel(place))
+              trackEvent('Location changed', { source: 'settings', method: 'manual_search', country: place.country, timeZone: place.timeZone })
               onCitySelected?.()
             }}
             placeholder="Search city, region, or country"

@@ -48,6 +48,20 @@ test('the 2026-09-14 Moon-Venus conjunction is surfaced as a real sky event', as
   assert.equal(isInCuratedWindow(conjunction, { now, windowDays: 14 }), true)
 })
 
+test('October 2026 conjunction copy uses sky separation, not a 0.0° longitude placeholder', async () => {
+  const now = new Date('2026-10-01T00:00:00.000Z')
+  const events = await fetchConjunctionEvents({ now, windowDays: 40 })
+  const saturn = events.find((event) => event.target === 'moon_saturn' && event.starts_at.startsWith('2026-10-24'))
+  const mars = events.find((event) => event.target === 'moon_mars' && event.starts_at.startsWith('2026-11-02'))
+
+  assert.ok(saturn, 'expected the 24 Oct 2026 Moon-Saturn conjunction')
+  assert.ok(mars, 'expected the 2 Nov 2026 Moon-Mars conjunction')
+  assert.match(saturn.description, /about 6\.1° apart/)
+  assert.match(mars.description, /about (0\.[5-9]|1\.0)° apart/)
+  assert.doesNotMatch(saturn.description, /0\.0°/)
+  assert.doesNotMatch(mars.description, /0\.0°/)
+})
+
 test('a just-past full Moon remains an observing window rather than vanishing at its peak', async () => {
   const { fetchEvents } = await import('../src/lib/eventSources/moon-phase.mjs')
   const peak = new Date('2026-09-27T00:00:00.000Z')
