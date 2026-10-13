@@ -29,11 +29,13 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/app/profile', label: 'You', icon: <MobileIcon name="person" /> },
 ]
 
-// ASV-47: Hub is the only area a guest can open, so mark the rest rather
-// than letting a tap land on an unannounced signup form.
+// Guests can use the sky, events, calendar, journal and Ask Atlas. Planner
+// and profile still ask for an account up front.
+const GUEST_OPEN_PATHS = new Set(['/app/hub', '/app/events', '/app/calendar', '/app/journal', '/app/ask'])
+
 function navItemsFor(signedIn: boolean): NavItem[] {
   if (signedIn) return NAV_ITEMS
-  return NAV_ITEMS.map((item) => (item.path === '/app/hub' ? item : { ...item, locked: true }))
+  return NAV_ITEMS.map((item) => (GUEST_OPEN_PATHS.has(item.path) ? item : { ...item, locked: true }))
 }
 
 interface AppShellProps {
@@ -122,10 +124,10 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
           // what an account adds rather than blocking the view to ask for one.
           <div className="guest-strip">
             <span>
-              You're browsing as a guest. Tonight's sky is free — an account keeps your journal, watchlist and
-              reminders.
+              You're browsing as a guest. Events, the calendar and your journal stay on this device — an account
+              keeps them when you switch devices.
             </span>
-            <button type="button" className="guest-strip-cta" onClick={() => navigate('/app/journal')}>
+            <button type="button" className="guest-strip-cta" onClick={() => navigate('/app/profile')}>
               Create a free account
             </button>
           </div>

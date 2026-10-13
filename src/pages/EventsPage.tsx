@@ -16,6 +16,7 @@ import { metaFor } from '../lib/tonightTargets'
 import { getDarknessWindow } from '../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../lib/timeZone'
 import { eventLookaheadDays } from '../lib/entitlementLimits'
+import { eventDisplayInstant, formatZonedTime } from '../lib/eventTiming.mjs'
 import { dayGroupLabel, fetchViewingForecast, localDateKey } from '../lib/weather'
 import { ensurePushSubscription, queueWatchConfirmation } from '../lib/push'
 import { useThemeState } from '../lib/theme'
@@ -94,9 +95,10 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
     for (const event of filtered) {
       // A multi-night phenomenon is useful on the night it is still active,
       // rather than disappearing under the date on which its peak began.
+      const when = eventDisplayInstant(event, city.timeZone).toISOString()
       const key = new Date(event.startsAt) < new Date() && new Date(event.endsAt) >= new Date()
         ? todayKey
-        : localDateKey(event.startsAt, city.timeZone)
+        : localDateKey(when, city.timeZone)
       if (!byDay.has(key)) byDay.set(key, [])
       byDay.get(key)!.push(event)
     }
@@ -267,14 +269,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
                   </span>
                   <span className="az-row-trail">
                     <span className="az-row-time">
-                      {new Date(event.startsAt).toLocaleTimeString(undefined, {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false,
-                        // The event happens over the observing location, so
-                        // show it in that zone rather than the device's.
-                        timeZone: city.timeZone,
-                      })}
+                      {formatZonedTime(eventDisplayInstant(event, city.timeZone).toISOString(), city.timeZone, false)}
                     </span>
                   </span>
                   <span className="az-row-chevron">

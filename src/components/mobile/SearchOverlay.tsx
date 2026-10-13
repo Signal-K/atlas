@@ -13,6 +13,7 @@ import { CITIES, cityLabel, type City } from '../../lib/cities'
 import { buildEventDetail, detailInputFromEvent, type EntryDetailSubject } from '../../lib/entryDetail'
 import { getDarknessWindow } from '../../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../../lib/timeZone'
+import { eventDisplayInstant, formatZonedDate } from '../../lib/eventTiming.mjs'
 import { addToWatchlist, getWatchlist, isWatching, removeFromWatchlist } from '../../lib/watchlist'
 import { db } from '../../lib/db'
 import { useAuth } from '../../lib/auth'
@@ -244,7 +245,7 @@ export function SearchOverlay({
                     <span className="az-row-main">
                       <span className="az-row-title">{event.title}</span>
                       <span className="az-muted" style={{ fontSize: '0.71875rem' }}>
-                        {new Date(event.startsAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                        {formatZonedDate(eventDisplayInstant(event, city.timeZone).toISOString(), city.timeZone)}
                       </span>
                     </span>
                   </button>
@@ -268,7 +269,7 @@ export function SearchOverlay({
                         {target.events.map((event) => (
                           <button type="button" key={event.id} className="az-object-event" onClick={() => selectEvent(event)}>
                             <span>
-                              {new Date(event.startsAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                              {formatZonedDate(eventDisplayInstant(event, city.timeZone).toISOString(), city.timeZone)}
                             </span>
                             <strong>{event.title}</strong>
                             <MobileIcon name="chevron" size={14} />
