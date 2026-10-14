@@ -16,6 +16,9 @@ final class ChallengesViewModel: ObservableObject {
     private let session: SessionStore
     private let service: ChallengeService
     private var selectedImageData: Data?
+    // One chosen image is one submission intent. Keep its id when a request
+    // fails so a retry cannot append a second Saturn-event ledger credit.
+    private var submissionAttempt: ChallengeSubmissionAttempt?
 
     init(session: SessionStore) {
         self.session = session
@@ -64,11 +67,13 @@ final class ChallengesViewModel: ObservableObject {
     func setSelectedImage(_ image: UIImage, originalData: Data?) {
         selectedImage = image
         selectedImageData = optimizedJPEG(from: image) ?? originalData
+        submissionAttempt = ChallengeSubmissionAttempt()
     }
 
     func clearSelectedImage() {
         selectedImage = nil
         selectedImageData = nil
+        submissionAttempt = nil
     }
 
     func submitSelectedChallenge() async {
@@ -80,7 +85,7 @@ final class ChallengesViewModel: ObservableObject {
             errorMessage = "Sign in to submit challenge entries."
             return
         }
-        guard let imageData = selectedImageData else {
+        guard let imageData = selectedImageData, let submissionAttempt else {
             errorMessage = "Add a photo for this submission."
             return
         }
@@ -94,6 +99,7 @@ final class ChallengesViewModel: ObservableObject {
                 caption: caption.trimmingCharacters(in: .whitespacesAndNewlines),
                 imageData: imageData,
                 contentType: "image/jpeg",
+                attempt: submissionAttempt,
                 auth: CaptureAuthContext(userID: userID, token: token)
             )
             caption = ""

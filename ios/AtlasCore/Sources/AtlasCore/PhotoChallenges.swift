@@ -232,6 +232,28 @@ public actor ChallengeCreditGate {
     }
 }
 
+/// A client-generated identifier for one user intent to submit a challenge
+/// photo. Keep this value while an upload is retried: the server ledger uses
+/// it as the idempotency source rather than a newly-created record ID.
+public struct ChallengeSubmissionAttempt: Equatable, Hashable, Sendable {
+    public let id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+
+    public init() {
+        self.id = Self.makeID()
+    }
+
+    private static func makeID() -> String {
+        // PocketBase record IDs and ledger source IDs both accept lower-case
+        // alphanumerics. Fifteen UUID hex characters have ample entropy here
+        // and keep the value safe to send in form fields and URLs.
+        String(UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().prefix(15))
+    }
+}
+
 public func saturnSharedEventCreditKey(userID: String, sourceID: String) -> String {
     "saturn-shared-event:\(userID):\(sourceID)"
 }

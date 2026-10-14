@@ -109,9 +109,10 @@ actor ChallengeService {
         caption: String,
         imageData: Data,
         contentType: String,
+        attempt: ChallengeSubmissionAttempt,
         auth: CaptureAuthContext
     ) async throws {
-        let submissionID = try await createSubmission(
+        _ = try await createSubmission(
             challengeID: challenge.collectionChallengeID,
             eventID: eventID,
             caption: caption,
@@ -121,7 +122,11 @@ actor ChallengeService {
         )
 
         if challenge.id == "asv-129-wsw-saturn-sky-photo" {
-            let key = saturnSharedEventCreditKey(userID: auth.userID, sourceID: submissionID)
+            // The PocketBase submission record gets a new server ID on each
+            // POST. Do not use that ID here: a network timeout can make the
+            // user retry the same chosen photo. The retained attempt ID makes
+            // each retry target the same unique ledger row.
+            let key = saturnSharedEventCreditKey(userID: auth.userID, sourceID: attempt.id)
             try await createSaturnSharedCredit(sourceID: key, auth: auth)
         }
     }

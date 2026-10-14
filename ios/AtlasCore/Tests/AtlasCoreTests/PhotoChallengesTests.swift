@@ -39,6 +39,19 @@ final class PhotoChallengesTests: XCTestCase {
         XCTAssertEqual(_v5, true)
     }
 
+    func testSubmissionAttemptKeepsOneStableCreditSourceAcrossRetry() {
+        let attempt = ChallengeSubmissionAttempt()
+        let firstTry = saturnSharedEventCreditKey(userID: "user-a", sourceID: attempt.id)
+        let retry = saturnSharedEventCreditKey(userID: "user-a", sourceID: attempt.id)
+        let replacementPhoto = ChallengeSubmissionAttempt()
+
+        XCTAssertEqual(attempt.id.count, 15)
+        XCTAssertTrue(attempt.id.allSatisfy { $0.isLetter || $0.isNumber })
+        XCTAssertEqual(firstTry, retry)
+        XCTAssertNotEqual(attempt, replacementPhoto)
+        XCTAssertNotEqual(firstTry, saturnSharedEventCreditKey(userID: "user-a", sourceID: replacementPhoto.id))
+    }
+
     func testOrionidsChallengeHasASV130AndPeakWindow() throws {
         let challenge = try XCTUnwrap(PhotoChallengeCatalog.definitions.first { $0.id == "asv-130-orionids-2026" })
         XCTAssertEqual(challenge.name, "ASV-130 Orionids challenge")

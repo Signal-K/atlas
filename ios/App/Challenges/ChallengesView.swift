@@ -150,6 +150,19 @@ struct ChallengesView: View {
                     }
                 }
 
+                if challenge.definition.id == "asv-129-wsw-saturn-sky-photo" {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Honor-system v0")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Atlas does not verify that Saturn appears in this photo. One chosen photo credits one shared Saturn event contribution; retrying the same upload cannot add another credit.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Brand.muted)
+                        Text("Your photo is private until moderation. It is retained with this challenge entry until you delete the entry from your Atlas account.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Brand.muted)
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Multiplayer progress")
                         .font(.system(size: 14, weight: .semibold))
