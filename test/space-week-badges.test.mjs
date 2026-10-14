@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { SPACE_WEEK_BADGES, evaluateSpaceWeekBadges, spaceWeekBadgeLink } from '../src/lib/spaceWeekBadges.mjs'
+import { SPACE_WEEK_BADGES, SPACE_WEEK_PLAYER_LINKS, evaluateSpaceWeekBadges, spaceWeekBadgeLink } from '../src/lib/spaceWeekBadges.mjs'
 
 const obs = (id, observedAt, extra = {}) => ({ id, userId: 'u', observedAt, ...extra })
 const tierOf = (list, id) => list.find((b) => b.id === id).tier
@@ -39,4 +39,11 @@ test('Space Week stamp takes any check-in but not a community night; links deep-
   assert.equal(tierOf(evaluateSpaceWeekBadges([obs('c', '2026-10-07T20:00:00.000Z', { communityNightHost: 'X' })]), 'space-week-stamp'), null)
   assert.equal(tierOf(evaluateSpaceWeekBadges([obs('c', '2026-10-07T20:00:00.000Z')]), 'space-week-stamp'), 'gold')
   assert.equal(spaceWeekBadgeLink('space-week-m31'), '/app/profile?badge=space-week-m31')
+})
+
+test('Space Week card links to the Garden and Landnám player drops over HTTPS', () => {
+  assert.deepEqual(SPACE_WEEK_PLAYER_LINKS.map((link) => link.href), [
+    'https://starsailors.space/game',
+    'https://playlandnam.space/game',
+  ])
 })

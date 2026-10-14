@@ -5,6 +5,13 @@
 
 export const SPACE_WEEK_YEAR = 2026
 
+// Player-facing routes in the Space Week drop. These are public cross-game
+// destinations only; badge earning remains entirely local to Atlas.
+export const SPACE_WEEK_PLAYER_LINKS = [
+  { label: 'Open Garden sky events', href: 'https://starsailors.space/game' },
+  { label: 'Play Landnám Space Week', href: 'https://playlandnam.space/game' },
+]
+
 export const SPACE_WEEK_BADGES = [
   { id: 'space-week-saturn', label: 'Saturn', kind: 'badge', date: '2026-10-07', match: /saturn/i },
   { id: 'space-week-stamp', label: 'Space Week stamp', kind: 'stamp', date: '2026-10-07', match: null },

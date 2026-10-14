@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { db } from '../lib/db'
-import { evaluateSpaceWeekBadges, SPACE_WEEK_BADGES } from '../lib/spaceWeekBadges.mjs'
+import { evaluateSpaceWeekBadges, SPACE_WEEK_BADGES, SPACE_WEEK_PLAYER_LINKS } from '../lib/spaceWeekBadges.mjs'
 import type { SpaceWeekBadgeState } from '../lib/spaceWeekBadges.mjs'
 
 const LOCAL_USER_ID = 'local'
@@ -70,6 +70,13 @@ export function SpaceWeekBadgesCard() {
             </li>
           ))}
         </ul>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.875rem' }} aria-label="Continue Space Week in other games">
+          {SPACE_WEEK_PLAYER_LINKS.map((link) => (
+            <a key={link.href} className="az-button-secondary" href={link.href} target="_blank" rel="noopener noreferrer">
+              {link.label}
+            </a>
+          ))}
+        </div>
       </div>
     </section>
   )
