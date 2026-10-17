@@ -22,6 +22,8 @@ struct ChallengesView: View {
                         .font(.system(size: 14))
                         .foregroundStyle(Brand.muted)
 
+                    worldSpaceWeekDrop
+
                     if model.isLoading {
                         ProgressView("Loading challenges…")
                             .font(.system(size: 14))
@@ -66,6 +68,25 @@ struct ChallengesView: View {
                 applyPendingRoute()
             }
         }
+    }
+
+    private var worldSpaceWeekDrop: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Continue World Space Week")
+                .font(.system(size: 15, weight: .semibold))
+            Text("Take the live player drop into Landnám or Garden, then return here to log your Atlas challenge.")
+                .font(.system(size: 14))
+                .foregroundStyle(Brand.muted)
+            ForEach(WorldSpaceWeekCampaign.destinations) { destination in
+                Link(destination.label, destination: destination.url)
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .buttonStyle(.bordered)
+                    .accessibilityHint("Opens \(destination.label) in Safari")
+            }
+        }
+        .padding(14)
+        .brandCard(accent: Brand.flagship.opacity(0.45))
     }
 
     private var emptyState: some View {

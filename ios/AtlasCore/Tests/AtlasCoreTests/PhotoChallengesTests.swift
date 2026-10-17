@@ -11,6 +11,18 @@ final class PhotoChallengesTests: XCTestCase {
         XCTAssertNil(challenge.badgeTier(for: challenge.window.start.addingTimeInterval(-60)))
     }
 
+    func testWorldSpaceWeekDestinationsLinkToTheOtherGamesOverHTTPS() {
+        XCTAssertEqual(
+            WorldSpaceWeekCampaign.destinations.map(\.id),
+            ["landnam", "garden"]
+        )
+        XCTAssertEqual(
+            WorldSpaceWeekCampaign.destinations.map(\.url.host),
+            ["playlandnam.space", "starsailors.space"]
+        )
+        XCTAssertTrue(WorldSpaceWeekCampaign.destinations.allSatisfy { $0.url.scheme == "https" })
+    }
+
     func testSaturnCreditKeyIsStable() {
         XCTAssertEqual(
             saturnSharedEventCreditKey(userID: "u1", sourceID: "obs-123"),
