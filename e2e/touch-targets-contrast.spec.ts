@@ -66,7 +66,7 @@ const ratio = (a: number[], b: number[]) => { const [hi, lo] = [luminance(a), lu
 test('account form inputs meet border and placeholder contrast', async ({ page }) => {
   // The sign-in form is what this measures; a returning device opens on it.
   await page.addInitScript(() => window.localStorage.setItem('atlas-returning-account', '1'))
-  await page.goto('/app/journal')
+  await page.goto('/app/profile')
   const notConfigured = page.getByText('Sign-in is not configured on this deployment.')
   if (await notConfigured.isVisible()) test.skip(true, 'Clerk is not configured in this environment')
   const input = page.locator('.auth-gate-modal .account-form-field input').first()
@@ -87,7 +87,7 @@ test('create-account (Clerk) fields have a visible edge and are not clipped', as
   // field edge with box-shadow (border is 0), so measure that ring, not `border`.
   await page.setViewportSize({ width: 402, height: 874 })
   await page.addInitScript(() => window.localStorage.setItem('atlas-returning-account', '1'))
-  await page.goto('/app/journal')
+  await page.goto('/app/profile')
   const notConfigured = page.getByText('Sign-in is not configured on this deployment.')
   if (await notConfigured.isVisible()) test.skip(true, 'Clerk is not configured in this environment')
   await page.locator('.account-mode-tabs button', { hasText: 'Create account' }).click()
