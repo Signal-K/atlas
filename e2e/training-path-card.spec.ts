@@ -34,7 +34,7 @@ test('editing interests regenerates the path and a matching check-in ticks a ste
   await expect(card.locator('[data-path-step^="category-"]')).toContainText('planets')
 
   await card.getByRole('button', { name: 'Edit path' }).click()
-  await page.getByRole('button', { name: 'Meteors & fireballs' }).click()
+  await page.getByRole('button', { name: 'Meteors & fireballs', exact: true }).click()
   await page.getByRole('button', { name: 'Close' }).click()
   await expect(card.locator('[data-path-step^="category-"]')).toContainText('meteors')
 

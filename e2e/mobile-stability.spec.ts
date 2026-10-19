@@ -126,10 +126,14 @@ test.describe('mobile stability', () => {
     await guestPage.addInitScript(() => {
       window.localStorage.removeItem('pocketbase_auth')
       window.localStorage.removeItem('atlas-entered')
+      window.localStorage.setItem('atlas-returning-account', '1')
     })
     await installClsObserver(guestPage)
     await guestPage.goto('/app/profile', { waitUntil: 'domcontentloaded' })
     await expect(guestPage.locator('.auth-gate-modal')).toBeVisible()
+    await expect(guestPage.locator('#clerk-sign-in-email')).toBeVisible()
+    await guestPage.evaluate(() => document.fonts.ready)
+    await resetCls(guestPage)
     await guestPage.waitForTimeout(2200)
     const authCls = await readCls(guestPage)
     expect(authCls).toBeLessThan(0.05)
@@ -141,6 +145,7 @@ test.describe('mobile stability', () => {
       await page.waitForTimeout(280)
       await route.continue()
     })
+    await page.addInitScript(() => window.localStorage.setItem('atlas-returning-account', '1'))
 
     await page.goto('/app/profile')
     await expect(page.locator('.auth-gate-modal')).toBeVisible()
