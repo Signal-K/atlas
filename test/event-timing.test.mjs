@@ -25,16 +25,18 @@ function zonedParts(date, timeZone) {
   return { day: Number(parts.day), month: Number(parts.month), hour: Number(parts.hour), minute: Number(parts.minute) }
 }
 
-test('Orionids are shown at 02:00 on 21 Oct in the observer zone, not the 17:00 window start', async () => {
-  const events = await fetchMeteorShowerEvents({ now: new Date('2026-10-13T00:00:00.000Z'), windowDays: 20 })
+test('Orionids best viewing is after moonset on the night of 21–22 Oct, not 02:00 on 21 Oct', async () => {
+  const events = await fetchMeteorShowerEvents({ now: new Date('2026-10-13T00:00:00.000Z'), windowDays: 30 })
   const orionids = events.find((event) => event.target === 'orionids')
   assert.ok(orionids, 'expected the Orionids')
+  assert.equal(orionids.starts_at.slice(0, 10), '2026-10-02')
+  assert.equal(orionids.ends_at.slice(0, 10), '2026-11-07')
 
   for (const timeZone of ['America/Chicago', 'Europe/Zurich']) {
-    const best = meteorBestViewingInstant(orionids.starts_at, timeZone)
+    const best = meteorBestViewingInstant(orionids.starts_at, timeZone, undefined, 'orionids')
     const parts = zonedParts(best, timeZone)
     assert.equal(parts.month, 10)
-    assert.equal(parts.day, 21)
+    assert.equal(parts.day, 22)
     assert.equal(parts.hour, 2)
     assert.equal(parts.minute, 0)
     const label = formatZonedTime(best.toISOString(), timeZone, true)
@@ -43,6 +45,43 @@ test('Orionids are shown at 02:00 on 21 Oct in the observer zone, not the 17:00 
     assert.doesNotMatch(label, /5:00/)
     assert.ok(label.split(' ').length >= 3, `${timeZone} label should include a time zone: ${label}`)
   }
+
+  // Tallinn moonset is 22 Oct 02:48 EEST (01:48 CEST). The shown instant is the
+  // first dark sample after that, not 02:00 on 21 Oct and not the UTC peak.
+  const tallinn = meteorBestViewingInstant(
+    orionids.starts_at,
+    'Europe/Tallinn',
+    { lat: 59.4, lon: 24.7536 },
+    'orionids',
+  )
+  const tallinnParts = zonedParts(tallinn, 'Europe/Tallinn')
+  assert.equal(tallinnParts.month, 10)
+  assert.equal(tallinnParts.day, 22)
+  assert.equal(tallinnParts.hour, 2)
+  assert.ok(tallinn.getTime() >= Date.parse('2026-10-21T23:48:00.000Z'))
+  assert.ok(tallinn.getTime() < Date.parse('2026-10-22T00:00:00.000Z'))
+
+  const shown = eventDisplayInstant(
+    { kind: 'meteor_shower', target: 'orionids', startsAt: orionids.starts_at },
+    'Europe/Zurich',
+    { lat: 47.3769, lon: 8.5417 },
+  )
+  const zurichParts = zonedParts(shown, 'Europe/Zurich')
+  assert.equal(zurichParts.day, 22)
+  assert.ok(shown.getTime() >= Date.parse('2026-10-22T01:19:00.000Z'))
+  assert.ok(shown.getTime() < Date.parse('2026-10-22T01:32:00.000Z'))
+})
+
+test('other showers still use 02:00 on the catalogue peak date when no coordinates are passed', async () => {
+  const events = await fetchMeteorShowerEvents({ now: new Date('2026-08-01T00:00:00.000Z'), windowDays: 20 })
+  const perseids = events.find((event) => event.target === 'perseids')
+  assert.ok(perseids)
+  const best = meteorBestViewingInstant(perseids.starts_at, 'America/Chicago', undefined, 'perseids')
+  const parts = zonedParts(best, 'America/Chicago')
+  assert.equal(parts.month, 8)
+  assert.equal(parts.day, 12)
+  assert.equal(parts.hour, 2)
+  assert.equal(parts.minute, 0)
 })
 
 test('a late-evening full Moon keeps the same calendar day on the list and the detail page', () => {

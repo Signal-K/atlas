@@ -95,7 +95,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
     for (const event of filtered) {
       // A multi-night phenomenon is useful on the night it is still active,
       // rather than disappearing under the date on which its peak began.
-      const when = eventDisplayInstant(event, city.timeZone).toISOString()
+      const when = eventDisplayInstant(event, city.timeZone, { lat: city.lat, lon: city.lon }).toISOString()
       const key = new Date(event.startsAt) < new Date() && new Date(event.endsAt) >= new Date()
         ? todayKey
         : localDateKey(when, city.timeZone)
@@ -105,7 +105,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
     return [...byDay.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, dayEvents]) => ({ key, label: dayGroupLabel(key, todayKey, city.timeZone), events: dayEvents }))
-  }, [filtered, city.timeZone])
+  }, [filtered, city.timeZone, city.lat, city.lon])
 
   const instrumentNote = useMemo(() => {
     if (!events) return ''
@@ -269,7 +269,7 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
                   </span>
                   <span className="az-row-trail">
                     <span className="az-row-time">
-                      {formatZonedTime(eventDisplayInstant(event, city.timeZone).toISOString(), city.timeZone, false)}
+                      {formatZonedTime(eventDisplayInstant(event, city.timeZone, { lat: city.lat, lon: city.lon }).toISOString(), city.timeZone, false)}
                     </span>
                   </span>
                   <span className="az-row-chevron">

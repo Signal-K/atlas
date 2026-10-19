@@ -245,7 +245,7 @@ export function SearchOverlay({
                     <span className="az-row-main">
                       <span className="az-row-title">{event.title}</span>
                       <span className="az-muted" style={{ fontSize: '0.71875rem' }}>
-                        {formatZonedDate(eventDisplayInstant(event, city.timeZone).toISOString(), city.timeZone)}
+                        {formatZonedDate(eventDisplayInstant(event, city.timeZone, { lat: city.lat, lon: city.lon }).toISOString(), city.timeZone)}
                       </span>
                     </span>
                   </button>
@@ -269,7 +269,7 @@ export function SearchOverlay({
                         {target.events.map((event) => (
                           <button type="button" key={event.id} className="az-object-event" onClick={() => selectEvent(event)}>
                             <span>
-                              {formatZonedDate(eventDisplayInstant(event, city.timeZone).toISOString(), city.timeZone)}
+                              {formatZonedDate(eventDisplayInstant(event, city.timeZone, { lat: city.lat, lon: city.lon }).toISOString(), city.timeZone)}
                             </span>
                             <strong>{event.title}</strong>
                             <MobileIcon name="chevron" size={14} />

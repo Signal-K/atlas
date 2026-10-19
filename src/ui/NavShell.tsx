@@ -1,4 +1,5 @@
 import { Starfield } from '../components/mobile/Starfield'
+import { OrionidsSky } from '../components/OrionidsSky'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -64,6 +65,7 @@ export function NavShell({ items, children, topBar, dark = false }: NavShellProp
         <div className="az-shell-bg">
           <Starfield dark={dark} />
         </div>
+        <OrionidsSky />
         {topBar && <div className="nav-shell-topbar">{topBar}</div>}
         <main className="nav-shell-main">{children}</main>
       </div>

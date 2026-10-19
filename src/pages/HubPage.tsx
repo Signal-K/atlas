@@ -4,6 +4,7 @@ import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon
 import { StatGrid } from '../components/mobile/StatGrid'
 import { TrainingPathCard } from '../components/TrainingPathCard'
 import { TelescopeSaturnTasksCard } from '../components/TelescopeSaturnTasksCard'
+import { SpacetoberStrip } from '../components/SpacetoberStrip'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { getTonightPlan } from '../lib/tonightTargets'
 import { tonightRatingLabel } from '../lib/tonightScore'
@@ -314,7 +315,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
   }
 
   function darknessFor(event: SkyEvent) {
-    const when = eventDisplayInstant(event, city.timeZone)
+    const when = eventDisplayInstant(event, city.timeZone, { lat: city.lat, lon: city.lon })
     const { start, end } = tonightWindowForTimeZone(when, city.timeZone)
     return getDarknessWindow(city.lat, city.lon, start, end)
   }
@@ -467,7 +468,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
       eventId: event.id,
       title: event.title,
       kind: event.kind,
-      bestTime: eventDisplayInstant(event, city.timeZone).toISOString(),
+      bestTime: eventDisplayInstant(event, city.timeZone, { lat: city.lat, lon: city.lon }).toISOString(),
       difficulty: 'moderate' as const,
       phoneFriendly: false,
       nakedEyeVisible: true,
@@ -502,7 +503,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
 
   const todayKey = localDateKey(now.toISOString(), city.timeZone)
   const weekEndKey = localDateKey(new Date(now.getTime() + 7 * 86_400_000).toISOString(), city.timeZone)
-  const whenIso = (event: SkyEvent) => eventDisplayInstant(event, city.timeZone).toISOString()
+  const whenIso = (event: SkyEvent) => eventDisplayInstant(event, city.timeZone, { lat: city.lat, lon: city.lon }).toISOString()
   const upcomingFilterPredicates: Record<HubFilterKey, (e: SkyEvent) => boolean> = {
     all: () => true,
     tonight: (e) => localDateKey(whenIso(e), city.timeZone) === todayKey,
@@ -537,7 +538,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, dayEvents]) => ({ key, label: dayGroupLabel(key, todayKey, city.timeZone), events: dayEvents }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [upcomingShown, city.timeZone, todayKey])
+  }, [upcomingShown, city.timeZone, city.lat, city.lon, todayKey])
 
   return (
     <div className="az-page">
@@ -554,6 +555,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
               ? "Couldn't load tonight"
               : 'Loading tonight…'}
       </h1>
+      <SpacetoberStrip />
       <p className="az-hero-title az-hub-advisory">
         {plan?.todayAdvisory
           ? `${Math.round(100 - plan.todayAdvisory.cloudCoverPct)}% clear skies expected. Dark window ${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)}–${timeLabel(plan.darknessWindow.astronomicalDawnAt ?? plan.darknessWindow.civilDawnAt, city.timeZone)}.`

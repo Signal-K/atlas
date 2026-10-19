@@ -145,6 +145,11 @@ export async function createDiscovery(input: NewDiscovery): Promise<void> {
   if (input.image) form.append('image', input.image)
 
   await pb.collection('atlas_discoveries').create(form)
+  if (input.image) {
+    void import('./eventBadges').then(({ awardObservationCampaign }) => {
+      awardObservationCampaign(new Date().toISOString(), true)
+    })
+  }
 }
 
 export async function toggleVote(discoveryId: string, currentlyVoted: boolean): Promise<void> {

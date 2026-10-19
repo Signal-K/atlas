@@ -13,6 +13,8 @@ import { CalendarPage } from './pages/CalendarPage'
 import { PlannerPage } from './pages/PlannerPage'
 import { JournalPage, type JournalPageProps } from './pages/JournalPage'
 import { AskAtlasPage } from './pages/AskAtlasPage'
+import { OrionidsPage } from './pages/OrionidsPage'
+import { OrionidsBanner } from './components/OrionidsBanner'
 import { ProfilePage, type ProfilePageProps } from './pages/ProfilePage'
 import { useThemeState } from './lib/theme'
 import { useAuth } from './lib/auth'
@@ -31,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
 
 // Guests can use the sky, events, calendar, journal and Ask Atlas. Planner
 // and profile still ask for an account up front.
-const GUEST_OPEN_PATHS = new Set(['/app/hub', '/app/events', '/app/calendar', '/app/journal', '/app/ask'])
+const GUEST_OPEN_PATHS = new Set(['/app/hub', '/app/events', '/app/calendar', '/app/journal', '/app/ask', '/app/orionids'])
 
 function navItemsFor(signedIn: boolean): NavItem[] {
   if (signedIn) return NAV_ITEMS
@@ -119,6 +121,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
           />
         }
       >
+        <OrionidsBanner />
         {!user && (
           // Guests see tonight's sky without an account (ASV-47). This says
           // what an account adds rather than blocking the view to ask for one.
@@ -139,6 +142,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
           <Route path="/app/planner" element={<PlannerPage />} />
           <Route path="/app/journal" element={<JournalPage {...journalProps} />} />
           <Route path="/app/ask" element={<AskAtlasPage />} />
+          <Route path="/app/orionids" element={<OrionidsPage />} />
           <Route path="/app/profile" element={<ProfilePage {...profileProps} onOpenLocation={() => setLocationSheetOpen(true)} />} />
           {/* Legacy paths from the pre-redesign tab structure. */}
           <Route path="/app/plan" element={<Navigate to="/app/planner" replace />} />

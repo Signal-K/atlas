@@ -108,6 +108,8 @@ async function mockNotifications(page: Page) {
     Object.defineProperty(window.navigator, 'serviceWorker', {
       configurable: true,
       value: {
+        addEventListener: () => {},
+        removeEventListener: () => {},
         ready: Promise.resolve({
           showNotification: (title: string, options?: NotificationOptions) => {
             window.__atlasNotifications?.push({

@@ -35,7 +35,12 @@ const SHOWERS = [
     name: 'Orionids',
     month: 10,
     day: 21,
-    description: 'A second shower from Halley’s Comet debris, radiating from Orion with fast, occasionally bright meteors.',
+    // IMO activity runs from early October through about 7 November. The
+    // sharp peak is the night of 21–22 October; the stored window is the
+    // whole activity, not only the peak night.
+    activeStart: { month: 10, day: 2 },
+    activeEnd: { month: 11, day: 7 },
+    description: 'A second shower from Halley’s Comet debris, radiating from Orion with fast, occasionally bright meteors. Active from about 2 October through 7 November; the peak night is 21–22 October.',
     imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/39/Orionids_Meteor_shower.jpg',
   },
   {
@@ -61,8 +66,17 @@ const SHOWERS = [
   },
 ]
 
-function eventForYear(shower, year) {
+function activityBounds(shower, year) {
   const peak = new Date(Date.UTC(year, shower.month - 1, shower.day, 4, 0, 0))
+  if (shower.activeStart && shower.activeEnd) {
+    const startYear = shower.activeStart.month > shower.month ? year - 1 : year
+    const endYear = shower.activeEnd.month < shower.month ? year + 1 : year
+    return {
+      peak,
+      startsAt: new Date(Date.UTC(startYear, shower.activeStart.month - 1, shower.activeStart.day, 0, 0, 0)).toISOString(),
+      endsAt: new Date(Date.UTC(endYear, shower.activeEnd.month - 1, shower.activeEnd.day, 23, 59, 59)).toISOString(),
+    }
+  }
   // A +-6h window around one UTC "peak" instant only lines up with evening
   // for observers near UTC -- for anyone else (Europe, Australia, etc.) it
   // had already ended hours before their local night even started, so the
@@ -72,14 +86,33 @@ function eventForYear(shower, year) {
   // peak" (-18h/+42h keeps the same start-of-day date as before, so this
   // still matches/updates the existing record on reseed rather than
   // orphaning a duplicate -- see seed-curated-window.mjs's upsert key).
-  const startsAt = new Date(peak.getTime() - 18 * 3_600_000).toISOString()
-  const endsAt = new Date(peak.getTime() + 42 * 3_600_000).toISOString()
+  return {
+    peak,
+    startsAt: new Date(peak.getTime() - 18 * 3_600_000).toISOString(),
+    endsAt: new Date(peak.getTime() + 42 * 3_600_000).toISOString(),
+  }
+}
+
+export function orionidsActivity(year) {
+  const shower = SHOWERS.find((item) => item.name === 'Orionids')
+  const bounds = activityBounds(shower, year)
+  return {
+    target: 'orionids',
+    year,
+    startsAt: bounds.startsAt,
+    endsAt: bounds.endsAt,
+    peakAt: bounds.peak.toISOString(),
+  }
+}
+
+function eventForYear(shower, year) {
+  const { peak, startsAt, endsAt } = activityBounds(shower, year)
   return {
     kind: 'meteor_shower',
     target: shower.name.toLowerCase().replace(/\s+/g, '_'),
     title: `${shower.name} Meteor Shower`,
     description: shower.description,
-    content: `${shower.name} peaks around ${shower.month}/${shower.day} each year. ${shower.description} Best viewed after midnight, away from light pollution, once your eyes have adapted to the dark for 20-30 minutes.`,
+    content: `${shower.name} peaks around ${shower.month}/${shower.day} each year. ${shower.description} Best viewed once the sky is dark and, on a moonlit peak, after moonset, away from light pollution, once your eyes have adapted to the dark for 20-30 minutes.`,
     starts_at: startsAt,
     ends_at: endsAt,
     ...(shower.imageUrl ? { image_url: shower.imageUrl, image_credit: shower.imageCredit ?? 'Wikimedia Commons' } : {}),

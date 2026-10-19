@@ -169,7 +169,9 @@ export function detailInputFromTonightTarget(
   location?: EntryDetailLocation,
 ): EventDetailInput {
   const bestTimeIso =
-    sourceEvent?.kind === 'meteor_shower' ? eventDisplayInstant(sourceEvent, location?.timeZone).toISOString() : target.bestTime
+    sourceEvent?.kind === 'meteor_shower'
+      ? eventDisplayInstant(sourceEvent, location?.timeZone, location ? { lat: location.lat, lon: location.lon } : undefined).toISOString()
+      : target.bestTime
   return {
     id: target.eventId,
     kind: target.kind,
@@ -192,7 +194,7 @@ export function detailInputFromTonightTarget(
 // anchored to the event's own start time instead of a transit search.
 export function detailInputFromEvent(event: SkyEvent, location: EntryDetailLocation, darknessWindow: DarknessWindow): EventDetailInput {
   const meta = metaFor(event.kind)
-  const bestTime = eventDisplayInstant(event, location.timeZone)
+  const bestTime = eventDisplayInstant(event, location.timeZone, { lat: location.lat, lon: location.lon })
   const primary = getPrimarySkyMapObjectForEvent(event, bestTime, location.lat, location.lon)
   return {
     id: event.id,

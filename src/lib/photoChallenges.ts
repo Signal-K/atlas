@@ -107,6 +107,9 @@ export async function submitPhotoChallenge(input: NewPhotoChallengeSubmission): 
   form.append('image', input.image)
   await pb.collection('atlas_photo_challenge_submissions').create(form)
   void syncXpLedgerSoon()
+  void import('./eventBadges').then(({ awardObservationCampaign }) => {
+    awardObservationCampaign(new Date().toISOString(), true)
+  })
 }
 
 // The list/view rule (`approved = true || user = @request.auth.id`) already
