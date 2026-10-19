@@ -128,7 +128,7 @@ test.describe('mobile stability', () => {
       window.localStorage.removeItem('atlas-entered')
     })
     await installClsObserver(guestPage)
-    await guestPage.goto('/app/journal', { waitUntil: 'domcontentloaded' })
+    await guestPage.goto('/app/profile', { waitUntil: 'domcontentloaded' })
     await expect(guestPage.locator('.auth-gate-modal')).toBeVisible()
     await guestPage.waitForTimeout(2200)
     const authCls = await readCls(guestPage)
@@ -142,7 +142,7 @@ test.describe('mobile stability', () => {
       await route.continue()
     })
 
-    await page.goto('/app/journal')
+    await page.goto('/app/profile')
     await expect(page.locator('.auth-gate-modal')).toBeVisible()
 
     const notConfigured = page.getByText('Sign-in is not configured on this deployment.')
@@ -328,7 +328,7 @@ test.describe('mobile stability', () => {
       window.localStorage.removeItem('pocketbase_auth')
       window.localStorage.removeItem('atlas-entered')
     })
-    await guestPage.goto('/app/journal')
+    await guestPage.goto('/app/profile')
 
     const notConfigured = guestPage.getByText('Sign-in is not configured on this deployment.')
     if (!(await notConfigured.isVisible())) {

@@ -186,7 +186,7 @@ test('an existing account is re-run through the current onboarding flow', async 
     // Guests get Hub; an account-owned area still puts up the gate (ASV-47).
     // Navigated directly rather than via the rail, since onboarding is
     // covering the shell at this point in the journey.
-    await page.goto('/app/events')
+    await page.goto('/app/profile')
     // A device that has never held an account opens on Create account (ASV-103);
     // this visitor already has one, so they switch to the Sign in tab.
     await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
@@ -201,9 +201,9 @@ test('an existing account is re-run through the current onboarding flow', async 
     await completeOnboarding(page)
 
     // The flow is an overlay on the route the gate interrupted, so finishing it
-    // reveals Events rather than navigating anywhere new.
-    await expect(page).toHaveURL('/app/events')
-    await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+    // reveals Profile rather than navigating anywhere new.
+    await expect(page).toHaveURL('/app/profile')
+    await expect(page.getByRole('heading', { name: 'You', exact: true })).toBeVisible({ timeout: 15_000 })
     // The stored marker is a version, not a flag -- see lib/onboarding.ts.
     await expect
       .poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete')))
