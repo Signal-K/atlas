@@ -16,6 +16,15 @@ import { ensurePushSubscription, queueWatchConfirmation } from '../lib/push'
 import { categoryForKind } from '../lib/eventCategories'
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
 import { listDiscoveries, type Discovery } from '../lib/discoveries'
+import { getSignedUpEventsDueSoon } from '../lib/eventTags'
+import { SignedUpEventsWidget } from '../widgets/SignedUpEventsWidget'
+import {
+  citizenScienceBadgesFromObservations,
+  nextTierProgress,
+  projectForEventKind,
+  PROJECT_LABELS,
+  type CitizenScienceBadge,
+} from '../lib/citizenScienceBadges'
 import { db } from '../lib/db'
 import { useAuth } from '../lib/auth'
 import { useThemeState } from '../lib/theme'
@@ -96,6 +105,8 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
   const [topDiscovery, setTopDiscovery] = useState<Discovery | null>(null)
   const [reminders, setReminders] = useState(() => listGetReadyReminders())
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
+  const [campaignsDueSoon, setCampaignsDueSoon] = useState<SkyEvent[]>([])
+  const [citizenScienceBadges, setCitizenScienceBadges] = useState<CitizenScienceBadge[]>([])
   const [loadError, setLoadError] = useState(false)
   const [hubLoading, setHubLoading] = useState(!openingSnapshot)
   const [retryTick, setRetryTick] = useState(0)
@@ -176,6 +187,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
           setEvents(cached)
           setWatchlist(watched)
           rememberHub(city, null, cached)
+          await loadContributions(now)
           setHubLoading(false)
           void refreshCatalogue()
           return
@@ -207,9 +219,7 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         // configured as "Generated tonight plan" (the pre-rebuild name).
         trackEvent('Generated tonight plan', planProperties)
 
-        const scopeId = user?.id ?? LOCAL_USER_ID
-        const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
-        if (!cancelled) setRecentEntries(entries.filter((e) => e.photo).slice(0, 3))
+        await loadContributions(now)
       } catch (err) {
         // Without this, a single rejected fetch (flaky signal, which is the
         // norm for this app's actual outdoor/nighttime use case) left the
@@ -232,6 +242,17 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
         // Community feed is best-effort context on Hub -- never blocks the page.
       }
       if (!cancelled) setHubLoading(false)
+    }
+
+    async function loadContributions(now: Date) {
+      const scopeId = user?.id ?? LOCAL_USER_ID
+      const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
+      if (cancelled) return
+      setRecentEntries(entries.filter((entry) => entry.photo).slice(0, 3))
+      setCitizenScienceBadges(citizenScienceBadgesFromObservations(entries))
+      const dueSoon = await getSignedUpEventsDueSoon(now)
+      const dueSoonCampaigns = dueSoon.filter((event) => categoryForKind(event.kind)?.id === 'citizen-science')
+      if (!cancelled) setCampaignsDueSoon(dueSoonCampaigns)
     }
 
     async function refreshCatalogue() {
@@ -476,6 +497,18 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
       viewingNote: '',
       direction: null,
     }
+  }
+
+  function submitCampaign(event: SkyEvent) {
+    const project = projectForEventKind(event.kind)
+    onLogAttempt({
+      eventId: event.id,
+      targetName: event.title,
+      locationLabel: city.name,
+      latitude: city.lat,
+      longitude: city.lon,
+      ...(project ? { citizenScienceProject: project } : {}),
+    })
   }
 
   function logEntryDetailAttempt() {
@@ -774,6 +807,40 @@ export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
             {upcomingFilter === 'watching' ? 'Open an event and tap Watch to add it here.' : 'Try a wider window.'}
           </p>
         </div>
+      )}
+
+      {campaignsDueSoon.length > 0 && (
+        <>
+          <div className="az-section-head" style={{ marginTop: '1.375rem' }}>
+            <span className="az-kicker">Citizen science — due now</span>
+          </div>
+          <SignedUpEventsWidget events={campaignsDueSoon} onSubmit={submitCampaign} />
+        </>
+      )}
+
+      {citizenScienceBadges.length > 0 && (
+        <>
+          <div className="az-section-head">
+            <span className="az-kicker">Your contributions</span>
+          </div>
+          <div className="az-row-group">
+            {citizenScienceBadges.map((badge) => {
+              const progress = nextTierProgress(badge.count)
+              return (
+                <div key={badge.project} className="az-card-body" style={{ background: 'var(--surface)' }}>
+                  <strong style={{ display: 'block', fontSize: '0.90625rem', fontWeight: 500 }}>
+                    {PROJECT_LABELS[badge.project] ?? badge.project}
+                  </strong>
+                  <p className="az-muted" style={{ margin: '0.1875rem 0 0', fontSize: '0.78125rem' }}>
+                    {badge.count} submission{badge.count === 1 ? '' : 's'}
+                    {badge.tier ? ` · ${badge.tier[0].toUpperCase()}${badge.tier.slice(1)} badge` : ''}
+                    {progress ? ` · ${progress.remaining} more for ${progress.tier}` : ' · top tier reached'}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </>
       )}
 
       {!showHubSkeleton && (

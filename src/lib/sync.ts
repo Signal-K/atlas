@@ -221,6 +221,14 @@ function attemptRating(value: unknown): ObservationLogEntry['attemptRating'] {
   return value === 'poor' || value === 'ok' || value === 'good' || value === 'great' ? value : undefined
 }
 
+function skyBrightnessConfidence(value: unknown): ObservationLogEntry['skyBrightnessConfidence'] {
+  return value === 'estimated' || value === 'modelled' || value === 'measured' ? value : undefined
+}
+
+function skyBrightnessSourceFormat(value: unknown): ObservationLogEntry['skyBrightnessSourceFormat'] {
+  return value === 'raw' || value === 'jpeg' || value === 'unknown' ? value : undefined
+}
+
 // The backdated-check-in provenance fields (see checkInReview.ts). Each one is
 // a select or text column on the remote side, so the pull path is the only
 // place a value from the wire becomes a union type -- narrow here rather than
@@ -337,6 +345,25 @@ async function pullObservationsNow(): Promise<void> {
         ...(optionalText(record.photo_r2_key) ? { photoR2Key: record.photo_r2_key } : {}),
         ...(Number.isFinite(Number(record.photo_r2_size)) && Number(record.photo_r2_size) > 0 ? { photoR2Size: Number(record.photo_r2_size) } : {}),
         ...(record.public === true ? { isPublic: true } : {}),
+        ...(optionalText(record.citizen_science_project) ? { citizenScienceProject: record.citizen_science_project } : {}),
+        ...(Number.isFinite(Number(record.sky_brightness_limiting_magnitude))
+          ? { skyBrightnessLimitingMagnitude: Number(record.sky_brightness_limiting_magnitude) }
+          : {}),
+        ...(skyBrightnessConfidence(record.sky_brightness_confidence)
+          ? { skyBrightnessConfidence: skyBrightnessConfidence(record.sky_brightness_confidence) }
+          : {}),
+        ...(Number.isFinite(Number(record.sky_brightness_bortle_estimate))
+          ? { skyBrightnessBortleEstimate: Number(record.sky_brightness_bortle_estimate) }
+          : {}),
+        ...(Number.isFinite(Number(record.sky_brightness_stars_detected))
+          ? { skyBrightnessStarsDetected: Number(record.sky_brightness_stars_detected) }
+          : {}),
+        ...(skyBrightnessSourceFormat(record.sky_brightness_source_format)
+          ? { skyBrightnessSourceFormat: skyBrightnessSourceFormat(record.sky_brightness_source_format) }
+          : {}),
+        ...(record.sky_brightness_flagged_for_review === true ? { skyBrightnessFlaggedForReview: true } : {}),
+        ...(Number.isFinite(Number(record.latitude)) ? { latitude: Number(record.latitude) } : {}),
+        ...(Number.isFinite(Number(record.longitude)) ? { longitude: Number(record.longitude) } : {}),
         // Backdated check-in provenance. Absent on every pre-feature row and
         // on a plain tonight check-in, which is exactly what `undefined`
         // means to every reader of these fields.
@@ -471,6 +498,13 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
       location_label: entry.locationLabel,
       condition_summary: entry.conditionSummary,
       attempt_rating: entry.attemptRating,
+      // Only the tag + capture format are client-settable; the sky_brightness_*
+      // measurement fields are written back later by the extension-side
+      // processor once it has actually plate-solved the photo.
+      citizen_science_project: entry.citizenScienceProject,
+      ...(entry.citizenScienceProject ? { sky_brightness_source_format: entry.skyBrightnessSourceFormat ?? 'unknown' } : {}),
+      ...(entry.latitude != null ? { latitude: entry.latitude } : {}),
+      ...(entry.longitude != null ? { longitude: entry.longitude } : {}),
       // Backdated check-in provenance. Sent as null when absent, which is what
       // a plain tonight check-in and every pre-feature row have -- so the pull
       // path's narrowers fall through to `undefined` rather than inventing a

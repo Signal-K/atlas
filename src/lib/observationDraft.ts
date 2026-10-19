@@ -15,4 +15,14 @@ export interface ObservationDraft {
   moonIlluminationPct?: number
   cloudCoverPct?: number
   directionLabel?: string
+  // Set when this draft was handed off from a signed-up citizen-science
+  // campaign (see citizenScienceBadges.projectForEventKind) rather than an
+  // ordinary sky event -- carried through to the saved entry so it counts
+  // toward that project's badge.
+  citizenScienceProject?: string
+  // Real coordinates for a citizen-science submission -- see the matching
+  // comment on ObservationLogEntry in db.ts for why this is separate from
+  // locationLabel.
+  latitude?: number
+  longitude?: number
 }
