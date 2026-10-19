@@ -33,11 +33,25 @@ const STEP_DAYS = 1
 // still safe for them.
 const MOON_STEP_DAYS = 0.25
 
-// PairLongitude returns [0, 360) -- the angular separation is whichever of
-// the two arcs around the circle is shorter.
-function angularDiff(body1, body2, date) {
+// PairLongitude is the difference in ecliptic longitude only. A real
+// conjunction can sit at 0.0° of longitude while the Moon is still several
+// degrees of latitude away, which is what made Moon-Saturn on 24 Oct 2026
+// read "about 0.0° apart" when the two were 6° apart in the sky. Longitude
+// still finds the candidate (the Moon moves fast enough that a sky-separation
+// grid can miss the night); the published number is the true angle.
+function longitudeDiff(body1, body2, date) {
   const lon = Astronomy.PairLongitude(body1, body2, date)
   return lon > 180 ? 360 - lon : lon
+}
+
+function skySeparationDeg(body1, body2, date) {
+  return Astronomy.AngleBetween(Astronomy.GeoVector(body1, date, true), Astronomy.GeoVector(body2, date, true))
+}
+
+function formatSeparation(degrees) {
+  const rounded = Math.round(degrees * 10) / 10
+  if (rounded < 0.1) return '<0.1'
+  return rounded.toFixed(1)
 }
 
 // The coarse grid is intentionally only used to find a candidate minimum.
@@ -49,11 +63,11 @@ function refineMinimum(body1, body2, center, stepDays) {
   for (let i = 0; i < 36; i += 1) {
     const left = lo + (hi - lo) / 3
     const right = hi - (hi - lo) / 3
-    if (angularDiff(body1, body2, new Date(left)) <= angularDiff(body1, body2, new Date(right))) hi = right
+    if (longitudeDiff(body1, body2, new Date(left)) <= longitudeDiff(body1, body2, new Date(right))) hi = right
     else lo = left
   }
   const date = new Date((lo + hi) / 2)
-  return { date, separation: angularDiff(body1, body2, date) }
+  return { date, separation: skySeparationDeg(body1, body2, date) }
 }
 
 function findConjunctions(body1, body2, now, end, stepDays = STEP_DAYS) {
@@ -69,7 +83,7 @@ function findConjunctions(body1, body2, now, end, stepDays = STEP_DAYS) {
   for (let t = gridStart; t <= end; t += stepMs) {
     const date = new Date(t)
     if (date.getTime() < now.getTime() - stepMs) continue
-    points.push({ date, diff: angularDiff(body1, body2, date) })
+    points.push({ date, diff: longitudeDiff(body1, body2, date) })
   }
 
   const conjunctions = []
@@ -92,8 +106,8 @@ export async function fetchEvents({ now = new Date(), windowDays = 365 } = {}) {
         kind: 'conjunction',
         target: `moon_${bodyName.toLowerCase()}`,
         title: `Moon-${bodyName} Conjunction`,
-        description: `The Moon and ${bodyName} appear close together in the sky, about ${separation.toFixed(1)}° apart.`,
-        content: `Look for the Moon and ${bodyName} sharing the same patch of sky tonight (about ${separation.toFixed(1)}° apart) — a striking naked-eye pairing, no equipment needed.`,
+        description: `The Moon and ${bodyName} appear close together in the sky, about ${formatSeparation(separation)}° apart.`,
+        content: `Look for the Moon and ${bodyName} sharing the same patch of sky tonight (about ${formatSeparation(separation)}° apart) — a striking naked-eye pairing, no equipment needed.`,
         starts_at: date.toISOString(),
         ends_at: date.toISOString(),
         image_url: PLANET_IMAGES[bodyName].url,
@@ -108,8 +122,8 @@ export async function fetchEvents({ now = new Date(), windowDays = 365 } = {}) {
         kind: 'conjunction',
         target: `${a.toLowerCase()}_${b.toLowerCase()}`,
         title: `${a}-${b} Conjunction`,
-        description: `${a} and ${b} appear close together in the sky, about ${separation.toFixed(1)}° apart.`,
-        content: `${a} and ${b} are near each other in the sky tonight (about ${separation.toFixed(1)}° apart) — a rare and striking naked-eye pairing worth looking up for.`,
+        description: `${a} and ${b} appear close together in the sky, about ${formatSeparation(separation)}° apart.`,
+        content: `${a} and ${b} are near each other in the sky tonight (about ${formatSeparation(separation)}° apart) — a rare and striking naked-eye pairing worth looking up for.`,
         starts_at: date.toISOString(),
         ends_at: date.toISOString(),
         // The dimmer/farther body is usually harder to spot, so the brighter

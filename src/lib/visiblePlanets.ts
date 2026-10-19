@@ -1,5 +1,6 @@
 import { getDeepSkyObjects, getStarObjects, getVisiblePlanetsTonight, type SkyMapObject } from './skyMapLayers'
 import type { SkyEvent } from './db'
+import { zonedWallTimeToUtc } from './eventTiming.mjs'
 
 const MAX_STARS_MENTIONED = 3
 
@@ -20,10 +21,18 @@ const BINOCULAR_TARGETS_PER_NIGHT = 2
 const TELESCOPE_TARGETS_PER_NIGHT = 2
 const MIN_TARGET_ALTITUDE_DEG = 28
 
-function observingTimeFor(day: Date): Date {
-  const evening = new Date(day)
-  evening.setHours(21, 0, 0, 0)
-  return evening
+function zonedDateKey(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+}
+
+function observingTimeFor(day: Date, timeZone?: string): Date {
+  if (!timeZone) {
+    const evening = new Date(day)
+    evening.setHours(21, 0, 0, 0)
+    return evening
+  }
+  const [year, month, date] = zonedDateKey(day, timeZone).split('-').map(Number)
+  return zonedWallTimeToUtc(year, month, date, 21, 0, timeZone)
 }
 
 function dateKeyFor(day: Date): string {
@@ -49,15 +58,13 @@ function deepSkyRank(a: SkyMapObject, b: SkyMapObject): number {
  * detail page, reminders and sky-position UI work without pretending that a
  * star has a one-off calendar date.
  */
-export function buildDailyObservingTargets(startDate: Date, days: number, lat: number, lon: number): SkyEvent[] {
+export function buildDailyObservingTargets(startDate: Date, days: number, lat: number, lon: number, timeZone?: string): SkyEvent[] {
   const generatedAt = new Date().toISOString()
 
   return Array.from({ length: days }, (_, dayOffset) => {
-    const day = new Date(startDate)
-    day.setHours(0, 0, 0, 0)
-    day.setDate(day.getDate() + dayOffset)
-    const evening = observingTimeFor(day)
-    const dateKey = dateKeyFor(day)
+    const day = new Date(startDate.getTime() + dayOffset * 86_400_000)
+    const evening = observingTimeFor(day, timeZone)
+    const dateKey = timeZone ? zonedDateKey(evening, timeZone) : dateKeyFor(evening)
 
     const stars = getStarObjects(evening, lat, lon)
       .filter((star) => star.visible && star.altitudeDeg >= MIN_TARGET_ALTITUDE_DEG && (star.magnitude ?? 99) <= 1.5)
