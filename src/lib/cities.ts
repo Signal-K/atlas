@@ -5,6 +5,11 @@
 // src/lib/currentLocation.ts), only as a curated set of fallback/browse
 // options, so it doesn't need to cover every place on Earth, just enough
 // that most people can find something reasonably close.
+//
+// haversineKm now lives in eventGeo.mjs (see the note where it is
+// re-exported below). Imported here because findNearestCity uses it.
+import { haversineKm } from './eventGeo.mjs'
+
 export interface City {
   name: string
   lat: number
@@ -12,13 +17,106 @@ export interface City {
   admin1?: string
   country?: string
   timeZone?: string
+  population?: number
+}
+
+// Country and zone for the curated list. Search used to show these as bare
+// coordinates ("Zurich 47.38, 8.54"), which is how a Swiss pick was stored
+// with another Zurich's region attached. Zones also keep event times in the
+// city's clock instead of the device's.
+const CITY_FACTS: Record<string, Pick<City, 'admin1' | 'country' | 'timeZone'>> = {
+  London: { country: 'United Kingdom', timeZone: 'Europe/London' },
+  Amsterdam: { country: 'Netherlands', timeZone: 'Europe/Amsterdam' },
+  Paris: { country: 'France', timeZone: 'Europe/Paris' },
+  Berlin: { country: 'Germany', timeZone: 'Europe/Berlin' },
+  Madrid: { country: 'Spain', timeZone: 'Europe/Madrid' },
+  Rome: { country: 'Italy', timeZone: 'Europe/Rome' },
+  Vienna: { country: 'Austria', timeZone: 'Europe/Vienna' },
+  Dublin: { country: 'Ireland', timeZone: 'Europe/Dublin' },
+  Lisbon: { country: 'Portugal', timeZone: 'Europe/Lisbon' },
+  Brussels: { country: 'Belgium', timeZone: 'Europe/Brussels' },
+  Zurich: { country: 'Switzerland', timeZone: 'Europe/Zurich' },
+  Stockholm: { country: 'Sweden', timeZone: 'Europe/Stockholm' },
+  Oslo: { country: 'Norway', timeZone: 'Europe/Oslo' },
+  Copenhagen: { country: 'Denmark', timeZone: 'Europe/Copenhagen' },
+  Helsinki: { country: 'Finland', timeZone: 'Europe/Helsinki' },
+  Tallinn: { country: 'Estonia', timeZone: 'Europe/Tallinn' },
+  Riga: { country: 'Latvia', timeZone: 'Europe/Riga' },
+  Vilnius: { country: 'Lithuania', timeZone: 'Europe/Vilnius' },
+  Warsaw: { country: 'Poland', timeZone: 'Europe/Warsaw' },
+  Prague: { country: 'Czechia', timeZone: 'Europe/Prague' },
+  Budapest: { country: 'Hungary', timeZone: 'Europe/Budapest' },
+  Athens: { country: 'Greece', timeZone: 'Europe/Athens' },
+  Reykjavik: { country: 'Iceland', timeZone: 'Atlantic/Reykjavik' },
+  Moscow: { country: 'Russia', timeZone: 'Europe/Moscow' },
+  Istanbul: { country: 'Türkiye', timeZone: 'Europe/Istanbul' },
+  'New York': { admin1: 'New York', country: 'United States', timeZone: 'America/New_York' },
+  'Los Angeles': { admin1: 'California', country: 'United States', timeZone: 'America/Los_Angeles' },
+  Chicago: { admin1: 'Illinois', country: 'United States', timeZone: 'America/Chicago' },
+  Toronto: { admin1: 'Ontario', country: 'Canada', timeZone: 'America/Toronto' },
+  Vancouver: { admin1: 'British Columbia', country: 'Canada', timeZone: 'America/Vancouver' },
+  'Mexico City': { country: 'Mexico', timeZone: 'America/Mexico_City' },
+  'Rio de Janeiro': { country: 'Brazil', timeZone: 'America/Sao_Paulo' },
+  'Buenos Aires': { country: 'Argentina', timeZone: 'America/Argentina/Buenos_Aires' },
+  Santiago: { country: 'Chile', timeZone: 'America/Santiago' },
+  Bogotá: { country: 'Colombia', timeZone: 'America/Bogota' },
+  Lima: { country: 'Peru', timeZone: 'America/Lima' },
+  Miami: { admin1: 'Florida', country: 'United States', timeZone: 'America/New_York' },
+  'San Francisco': { admin1: 'California', country: 'United States', timeZone: 'America/Los_Angeles' },
+  Seattle: { admin1: 'Washington', country: 'United States', timeZone: 'America/Los_Angeles' },
+  Boston: { admin1: 'Massachusetts', country: 'United States', timeZone: 'America/New_York' },
+  Denver: { admin1: 'Colorado', country: 'United States', timeZone: 'America/Denver' },
+  Houston: { admin1: 'Texas', country: 'United States', timeZone: 'America/Chicago' },
+  Cairo: { country: 'Egypt', timeZone: 'Africa/Cairo' },
+  Nairobi: { country: 'Kenya', timeZone: 'Africa/Nairobi' },
+  'Cape Town': { country: 'South Africa', timeZone: 'Africa/Johannesburg' },
+  Lagos: { country: 'Nigeria', timeZone: 'Africa/Lagos' },
+  Johannesburg: { country: 'South Africa', timeZone: 'Africa/Johannesburg' },
+  Casablanca: { country: 'Morocco', timeZone: 'Africa/Casablanca' },
+  'Addis Ababa': { country: 'Ethiopia', timeZone: 'Africa/Addis_Ababa' },
+  Dubai: { country: 'United Arab Emirates', timeZone: 'Asia/Dubai' },
+  'Tel Aviv': { country: 'Israel', timeZone: 'Asia/Jerusalem' },
+  Riyadh: { country: 'Saudi Arabia', timeZone: 'Asia/Riyadh' },
+  Tehran: { country: 'Iran', timeZone: 'Asia/Tehran' },
+  Mumbai: { country: 'India', timeZone: 'Asia/Kolkata' },
+  Delhi: { country: 'India', timeZone: 'Asia/Kolkata' },
+  Beijing: { country: 'China', timeZone: 'Asia/Shanghai' },
+  Shanghai: { country: 'China', timeZone: 'Asia/Shanghai' },
+  Tokyo: { country: 'Japan', timeZone: 'Asia/Tokyo' },
+  Seoul: { country: 'South Korea', timeZone: 'Asia/Seoul' },
+  Singapore: { country: 'Singapore', timeZone: 'Asia/Singapore' },
+  Bangkok: { country: 'Thailand', timeZone: 'Asia/Bangkok' },
+  Jakarta: { country: 'Indonesia', timeZone: 'Asia/Jakarta' },
+  Manila: { country: 'Philippines', timeZone: 'Asia/Manila' },
+  'Hong Kong': { country: 'Hong Kong', timeZone: 'Asia/Hong_Kong' },
+  Karachi: { country: 'Pakistan', timeZone: 'Asia/Karachi' },
+  Dhaka: { country: 'Bangladesh', timeZone: 'Asia/Dhaka' },
+  'Kuala Lumpur': { country: 'Malaysia', timeZone: 'Asia/Kuala_Lumpur' },
+  Melbourne: { admin1: 'Victoria', country: 'Australia', timeZone: 'Australia/Melbourne' },
+  Sydney: { admin1: 'New South Wales', country: 'Australia', timeZone: 'Australia/Sydney' },
+  Auckland: { country: 'New Zealand', timeZone: 'Pacific/Auckland' },
+  Brisbane: { admin1: 'Queensland', country: 'Australia', timeZone: 'Australia/Brisbane' },
+  Perth: { admin1: 'Western Australia', country: 'Australia', timeZone: 'Australia/Perth' },
+  Wellington: { country: 'New Zealand', timeZone: 'Pacific/Auckland' },
+}
+
+function withFacts(city: City): City {
+  const facts = CITY_FACTS[city.name]
+  if (!facts) return city
+  return {
+    ...facts,
+    ...city,
+    admin1: city.admin1 ?? facts.admin1,
+    country: city.country ?? facts.country,
+    timeZone: city.timeZone ?? facts.timeZone,
+  }
 }
 
 export function cityLabel(city: City): string {
   return [city.name, city.admin1, city.country].filter((part, index, values) => part && values.indexOf(part) === index).join(', ')
 }
 
-export const CITIES: City[] = [
+export const CITIES: City[] = ([
   // Europe
   { name: 'London', lat: 51.5074, lon: -0.1278 },
   { name: 'Amsterdam', lat: 52.3676, lon: 4.9041 },
@@ -98,17 +196,12 @@ export const CITIES: City[] = [
   { name: 'Brisbane', lat: -27.4698, lon: 153.0251 },
   { name: 'Perth', lat: -31.9505, lon: 115.8605 },
   { name: 'Wellington', lat: -41.2865, lon: 174.7762 },
-]
+] as City[]).map(withFacts)
 
-export function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
-  const R = 6371
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180
-  const dLon = ((b.lon - a.lon) * Math.PI) / 180
-  const lat1 = (a.lat * Math.PI) / 180
-  const lat2 = (b.lat * Math.PI) / 180
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(h))
-}
+// Moved to eventGeo.mjs so the past-check-in matcher can import it under
+// plain `node --test`, which cannot resolve this file's extensionless
+// imports. Re-exported so every existing caller is unchanged.
+export { haversineKm }
 
 export function findNearestCity(lat: number, lon: number): City {
   return CITIES.reduce((closest, city) => (haversineKm(city, { lat, lon }) < haversineKm(closest, { lat, lon }) ? city : closest))

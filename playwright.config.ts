@@ -1,13 +1,18 @@
 import 'dotenv/config'
 import { defineConfig, devices } from '@playwright/test'
+import { resolvePbUrl } from './e2e/support/pbUrl'
 
 const e2ePort = process.env.PLAYWRIGHT_PORT || '5173'
 const e2eBaseURL = `http://localhost:${e2ePort}`
-// Write-action coverage is deliberately opt-in. It must use an existing,
-// provisioned non-production PocketBase service; Playwright must never create
-// a blank PocketBase data directory (and therefore a new-superuser setup
-// screen) merely to run this repository's normal test suite.
-const writeTestPbUrl = process.env.E2E_WRITE_PB_URL
+// Single source of truth for which PocketBase this run talks to, shared with
+// the preflight check and the specs -- see e2e/support/pbUrl.ts, which also
+// explains why the local default is 8094 and why production is never
+// localhost. E2E_WRITE_PB_URL wins there: write-action coverage is
+// deliberately opt-in and must use an existing, provisioned non-production
+// PocketBase service, because Playwright must never create a blank
+// PocketBase data directory (and therefore a new-superuser setup screen)
+// merely to run this repository's normal test suite.
+const pbUrl = resolvePbUrl()
 
 // STS-333: end-to-end coverage for the anonymous first-plan journey. Runs
 // against a real Vite dev server talking to whatever PocketBase VITE_PB_URL
@@ -56,14 +61,59 @@ export default defineConfig({
   projects: [
     { name: 'setup', testMatch: /global\.setup\.ts/ },
     { name: 'chromium', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
+    {
+      name: 'chromium-mobile',
+      testMatch: /mobile-stability\.spec\.ts/,
+      use: { ...devices['Pixel 7'] },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'webkit-iphone',
+      testMatch: /mobile-stability\.spec\.ts/,
+      use: { ...devices['iPhone 14'] },
+      dependencies: ['setup'],
+    },
   ],
   webServer: {
     command: `npm run dev -- --port ${e2ePort}`,
     url: e2eBaseURL,
-    reuseExistingServer: false,
+    // Local visual work often already has Vite running for browser inspection.
+    // Reuse that exact base URL instead of failing before a spec can run;
+    // CI still owns a clean server lifecycle and must never attach to an
+    // unrelated process left on the runner.
+    reuseExistingServer: process.env.CI !== '1',
     env: {
-      VITE_PB_URL: writeTestPbUrl || process.env.VITE_PB_URL || 'http://localhost:8094',
+      VITE_PB_URL: pbUrl,
       VITE_POLAR_CHECKOUT_URL: process.env.VITE_POLAR_CHECKOUT_URL || `${e2eBaseURL}/fallback-checkout`,
+      // ASV-53: e2e runs with PostHog switched off, pinned here rather than
+      // left to the developer's gitignored .env.
+      //
+      // Why it has to be pinned: FeedbackDock does not just add a property
+      // when a survey is provisioned, it emits a *different event name* --
+      // `survey sent`/`survey dismissed` with $survey_id when the id is set,
+      // and Atlas's own `NPS survey submitted`/`Micro survey dismissed` when
+      // it isn't (src/components/FeedbackDock.tsx). e2e/micro-survey and
+      // e2e/nps-feedback assert the latter, so simply running
+      // scripts/posthog-surveys-setup.mjs and putting the ids in .env turned
+      // 4 passing specs red without a line of app code changing. That is a
+      // suite whose result depends on a file the repo deliberately doesn't
+      // commit, which is the same class of bug as
+      // story-tonight-window-timezone-fallback.
+      //
+      // Why off and not on: with the ids set, exercising the feedback dock
+      // sends real `survey sent`/`survey dismissed` events into the live
+      // project, and with the key set it ships pageviews and exceptions too.
+      // Tests must not write to production analytics. (They only *appear* not
+      // to today because posthog-js's bot filter drops every capture from a
+      // Playwright browser, which is an accident of navigator.webdriver, not a
+      // guarantee.)
+      VITE_POSTHOG_KEY: '',
+      VITE_POSTHOG_NPS_SURVEY_ID: '',
+      VITE_POSTHOG_SURVEY_REMINDER_ID: '',
+      VITE_POSTHOG_SURVEY_TARGET_ID: '',
+      VITE_POSTHOG_POSTPLAN_SURVEY_ID: '',
+      VITE_POSTHOG_ONBOARDING_SURVEY_ID: '',
+      VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID: '',
     },
     timeout: 30_000,
   },

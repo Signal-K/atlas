@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
-import { EVENT_CATEGORIES, categoryForKind } from '../lib/eventCategories'
+import { GUIDE_KIND_IDS, categoryForKind } from '../lib/eventCategories'
 import { isVisibleLocalEvent } from '../lib/eventFilters'
 import { addGetReadyReminder, ensureNotificationPermission, listGetReadyReminders } from '../lib/getReadyReminders'
 import { getEventsInRange, pullSkyEvents } from '../lib/sync'
@@ -15,7 +16,8 @@ import { metaFor } from '../lib/tonightTargets'
 import { getDarknessWindow } from '../lib/darknessWindow'
 import { tonightWindowForTimeZone } from '../lib/timeZone'
 import { eventLookaheadDays } from '../lib/entitlementLimits'
-import { fetchViewingForecast, localDateKey } from '../lib/weather'
+import { eventDisplayInstant, formatZonedTime } from '../lib/eventTiming.mjs'
+import { dayGroupLabel, fetchViewingForecast, localDateKey } from '../lib/weather'
 import { ensurePushSubscription, queueWatchConfirmation } from '../lib/push'
 import { useThemeState } from '../lib/theme'
 import type { CurrentLocation } from '../lib/currentLocation'
@@ -27,30 +29,20 @@ export interface EventsPageProps {
   onLogAttempt: (draft: ObservationDraft) => void
 }
 
-const INSTRUMENTS: Array<{ id: 'eye' | 'binoculars' | 'telescope'; label: string; icon: MobileIconName }> = [
-  { id: 'eye', label: 'Naked eye', icon: 'eye' },
-  { id: 'binoculars', label: 'Binoculars', icon: 'binoculars' },
-  { id: 'telescope', label: 'Telescope', icon: 'telescope' },
+const INSTRUMENTS: Array<{ id: 'eye' | 'binoculars' | 'telescope'; label: string }> = [
+  { id: 'eye', label: 'Naked eye' },
+  { id: 'binoculars', label: 'Binoculars' },
+  { id: 'telescope', label: 'Telescope' },
 ]
-
-function dayGroupLabel(dateKey: string, todayKey: string, timeZone?: string) {
-  if (dateKey === todayKey) return 'Today'
-  const date = new Date(dateKey + 'T12:00:00')
-  const tomorrow = new Date(todayKey + 'T12:00:00')
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  if (localDateKey(date.toISOString(), timeZone) === localDateKey(tomorrow.toISOString(), timeZone)) return 'Tomorrow'
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-}
 
 export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const [theme] = useThemeState()
+  const navigate = useNavigate()
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [taggedIds, setTaggedIds] = useState<Set<string>>(new Set())
   const [reminders, setReminders] = useState(() => listGetReadyReminders())
-  const [category, setCategory] = useState('all')
   const [instrument, setInstrument] = useState<'eye' | 'binoculars' | 'telescope'>('eye')
-  const [view, setView] = useState<'list' | 'calendar'>('list')
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
   const { user } = useAuth()
   const hasPremium = Boolean(user?.entitled)
@@ -64,7 +56,11 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
       const end = new Date(now.getTime() + lookaheadDays * 86_400_000)
       const [upcoming, watched, tagged] = await Promise.all([getEventsInRange(now, end), getWatchlist(), getTaggedEventIds()])
       if (cancelled) return
-      setEvents(upcoming.filter((event) => isVisibleLocalEvent(event, city.lat, city.lon)))
+      const catalogue = upcoming.filter((event) => isVisibleLocalEvent(event, city.lat, city.lon))
+      // Events is a calendar of things that actually happen. Recommendations
+      // and recurring reference guides belong to Tonight/Search, where they
+      // can be useful without pretending to be dated events.
+      setEvents(catalogue.filter((event) => !GUIDE_KIND_IDS.has(event.kind)))
       setWatchlist(watched)
       setTaggedIds(tagged)
     }
@@ -84,16 +80,25 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
 
   const filtered = useMemo(() => {
     if (!events) return []
-    if (category === 'all') return events
-    return events.filter((e) => categoryForKind(e.kind)?.id === category)
-  }, [events, category])
+    return events.filter((e) => {
+      const meta = metaFor(e.kind)
+      if (instrument === 'eye') return meta.nakedEyeVisible
+      if (instrument === 'binoculars') return meta.nakedEyeVisible || meta.binocularFriendly === true
+      return true
+    })
+  }, [events, instrument])
 
   const groups = useMemo(() => {
     if (!filtered.length) return []
     const todayKey = localDateKey(new Date().toISOString(), city.timeZone)
     const byDay = new Map<string, SkyEvent[]>()
     for (const event of filtered) {
-      const key = localDateKey(event.startsAt, city.timeZone)
+      // A multi-night phenomenon is useful on the night it is still active,
+      // rather than disappearing under the date on which its peak began.
+      const when = eventDisplayInstant(event, city.timeZone).toISOString()
+      const key = new Date(event.startsAt) < new Date() && new Date(event.endsAt) >= new Date()
+        ? todayKey
+        : localDateKey(when, city.timeZone)
       if (!byDay.has(key)) byDay.set(key, [])
       byDay.get(key)!.push(event)
     }
@@ -105,38 +110,28 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const instrumentNote = useMemo(() => {
     if (!events) return ''
     const todayKey = localDateKey(new Date().toISOString(), city.timeZone)
-    const tonight = events.filter((e) => localDateKey(e.startsAt, city.timeZone) === todayKey)
-    const reachable = tonight.filter((e) => {
+    const now = new Date()
+    const tonight = events.filter((event) =>
+      localDateKey(event.startsAt, city.timeZone) === todayKey ||
+      (new Date(event.startsAt) < now && new Date(event.endsAt) >= now),
+    )
+    const targetsToday = tonight
+    const reachable = targetsToday.filter((e) => {
       const meta = metaFor(e.kind)
       if (instrument === 'eye') return meta.nakedEyeVisible
-      if (instrument === 'binoculars') return meta.nakedEyeVisible || meta.phoneFriendly
+      if (instrument === 'binoculars') return meta.nakedEyeVisible || meta.binocularFriendly === true
       return true
     })
-    const label = INSTRUMENTS.find((i) => i.id === instrument)?.label ?? ''
-    return `${label} · ${reachable.length} target${reachable.length === 1 ? '' : 's'} reachable tonight from ${city.name}.`
+    if (targetsToday.length === 0) {
+      return `No scheduled events are visible tonight from ${city.name}. Check Tonight for a recommended target.`
+    }
+    return `${reachable.length} of ${targetsToday.length} targets reachable tonight from ${city.name}.`
   }, [events, instrument, city.timeZone, city.name])
-
-  const calendarDays = useMemo(() => {
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = today.getMonth()
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
-    const firstWeekday = new Date(year, month, 1).getDay()
-    const eventDates = new Set((events ?? []).map((e) => localDateKey(e.startsAt, city.timeZone)))
-    const todayKey = localDateKey(today.toISOString(), city.timeZone)
-    const leadingBlanks = Array.from({ length: firstWeekday }, () => null)
-    const days = Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1
-      const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-      return { day, key, hasEvent: eventDates.has(key), isToday: key === todayKey }
-    })
-    return { leadingBlanks, days, monthLabel: today.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) }
-  }, [events, city.timeZone])
 
   async function toggleWatch(event: SkyEvent): Promise<QuickActionOutcome> {
     if (!hasPremium) {
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_events' })
-      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and check-ins stay free.' }
+      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and tonight’s check-ins stay free.' }
     }
     const nowWatching = !isWatching(watchlist, 'target', event.target)
     if (nowWatching) {
@@ -238,82 +233,25 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
 
   return (
     <div className="az-page">
-      <h1 className="az-h1">Events</h1>
-      <p className="az-hero-title">
-        {events ? `${events.length} upcoming` : '—'} · next {lookaheadDays} days
-      </p>
-
-      <div className="az-chip-row" style={{ marginTop: '0.875rem' }}>
-        {INSTRUMENTS.map((opt) => (
-          <button
-            type="button"
-            key={opt.id}
-            className={`az-chip${instrument === opt.id ? ' is-active' : ''}`}
-            onClick={() => setInstrument(opt.id)}
-          >
-            <MobileIcon name={opt.icon} size={15} />
-            {opt.label}
-          </button>
-        ))}
-      </div>
-      <p className="az-muted" style={{ margin: '0.5rem 0 0', fontSize: '0.75rem' }}>
-        {instrumentNote}
-      </p>
-
-      <div className="az-chip-row" style={{ marginTop: '0.875rem' }}>
-        <button type="button" className={`az-chip${category === 'all' ? ' is-active' : ''}`} onClick={() => setCategory('all')}>
-          All
-          <span className="az-chip-count">{events?.length ?? 0}</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
+        <div>
+          <h1 className="az-h1">Events</h1>
+          <p className="az-hero-title">{events ? `${filtered.length} scheduled event${filtered.length === 1 ? '' : 's'}` : 'Finding scheduled events…'}</p>
+        </div>
+        <button type="button" className="az-text-btn" onClick={() => navigate('/app/calendar')}>
+          Calendar
         </button>
-        {EVENT_CATEGORIES.map((c) => (
-          <button type="button" key={c.id} className={`az-chip${category === c.id ? ' is-active' : ''}`} onClick={() => setCategory(c.id)}>
-            <MobileIcon name={c.icon as MobileIconName} size={14} />
-            {c.label}
-            <span className="az-chip-count">{events?.filter((e) => categoryForKind(e.kind)?.id === c.id).length ?? 0}</span>
-          </button>
-        ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem' }}>
-        <div className="az-seg">
-          <button type="button" className={`az-seg-btn${view === 'list' ? ' is-active' : ''}`} onClick={() => setView('list')}>
-            List
-          </button>
-          <button type="button" className={`az-seg-btn${view === 'calendar' ? ' is-active' : ''}`} onClick={() => setView('calendar')}>
-            Calendar
-          </button>
-        </div>
-        <span className="az-kicker">{filtered.length} SHOWN</span>
-      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.875rem', color: 'var(--muted)', fontSize: '0.8125rem' }}>
+        <span>Viewing with</span>
+        <select value={instrument} onChange={(event) => setInstrument(event.target.value as typeof instrument)} aria-label="Viewing equipment">
+          {INSTRUMENTS.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+        </select>
+        <span aria-live="polite">· {instrumentNote}</span>
+      </label>
 
-      {view === 'calendar' && (
-        <div className="az-calendar">
-          <div className="az-calendar-head">
-            <strong>{calendarDays.monthLabel}</strong>
-            <span className="az-kicker">{city.name.toUpperCase()}</span>
-          </div>
-          <div className="az-calendar-grid">
-            {calendarDays.leadingBlanks.map((_, i) => (
-              <div key={`b${i}`} className="az-calendar-cell is-empty" />
-            ))}
-            {calendarDays.days.map((d) => (
-              <div key={d.key} className={`az-calendar-cell${d.hasEvent ? ' has-event' : ''}${d.isToday ? ' is-today' : ''}`}>
-                {d.day}
-                {d.hasEvent && !d.isToday && <span className="az-cal-dot" style={{ background: 'var(--az-violet)' }} />}
-              </div>
-            ))}
-          </div>
-          <div className="az-calendar-legend">
-            <span>
-              <i style={{ background: 'var(--az-violet)' }} />
-              EVENT
-            </span>
-          </div>
-        </div>
-      )}
-
-      {view === 'list' &&
-        groups.map((group) => (
+      {groups.map((group) => (
           <div key={group.key} style={{ marginTop: '1.125rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.5rem' }}>
               <span className="az-kicker">{group.label}</span>
@@ -330,7 +268,9 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
                     <span className="az-row-title">{event.title}</span>
                   </span>
                   <span className="az-row-trail">
-                    <span className="az-row-time">{new Date(event.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                    <span className="az-row-time">
+                      {formatZonedTime(eventDisplayInstant(event, city.timeZone).toISOString(), city.timeZone, false)}
+                    </span>
                   </span>
                   <span className="az-row-chevron">
                     <MobileIcon name="chevron" size={14} />

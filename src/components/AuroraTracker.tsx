@@ -5,6 +5,7 @@ import { auroraAlertsEnabled, auroraCallLabel, auroraSnapshot, setAuroraAlertsEn
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { SkyEvent } from '../lib/db'
+import { trackEvent } from '../lib/analytics'
 
 export function AuroraTracker({ location }: { location: CurrentLocation }) {
   const { lat: locationLat, lon: locationLon } = location
@@ -25,8 +26,11 @@ export function AuroraTracker({ location }: { location: CurrentLocation }) {
           setEvents(upcoming)
           setSnapshot(auroraSnapshot(upcoming, { lat: locationLat, lon: locationLon }))
         }
-      } catch {
-        if (!cancelled) setEvents(null)
+      } catch (err) {
+        if (!cancelled) {
+          setEvents(null)
+          trackEvent('sync_failed', { stage: 'aurora_tracker_events', error: String(err) })
+        }
       }
     }
     load()
@@ -67,8 +71,9 @@ export function AuroraTracker({ location }: { location: CurrentLocation }) {
         }
       }
       setMessage(granted ? 'Alerts enabled — Atlas will check the next visible forecast.' : 'Alerts saved, but browser notifications are not enabled.')
-    } catch {
+    } catch (err) {
       setMessage('Could not enable alerts. Try again from this device.')
+      trackEvent('aurora_alerts_toggle_failed', { error: String(err) })
     } finally {
       setBusy(false)
     }

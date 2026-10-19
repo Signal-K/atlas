@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
+import { seedOnboardingComplete, seedSignedInUser } from './support/auth'
 
 const CAPTURE_DIR = path.join(process.cwd(), 'test-results', 'product-screenshots')
 
@@ -11,8 +12,8 @@ test.beforeEach(async ({ page }) => {
   // Location moved from the landing page into OnboardingFlow's own
   // "location" step -- seed it directly and skip onboarding so these
   // screenshots keep capturing the same screens as before that move.
+  await seedOnboardingComplete(page)
   await page.addInitScript(() => {
-    window.localStorage.setItem('atlas-onboarding-flow-complete', '1')
     window.localStorage.setItem('atlas-manual-location', JSON.stringify({ name: 'London', lat: 51.5074, lon: -0.1278 }))
   })
 })
@@ -23,21 +24,17 @@ test('captures product screenshots for the Atlas state-of-product doc', async ({
   await page.setViewportSize({ width: 1440, height: 1200 })
   await page.goto('/')
   await prepareScreenshotMode(page)
-  await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'There is something worth going outside for.' })).toBeVisible()
   await capture(page, '01-landing-location.png')
 
-  await page.getByRole('button', { name: 'Get started' }).click()
-  await expect(page.getByRole('heading', { name: 'Tonight near London' })).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Start guided tour' }).click()
+  await expect(page.getByRole('heading', { name: 'One useful plan. When, where, what.' })).toBeVisible({ timeout: 15_000 })
   await capture(page, '02-tonight-feed.png')
 
-  await page.locator('.tonight-target-main').first().click()
-  const equipmentPrompt = page.locator('.equipment-prompt')
-  if (await equipmentPrompt.isVisible().catch(() => false)) {
-    await equipmentPrompt.getByRole('button', { name: 'Skip for now' }).click()
-  }
-  const firstPlan = page.locator('.tonight-target-plan').first()
-  await expect(firstPlan).toBeVisible()
-  await expect(firstPlan.locator('.camera-preset-card')).toBeVisible()
+  await page.getByRole('button', { name: 'Choose Full Moon' }).click()
+  const firstPlan = page.locator('.az-overlay')
+  await expect(firstPlan.getByRole('heading', { name: 'Full Moon' })).toBeVisible()
   await capture(page, '03-first-plan-expanded.png')
 
   // The old Today hub (and its always-on full sky map) was removed for
@@ -48,9 +45,10 @@ test('captures product screenshots for the Atlas state-of-product doc', async ({
   // that shot is wanted back later.
   await page.setViewportSize({ width: 390, height: 844 })
   await mockDeviceOrientation(page)
+  await seedSignedInUser(page, { entitled: false })
   await page.goto('/app/events')
   await prepareScreenshotMode(page)
-  await expect(page.getByRole('heading', { name: "Tonight's sky, reported." })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
   await capture(page, '06-mobile-events-hero.png')
 })
 
@@ -174,4 +172,3 @@ async function mockDeviceOrientation(page: Page) {
     })
   })
 }
-

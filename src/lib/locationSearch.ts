@@ -1,4 +1,6 @@
 import { CITIES, cityLabel, type City } from './cities'
+import { mergeLocationResults } from './locationRank.mjs'
+import { trackEvent } from './analytics'
 
 interface GeocodingResult {
   id?: number
@@ -8,6 +10,7 @@ interface GeocodingResult {
   admin1?: string
   country?: string
   timezone?: string
+  population?: number
 }
 
 export function curatedLocationMatches(query: string, limit = 6): City[] {
@@ -27,10 +30,13 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
   url.searchParams.set('format', 'json')
 
   const response = await fetch(url, { signal })
-  if (!response.ok) throw new Error(`Location search failed: ${response.status}`)
+  if (!response.ok) {
+    trackEvent('location_search_performed', { resultCount: 0, error: `status_${response.status}` })
+    throw new Error(`Location search failed: ${response.status}`)
+  }
   const payload = (await response.json()) as { results?: GeocodingResult[] }
 
-  return (payload.results ?? []).flatMap((result) => {
+  const remote = (payload.results ?? []).flatMap((result) => {
     if (!result.name || !Number.isFinite(result.latitude) || !Number.isFinite(result.longitude)) return []
     return [{
       name: result.name,
@@ -39,6 +45,10 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
       admin1: result.admin1,
       country: result.country,
       timeZone: result.timezone,
+      population: result.population,
     }]
   })
+  const results = mergeLocationResults(normalized, CITIES, remote)
+  trackEvent('location_search_performed', { resultCount: results.length })
+  return results
 }

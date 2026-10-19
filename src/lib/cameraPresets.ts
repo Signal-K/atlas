@@ -5,10 +5,40 @@
 // still render as-is via CameraRecipe.tsx; this module adds a parallel,
 // data-driven layer that user-imported and community presets also live in.
 import { pb } from './pocketbase'
-import { db, type CameraPreset, type CameraPresetSettings } from './db'
+import {
+  db,
+  CAMERA_PRESET_SCHEMA_VERSION,
+  type CameraPreset,
+  type CameraPresetSettings,
+  type LegacyCameraPresetSettingsV1,
+} from './db'
 import { CAMERA_RECIPES, deviceRecipeFor, type RecipeKey } from './cameraRecipes'
 import { CAMERA_PROFILES, type DeviceId } from './cameraProfiles'
 import { communityPresetsForTarget } from './communityPresets'
+
+// Normalizes a settings object of unknown vintage to the current v2 shape.
+// Handles: already-v2 (passthrough), pre-v2 flat records (Dexie rows saved
+// before the KES-296 split, or a re-imported .atlas-preset.json bundle), and
+// missing/undefined settings.
+export function normalizePresetSettings(raw: CameraPresetSettings | LegacyCameraPresetSettingsV1 | null | undefined): CameraPresetSettings {
+  if (!raw) return { schemaVersion: CAMERA_PRESET_SCHEMA_VERSION }
+  if ('schemaVersion' in raw && raw.schemaVersion === CAMERA_PRESET_SCHEMA_VERSION) return raw
+
+  const legacy = raw as LegacyCameraPresetSettingsV1
+  const capture = {
+    mode: legacy.mode,
+    lens: legacy.lens,
+    iso: legacy.iso,
+    whiteBalanceKelvin: legacy.whiteBalanceKelvin,
+    exposureSec: legacy.exposureSec,
+  }
+  const hasCapture = Object.values(capture).some((value) => value !== undefined)
+  return {
+    schemaVersion: CAMERA_PRESET_SCHEMA_VERSION,
+    capture: hasCapture ? capture : undefined,
+    look: legacy.filters ? { filters: legacy.filters } : undefined,
+  }
+}
 
 export function builtinPresetsForRecipe(recipeKey: RecipeKey): CameraPreset[] {
   const recipe = CAMERA_RECIPES[recipeKey]
@@ -21,8 +51,11 @@ export function builtinPresetsForRecipe(recipeKey: RecipeKey): CameraPreset[] {
     targetKey: recipeKey,
     name: `${recipe.title} (${CAMERA_PROFILES[device].name})`,
     settings: {
-      mode: deviceRecipe.mode,
-      lens: deviceRecipe.lens,
+      schemaVersion: CAMERA_PRESET_SCHEMA_VERSION,
+      capture: {
+        mode: deviceRecipe.mode,
+        lens: deviceRecipe.lens,
+      },
     },
     source: 'builtin' as const,
     notes: `${deviceRecipe.exposure} — ${deviceRecipe.focus}`,
@@ -31,8 +64,16 @@ export function builtinPresetsForRecipe(recipeKey: RecipeKey): CameraPreset[] {
   })
 }
 
+// Dexie rows saved before the KES-296 schema split are still on disk with
+// the old flat settings shape -- normalize on read so existing local presets
+// keep rendering instead of silently losing their capture/look fields.
+function normalizePreset(preset: CameraPreset): CameraPreset {
+  return { ...preset, settings: normalizePresetSettings(preset.settings) }
+}
+
 export async function listPresetsForUser(userId: string): Promise<CameraPreset[]> {
-  return db.cameraPresets.where('userId').equals(userId).toArray()
+  const presets = await db.cameraPresets.where('userId').equals(userId).toArray()
+  return presets.map(normalizePreset)
 }
 
 export async function listPresetsForTarget(userId: string, targetKey: RecipeKey): Promise<CameraPreset[]> {
@@ -40,7 +81,7 @@ export async function listPresetsForTarget(userId: string, targetKey: RecipeKey)
     Promise.resolve(builtinPresetsForRecipe(targetKey)),
     db.cameraPresets.where({ userId, targetKey }).toArray(),
   ])
-  return [...userPresets, ...communityPresetsForTarget(targetKey), ...builtin]
+  return [...userPresets.map(normalizePreset), ...communityPresetsForTarget(targetKey), ...builtin]
 }
 
 const SOURCE_RANK: Record<CameraPreset['source'], number> = {
@@ -126,7 +167,7 @@ export function parseNothingPresetFile(fileContents: string, device: DeviceId): 
       throw new PresetImportError(`Entry ${index} is not an object.`)
     }
     const record = raw as Record<string, unknown>
-    const settings: CameraPresetSettings = {
+    const legacy: LegacyCameraPresetSettingsV1 = {
       mode: typeof record.mode === 'string' ? record.mode : undefined,
       lens: typeof record.lens === 'string' ? record.lens : undefined,
       iso: typeof record.iso === 'number' ? record.iso : undefined,
@@ -134,11 +175,11 @@ export function parseNothingPresetFile(fileContents: string, device: DeviceId): 
       exposureSec: typeof record.exposureSec === 'number' ? record.exposureSec : typeof record.exposure_sec === 'number' ? record.exposure_sec : undefined,
       filters: Array.isArray(record.filters) ? record.filters.filter((f): f is string => typeof f === 'string') : undefined,
     }
-    if (Object.values(settings).every((value) => value === undefined)) {
+    if (Object.values(legacy).every((value) => value === undefined)) {
       throw new PresetImportError(`Entry ${index} has none of the recognised preset fields (mode, lens, iso, whiteBalanceKelvin, exposureSec, filters).`)
     }
     void device
-    return settings
+    return normalizePresetSettings(legacy)
   })
 }
 

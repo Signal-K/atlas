@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
+import { TrainingPathCard } from '../components/TrainingPathCard'
+import { TelescopeSaturnTasksCard } from '../components/TelescopeSaturnTasksCard'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { getTonightPlan } from '../lib/tonightTargets'
 import { tonightRatingLabel } from '../lib/tonightScore'
@@ -25,23 +28,77 @@ import { db } from '../lib/db'
 import { useAuth } from '../lib/auth'
 import { useThemeState } from '../lib/theme'
 import { trackEvent } from '../lib/analytics'
+import { recordLocalTargetTap } from '../lib/firstPlanJourney'
+import { completeFirstTour, getFirstTourCompletion, tourProperties } from '../lib/tourProgress'
+import { FIRST_TOUR_BADGE, pickNextTourTarget, type FirstTourCompletion } from '../lib/tourJourney.mjs'
+import { dayGroupLabel, localDateKey } from '../lib/weather'
+import { buildDailyObservingTargets } from '../lib/visiblePlanets'
+import { eventDisplayInstant, formatZonedTime, timeZoneAbbreviation } from '../lib/eventTiming.mjs'
+import { getDarknessWindow } from '../lib/darknessWindow'
+import { tonightWindowForTimeZone } from '../lib/timeZone'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { ObservationDraft } from '../lib/observationDraft'
 import type { ObservationLogEntry, SkyEvent } from '../lib/db'
-import type { TonightPlan } from '../lib/tonightTargets'
+import type { TonightPlan, TonightTarget } from '../lib/tonightTargets'
 
 const LOCAL_USER_ID = 'local'
+const HUB_SNAPSHOT_MS = 5 * 60_000
+
+interface HubSnapshot {
+  key: string
+  plan: TonightPlan | null
+  events: SkyEvent[]
+  savedAt: number
+}
+
+let hubSnapshot: HubSnapshot | null = null
+
+function hubCacheKey(city: CurrentLocation) {
+  return `${city.lat.toFixed(2)}:${city.lon.toFixed(2)}:${city.timeZone ?? ''}:${city.source}`
+}
+
+function readHubSnapshot(city: CurrentLocation): HubSnapshot | null {
+  if (!hubSnapshot || hubSnapshot.key !== hubCacheKey(city)) return null
+  if (Date.now() - hubSnapshot.savedAt > HUB_SNAPSHOT_MS) return null
+  return hubSnapshot
+}
+
+function rememberHub(city: CurrentLocation, plan: TonightPlan | null, events: SkyEvent[]) {
+  hubSnapshot = { key: hubCacheKey(city), plan, events, savedAt: Date.now() }
+}
+
+// Filter-chip + day-grouped upcoming list, ported from the Claude Design
+// "Minimal Atlas with events" mockup's FocusScreen -- replaces the old
+// pre-filtered "On your watchlist" list with one feed that covers all four
+// of the mockup's views (All/Tonight/This week/Watching) against the same
+// 14-day window Hub already fetches for the tonight plan.
+type HubFilterKey = 'all' | 'tonight' | 'week' | 'watching'
+const HUB_FILTERS: Array<{ key: HubFilterKey; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'tonight', label: 'Tonight' },
+  { key: 'week', label: 'This week' },
+  { key: 'watching', label: 'Watching' },
+]
 
 export interface HubPageProps {
   city: CurrentLocation
+  // Opens the shared location sheet. Starting with a choice rather than an
+  // immediate browser-permission prompt lets a first-time visitor search for
+  // a city, use their device, or simply return to the global sky.
+  onOpenLocation?: () => void
   onLogAttempt: (draft: ObservationDraft) => void
 }
 
-export function HubPage({ city, onLogAttempt }: HubPageProps) {
+export function HubPage({ city, onLogAttempt, onOpenLocation }: HubPageProps) {
+  const hasLocation = city.source !== 'default'
   const [theme] = useThemeState()
   const { user } = useAuth()
-  const [plan, setPlan] = useState<TonightPlan | null>(null)
-  const [events, setEvents] = useState<SkyEvent[]>([])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sharedTour = searchParams.get('shared') === '1'
+  const sharedTargetId = searchParams.get('target')
+  const openingSnapshot = readHubSnapshot(city)
+  const [plan, setPlan] = useState<TonightPlan | null>(openingSnapshot?.plan ?? null)
+  const [events, setEvents] = useState<SkyEvent[]>(openingSnapshot?.events ?? [])
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [recentEntries, setRecentEntries] = useState<ObservationLogEntry[]>([])
   const [topDiscovery, setTopDiscovery] = useState<Discovery | null>(null)
@@ -49,72 +106,212 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
   const [campaignsDueSoon, setCampaignsDueSoon] = useState<SkyEvent[]>([])
   const [citizenScienceBadges, setCitizenScienceBadges] = useState<CitizenScienceBadge[]>([])
+  const [loadError, setLoadError] = useState(false)
+  const [hubLoading, setHubLoading] = useState(!openingSnapshot)
+  const [retryTick, setRetryTick] = useState(0)
+  const [upcomingFilter, setUpcomingFilter] = useState<HubFilterKey>('all')
+  const [tourActive, setTourActive] = useState(() => searchParams.get('tour') === 'tonight')
+  const [tourTargetId, setTourTargetId] = useState<string | null>(sharedTargetId)
+  const [tourCompletion, setTourCompletion] = useState<FirstTourCompletion | null>(
+    () => getFirstTourCompletion(user?.firstTourCompletedAt),
+  )
+  const [tourCelebration, setTourCelebration] = useState<{ completion: FirstTourCompletion; next: TonightTarget | null } | null>(null)
+  const tourStartedRef = useRef(false)
+  const tourStepRefs = useRef(new Set<string>())
+  const tourCompletedRef = useRef(Boolean(tourCompletion))
+
+  useEffect(() => {
+    const accountCompletion = getFirstTourCompletion(user?.firstTourCompletedAt)
+    if (accountCompletion) {
+      setTourCompletion(accountCompletion)
+      tourCompletedRef.current = true
+    }
+  }, [user?.firstTourCompletedAt])
+
+  useEffect(() => {
+    if (!tourActive || tourStartedRef.current) return
+    tourStartedRef.current = true
+    const properties = tourProperties(hasLocation, Boolean(user))
+    trackEvent('Tour started', { ...properties, source: sharedTour ? 'shared_link' : 'hub' })
+    trackEvent('Tour step viewed', { ...properties, step_id: 'entry' })
+    if (sharedTour) trackEvent('Tour share opened', { ...properties, target_id: sharedTargetId })
+  }, [hasLocation, sharedTargetId, sharedTour, tourActive, user])
+
+  useEffect(() => {
+    if (!tourActive || !hasLocation || tourStepRefs.current.has('where')) return
+    tourStepRefs.current.add('where')
+    trackEvent('Tour step viewed', { ...tourProperties(true, Boolean(user)), step_id: 'where' })
+  }, [hasLocation, tourActive, user])
+
+  useEffect(() => {
+    if (!tourActive || !plan || tourStepRefs.current.has('when')) return
+    tourStepRefs.current.add('when')
+    trackEvent('Tour step viewed', { ...tourProperties(hasLocation, Boolean(user)), step_id: 'when' })
+  }, [hasLocation, plan, tourActive, user])
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      if (!tourActive || !tourStartedRef.current || tourCompletedRef.current) return
+      trackEvent('Tour abandoned', {
+        ...tourProperties(hasLocation, Boolean(user)),
+        last_step_id: tourTargetId ? 'what' : plan ? 'when' : hasLocation ? 'where' : 'entry',
+      })
+    }
+    window.addEventListener('pagehide', handlePageHide)
+    return () => window.removeEventListener('pagehide', handlePageHide)
+  }, [hasLocation, plan, tourActive, tourTargetId, user])
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      await pullSkyEvents()
-      const now = new Date()
-      const end = new Date(now.getTime() + 14 * 86_400_000)
-      const [tonightPlan, upcoming, watched] = await Promise.all([
-        getTonightPlan(city.lat, city.lon, now, city.timeZone),
-        getEventsInRange(now, end),
-        getWatchlist(),
-      ])
-      if (cancelled) return
-      setPlan(tonightPlan)
-      setEvents(upcoming)
-      setWatchlist(watched)
+      // Coming back to the hub used to remount onto "Loading tonight…" for
+      // the whole catalogue pull. A snapshot from the last few minutes paints
+      // immediately; the pull still refreshes it in the background.
+      const cachedView = readHubSnapshot(city)
+      if (!cachedView) setHubLoading(true)
+      setLoadError(false)
+      trackEvent('Tonight plan generation started', { source: 'mobile_hub' })
+      try {
+        const now = new Date()
+        const end = new Date(now.getTime() + 14 * 86_400_000)
+        const cached = await getEventsInRange(now, end)
+        if (!cancelled && cached.length > 0 && !cachedView) setEvents(withObservingTargets(cached, city, now))
+        // With no location there is no "tonight over you" to compute -- and
+        // computing one for a placeholder city would present someone else's
+        // sky as theirs. Show the global event list only.
+        if (!hasLocation) {
+          const watched = await getWatchlist()
+          if (cancelled) return
+          setPlan(null)
+          setEvents(cached)
+          setWatchlist(watched)
+          rememberHub(city, null, cached)
+          await loadContributions(now)
+          setHubLoading(false)
+          void refreshCatalogue()
+          return
+        }
+        const [tonightPlan, watched] = await Promise.all([
+          getTonightPlan(city.lat, city.lon, now, city.timeZone),
+          getWatchlist(),
+        ])
+        if (cancelled) return
+        const shown = withObservingTargets(cached, city, now)
+        setPlan(tonightPlan)
+        setEvents(shown)
+        setWatchlist(watched)
+        rememberHub(city, tonightPlan, shown)
+        setHubLoading(false)
+        void refreshCatalogue()
+        // Canonical Atlas "value moment" event (ASV-23): a Tonight plan
+        // generated with a real location set. city/rating ride along so
+        // funnels and insights can segment without a second lookup.
+        const planProperties = {
+          source: 'mobile_hub',
+          targetCount: tonightPlan.targets.length,
+          city: city.name,
+          rating: tonightPlan.rating,
+          hasLocation: city.source !== 'default',
+        }
+        trackEvent('Tonight plan generation succeeded', planProperties)
+        // Alias kept for the PostHog replay event trigger, which is still
+        // configured as "Generated tonight plan" (the pre-rebuild name).
+        trackEvent('Generated tonight plan', planProperties)
 
-      const scopeId = user?.id ?? LOCAL_USER_ID
-      const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
-      if (!cancelled) {
-        setRecentEntries(entries.filter((e) => e.photo).slice(0, 3))
-        setCitizenScienceBadges(citizenScienceBadgesFromObservations(entries))
+        await loadContributions(now)
+      } catch (err) {
+        // Without this, a single rejected fetch (flaky signal, which is the
+        // norm for this app's actual outdoor/nighttime use case) left the
+        // page stuck on a bare "Loading tonight..." string forever, with no
+        // error, no retry, and no analytics signal that it had happened.
+        if (cancelled) return
+        setLoadError(true)
+        setHubLoading(false)
+        trackEvent('Tonight plan generation failed', { source: 'mobile_hub', error: String(err) })
+        return
       }
-
-      // Signed-up campaigns that are ongoing or starting within 48h -- the
-      // only reason a tagged event needs a Hub slot at all, per eventTags.ts.
-      const dueSoon = await getSignedUpEventsDueSoon(now)
-      const dueSoonCampaigns = dueSoon.filter((e) => categoryForKind(e.kind)?.id === 'citizen-science')
-      if (!cancelled) setCampaignsDueSoon(dueSoonCampaigns)
 
       try {
         const discoveries = await listDiscoveries()
         const weekAgo = Date.now() - 7 * 86_400_000
         const best = discoveries.filter((d) => new Date(d.created).getTime() >= weekAgo).sort((a, b) => b.voteCount - a.voteCount)[0]
         if (!cancelled) setTopDiscovery(best ?? null)
-      } catch {
+      } catch (err) {
+        if (!cancelled) trackEvent('sync_failed', { stage: 'community_feed_discoveries', error: String(err) })
         // Community feed is best-effort context on Hub -- never blocks the page.
       }
+      if (!cancelled) setHubLoading(false)
     }
+
+    async function loadContributions(now: Date) {
+      const scopeId = user?.id ?? LOCAL_USER_ID
+      const entries = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
+      if (cancelled) return
+      setRecentEntries(entries.filter((entry) => entry.photo).slice(0, 3))
+      setCitizenScienceBadges(citizenScienceBadgesFromObservations(entries))
+      const dueSoon = await getSignedUpEventsDueSoon(now)
+      const dueSoonCampaigns = dueSoon.filter((event) => categoryForKind(event.kind)?.id === 'citizen-science')
+      if (!cancelled) setCampaignsDueSoon(dueSoonCampaigns)
+    }
+
+    async function refreshCatalogue() {
+      try {
+        await pullSkyEvents()
+        if (cancelled) return
+        const now = new Date()
+        const end = new Date(now.getTime() + 14 * 86_400_000)
+        const upcoming = await getEventsInRange(now, end)
+        if (cancelled) return
+        const shown = withObservingTargets(upcoming, city, now)
+        setEvents(shown)
+        if (!hasLocation) {
+          rememberHub(city, null, shown)
+          return
+        }
+        const tonightPlan = await getTonightPlan(city.lat, city.lon, now, city.timeZone)
+        if (cancelled) return
+        setPlan(tonightPlan)
+        rememberHub(city, tonightPlan, shown)
+      } catch (err) {
+        if (!cancelled) trackEvent('sync_failed', { stage: 'hub_catalogue_refresh', error: String(err) })
+      }
+    }
+
     load()
     return () => {
       cancelled = true
     }
-  }, [city.lat, city.lon, city.timeZone, user?.id])
+    // city.name/city.source are read only inside the analytics call and
+    // always change in lockstep with city.lat/lon (same CurrentLocation
+    // object) -- depending on them too would just duplicate this effect's
+    // existing re-run trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city.lat, city.lon, city.timeZone, hasLocation, user?.id, retryTick])
 
   async function toggleWatch(target: string): Promise<QuickActionOutcome> {
     if (!user?.entitled) {
       trackEvent('Blocked free plan add', { action: 'watch', source: 'mobile_hub' })
-      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and check-ins stay free.' }
+      return { watching: false, message: 'Sky Pass is required to add events to a plan. Browsing and tonight’s check-ins stay free.' }
     }
     const nowWatching = !isWatching(watchlist, 'target', target)
     if (nowWatching) {
       await addToWatchlist('target', target)
+      trackEvent('watchlist_item_added', { source: 'mobile_hub' })
       let message = 'Watching. Atlas will notify you about good viewing windows.'
       try {
         const pushReady = await ensurePushSubscription()
         const confirmed = pushReady ? await queueWatchConfirmation({ id: target, title: target }) : false
         if (confirmed) message = 'Watching. A confirmation notification is queued.'
         else if (!pushReady) message = 'Watching saved, but push is not enabled. Enable it in Profile to receive notifications.'
-      } catch {
+      } catch (err) {
         message = 'Watching saved, but push setup needs attention in Profile.'
+        trackEvent('sync_failed', { stage: 'watch_confirmation_push', error: String(err) })
       }
       setWatchlist(await getWatchlist())
       return { watching: true, message }
     }
     await removeFromWatchlist('target', target)
+    trackEvent('watchlist_item_removed', { source: 'mobile_hub' })
     setWatchlist(await getWatchlist())
     return { watching: false, message: 'Removed from your watchlist.' }
   }
@@ -137,11 +334,19 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     return { reminderActive: true, message: hasPermission ? 'Reminder armed.' : 'Saved in Atlas. Browser notifications are not enabled.' }
   }
 
+  function darknessFor(event: SkyEvent) {
+    const when = eventDisplayInstant(event, city.timeZone)
+    const { start, end } = tonightWindowForTimeZone(when, city.timeZone)
+    return getDarknessWindow(city.lat, city.lon, start, end)
+  }
+
   function openEventDetail(event: SkyEvent) {
     if (!plan) return
     const target = plan.targets.find((t) => t.eventId === event.id) ?? syntheticTarget(event)
-    const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, event, city), plan.todayAdvisory)
-    openSubject(subject, event)
+    const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, darknessFor(event), event, city), plan.todayAdvisory)
+    const isTourTarget = tourActive
+    if (isTourTarget) selectTourTarget(target)
+    openSubject(subject, event, 'list_item', isTourTarget)
   }
 
   function openHeroTarget() {
@@ -149,10 +354,58 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     const target = plan.targets[0]
     const sourceEvent = events.find((e) => e.id === target.eventId)
     const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, sourceEvent, city), plan.todayAdvisory)
-    openSubject(subject, sourceEvent)
+    if (tourActive) selectTourTarget(target)
+    openSubject(subject, sourceEvent, 'hero_target', tourActive)
   }
 
-  function openSubject(subject: EntryDetailSubject, sourceEvent?: SkyEvent) {
+  function selectTourTarget(target: TonightTarget) {
+    setTourTargetId(target.eventId)
+    if (!tourStepRefs.current.has('what')) {
+      tourStepRefs.current.add('what')
+      trackEvent('Tour step viewed', {
+        ...tourProperties(hasLocation, Boolean(user)),
+        step_id: 'what',
+        target_id: target.eventId,
+      })
+    }
+    recordLocalTargetTap(target, 'mobile_hub', city.name)
+  }
+
+  async function finishTour(targetId: string, targetTitle: string) {
+    if (!plan || !hasLocation) return
+    const result = await completeFirstTour({
+      targetId,
+      targetTitle,
+      locationPresent: hasLocation,
+      authenticated: Boolean(user),
+      accountCompletedAt: user?.firstTourCompletedAt,
+    })
+    tourCompletedRef.current = true
+    setTourCompletion(result.completion)
+    setEntryDetail(null)
+    const generatedNext = buildDailyObservingTargets(
+      new Date(Date.now() + 86_400_000),
+      14,
+      city.lat,
+      city.lon,
+    )
+      .map((event) => syntheticTarget(event))
+      .find((target) => target.eventId !== targetId) ?? null
+    const next = pickNextTourTarget(plan.targets, targetId) ?? generatedNext
+    trackEvent('Return nudge shown', {
+      ...tourProperties(hasLocation, Boolean(user)),
+      target_id: next?.eventId,
+    })
+    setTourCelebration({ completion: result.completion, next })
+  }
+
+  function openSubject(
+    subject: EntryDetailSubject,
+    sourceEvent?: SkyEvent,
+    source: 'list_item' | 'hero_target' | 'subject' = 'subject',
+    isTourTarget = false,
+  ) {
+    trackEvent('detail_sheet_opened', { source, kind: sourceEvent?.kind })
     const reminder = sourceEvent ? reminders.find((r) => r.eventId === sourceEvent.id) : undefined
     setEntryDetail({
       subject,
@@ -161,8 +414,73 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         onToggleWatch: subject.sourceEvent ? () => toggleWatch(subject.sourceEvent!.target) : undefined,
         reminderActive: !!reminder,
         onRemind: sourceEvent ? () => addReminder(sourceEvent) : undefined,
+        tourCompletion: isTourTarget && plan && hasLocation
+          ? {
+              whenLabel: timeLabel(subject.bestTimeIso, city.timeZone),
+              whereLabel: city.name,
+              onComplete: () => finishTour(subject.id, subject.title),
+            }
+          : undefined,
       },
     })
+  }
+
+  function startTour() {
+    setTourActive(true)
+    const next = new URLSearchParams(searchParams)
+    next.set('tour', 'tonight')
+    setSearchParams(next, { replace: true })
+  }
+
+  function openLocationSetup(source: 'global_context' | 'guided_tour') {
+    trackEvent('Location setup opened', { source, account_state: user ? 'authed' : 'guest' })
+    onOpenLocation?.()
+  }
+
+  function leaveTour(exitMethod: 'back_to_upcoming' | 'keep_global_browsing' = 'back_to_upcoming') {
+    if (!tourCompletedRef.current) {
+      trackEvent('Tour abandoned', {
+        ...tourProperties(hasLocation, Boolean(user)),
+        last_step_id: tourTargetId ? 'what' : plan ? 'when' : hasLocation ? 'where' : 'entry',
+        exit_method: exitMethod,
+      })
+    }
+    setTourActive(false)
+    const next = new URLSearchParams(searchParams)
+    next.delete('tour')
+    next.delete('shared')
+    next.delete('target')
+    setSearchParams(next, { replace: true })
+  }
+
+  async function shareTour(completion: FirstTourCompletion) {
+    const url = new URL('/app/hub', window.location.origin)
+    url.searchParams.set('tour', 'tonight')
+    url.searchParams.set('shared', '1')
+    url.searchParams.set('target', completion.targetId)
+    const shareData = {
+      title: 'A guided look with Atlas',
+      text: `Try this guided look at ${completion.targetTitle}.`,
+      url: url.toString(),
+    }
+    const shareMethod = typeof navigator.share === 'function' ? 'native' : 'clipboard'
+    if (shareMethod === 'native') await navigator.share(shareData)
+    else await navigator.clipboard.writeText(url.toString())
+    trackEvent('Tour shared', {
+      ...tourProperties(hasLocation, Boolean(user)),
+      target_id: completion.targetId,
+      method: shareMethod,
+    })
+  }
+
+  function openNextTour(target: TonightTarget) {
+    if (!plan) return
+    setTourCelebration(null)
+    setTourActive(true)
+    const sourceEvent = events.find((event) => event.id === target.eventId)
+    const subject = buildEventDetail(detailInputFromTonightTarget(target, plan.moonIlluminationPct, plan.darknessWindow, sourceEvent, city), plan.todayAdvisory)
+    selectTourTarget(target)
+    openSubject(subject, sourceEvent, 'subject', true)
   }
 
   function syntheticTarget(event: SkyEvent) {
@@ -170,7 +488,7 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
       eventId: event.id,
       title: event.title,
       kind: event.kind,
-      bestTime: event.startsAt,
+      bestTime: eventDisplayInstant(event, city.timeZone).toISOString(),
       difficulty: 'moderate' as const,
       phoneFriendly: false,
       nakedEyeVisible: true,
@@ -195,6 +513,11 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
   function logEntryDetailAttempt() {
     if (!entryDetail) return
     const { subject } = entryDetail
+    trackEvent('Logged observation', {
+      hasTarget: true,
+      hasPhoto: false,
+      source: 'detail_sheet',
+    })
     onLogAttempt({
       eventId: subject.id,
       targetName: subject.title,
@@ -207,25 +530,186 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
     setEntryDetail(null)
   }
 
-  const watchRows = plan ? events.filter((e) => matchesWatchlist(e, watchlist)).slice(0, 5) : []
   const spaceWeatherEvent = events.find((e) => e.kind === 'aurora' || e.kind === 'solar_flare')
   const now = new Date()
+
+  const todayKey = localDateKey(now.toISOString(), city.timeZone)
+  const weekEndKey = localDateKey(new Date(now.getTime() + 7 * 86_400_000).toISOString(), city.timeZone)
+  const whenIso = (event: SkyEvent) => eventDisplayInstant(event, city.timeZone).toISOString()
+  const upcomingFilterPredicates: Record<HubFilterKey, (e: SkyEvent) => boolean> = {
+    all: () => true,
+    tonight: (e) => localDateKey(whenIso(e), city.timeZone) === todayKey,
+    week: (e) => localDateKey(whenIso(e), city.timeZone) <= weekEndKey,
+    watching: (e) => matchesWatchlist(e, watchlist),
+  }
+  const upcomingCounts: Record<HubFilterKey, number> = {
+    all: events.length,
+    tonight: events.filter(upcomingFilterPredicates.tonight).length,
+    week: events.filter(upcomingFilterPredicates.week).length,
+    watching: events.filter(upcomingFilterPredicates.watching).length,
+  }
+  const showHubSkeleton = hubLoading && hasLocation
+  // A guided look already names the one decision Atlas is asking for. Until
+  // that target has been chosen, repeating it as the highlight card and an
+  // Upcoming row turns a single next step into three competing homes.
+  const guidedChoicePending = Boolean(tourActive && !tourTargetId && plan?.targets[0])
+  const guidedTargetEventId = guidedChoicePending ? plan?.targets[0]?.eventId : null
+  const guidedTargetEvent = guidedTargetEventId ? events.find((event) => event.id === guidedTargetEventId) : null
+  const upcomingShown = events
+    .filter((event) => event.id !== guidedTargetEventId)
+    .filter(upcomingFilterPredicates[upcomingFilter])
+  const upcomingGroups = useMemo(() => {
+    if (!upcomingShown.length) return []
+    const byDay = new Map<string, SkyEvent[]>()
+    for (const event of upcomingShown) {
+      const key = localDateKey(whenIso(event), city.timeZone)
+      if (!byDay.has(key)) byDay.set(key, [])
+      byDay.get(key)!.push(event)
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, dayEvents]) => ({ key, label: dayGroupLabel(key, todayKey, city.timeZone), events: dayEvents }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upcomingShown, city.timeZone, todayKey])
 
   return (
     <div className="az-page">
       <p className="az-kicker">
-        {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} · after dark
+        {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', timeZone: city.timeZone })}
+        {city.timeZone ? ` · ${timeZoneAbbreviation(now.toISOString(), city.timeZone)}` : ''} · after dark
       </p>
-      <h1 className="az-h1">{plan ? headlineFor(plan) : 'Loading tonight…'}</h1>
-      {plan?.todayAdvisory && (
-        <p className="az-hero-title">
-          {Math.round(100 - plan.todayAdvisory.cloudCoverPct)}% clear skies expected. Dark window{' '}
-          {timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt)}–
-          {timeLabel(plan.darknessWindow.astronomicalDawnAt ?? plan.darknessWindow.civilDawnAt)}.
-        </p>
+      <h1 className="az-h1 az-hub-title">
+        {plan
+          ? headlineFor(plan)
+          : !hasLocation
+            ? 'Flagship events, worldwide'
+            : loadError
+              ? "Couldn't load tonight"
+              : 'Loading tonight…'}
+      </h1>
+      <p className="az-hero-title az-hub-advisory">
+        {plan?.todayAdvisory
+          ? `${Math.round(100 - plan.todayAdvisory.cloudCoverPct)}% clear skies expected. Dark window ${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)}–${timeLabel(plan.darknessWindow.astronomicalDawnAt ?? plan.darknessWindow.civilDawnAt, city.timeZone)}.`
+          : '\u00a0'}
+      </p>
+      {!hasLocation && !tourActive && (
+        <div
+          className="az-card"
+          role="note"
+          style={{ marginTop: '0.875rem', padding: '1rem 1.125rem', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}
+        >
+          <div style={{ flex: '1 1 16rem' }}>
+            <strong style={{ display: 'block' }}>You&rsquo;re seeing flagship events only</strong>
+            <p className="az-muted" style={{ margin: '0.25rem 0 0' }}>
+              Share your location to unlock more: tonight&rsquo;s plan for your sky, local weather and visibility, and events near you.
+            </p>
+          </div>
+          {onOpenLocation && (
+            <button type="button" className="az-btn az-btn-outline" onClick={() => openLocationSetup('global_context')}>
+              Set your location
+            </button>
+          )}
+        </div>
+      )}
+      {!plan && loadError && (
+        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <p className="az-muted" style={{ margin: 0 }}>
+            Check your connection and try again.
+          </p>
+          <button type="button" className="az-btn az-btn-outline" onClick={() => setRetryTick((n) => n + 1)}>
+            Try again
+          </button>
+        </div>
+      )}
+      {tourActive ? (
+        <section className="az-tour-card" aria-labelledby="az-tour-title">
+          <div className="az-tour-card-head">
+            <div>
+              <p className="az-kicker">{sharedTour ? 'Shared guided look' : 'Guided sky for tonight'}</p>
+              <h2 id="az-tour-title">One useful plan. When, where, what.</h2>
+            </div>
+            <button type="button" className="az-tour-close" onClick={() => leaveTour()} aria-label="Back to upcoming events">
+              <MobileIcon name="back" size={14} /> Back
+            </button>
+          </div>
+          <div className="az-tour-checks">
+            <span className={hasLocation ? 'is-done' : ''}>
+              <MobileIcon name={hasLocation ? 'check' : 'pin'} size={14} />
+              <strong>Where</strong>
+              <span>{hasLocation ? city.name : 'Set your location'}</span>
+            </span>
+            <span className={plan ? 'is-done' : ''}>
+              <MobileIcon name={plan ? 'check' : 'calendar'} size={14} />
+              <strong>When</strong>
+              <span>{plan ? `${timeLabel(plan.darknessWindow.astronomicalDuskAt ?? plan.darknessWindow.civilDuskAt, city.timeZone)} after dark` : 'Building your window'}</span>
+            </span>
+            <span className={tourTargetId ? 'is-done' : ''}>
+              <MobileIcon name={tourTargetId ? 'check' : 'telescope'} size={14} />
+              <strong>What</strong>
+              <span>{tourTargetId ? 'Target chosen' : 'Choose one thing to find'}</span>
+            </span>
+          </div>
+          {!hasLocation && onOpenLocation ? (
+            <div className="az-tour-location-step">
+              <p className="az-muted">Start with where you are. You can use your device or search for a city.</p>
+              <button type="button" className="az-btn az-btn-primary" onClick={() => openLocationSetup('guided_tour')}>Choose your location</button>
+              <button type="button" className="az-tour-secondary" onClick={() => leaveTour('keep_global_browsing')}>Keep browsing global events</button>
+            </div>
+          ) : plan?.targets.length ? (
+            <button type="button" className="az-btn az-btn-primary" onClick={openHeroTarget}>
+              {tourTargetId ? 'Review tonight’s target' : `Choose ${plan.targets[0].title}`}
+            </button>
+          ) : plan && events.length > 0 ? (
+            <button type="button" className="az-btn az-btn-primary" onClick={() => openEventDetail(events[0])}>
+              {tourTargetId ? 'Review tonight’s target' : `Choose ${events[0].title}`}
+            </button>
+          ) : loadError ? (
+            <button type="button" className="az-btn az-btn-outline" onClick={() => setRetryTick((n) => n + 1)}>Try again</button>
+          ) : (
+            <p className="az-muted">No useful target is visible yet. Atlas will keep checking tonight’s sky.</p>
+          )}
+        </section>
+      ) : !tourCompletion ? (
+        <button type="button" className="az-tour-invite" onClick={startTour}>
+          <span><span className="az-kicker">New here?</span><strong>Take one guided look at tonight’s sky.</strong></span>
+          <span>Start →</span>
+        </button>
+      ) : null}
+
+      {tourCompletion && !tourCelebration && (
+        <div className="az-tour-badge" role="status">
+          <span aria-hidden="true">✦</span>
+          <span><strong>First light</strong> — your first guided look is complete.</span>
+          <button type="button" onClick={() => void shareTour(tourCompletion)}>Share</button>
+        </div>
       )}
 
-      {plan && (
+      {showHubSkeleton && (
+        <>
+          <div style={{ marginTop: '1.125rem' }}>
+            <div className="az-skeleton az-hub-skeleton-stat" aria-hidden="true" />
+          </div>
+          <div className="az-skeleton az-hub-skeleton-training" aria-hidden="true" />
+          <div className="az-section-head">
+            <span className="az-kicker">Highlight tonight</span>
+          </div>
+          <div className="az-skeleton az-hub-skeleton-highlight" aria-hidden="true" />
+          <div className="az-section-head">
+            <span className="az-kicker">Your recent frames</span>
+          </div>
+          <div className="az-skeleton az-hub-skeleton-row" aria-hidden="true" />
+          <div className="az-section-head">
+            <span className="az-kicker">Sky dispatch</span>
+          </div>
+          <div className="az-skeleton az-hub-skeleton-dispatch" aria-hidden="true" />
+          <div className="az-section-head" style={{ marginTop: '1.375rem' }}>
+            <span className="az-kicker">Upcoming</span>
+          </div>
+          <div className="az-skeleton az-hub-skeleton-chip-row" aria-hidden="true" />
+        </>
+      )}
+
+      {!showHubSkeleton && plan && (
         <div style={{ marginTop: '1.125rem' }}>
           <StatGrid
             stats={[
@@ -238,12 +722,15 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         </div>
       )}
 
-      {plan && plan.targets.length > 0 && (
+      {!showHubSkeleton && plan && !guidedChoicePending && <TrainingPathCard />}
+      {!showHubSkeleton && plan && !guidedChoicePending && <TelescopeSaturnTasksCard />}
+
+      {!showHubSkeleton && plan && plan.targets.length > 0 && !guidedChoicePending && (
         <>
           <div className="az-section-head">
             <span className="az-kicker">Highlight tonight</span>
             <span style={{ font: '500 0.6875rem var(--az-font-mono)', color: 'var(--az-flagship)' }}>
-              {timeLabel(plan.targets[0].bestTime)}
+              {timeLabel(plan.targets[0].bestTime, city.timeZone)}
             </span>
           </div>
           <button type="button" className="az-card" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', border: '1px solid var(--line)' }} onClick={openHeroTarget}>
@@ -261,34 +748,68 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         </>
       )}
 
-      {watchRows.length > 0 && (
+      {(!guidedChoicePending || upcomingShown.length > 0) && (
         <>
-          <div className="az-section-head">
-            <span className="az-kicker">On your watchlist</span>
+          <div className="az-section-head" style={{ marginTop: '1.375rem' }}>
+            <span className="az-kicker">{guidedChoicePending ? 'More coming up' : 'Upcoming'}</span>
           </div>
-          <div className="az-row-group">
-            {watchRows.map((event) => (
-              <button type="button" key={event.id} className="az-row" onClick={() => openEventDetail(event)}>
-                <span className="az-row-icon">
-                  <MobileIcon name={(categoryForKind(event.kind)?.icon as MobileIconName) ?? 'zap'} />
-                </span>
-                <span className="az-row-main">
-                  <span className="az-row-kind">{categoryForKind(event.kind)?.label.toUpperCase() ?? event.kind} · WATCHING</span>
-                  <span className="az-row-title">{event.title}</span>
-                </span>
-                <span className="az-row-trail">
-                  <span className="az-row-time">{new Date(event.startsAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
-                  <span className="az-row-note">{reminders.some((r) => r.eventId === event.id) ? 'reminder armed' : ''}</span>
-                </span>
+          <div className="az-chip-row">
+            {HUB_FILTERS.map((f) => (
+              <button
+                type="button"
+                key={f.key}
+                className={`az-chip${upcomingFilter === f.key ? ' is-active' : ''}`}
+                onClick={() => setUpcomingFilter(f.key)}
+              >
+                {f.label}
+                <span className="az-chip-count">{upcomingCounts[f.key] - (guidedTargetEvent && upcomingFilterPredicates[f.key](guidedTargetEvent) ? 1 : 0)}</span>
               </button>
             ))}
           </div>
         </>
       )}
 
+      {(!guidedChoicePending || upcomingShown.length > 0) && upcomingGroups.map((group) => (
+        <div key={group.key} style={{ marginTop: '1.125rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.5rem' }}>
+            <span className="az-kicker">{group.label}</span>
+            <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+          </div>
+          <div className="az-row-group">
+            {group.events.map((event) => (
+              <button type="button" key={event.id} className="az-row" onClick={() => openEventDetail(event)}>
+                <span className="az-row-icon">
+                  <MobileIcon name={(categoryForKind(event.kind)?.icon as MobileIconName) ?? 'zap'} />
+                </span>
+                <span className="az-row-main">
+                  <span className="az-row-kind">
+                    {categoryForKind(event.kind)?.label.toUpperCase() ?? event.kind}
+                    {matchesWatchlist(event, watchlist) ? ' · WATCHING' : ''}
+                  </span>
+                  <span className="az-row-title">{event.title}</span>
+                </span>
+                <span className="az-row-trail">
+                  <span className="az-row-time">{timeLabel(whenIso(event), city.timeZone)}</span>
+                  <span className="az-row-note">{reminders.some((r) => r.eventId === event.id) ? 'reminder armed' : ''}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {(!guidedChoicePending || upcomingShown.length > 0) && upcomingGroups.length === 0 && (
+        <div className="az-card-body" style={{ marginTop: '1rem', textAlign: 'center', border: '1px dashed var(--line2)', background: 'none' }}>
+          <p style={{ margin: 0, fontWeight: 500, fontSize: '0.875rem' }}>Nothing in this filter</p>
+          <p className="az-muted" style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem' }}>
+            {upcomingFilter === 'watching' ? 'Open an event and tap Watch to add it here.' : 'Try a wider window.'}
+          </p>
+        </div>
+      )}
+
       {campaignsDueSoon.length > 0 && (
         <>
-          <div className="az-section-head">
+          <div className="az-section-head" style={{ marginTop: '1.375rem' }}>
             <span className="az-kicker">Citizen science — due now</span>
           </div>
           <SignedUpEventsWidget events={campaignsDueSoon} onSubmit={submitCampaign} />
@@ -320,32 +841,39 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
         </>
       )}
 
-      {recentEntries.length > 0 && (
+      {!showHubSkeleton && (
         <>
           <div className="az-section-head">
             <span className="az-kicker">Your recent frames</span>
           </div>
-          <div style={{ display: 'flex', gap: '0.5625rem', overflowX: 'auto', paddingBottom: '4px' }}>
-            {recentEntries.map((entry) => (
-              <div key={entry.id} className="az-card" style={{ flex: 'none', width: '7.375rem' }}>
-                <div className="az-thumb-lg" style={{ height: '6rem' }}>
-                  PHOTO
+          {recentEntries.length > 0 ? (
+            <div style={{ display: 'flex', gap: '0.5625rem', overflowX: 'auto', paddingBottom: '4px' }}>
+              {recentEntries.map((entry) => (
+                <div key={entry.id} className="az-card" style={{ flex: 'none', width: '7.375rem' }}>
+                  <div className="az-thumb-lg" style={{ height: '6rem' }}>
+                    PHOTO
+                  </div>
+                  <div style={{ padding: '0.4375rem 0.5625rem 0.5rem' }}>
+                    <span style={{ display: 'block', fontWeight: 500, fontSize: '0.75rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                      {entry.targetName ?? 'Observation'}
+                    </span>
+                    <span className="az-muted" style={{ display: 'block', font: '500 0.59375rem var(--az-font-mono)' }}>
+                      {new Date(entry.observedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ padding: '0.4375rem 0.5625rem 0.5rem' }}>
-                  <span style={{ display: 'block', fontWeight: 500, fontSize: '0.75rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                    {entry.targetName ?? 'Observation'}
-                  </span>
-                  <span className="az-muted" style={{ display: 'block', font: '500 0.59375rem var(--az-font-mono)' }}>
-                    {new Date(entry.observedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="az-card-body az-hub-empty-slot">
+              <p style={{ margin: 0, fontWeight: 500, fontSize: '0.875rem' }}>No recent frames yet</p>
+              <p className="az-muted" style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem' }}>Your next photo check-in will show up here.</p>
+            </div>
+          )}
         </>
       )}
 
-      {(spaceWeatherEvent || topDiscovery) && (
+      {!showHubSkeleton && (
         <>
           <div className="az-section-head">
             <span className="az-kicker">Sky dispatch</span>
@@ -371,6 +899,14 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
                 <p className="az-muted" style={{ margin: 0, fontSize: '0.78125rem' }}>{topDiscovery.caption}</p>
               </div>
             )}
+            {!spaceWeatherEvent && !topDiscovery ? (
+              <div className="az-card-body az-hub-empty-slot" style={{ background: 'var(--surface)' }}>
+                <p style={{ margin: 0, fontWeight: 500, fontSize: '0.875rem' }}>No dispatch yet</p>
+                <p className="az-muted" style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem' }}>
+                  Atlas will show major sky alerts and standout community frames here.
+                </p>
+              </div>
+            ) : null}
           </div>
         </>
       )}
@@ -384,6 +920,30 @@ export function HubPage({ city, onLogAttempt }: HubPageProps) {
           dark={theme === 'dark'}
         />
       )}
+      {tourCelebration && (
+        <div className="az-tour-celebration" role="dialog" aria-modal="true" aria-labelledby="az-tour-celebration-title">
+          <section>
+            <span className="az-tour-celebration-mark" aria-hidden="true">✦</span>
+            <p className="az-kicker">{FIRST_TOUR_BADGE.replace('_', ' ')}</p>
+            <h2 id="az-tour-celebration-title">Your first guided look is ready.</h2>
+            <p>You now know when to step outside, where you are observing from, and what to find. Atlas will remember this without turning the sky into a streak.</p>
+            {tourCelebration.next && (
+              <div className="az-tour-next">
+                <span>Next guided look</span>
+                <strong>{tourCelebration.next.title}</strong>
+                <small>{new Date(tourCelebration.next.bestTime).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}</small>
+              </div>
+            )}
+            <div className="az-btn-grid-2">
+              {tourCelebration.next && (
+                <button type="button" className="az-btn az-btn-primary" onClick={() => openNextTour(tourCelebration.next!)}>Plan next look</button>
+              )}
+              <button type="button" className="az-btn az-btn-outline" onClick={() => void shareTour(tourCelebration.completion)}>Share this look</button>
+            </div>
+            <button type="button" className="az-tour-done" onClick={() => setTourCelebration(null)}>Done for tonight</button>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
@@ -395,7 +955,19 @@ function headlineFor(plan: TonightPlan): string {
   return 'Skip it tonight.'
 }
 
-function timeLabel(iso: string | null | undefined): string {
+// Times belong to the place being observed, not the device doing the looking.
+// Defaulting to the browser's zone meant picking a city in another country
+// showed its darkness window shifted by the offset between the two -- Zurich's
+// 21:16 dusk read as "03:16" on a device set to Melbourne. TonightPlan already
+// carries the location's zone; this just has to use it.
+function withObservingTargets(events: SkyEvent[], city: CurrentLocation, now: Date): SkyEvent[] {
+  if (city.source === 'default') return events
+  const extra = buildDailyObservingTargets(now, 1, city.lat, city.lon, city.timeZone)
+  const seen = new Set(events.map((event) => event.id))
+  return [...extra.filter((event) => !seen.has(event.id)), ...events]
+}
+
+function timeLabel(iso: string | null | undefined, timeZone?: string): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+  return formatZonedTime(iso, timeZone, false)
 }

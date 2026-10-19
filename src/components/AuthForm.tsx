@@ -6,6 +6,7 @@ import { trackEvent } from '../lib/analytics'
 import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
 import { pb, pocketBaseUrl } from '../lib/pocketbase'
 import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
+import { FormStatus } from './forms/FormStatus'
 
 export interface AuthFormProps {
   defaultMode?: 'sign-in' | 'sign-up'
@@ -35,20 +36,71 @@ const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
 const clerkAppearance = {
   elements: {
     rootBox: { width: '100%' },
-    cardBox: { width: '100%' },
+    // Clerk's card box is overflow:hidden and flush with the form edge, which
+    // shaved the field ring and the first letter of each label on the left.
+    cardBox: { width: '100%', overflow: 'visible' },
     card: { width: '100%', border: 'none', padding: 0, backgroundColor: 'transparent' },
     header: { display: 'none' },
     footer: { display: 'none' },
     footerAction: { display: 'none' },
     main: { width: '100%', padding: 0 },
-    form: { width: '100%', gap: '28px' },
+    form: { width: '100%', gap: '18px' },
     formFieldRow: { width: '100%' },
     formField: { width: '100%' },
-    formFieldInput: { width: '100%', boxSizing: 'border-box' },
-    formButtonPrimary: { width: '100%' },
+    formFieldLabel: { fontSize: '14px', color: 'var(--house-muted)' },
+    formFieldInput: {
+      width: '100%',
+      boxSizing: 'border-box',
+      height: '48px',
+      borderRadius: '12px',
+      // ASV-107: field edge and placeholder meet contrast on the night card
+      // (house tokens, src/styles/house.css), matching the hand-rolled
+      // sign-in field in atlas.css.
+      // Clerk draws the field edge with box-shadow (its border is 0) and its
+      // own rule wins on specificity, so the ring needs !important or it stays
+      // a near-invisible black on the dark card.
+      border: 'none',
+      boxShadow: '0 0 0 1px var(--house-field-line) !important',
+      background: 'var(--house-night)',
+      color: 'var(--house-ink)',
+      fontSize: '16px',
+      '&:focus': { boxShadow: '0 0 0 2px var(--house-accent) !important' },
+      '&::placeholder': { color: 'var(--house-muted)', opacity: 1 },
+    },
+    formButtonPrimary: {
+      width: '100%',
+      height: '50px',
+      marginTop: '6px',
+      borderRadius: '12px',
+      border: '1px solid var(--house-accent)',
+      background: 'var(--house-accent)',
+      color: 'var(--house-accent-ink)',
+      fontFamily: 'var(--house-font-mono)',
+      fontSize: '14px',
+      fontWeight: 700,
+      letterSpacing: '.08em',
+      boxShadow: 'none',
+      '&:hover': { background: 'var(--house-accent-hover)' },
+    },
     otpCodeField: { width: '100%' },
-    otpCodeFieldInput: { boxSizing: 'border-box' },
-    alert: { width: '100%', boxSizing: 'border-box', margin: 0 },
+    otpCodeFieldInput: {
+      boxSizing: 'border-box',
+      background: 'var(--house-night)',
+      borderColor: 'var(--house-field-line)',
+      color: 'var(--house-ink)',
+    },
+    alert: {
+      width: '100%',
+      boxSizing: 'border-box',
+      margin: '0 0 18px',
+      borderRadius: '12px',
+      border: '1px solid var(--house-danger)',
+      background: 'rgba(255,155,143,.1)',
+      color: 'var(--house-ink)',
+    },
+    identityPreviewText: { color: 'var(--house-ink)' },
+    identityPreviewEditButton: { color: 'var(--house-accent)' },
+    footerActionLink: { color: 'var(--house-accent)' },
     // Authentication providers remain configured in Clerk, but Atlas is
     // temporarily email-and-password only. Hide the whole block, plus the
     // "or" divider Clerk renders between it and the email/password fields,
@@ -157,7 +209,7 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
       const userId = pb.authStore.record?.id as string | undefined
       const result = userId
         ? await mergeLocalDataIntoAccount(userId)
-        : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, targetTaps: 0, equipmentChoice: 0, total: 0 }
+        : { favourites: 0, watchlist: 0, observations: 0, cameraPresets: 0, targetTaps: 0, equipmentChoice: 0, tourUnlock: 0, total: 0 }
       trackEvent('Sign up completed', { source, mergedCount: result.total, demoAccess })
       trackEvent('Merge result', {
         source,
@@ -167,13 +219,14 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
         cameraPresets: result.cameraPresets,
         targetTaps: result.targetTaps,
         equipmentChoice: result.equipmentChoice,
+        tourUnlock: result.tourUnlock,
         total: result.total,
         demoAccess,
       })
       onSignedUp?.(result.total)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong finishing sign-in.')
-      trackEvent(mode === 'sign-in' ? 'Sign in failed' : 'Sign up failed', { source })
+      trackEvent(mode === 'sign-in' ? 'Sign in failed' : 'Sign up failed', { source, error: err instanceof Error ? err.message : String(err) })
       // Allow retrying (e.g. the exchange endpoint was briefly unreachable)
       // without needing to sign out of Clerk and back in.
       exchangeStartedRef.current = false
@@ -208,20 +261,33 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
         </div>
 
         <div className="account-form">
-          {/* Without an explicit redirect target, Clerk navigates the browser
-              to its Dashboard-configured default path once sign-in/sign-up
-              completes -- a real navigation that unmounts this component
-              before the isSignedIn effect below gets to run the exchange.
-              Redirecting back to wherever this form already is keeps that
-              handoff entirely in our own effect instead. */}
-          {mode === 'sign-in' ? (
-            <ClerkSignInPanel formError={error} setFormError={setError} exchanging={exchanging} />
+          {!isLoaded ? (
+            <div className="account-form-skeleton" aria-live="polite" aria-label="Loading sign-in form">
+              <div />
+              <div />
+              <div />
+            </div>
           ) : (
-            <SignUp routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
+            <div className="account-form-panels" data-mode={mode}>
+              <div className="account-form-panel" hidden={mode !== 'sign-in'}>
+                <ClerkSignInPanel active={mode === 'sign-in'} setFormError={setError} exchanging={exchanging} />
+              </div>
+              {/* Without an explicit redirect target, Clerk navigates the browser
+                  to its Dashboard-configured default path once sign-in/sign-up
+                  completes -- a real navigation that unmounts this component
+                  before the isSignedIn effect below gets to run the exchange.
+                  Redirecting back to wherever this form already is keeps that
+                  handoff entirely in our own effect instead. */}
+              <div className="account-form-panel" hidden={mode !== 'sign-up'}>
+                <SignUp routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
+              </div>
+            </div>
           )}
-          {exchanging && <p className="settings-help">Finishing sign-in…</p>}
-          {error && <p className="account-form-error">{error}</p>}
+          <FormStatus message={error ?? (exchanging ? 'Finishing sign-in…' : null)} tone={error ? 'error' : 'neutral'} live={error ? 'assertive' : 'polite'} />
         </div>
+        <p className="account-form-trust">
+          <span aria-hidden="true" /> Sign-in is handled by Clerk. Atlas never sees your password.
+        </p>
       </div>
     </div>
   )
@@ -234,17 +300,18 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
 // on its first sign-in since Clerk never learned their PocketBase
 // password. See claimLegacyAccount below and backend/clerk_claim.go.
 function ClerkSignInPanel({
-  formError,
+  active,
   setFormError,
   exchanging,
 }: {
-  formError: string | null
+  active: boolean
   setFormError: (error: string | null) => void
   exchanging: boolean
 }) {
   const { signIn, fetchStatus } = useSignIn()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [claiming, setClaiming] = useState(false)
   const [showStandardSignIn, setShowStandardSignIn] = useState(false)
   const busy = fetchStatus === 'fetching' || claiming || exchanging
@@ -253,22 +320,41 @@ function ClerkSignInPanel({
     return <SignIn routing="hash" appearance={clerkAppearance} fallbackRedirectUrl={window.location.pathname} />
   }
 
+  // Our hand-rolled fields don't model a reset flow of their own -- Clerk's
+  // own widget already resumes from wherever a sign-in attempt left off
+  // (see the needs_second_factor/needs_client_trust handoff below), and its
+  // "forgot password" link is one of the paths it knows how to drive.
+  function handleForgotPassword(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    setShowStandardSignIn(true)
+  }
+
   async function finalizeSignIn() {
     // Clerk's password/ticket call can succeed while the attempt still needs
     // another step (MFA, device trust, or a session that is already active).
     // Calling finalize in those states throws "Cannot finalize sign-in
     // without a created session" and used to escape the submit handler.
     if (signIn.status !== 'complete' || !signIn.createdSessionId) {
-      if (signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust') {
-        // Clerk's own widget knows how to drive these follow-up steps
-        // (device-trust email code, MFA); our custom form does not model
-        // them. Hand off there instead of just telling the user to go find
-        // it themselves -- Clerk resumes the in-progress attempt rather
-        // than restarting it, so nothing already entered is lost.
-        setShowStandardSignIn(true)
-        return
-      }
-      setFormError('Sign-in could not be completed. Please try again.')
+      // Clerk's own widget knows how to drive every follow-up step a
+      // successful password can land in -- device trust, MFA, a forced
+      // password reset -- and our custom form models none of them. Hand off
+      // there rather than telling the user to go find it themselves: Clerk
+      // resumes the in-progress attempt rather than restarting it, so
+      // nothing already entered is lost.
+      //
+      // This deliberately does not enumerate statuses. It used to name only
+      // needs_second_factor and needs_client_trust, and fell through to a
+      // dead-end error otherwise -- but signIn.password() resolves to
+      // `{ error }` alone, with no refreshed resource, so the status read
+      // off the captured hook value here is not reliably the one the API
+      // just returned. A real returning user on an unrecognised device
+      // (needs_client_trust, which Clerk does return) therefore got
+      // "Sign-in could not be completed. Please try again." and had no way
+      // forward. Reaching this branch at all means the password was
+      // accepted -- a wrong one returns an error from password() and never
+      // gets here -- so an incomplete attempt is always a follow-up step,
+      // never a failure, and handing off is always the better answer.
+      setShowStandardSignIn(true)
       return
     }
 
@@ -347,31 +433,54 @@ function ClerkSignInPanel({
         <input
           id="clerk-sign-in-email"
           type="email"
+          inputMode="email"
           autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="next"
+          disabled={!active}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
         />
       </div>
       <div className="account-form-field">
-        <label htmlFor="clerk-sign-in-password">Password</label>
-        <input
-          id="clerk-sign-in-password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
+        <div className="account-form-field-label-row">
+          <label htmlFor="clerk-sign-in-password">Password</label>
+          <a href="#reset" onClick={handleForgotPassword}>
+            Forgot?
+          </a>
+        </div>
+        <div className="account-form-password-wrap">
+          <input
+            id="clerk-sign-in-password"
+            type={passwordVisible ? 'text' : 'password'}
+            autoComplete="current-password"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="go"
+            disabled={!active}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+          <button
+            type="button"
+            className="account-form-password-toggle"
+            onClick={() => setPasswordVisible((visible) => !visible)}
+          >
+            {passwordVisible ? 'Hide' : 'Show'}
+          </button>
+        </div>
       </div>
       <div className="account-form-actions">
-        <button type="submit" className="account-form-submit" disabled={busy}>
-          {claiming ? 'Signing in…' : 'Continue'}
+        <button type="submit" className="account-form-submit az-btn-stable" disabled={busy || !active} aria-busy={busy}>
+          <span className="az-btn-label">Continue</span>
+          <span className={`az-btn-spinner${busy ? ' is-visible' : ''}`} aria-hidden="true" />
         </button>
       </div>
-      {!formError && !exchanging && claiming && (
-        <p className="settings-help">Setting up your account for the new sign-in…</p>
-      )}
     </form>
   )
 }

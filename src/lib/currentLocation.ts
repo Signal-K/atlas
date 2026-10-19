@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CITIES, cityLabel, type City } from './cities'
+import { reconcilePlace } from './locationRank.mjs'
 import { reverseGeocodeCity } from './reverseGeocode'
 import type { useLocationSeed } from './geo'
 import { activeTripFor, type Trip } from './trips'
+import { activeLegFor, getActiveTripPlan, type TripLeg, type TripPlan } from './tripPlans'
 
 export type LocationSource = 'geolocation' | 'manual' | 'default' | 'trip'
 
@@ -14,6 +16,11 @@ export interface CurrentLocation {
   timeZone?: string
   // Set when `source` is 'trip' -- lets UI say "back home on <date>" etc.
   trip?: Trip
+  // Sky Pass trips are server-backed and can include multiple cities. Keep
+  // their source data available to callers without pretending it is a legacy
+  // local trip.
+  tripPlan?: TripPlan
+  tripLeg?: TripLeg
 }
 
 export const MANUAL_LOCATION_KEY = 'atlas-manual-location'
@@ -35,7 +42,13 @@ function getManualCity(): City | null {
   if (!stored) return null
   try {
     const parsed = JSON.parse(stored) as City
-    if (parsed.name && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon)) return parsed
+    if (parsed.name && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon)) {
+      const healed = reconcilePlace(parsed, CITIES)
+      if (cityLabel(healed) !== cityLabel(parsed) || healed.timeZone !== parsed.timeZone) {
+        localStorage.setItem(MANUAL_LOCATION_KEY, JSON.stringify(healed))
+      }
+      return healed
+    }
   } catch {
     // Legacy installs stored only the curated city name.
   }
@@ -49,6 +62,7 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
   // just a suggestion. Re-checked on trip list changes and roughly once a
   // minute so a trip flips on/off without requiring a reload.
   const [trip, setTrip] = useState<Trip | null>(() => activeTripFor())
+  const [tripPlan, setTripPlan] = useState<TripPlan | null>(null)
   // Reverse-geocoded place name for the current geolocation fix (e.g.
   // "Riga") -- keyed by rounded coordinates so a stale name from a
   // previous fix never gets shown against new coordinates while the
@@ -92,11 +106,39 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    async function refreshTripPlan() {
+      const next = await getActiveTripPlan()
+      if (!cancelled) setTripPlan(next)
+    }
+    refreshTripPlan()
+    window.addEventListener('atlas:trip-plan-changed', refreshTripPlan)
+    const interval = window.setInterval(refreshTripPlan, 60_000)
+    return () => {
+      cancelled = true
+      window.removeEventListener('atlas:trip-plan-changed', refreshTripPlan)
+      window.clearInterval(interval)
+    }
+  }, [])
+
   // A manual pick always wins, even once geolocation later resolves --
   // otherwise an explicit correction gets silently reverted on next load
   // (same rationale as locationBrowseContext.tsx's manual-city priority).
   // A live trip wins over everything else -- see the trip state comment above.
   const current = useMemo<CurrentLocation>(() => {
+    const plannedLeg = tripPlan ? activeLegFor(tripPlan) : null
+    if (plannedLeg) {
+      return {
+        name: plannedLeg.cityName,
+        lat: plannedLeg.lat,
+        lon: plannedLeg.lon,
+        source: 'trip',
+        timeZone: plannedLeg.timeZone,
+        tripPlan: tripPlan!,
+        tripLeg: plannedLeg,
+      }
+    }
     if (trip) return { name: trip.name, lat: trip.lat, lon: trip.lon, source: 'trip', timeZone: trip.timeZone, trip }
     if (manualCity) return { name: cityLabel(manualCity), lat: manualCity.lat, lon: manualCity.lon, source: 'manual', timeZone: manualCity.timeZone }
     if (geo.coordinates) {
@@ -104,8 +146,12 @@ export function useCurrentLocation(geo: ReturnType<typeof useLocationSeed>) {
       const name = geoName?.key === key ? geoName.name : 'Your location'
       return { name, lat: geo.coordinates.lat, lon: geo.coordinates.lon, source: 'geolocation' }
     }
-    return { name: DEFAULT_CITY.name, lat: DEFAULT_CITY.lat, lon: DEFAULT_CITY.lon, source: 'default' }
-  }, [trip, manualCity, geo.coordinates, geoName])
+    // No location is known. The coordinates are only a numeric placeholder for
+    // code that needs some point on the globe -- they are never presented as
+    // the visitor's place, and no time zone is attached so times fall back to
+    // the viewer's own rather than Melbourne's.
+    return { name: 'Location not set', lat: DEFAULT_CITY.lat, lon: DEFAULT_CITY.lon, source: 'default' }
+  }, [trip, tripPlan, manualCity, geo.coordinates, geoName])
 
   return { current, manualCity, setManualLocation }
 }

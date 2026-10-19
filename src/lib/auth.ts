@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ClientResponseError } from 'pocketbase'
 import { pb, atlasBillingFetch } from './pocketbase'
+import { trackEvent } from './analytics'
+import { reconcileAllowed, recordReconcileFailure, recordReconcileSuccess } from './reconcileBackoff.mjs'
+import { ONBOARDING_VERSION, clearOnboardingAnswers, getOnboardingAnswers } from './onboarding'
 
 const entitlementListeners = new Set<() => void>()
 let entitlementRefreshCount = 0
@@ -13,7 +16,22 @@ let entitlementRefreshPromise: Promise<AuthUser | null> | null = null
 // the DevPreviewPanel that drives it) is dead-code-eliminated -- it cannot
 // reach a real build.
 const DEV = import.meta.env.DEV
-let devPreviewUser: AuthUser | null = null
+// ASV-115: kept in sessionStorage so a full page load (deep link, reload, e2e
+// goto) does not drop the preview. Every touch is behind `DEV`, so the key and
+// helpers are removed with the rest of this branch in production builds.
+const DEV_PREVIEW_KEY = 'atlas-dev-preview-user'
+
+function readStoredDevPreviewUser(): AuthUser | null {
+  if (!DEV) return null
+  try {
+    const raw = window.sessionStorage.getItem(DEV_PREVIEW_KEY)
+    return raw ? (JSON.parse(raw) as AuthUser) : null
+  } catch {
+    return null
+  }
+}
+
+let devPreviewUser: AuthUser | null = readStoredDevPreviewUser()
 const devPreviewListeners = new Set<() => void>()
 
 export function getDevPreviewUser(): AuthUser | null {
@@ -23,6 +41,12 @@ export function getDevPreviewUser(): AuthUser | null {
 export function setDevPreviewUser(user: AuthUser | null): void {
   if (!DEV) return
   devPreviewUser = user
+  try {
+    if (user) window.sessionStorage.setItem(DEV_PREVIEW_KEY, JSON.stringify(user))
+    else window.sessionStorage.removeItem(DEV_PREVIEW_KEY)
+  } catch {
+    // Storage blocked: the preview still works, it just won't survive a reload.
+  }
   devPreviewListeners.forEach((listener) => listener())
 }
 
@@ -39,8 +63,18 @@ export interface AuthUser {
   id: string
   email: string
   entitled: boolean
+  // Which processor granted Sky Pass: 'polar', 'apple', ... ('' = unknown/legacy).
+  entitlementSource: string
   onboarded: boolean
+  // Which version of the onboarding flow this account last completed; 0 if
+  // never. The versioned replacement for `onboarded` as a gate input -- see
+  // lib/onboarding.ts. `onboarded` stays as "has ever completed" for
+  // reporting, but it cannot express "completed the four-step flow, not the
+  // eight-step one", which is exactly the distinction the re-run needs.
+  onboardingVersion: number
   deviceModels: string[]
+  firstTourCompletedAt: string | null
+  firstTourBadge: 'first_light' | null
 }
 
 // An expired token (the users collection issues 5-day tokens) is dead: every
@@ -59,9 +93,29 @@ function currentUser(): AuthUser | null {
     id: model.id as string,
     email: model.email as string,
     entitled: Boolean(model.entitled),
+    entitlementSource: String(model.entitlement_source || ''),
     onboarded: Boolean(model.onboarded),
+    // `|| 0` rather than a plain Number(): the field is absent from the auth
+    // record until migration 39 has run *and* this record has been re-fetched,
+    // so Number(undefined) would yield NaN and every comparison against it
+    // would be false.
+    onboardingVersion: Number(model.onboarding_version) || 0,
     deviceModels: Array.isArray(model.device_models) ? (model.device_models as string[]) : [],
+    firstTourCompletedAt: typeof model.first_tour_completed_at === 'string' && model.first_tour_completed_at
+      ? model.first_tour_completed_at
+      : null,
+    firstTourBadge: model.first_tour_badge === 'first_light' ? 'first_light' : null,
   }
+}
+
+// Whether the signed-in account itself has completed the current onboarding
+// flow. The gate's handleSignedIn() needs this rather than the `user` prop:
+// AuthGate only renders when there is no user, so the handlers close over a
+// stale `null` and must read the freshly-populated authStore instead.
+export function accountOnboardingVersion(): number {
+  const model = pb.authStore.record
+  if (!model) return 0
+  return Number(model.onboarding_version) || 0
 }
 
 // Whether the stored token is still usable. Lets callers tell "the server is
@@ -84,6 +138,11 @@ export function useAuth() {
     const unsubscribeAuth = pb.authStore.onChange(() => {
       setUser(currentUser())
     })
+    // The initial state above was read at render time; an authStore change
+    // between that render and this subscription (e.g. the demo-code redeem's
+    // authRefresh landing while a screen mounts) would otherwise be missed
+    // and leave a stale `entitled:false` on screen.
+    setUser(currentUser())
     const unsubscribeEntitlement = subscribeToEntitlementRefresh(() => setEntitlementRefreshing(entitlementRefreshCount > 0))
     let unsubscribeDevPreview = () => {}
     if (DEV) {
@@ -130,7 +189,20 @@ export async function deleteAccount(): Promise<void> {
 // Re-fetches the signed-in user's record (e.g. `entitled`, flipped
 // server-side by the Polar webhook after a purchase) since the cached
 // authStore snapshot only otherwise updates on the next sign-in.
-export function refreshEntitlement(): Promise<AuthUser | null> {
+// Failure backoff is persisted (ASV-113) -- see lib/reconcileBackoff.mjs.
+function reconcileStorage(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+// `force` permits reconciliation for a newly-returned checkout even though
+// its cached account is still free. It deliberately does not bypass a recent
+// failure cooldown: a rejected billing request cannot become six retries in
+// forty seconds while the post-checkout recovery loop is running.
+export function refreshEntitlement({ force = false }: { force?: boolean } = {}): Promise<AuthUser | null> {
   if (!pb.authStore.isValid) return Promise.resolve(null)
   // App boot, Settings, focus and the post-checkout return can all request a
   // reconciliation at the same time. Safari in particular is prone to
@@ -142,19 +214,40 @@ export function refreshEntitlement(): Promise<AuthUser | null> {
   notifyEntitlementListeners()
   const refresh = (async (): Promise<AuthUser | null> => {
     let reconciledAsEntitled = false
-    try {
-      // Webhooks are the fast path, but reconciliation makes paid access
-      // self-healing if Polar's asynchronous delivery was missed or delayed.
-      const result = await atlasBillingFetch<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
-      reconciledAsEntitled = result.entitled === true
-    } catch {
-      // Best-effort. authRefresh below still picks up a webhook-applied change.
+    // Reconciliation is best-effort and re-armed on every focus/visibility
+    // change, so a persistently failing billing service (offline device, a
+    // 401 from an expired token) was retried -- and reported -- on every tab
+    // switch: 17 failures from one user in four days. After a failure, skip
+    // it for a few minutes; authRefresh below still runs every time.
+    // Routine app boot/focus only needs the billing service for an account
+    // that already has Sky Pass. A free account's entitlement can only
+    // change through the post-checkout force path; PocketBase authRefresh
+    // below still runs for everyone and picks up a completed webhook.
+    const shouldReconcile = force || currentUser()?.entitled === true
+    const storage = reconcileStorage()
+    const accountId = pb.authStore.record?.id ?? ''
+    // An offline device cannot reach billing: skip rather than record a
+    // failure that only reflects connectivity.
+    const canReconcile = navigator.onLine !== false && (!storage || reconcileAllowed(storage, accountId, Date.now()))
+    if (shouldReconcile && canReconcile) {
+      try {
+        // Webhooks are the fast path, but reconciliation makes paid access
+        // self-healing if Polar's asynchronous delivery was missed or delayed.
+        const result = await atlasBillingFetch<{ entitled?: boolean }>('/entitlement/polar/refresh', { method: 'POST' })
+        reconciledAsEntitled = result.entitled === true
+        if (storage) recordReconcileSuccess(storage)
+      } catch (err) {
+        const failures = storage ? recordReconcileFailure(storage, accountId, Date.now()).failures : 1
+        // Best-effort. authRefresh below still picks up a webhook-applied change.
+        trackEvent('sync_failed', { stage: 'entitlement_reconcile', error: String(err), attempt: failures })
+      }
     }
     try {
       await pb.collection('users').authRefresh()
-    } catch {
+    } catch (err) {
       // Best-effort -- e.g. offline or PocketBase unreachable; the cached
       // snapshot stays as-is until the next successful refresh.
+      trackEvent('sync_failed', { stage: 'auth_refresh', error: String(err) })
     }
     // The reconciliation endpoint is authoritative. Some older PocketBase
     // auth responses omit a newly-added custom field and would otherwise
@@ -185,29 +278,58 @@ export async function refreshEntitlementAfterCheckout(): Promise<void> {
   const delays = [0, 1_000, 2_000, 4_000, 8_000, 16_000]
   for (const delay of delays) {
     if (delay) await new Promise((resolve) => window.setTimeout(resolve, delay))
-    const user = await refreshEntitlement()
+    const user = await refreshEntitlement({ force: true })
     if (!user || user.entitled) return
   }
 }
 
-// Persists onboarding completion on the account itself, not just this
-// browser's localStorage -- otherwise a signed-in user on a new device or
-// with storage cleared gets sent through onboarding again despite the app
-// clearly knowing who they are. Best-effort: if this fails (offline, etc.)
-// the local flag OnboardingFlow also sets still prevents a re-prompt on the
-// same browser, and the next successful sign-in/refresh retries the sync.
-// Named distinctly from OnboardingFlow's own (localStorage-only)
-// markOnboardingComplete() -- this one talks to the account.
+// Persists onboarding completion -- and the answers the account-side questions
+// collected -- on the account itself, not just this browser's localStorage.
+// Otherwise a signed-in user on a new device or with storage cleared gets sent
+// through onboarding again despite the app clearly knowing who they are, and
+// anyone who answered as a guest loses those answers the moment they sign up.
+//
+// Both writes live in one function deliberately: onboarding_version and the
+// answer fields are written to the same record, and two separate hand-merged
+// pb.authStore.save() calls racing on the same fields would let the loser drop
+// the winner's field from the local cache until the next refresh.
+//
+// Best-effort: if this fails (offline, etc.) the local flag OnboardingFlow
+// also sets still prevents a re-prompt on the same browser, the staged answers
+// are left in place for the next attempt, and the next successful sign-in or
+// refresh retries. Named distinctly from lib/onboarding.ts's own
+// (localStorage-only) markOnboardingComplete() -- this one talks to the account.
 export async function syncOnboardingToAccount(): Promise<void> {
   const id = pb.authStore.record?.id as string | undefined
   if (!id) return
+  const answers = getOnboardingAnswers()
+  const payload: Record<string, unknown> = {
+    onboarded: true,
+    onboarding_version: ONBOARDING_VERSION,
+  }
+  // The select fields are omitted rather than sent empty when unanswered:
+  // every onboarding question is skippable, and PocketBase rejects an empty
+  // value for a select field outright, which would fail the whole update --
+  // taking `onboarding_version` down with it and re-running the flow forever.
+  if (answers.viewingInstruments.length > 0) payload.viewing_instruments = answers.viewingInstruments
+  if (answers.experienceLevel) payload.experience_level = answers.experienceLevel
+  payload.in_astro_club = answers.inAstroClub
+  payload.astro_club_name = answers.inAstroClub ? answers.astroClubName.slice(0, 120) : ''
   try {
-    await pb.collection('users').update(id, { onboarded: true })
-    if (pb.authStore.record) {
-      pb.authStore.save(pb.authStore.token, { ...pb.authStore.record, onboarded: true })
-    }
-  } catch {
+    const saved = await pb.collection('users').update(id, payload)
+    // Save the record the server returned, not a hand-built object. PocketBase
+    // silently drops unknown fields (it sets only fields the collection knows),
+    // so if migration 39 hasn't been applied the update still succeeds and
+    // returns a record without our fields -- and a hand-merged cache would then
+    // claim a version the server never stored, until the next authRefresh()
+    // quietly reverted it and sent the user through onboarding a second time.
+    pb.authStore.save(pb.authStore.token, saved)
+    // Only clear once the server has actually taken them; a failed push must
+    // survive for the next sign-in to retry.
+    clearOnboardingAnswers()
+  } catch (err) {
     // Best-effort, see comment above.
+    trackEvent('sync_failed', { stage: 'onboarding_account_sync', error: String(err) })
   }
 }
 

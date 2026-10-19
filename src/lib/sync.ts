@@ -1,10 +1,16 @@
+import { ClientResponseError } from 'pocketbase'
 import { pb } from './pocketbase'
+import { trackEvent } from './analytics'
 import { db, type ObservationLogEntry, type SkyEvent } from './db'
 import { parsePbDate } from './pocketbaseDate'
 import { categoryForKind } from './eventCategories'
+import { isGeneratedPastEventId } from './pastEvents.mjs'
 import { fetchPrivateObservationPhoto, isAtlasMediaEnabled, isAtlasMediaUploadBlockedError, uploadObservationPhoto } from './atlasMedia'
-
-const MELBOURNE = { lat: -37.8136, lon: 144.9631 }
+// Circular by design: checkInReview.ts imports pushObservation from here.
+// Both references live inside function bodies, never at module-init scope, so
+// the cycle resolves under ESM. See the note at the top of checkInReview.ts.
+import { pullReviewSubmissions } from './checkInReview'
+import { syncXpLedgerSoon } from './xpLedger'
 
 function eventAtLocalHour(now: Date, hour: number): Date {
   const date = new Date(now)
@@ -13,37 +19,47 @@ function eventAtLocalHour(now: Date, hour: number): Date {
   return date
 }
 
+// Seed content for the case where the catalogue genuinely has nothing for
+// this window -- an empty/unreachable backend should still leave the app
+// with something to look at rather than a blank week.
+//
+// These deliberately carry no latitude/longitude. Events without coordinates
+// are treated as globally visible (see eventFilters.ts and tonightTargets.ts),
+// which is right for naked-eye planets and a constellation: they are not tied
+// to one city the way an ISS pass is. They previously carried Melbourne's
+// coordinates and "from Melbourne" in every title, which put the sky over
+// Melbourne in front of every user regardless of where they actually were.
 function localNightSkyFallbackEvents(now = new Date()): SkyEvent[] {
   const updatedAt = now.toISOString()
   const evening = eventAtLocalHour(now, 19)
   const morning = eventAtLocalHour(now, 5)
   const items = [
     {
-      id: 'local-melbourne-jupiter',
-      target: 'melbourne_jupiter',
-      title: 'Jupiter from Melbourne tonight',
+      id: 'local-sky-jupiter',
+      target: 'jupiter',
+      title: 'Jupiter after sunset',
       description: 'Check Jupiter low in twilight when it is above the western horizon; clear horizon lines matter.',
       startsAt: evening,
     },
     {
-      id: 'local-melbourne-venus',
-      target: 'melbourne_venus',
-      title: 'Venus from Melbourne tonight',
+      id: 'local-sky-venus',
+      target: 'venus',
+      title: 'Venus in evening twilight',
       description: 'Look for Venus in evening twilight when it is separated enough from the Sun.',
       startsAt: evening,
     },
     {
-      id: 'local-melbourne-saturn',
-      target: 'melbourne_saturn',
-      title: 'Saturn from Melbourne late tonight',
-      description: 'Saturn is a late-night telescope target; steady seeing gives the best view of its thin ring presentation.',
+      id: 'local-sky-saturn',
+      target: 'saturn',
+      title: 'Saturn before dawn',
+      description: 'Saturn is a pre-dawn telescope target; steady seeing gives the best view of its thin ring presentation.',
       startsAt: morning,
     },
     {
-      id: 'local-melbourne-scorpius',
-      target: 'melbourne_scorpius',
+      id: 'local-sky-scorpius',
+      target: 'scorpius',
       title: 'Scorpius and the Milky Way core',
-      description: 'Scorpius anchors the southern winter sky and is a strong naked-eye and wide-field target from Melbourne.',
+      description: 'Scorpius sits against the brightest stretch of the Milky Way and is a strong naked-eye and wide-field target from dark skies.',
       startsAt: evening,
     },
   ]
@@ -57,8 +73,6 @@ function localNightSkyFallbackEvents(now = new Date()): SkyEvent[] {
     content: item.description,
     startsAt: item.startsAt.toISOString(),
     endsAt: new Date(item.startsAt.getTime() + 2 * 3_600_000).toISOString(),
-    latitude: MELBOURNE.lat,
-    longitude: MELBOURNE.lon,
     updatedAt,
   }))
 }
@@ -139,9 +153,28 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
     // whatever awaits it, e.g. Today's initial load) for minutes -- the
     // catch below already falls back to cached/local data, but only once
     // this actually rejects instead of sitting pending indefinitely.
-    const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', signal: AbortSignal.timeout(8000) })
+    // Fly's PocketBase machine cold-starts in ~10-15s (see lib/pocketbase.ts),
+    // so a single 8s attempt reported a failure ("ClientResponseError 0") for
+    // every first visitor to a cold machine. One retry with a longer bound
+    // covers the wake-up; only a failure after that is worth reporting.
+    // requestKey: null stops the SDK auto-cancelling this against another
+    // concurrent request to the same collection.
+    const fetchEvents = (timeoutMs: number) =>
+      pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', requestKey: null, signal: AbortSignal.timeout(timeoutMs) })
+    let records
+    try {
+      records = await fetchEvents(8000)
+    } catch (firstErr) {
+      if (!(firstErr instanceof ClientResponseError) || firstErr.status !== 0) throw firstErr
+      records = await fetchEvents(20000)
+    }
     const events = records.map(skyEventFromRecord)
-    const mergedEvents = [...events, ...localNightSkyFallbackEvents(now)]
+    // Seed content is a fallback, not a supplement. Merging it into every
+    // successful pull put four fixed entries into the local cache alongside
+    // the real catalogue on every sync, so they competed with genuine events
+    // for space in the week table and the Tonight list. Only fall back when
+    // the catalogue truly has nothing for this window.
+    const mergedEvents = events.length > 0 ? events : localNightSkyFallbackEvents(now)
     const freshIds = new Set(mergedEvents.map((event) => event.id))
     // Reconcile, not just merge: drop cached events inside this window that
     // the server no longer returns (e.g. removed server-side duplicates),
@@ -157,7 +190,8 @@ async function pullSkyEventsNow(windowDays: number): Promise<void> {
       if (staleIds.length > 0) await db.skyEvents.bulkDelete(staleIds)
       await db.skyEvents.bulkPut(mergedEvents)
     })
-  } catch {
+  } catch (err) {
+    trackEvent('sync_failed', { stage: 'pull_sky_events', error: String(err) })
     await db.skyEvents.bulkPut(localNightSkyFallbackEvents(now))
   }
 }
@@ -195,6 +229,33 @@ function skyBrightnessSourceFormat(value: unknown): ObservationLogEntry['skyBrig
   return value === 'raw' || value === 'jpeg' || value === 'unknown' ? value : undefined
 }
 
+// The backdated-check-in provenance fields (see checkInReview.ts). Each one is
+// a select or text column on the remote side, so the pull path is the only
+// place a value from the wire becomes a union type -- narrow here rather than
+// trusting the response, for the same reason `attemptRating` above exists.
+// `photo_day_ambiguous` is a real bool and needs no narrow, just `=== true`.
+function checkInKindValue(value: unknown): ObservationLogEntry['checkInKind'] {
+  return value === 'tonight' || value === 'past' ? value : undefined
+}
+
+function matchedByValue(value: unknown): ObservationLogEntry['matchedBy'] {
+  return value === 'photo-exif' || value === 'photo-exif-heading' || value === 'manual' ? value : undefined
+}
+
+function matchConfidenceValue(value: unknown): ObservationLogEntry['matchConfidence'] {
+  return value === 'strong' || value === 'possible' || value === 'weak' || value === 'none' ? value : undefined
+}
+
+function anchorSourceValue(value: unknown): ObservationLogEntry['anchorSource'] {
+  return value === 'trip' ||
+    value === 'trip-plan' ||
+    value === 'journal-location' ||
+    value === 'current-location' ||
+    value === 'manual'
+    ? value
+    : undefined
+}
+
 async function pullObservationPhoto(record: Parameters<typeof pb.files.getURL>[0]): Promise<Blob | undefined> {
   const r2Key = optionalText((record as { photo_r2_key?: unknown }).photo_r2_key)
   if (r2Key && isAtlasMediaEnabled()) return fetchPrivateObservationPhoto(r2Key)
@@ -213,9 +274,10 @@ async function pullObservationPhoto(record: Parameters<typeof pb.files.getURL>[0
     const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
     if (!response.ok || !contentType.startsWith('image/')) return undefined
     return await response.blob()
-  } catch {
+  } catch (err) {
     // Metadata still belongs in the journal even if a large file is slow or
     // temporarily unavailable. A later Journal visit retries this pull.
+    trackEvent('sync_failed', { stage: 'pull_observation_photo', error: String(err) })
     return undefined
   }
 }
@@ -258,8 +320,9 @@ async function pullObservationsNow(): Promise<void> {
           await pb.collection('atlas_observations').update(record.id, { photo_r2_key: uploaded.key, photo_r2_size: uploaded.size })
           record.photo_r2_key = uploaded.key
           record.photo_r2_size = uploaded.size
-        } catch {
+        } catch (err) {
           // Keep the local image and retry on a later Journal sync.
+          trackEvent('sync_failed', { stage: 'r2_photo_reupload_retry', error: String(err) })
         }
       }
       // Re-fetch cached non-images from earlier versions. Do not let a bad
@@ -301,6 +364,19 @@ async function pullObservationsNow(): Promise<void> {
         ...(record.sky_brightness_flagged_for_review === true ? { skyBrightnessFlaggedForReview: true } : {}),
         ...(Number.isFinite(Number(record.latitude)) ? { latitude: Number(record.latitude) } : {}),
         ...(Number.isFinite(Number(record.longitude)) ? { longitude: Number(record.longitude) } : {}),
+        // Backdated check-in provenance. Absent on every pre-feature row and
+        // on a plain tonight check-in, which is exactly what `undefined`
+        // means to every reader of these fields.
+        //
+        // `reviewStatus` / `reviewSubmissionId` are NOT here: the queue
+        // collection owns review state, and `pullReviewSubmissions` (called at
+        // the end of this function) is what mirrors it onto the entry.
+        ...(checkInKindValue(record.check_in_kind) ? { checkInKind: checkInKindValue(record.check_in_kind) } : {}),
+        ...(matchedByValue(record.matched_by) ? { matchedBy: matchedByValue(record.matched_by) } : {}),
+        ...(matchConfidenceValue(record.match_confidence) ? { matchConfidence: matchConfidenceValue(record.match_confidence) } : {}),
+        ...(anchorSourceValue(record.anchor_source) ? { anchorSource: anchorSourceValue(record.anchor_source) } : {}),
+        ...(optionalText(record.anchor_label) ? { anchorLabel: record.anchor_label } : {}),
+        ...(record.photo_day_ambiguous === true ? { photoDayAmbiguous: true } : {}),
         ...(downloadedPhoto ? { photo: downloadedPhoto } : cachedPhoto ? { photo: cachedPhoto } : {}),
       }
 
@@ -321,7 +397,18 @@ async function pullObservationsNow(): Promise<void> {
     // The Journal continues to show its local cache offline or when the
     // private collection is temporarily unavailable.
     console.error('pullObservationsNow failed', err)
+    trackEvent('sync_failed', { stage: 'pull_observations', error: String(err) })
   }
+
+  // Outside the try above, deliberately: review state is independent of
+  // whether the observation pull succeeded, and a failure here should not be
+  // reported as an observation failure. `pullReviewSubmissions` handles its
+  // own errors and never rejects.
+  //
+  // This is the only call site -- the Journal already awaits
+  // `pullObservations()`, so review state refreshes on the same visit with no
+  // new hook in any page.
+  await pullReviewSubmissions()
 }
 
 // For a past prominent event, find upcoming events a user would recognize
@@ -356,54 +443,30 @@ export async function getEventsInRange(start: Date, end: Date): Promise<SkyEvent
   return all.filter((event) => event.startsAt < end.toISOString() && event.endsAt >= start.toISOString())
 }
 
-// Sky Pass backdated check-ins need an event chooser for dates outside the
-// normal upcoming mirror. This stays read-only and also adds the result to
-// the local cache, so the chosen event remains legible offline afterwards.
-export async function getEventsForDate(date: string): Promise<SkyEvent[]> {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
-
-  const start = new Date(`${date}T00:00:00.000Z`)
-  const end = new Date(start.getTime() + 86_400_000)
-  const cached = await getEventsInRange(start, end)
-  if (!navigator.onLine) return cached
-
-  const toPbDate = (value: Date) => value.toISOString().replace('T', ' ')
-  const filter = `starts_at < "${toPbDate(end)}" && ends_at >= "${toPbDate(start)}"`
-  try {
-    const records = await pb.collection('sky_events').getFullList({ filter, sort: 'starts_at', signal: AbortSignal.timeout(8000) })
-    const events = records.map(skyEventFromRecord)
-    if (events.length > 0) await db.skyEvents.bulkPut(events)
-    return events
-  } catch {
-    return cached
-  }
-}
-
 // Same "flagship" definition EventsView uses for the featured cards above
 // the fold -- eclipses and meteor showers are rare enough to be worth
 // surfacing, unlike the high-frequency filler kinds (local night-sky
 // guides, asteroid passes) that otherwise dominate purely by recency.
-// Exported so ArchiveView's recap section (KES-178) uses the same
-// definition of "prominent" rather than redefining it.
-export const FLAGSHIP_KINDS = new Set(['eclipse', 'meteor_shower'])
-
-export async function getPastEvents(limit = 20): Promise<SkyEvent[]> {
-  const now = new Date().toISOString()
-  const all = await db.skyEvents.orderBy('startsAt').reverse().toArray()
-  const past = all.filter((event) => event.endsAt < now)
-  // Guarantee flagship events a slot instead of letting them get crowded out
-  // of a plain "most recent N" slice by same-day/more-recent filler -- then
-  // backfill the rest and re-sort, since ArchiveView's groupByDay depends on
-  // the array staying date-descending for its adjacency-based grouping.
-  const flagship = past.filter((event) => FLAGSHIP_KINDS.has(event.kind)).slice(0, limit)
-  const other = past.filter((event) => !FLAGSHIP_KINDS.has(event.kind)).slice(0, limit - flagship.length)
-  return [...flagship, ...other].sort((a, b) => b.startsAt.localeCompare(a.startsAt))
-}
+//
+// Defined in pastCheckInMatch.mjs, which is where it now earns its keep: a
+// flagship kind earns a `strong` match on time overlap alone, because a photo
+// taken inside a three-hour eclipse window does not need its frame parsed to
+// know what it is. Re-exported here so the existing consumers do not move.
+//
+// (`getPastEvents` and `getEventsForDate` used to live here and read
+// `db.skyEvents`. Both were removed rather than fixed: that table is a forward
+// mirror, `pullSkyEventsNow` actively deletes cached rows it does not get back,
+// and it could therefore never answer a question about history. Backdated
+// check-ins compute their day instead -- see pastEvents.mjs. Leaving exports
+// named `getPastEvents` around is how a future contributor gets wired to a
+// table that cannot answer.)
+export { FLAGSHIP_KINDS } from './pastCheckInMatch.mjs'
 
 // Write path: best-effort immediate push when signed in and online. The
 // entry is already saved locally by the caller before this runs, so a
-// failure here just means it stays local-only rather than being lost —
-// a full offline write queue (retrying failed pushes later) is future work.
+// failure here means "saved locally, sync still pending". CaptureSheet now
+// queues retries via syncQueue.ts, but callers still treat `null` as "not
+// synced yet" either way.
 // Returns the created PocketBase record id (also persisted onto the local
 // entry as `remoteId`) so callers that need the remote id right after
 // saving -- e.g. requesting an AI photo caption, which stores its result
@@ -420,7 +483,14 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
     const record = await pb.collection('atlas_observations').create({
       user: pb.authStore.record?.id,
       observed_at: entry.observedAt,
-      event: entry.eventId,
+      // Omitted, not nulled, for a backdated check-in: its matched event is a
+      // generated `past-…` id that exists nowhere on the server, and PocketBase
+      // validates the relation by looking the id up -- so sending it fails the
+      // entire record with "Failed to find all relation records with the
+      // provided ids" and the night never leaves the device. The title still
+      // travels as `target_name`, and a submission that needs review carries
+      // the event itself as `event_snapshot`.
+      event: isGeneratedPastEventId(entry.eventId) ? undefined : entry.eventId,
       note: entry.note,
       target_name: entry.targetName,
       device_used: entry.deviceUsed,
@@ -435,6 +505,16 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
       ...(entry.citizenScienceProject ? { sky_brightness_source_format: entry.skyBrightnessSourceFormat ?? 'unknown' } : {}),
       ...(entry.latitude != null ? { latitude: entry.latitude } : {}),
       ...(entry.longitude != null ? { longitude: entry.longitude } : {}),
+      // Backdated check-in provenance. Sent as null when absent, which is what
+      // a plain tonight check-in and every pre-feature row have -- so the pull
+      // path's narrowers fall through to `undefined` rather than inventing a
+      // kind for an entry that never had one.
+      check_in_kind: entry.checkInKind,
+      matched_by: entry.matchedBy,
+      match_confidence: entry.matchConfidence,
+      anchor_source: entry.anchorSource,
+      anchor_label: entry.anchorLabel,
+      photo_day_ambiguous: entry.photoDayAmbiguous,
       ...(!useR2 && entry.photo ? { photo: entry.photo } : {}),
     })
     await db.observations.update(entry.id, { remoteId: record.id })
@@ -452,12 +532,15 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
         // A capacity block is actionable, though: let the visible Journal
         // form show the opaque support reference instead of swallowing it.
         if (isAtlasMediaUploadBlockedError(error)) throw error
+        trackEvent('sync_failed', { stage: 'push_observation_r2_upload', error: String(error) })
       }
     }
+    void syncXpLedgerSoon()
     return record.id
   } catch (error) {
     // Stays local-only; the user still sees it in their Scrapbook.
     if (isAtlasMediaUploadBlockedError(error)) throw error
+    trackEvent('sync_failed', { stage: 'push_observation', error: String(error) })
     return null
   }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useIsMobile } from './lib/useIsMobile'
 import { LandingPage } from './views/LandingPage'
+import { HostPage } from './views/HostPage'
+import { LegalPage } from './views/LegalPage'
 import { AppShell } from './AppShell'
 import { useParallax } from './lib/motion'
 import { useAuth } from './lib/auth'
@@ -19,12 +20,59 @@ import type { ObservationDraft } from './lib/observationDraft'
 
 const APP_HOME = '/app/hub'
 
+// Routes a visitor can use without an account (ASV-47).
+//
+// Tonight's sky is the entire promise of the product, and it used to sit
+// behind a signup form: every landing CTA -- including "Set your location" --
+// navigated here and hit AuthGate, so the free tier's advertised "Tonight's
+// plan for your location" was unreachable without registering, and anyone who
+// declined got Melbourne's twilight times instead of their own.
+//
+// Hub is safe to open to guests because it is today-only and computed
+// client-side from a location the browser already has; nothing on it needs a
+// server-side identity. Everything that persists across devices (journal,
+// watchlist, saved plans), costs money, or writes to the account stays gated.
+// Guests get the sky, the event list, the calendar, a device-local journal,
+// and a few Ask Atlas questions. Planner and profile stay behind an account;
+// Watch, camera recipes and Places stay behind Sky Pass inside those screens.
+const GUEST_ROUTES = new Set([APP_HOME, '/app/events', '/app/calendar', '/app/journal', '/app/ask'])
+
+// Human name for the area a guest was bounced from, e.g. /app/calendar -> "Calendar".
+function lockedAreaLabel(pathname: string) {
+  const segment = pathname.split('/').filter(Boolean)[1]
+  return segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : undefined
+}
+
+// ASV-103: remembers that this device has held an account, so a locked route
+// opened by a first-time guest lands on Create account while a returning user
+// still gets Welcome back.
+const RETURNING_KEY = 'atlas-returning-account'
+
+function isReturningDevice() {
+  try {
+    return window.localStorage.getItem(RETURNING_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 function App() {
   const routerLocation = useLocation()
   const navigate = useNavigate()
-  const isAppRoute = routerLocation.pathname.startsWith('/app')
+  const isTonightRoute = routerLocation.pathname === '/tonight' || routerLocation.pathname.startsWith('/tonight/')
+  const isAppRoute = routerLocation.pathname.startsWith('/app') || isTonightRoute
+  const isGuidedTour = routerLocation.pathname === APP_HOME && new URLSearchParams(routerLocation.search).get('tour') === 'tonight'
   const { user } = useAuth()
-  const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>('sign-in')
+  const [showEntryChoice, setShowEntryChoice] = useState(false)
+  useEffect(() => {
+    if (!user) return
+    try {
+      window.localStorage.setItem(RETURNING_KEY, '1')
+    } catch {
+      // Storage blocked: guests simply keep seeing Create account.
+    }
+  }, [user])
+  const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>(() => (isReturningDevice() ? 'sign-in' : 'sign-up'))
   const {
     showOnboardingFlow,
     markEntered,
@@ -34,7 +82,6 @@ function App() {
   } = useOnboardingGate({ user, isAppRoute })
   const { location, currentLocation, manualCity, setManualLocation } = useAppLocation()
   const motion = useParallax()
-  const isMobile = useIsMobile()
   const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
 
   function logAttempt(draft: ObservationDraft) {
@@ -45,53 +92,142 @@ function App() {
   useThemeBootstrap()
   useEntitlementSync()
 
-  // Bare "/app" has no view of its own -- redirect to the app's home area,
-  // same target enterApp() below uses right after onboarding.
+  // Bare "/app" and the pre-rebuild "/tonight" alias have no view of their
+  // own -- redirect to the app's home area, same target enterApp() below
+  // uses right after onboarding. "/tonight" must stay a product route so
+  // PostHog's replay URL trigger (app|tonight) can match signed-in use
+  // instead of bouncing to the landing page.
   useEffect(() => {
-    if (routerLocation.pathname === '/app') navigate(APP_HOME, { replace: true })
-  }, [routerLocation.pathname, navigate])
+    if (routerLocation.pathname === '/app' || isTonightRoute) navigate(APP_HOME, { replace: true })
+  }, [routerLocation.pathname, isTonightRoute, navigate])
 
-  // Any path that isn't "/", "/landing", or under "/app" is not a real
-  // route. Unknown public URLs resolve to the landing-page alias rather
-  // than silently falling through to the app shell.
+  // Public legal pages (App Store requires reachable privacy + terms URLs).
+  const showLegal = routerLocation.pathname === '/privacy' || routerLocation.pathname === '/terms'
+
+  // Any path that isn't "/", "/landing", "/hosts", "/tonight", or under
+  // "/app" is not a real route. Unknown public URLs resolve to the
+  // landing-page alias rather than silently falling through to the app shell.
   useEffect(() => {
-    if (routerLocation.pathname !== '/' && routerLocation.pathname !== '/landing' && !isAppRoute) {
+    if (
+      routerLocation.pathname !== '/' &&
+      routerLocation.pathname !== '/landing' &&
+      routerLocation.pathname !== '/hosts' &&
+      !showLegal &&
+      !isAppRoute
+    ) {
       navigate('/landing', { replace: true })
     }
-  }, [routerLocation.pathname, isAppRoute, navigate])
+  }, [routerLocation.pathname, isAppRoute, showLegal, navigate])
 
   // "/" is the landing page, full stop. Signed-in visitors see their active
   // session identified here, but are only sent into the product when they
   // choose to open it. "/landing" remains a permanent alias.
   const showLanding = routerLocation.pathname === '/' || routerLocation.pathname === '/landing'
+  // "/hosts" is a public marketing page for prospective event hosts -- no
+  // account required, same as landing.
+  const showHosts = routerLocation.pathname === '/hosts'
 
-  function enterApp() {
+  useEffect(() => {
+    if (!showEntryChoice) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowEntryChoice(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showEntryChoice])
+
+  function enterApp(startTour = false) {
     markEntered()
     setAccountDefaultMode('sign-up')
-    navigate(APP_HOME, { replace: true })
+    navigate(startTour ? `${APP_HOME}?tour=tonight` : APP_HOME, { replace: true })
+  }
+
+  function handleLandingEntry() {
+    if (user) {
+      enterApp(true)
+      return
+    }
+    setShowEntryChoice(true)
+  }
+
+  function enterSignIn() {
+    markEntered()
+    setAccountDefaultMode('sign-in')
+    setShowEntryChoice(false)
+    navigate('/app/profile', { replace: true })
+  }
+
+  // ASV-51: the Sky Pass CTA must land somewhere that actually offers
+  // checkout. /app/planner is already wrapped in PaywallGate, so a visitor
+  // signs up (AuthGate gates any non-guest route) or, if already signed in,
+  // goes straight to the working "Get Sky Pass" checkout button there --
+  // instead of the free, guest-open Hub that enterApp() sends every other
+  // CTA to.
+  function enterPaidApp() {
+    markEntered()
+    setAccountDefaultMode('sign-up')
+    navigate('/app/planner', { replace: true })
   }
 
   if (showLanding) {
-    return <LandingPage authenticatedEmail={user?.email} isMobile={isMobile} onEnter={enterApp} />
+    return (
+      <>
+        <LandingPage authenticatedEmail={user?.email} onEnter={handleLandingEntry} onEnterPaid={enterPaidApp} />
+        {showEntryChoice && !user && (
+          <div className="entry-choice-overlay atlas-almanac" role="presentation">
+            <section className="entry-choice-modal" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
+              <p className="entry-choice-kicker">Open Atlas</p>
+              <h2 id="entry-choice-title">How would you like to begin?</h2>
+              <p>Sign in to pick up your plans and journal, or take a look around first.</p>
+              <div className="entry-choice-actions">
+                <button type="button" className="am-btn am-btn-primary" autoFocus onClick={enterSignIn}>
+                  Sign in first
+                </button>
+                <button type="button" className="am-btn" onClick={() => { setShowEntryChoice(false); enterApp(true) }}>
+                  Start guided tour
+                </button>
+              </div>
+              <button type="button" className="entry-choice-cancel" onClick={() => setShowEntryChoice(false)}>
+                Not now
+              </button>
+            </section>
+          </div>
+        )}
+      </>
+    )
   }
 
-  // Not "/", not "/landing", not an /app/* route -- the redirect effect
-  // above is already sending this to "/"; render nothing in the meantime
+  if (showHosts) {
+    return <HostPage />
+  }
+
+  if (showLegal) {
+    return <LegalPage kind={routerLocation.pathname === '/privacy' ? 'privacy' : 'terms'} />
+  }
+
+  // Not "/", not "/landing", not a product route -- the redirect effect
+  // above is already sending this to landing; render nothing in the meantime
   // rather than falling through to the app shell below.
   if (!isAppRoute) {
     return null
   }
 
-  // "Get started" (or a direct link into /app/*) no longer drops a visitor
-  // straight into onboarding/the app shell as a guest -- an account is
-  // required before anything past this renders. Existing local-first data
-  // (favourites/watchlist/observations saved before an account existed)
-  // still gets merged in on sign-up via mergeLocalDataIntoAccount, same as
-  // before; this just moves *when* that account has to exist.
-  if (!user) {
+  // Events, calendar, the on-device journal and a short Ask Atlas allowance
+  // are open. Anything else still requires an account before it renders.
+  // Local journal rows are merged in on sign-up via mergeLocalDataIntoAccount.
+  if (!user && !GUEST_ROUTES.has(routerLocation.pathname)) {
     return (
       <>
-        <AuthGate defaultMode={accountDefaultMode} onSignedIn={handleSignedIn} onSignedUp={handleSignedUp} />
+        <AuthGate
+          defaultMode={accountDefaultMode}
+          onSignedIn={handleSignedIn}
+          onSignedUp={handleSignedUp}
+          currentLocation={currentLocation}
+          // A guest who taps a locked tab came from Hub, not the landing
+          // page -- send them back where they were rather than all the way
+          // out of the product.
+          backTo={APP_HOME}
+          backLabel="Back to tonight"
+          lockedArea={lockedAreaLabel(routerLocation.pathname)}
+        />
         <DevPreviewPanel />
       </>
     )
@@ -117,7 +253,13 @@ function App() {
         journalProps={{ draft: observationDraft, onDraftConsumed: () => setObservationDraft(null), currentLocation }}
         profileProps={{
           locationStatus: location.status,
-          requestLocation: location.requestLocation,
+          // Force a fresh GPS fix here (never useLocationSeed's up-to-30-day
+          // cache) -- this is the settings/profile "Use current location"
+          // path, an explicit re-check the user reaches for specifically
+          // because their real position has likely moved since the last
+          // fix (ASV-35: reused a stale cached fix and silently stayed on
+          // wherever that old fix was, e.g. Melbourne after moving to Perth).
+          requestLocation: () => location.requestLocation(true),
           currentLocation,
           manualCity,
           setManualLocation,
@@ -126,7 +268,7 @@ function App() {
           accountDefaultMode,
         }}
       />
-      {!showOnboardingFlow && (
+      {!showOnboardingFlow && !isGuidedTour && (
         <>
           <FeedbackDock />
           <InstallPrompt />

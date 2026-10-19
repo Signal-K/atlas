@@ -32,6 +32,13 @@ jobs:
         env:
           VITE_PB_URL: ${{ vars.VITE_PB_URL }}
           VITE_ATLAS_MEDIA_URL: ${{ vars.VITE_ATLAS_MEDIA_URL }}
+          # ASV-42: without these two the bundle silently fell back to
+          # src/lib/pocketbase.ts's dev default (http://127.0.0.1:8093) and
+          # production shipped a checkout button that POSTed to the visitor's
+          # own machine. scripts/verify-build.mjs now fails the build rather
+          # than letting that reach Cloudflare again.
+          VITE_ATLAS_BILLING_URL: ${{ vars.VITE_ATLAS_BILLING_URL }}
+          VITE_POLAR_CHECKOUT_URL: ${{ vars.VITE_POLAR_CHECKOUT_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
@@ -57,17 +64,29 @@ jobs:
         env:
           VITE_PB_URL: ${{ vars.VITE_PB_URL }}
           VITE_ATLAS_MEDIA_URL: ${{ vars.VITE_ATLAS_MEDIA_URL }}
+          # ASV-42: without these two the bundle silently fell back to
+          # src/lib/pocketbase.ts's dev default (http://127.0.0.1:8093) and
+          # production shipped a checkout button that POSTed to the visitor's
+          # own machine. scripts/verify-build.mjs now fails the build rather
+          # than letting that reach Cloudflare again.
+          VITE_ATLAS_BILLING_URL: ${{ vars.VITE_ATLAS_BILLING_URL }}
+          VITE_POLAR_CHECKOUT_URL: ${{ vars.VITE_POLAR_CHECKOUT_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+          # ASV-26/ASV-27: PostHog Survey object IDs (scripts/posthog-surveys-setup.mjs).
+          # Blank is fine -- FeedbackDock falls back to its local trigger/dedup
+          # logic without a PostHog-attributed survey ID.
+          VITE_POSTHOG_POSTPLAN_SURVEY_ID: ${{ vars.VITE_POSTHOG_POSTPLAN_SURVEY_ID }}
+          VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID: ${{ vars.VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID }}
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
-      - uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: atlas
-          directory: dist
-          # cloudflare/pages-action@v1 defaults to installing wrangler v2
-          # via npx if this isn't set -- v2 is EOL and crashes under the
-          # Node 24 runners GitHub Actions now uses by default.
-          wranglerVersion: '3'
+      # Fails the deploy if dist/ contains a localhost service URL or still
+      # points analytics at PostHog directly instead of the /uplink proxy.
+      - run: node scripts/verify-build.mjs
+      # ASV-52: do not use cloudflare/pages-action or wrangler-action — GitHub
+      # could not resolve pages-action at all. Deploy with wrangler from npm.
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@3 pages deploy dist --project-name=atlas

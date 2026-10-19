@@ -1,0 +1,24 @@
+name: Backdated check-in review scan
+
+# Surfaces backdated check-ins whose photo's EXIF could not place a past night,
+# so a human can decide whether the entry counts toward a city stamp. Does not
+# auto-approve or auto-reject -- see scripts/review-checkin-queue.mjs.
+on:
+  schedule:
+    - cron: '0 2,10,18 * * *' # a few times a day
+  workflow_dispatch: {}
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run review:checkins
+        env:
+          PB_URL: ${{ secrets.PB_URL }}
+          PB_ADMIN_EMAIL: ${{ secrets.PB_ADMIN_EMAIL }}
+          PB_ADMIN_PASSWORD: ${{ secrets.PB_ADMIN_PASSWORD }}

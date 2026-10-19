@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MobileIcon } from '../components/mobile/MobileIcon'
 import { StatGrid } from '../components/mobile/StatGrid'
 import { CaptureSheet, RATING_HUE, RATING_LABEL } from '../components/mobile/CaptureSheet'
+import { SkyNightSheet } from '../components/mobile/SkyNightSheet'
+import { PastCheckInSheet } from '../components/mobile/PastCheckInSheet'
 import { EntryDetailSheet } from '../components/mobile/JournalSheets'
 import { JournalCommunity } from '../components/mobile/JournalCommunity'
+import { PhotoSkyIdSheet } from '../components/mobile/PhotoSkyIdSheet'
 import { useEntryPhotoUrl } from '../lib/useEntryPhotoUrl'
 import { pullObservations } from '../lib/sync'
 import { db, type ObservationLogEntry } from '../lib/db'
@@ -21,6 +25,15 @@ export interface JournalPageProps {
   currentLocation: CurrentLocation
 }
 
+// ASV-111: an entry with no named target used to read just "Observation".
+// Derive a title from what the entry does know: its place, else its time.
+function entryTitle(entry: ObservationLogEntry) {
+  if (entry.targetName) return entry.targetName
+  if (entry.locationLabel) return `Sky session · ${entry.locationLabel.split(',')[0]}`
+  const time = new Date(entry.observedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return `Sky session · ${time}`
+}
+
 function JournalEntryRow({ entry, kindLabel, onOpen }: { entry: ObservationLogEntry; kindLabel?: string; onOpen: () => void }) {
   const photoUrl = useEntryPhotoUrl(entry.photo)
   const tags = [entry.deviceUsed, kindLabel].filter(Boolean) as string[]
@@ -31,7 +44,7 @@ function JournalEntryRow({ entry, kindLabel, onOpen }: { entry: ObservationLogEn
         className={`az-thumb${photoUrl ? '' : ' az-thumb-empty'}`}
         style={photoUrl ? { backgroundImage: `url(${photoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
-        {!photoUrl && 'NOTE'}
+        {!photoUrl && <MobileIcon name="journal" size={18} />}
       </span>
       <span className="az-row-main">
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.1875rem' }}>
@@ -44,7 +57,7 @@ function JournalEntryRow({ entry, kindLabel, onOpen }: { entry: ObservationLogEn
             {new Date(entry.observedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}
           </span>
         </span>
-        <span className="az-row-title">{entry.targetName ?? 'Observation'}</span>
+        <span className="az-row-title">{entryTitle(entry)}</span>
         {entry.note && <span className="az-row-value">{entry.note}</span>}
         {tags.length > 0 && (
           <span className="az-chip-row" style={{ marginTop: '0.375rem' }}>
@@ -69,12 +82,20 @@ function JournalEntryRow({ entry, kindLabel, onOpen }: { entry: ObservationLogEn
 // into Community's header rather than kept as separate tabs.
 export function JournalPage({ draft, onDraftConsumed, currentLocation }: JournalPageProps) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const scopeId = user?.id ?? LOCAL_USER_ID
   const [tab, setTab] = useState<'mine' | 'community'>('mine')
   const [entries, setEntries] = useState<ObservationLogEntry[]>([])
   const [eventKindById, setEventKindById] = useState<Map<string, string>>(new Map())
   const [captureOpen, setCaptureOpen] = useState(false)
+  const [pastOpen, setPastOpen] = useState(false)
+  const [photoIdOpen, setPhotoIdOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // /hosts deep-links here with ?sky-night=1 to open the community action.
+  const skyNightOpen = searchParams.get('sky-night') === '1'
+  const closeSkyNight = () => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete('sky-night'); return next }, { replace: true })
   const [openEntry, setOpenEntry] = useState<ObservationLogEntry | null>(null)
+  const [yearFilter, setYearFilter] = useState<string | null>(null)
 
   async function refresh() {
     const all = await db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt')
@@ -125,6 +146,25 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
   const firstSeen = new Set(entries.map((entry) => entry.targetName).filter(Boolean)).size
   const places = cityStampsFromObservations(entries).length
 
+  // The diary's own archive index. Built from `db.observations` and nothing
+  // else -- `db.skyEvents` only ever holds the forward catalogue, so an
+  // archive view built on it could never answer for a past year.
+  const years = [...new Set(entries.map((entry) => entry.observedAt.slice(0, 4)))].sort().reverse()
+  // A filter naming a year that is no longer present (the entry was the only
+  // one, and it just changed) falls back to everything rather than rendering an
+  // empty diary with no visible reason why.
+  const activeYear = yearFilter && years.includes(yearFilter) ? yearFilter : null
+  const visible = activeYear ? entries.filter((entry) => entry.observedAt.startsWith(activeYear)) : entries
+  // Keyed by year and rendered one group per year, so a single header per year
+  // regardless of which direction the entries happen to be sorted in.
+  const byYear = new Map<string, ObservationLogEntry[]>()
+  for (const entry of visible) {
+    const year = entry.observedAt.slice(0, 4)
+    const bucket = byYear.get(year)
+    if (bucket) bucket.push(entry)
+    else byYear.set(year, [entry])
+  }
+
   return (
     <div className="az-page">
       <h1 className="az-h1">Journal</h1>
@@ -141,36 +181,93 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
 
       {tab === 'mine' && (
         <>
-          <div style={{ marginTop: '1rem' }}>
-            <StatGrid
-              stats={[
-                { value: String(nightsOut), label: 'NIGHTS OUT' },
-                { value: String(firstSeen), label: 'FIRST SEEN' },
-                { value: String(places), label: 'PLACES' },
-              ]}
-            />
-          </div>
-
-          <button type="button" className="az-btn az-btn-dashed az-btn-block" style={{ marginTop: '0.875rem' }} onClick={() => setCaptureOpen(true)}>
-            + Log tonight's session
-          </button>
-
-          <div className="az-section-head">
-            <span className="az-kicker">Your entries</span>
-          </div>
           {entries.length === 0 ? (
-            <p className="az-muted">Nothing logged yet — your sky-watching notes will show up here.</p>
+            <section className="az-first-use" aria-labelledby="journal-first-use-title">
+              <span className="az-kicker">YOUR FIRST ENTRY</span>
+              <h2 id="journal-first-use-title">Keep a record of the sky you actually saw.</h2>
+              <p>Log one session tonight. Atlas keeps the place, time, target and your note together, then this becomes your private observing history.</p>
+              <button type="button" className="az-btn az-btn-primary az-btn-block" onClick={() => setCaptureOpen(true)}>
+                Log tonight's session
+              </button>
+              <div className="az-first-use-secondary" aria-label="Other ways to begin">
+                <button type="button" className="az-text-btn" onClick={() => setPastOpen(true)}>Check in to a past night</button>
+                <button type="button" className="az-text-btn" onClick={() => setSearchParams({ 'sky-night': '1' })}>I went to a sky night</button>
+                <button type="button" className="az-text-btn" onClick={() => setPhotoIdOpen(true)}>Identify a sky photo</button>
+              </div>
+            </section>
           ) : (
-            <div className="az-row-group">
-              {entries.map((entry) => (
-                <JournalEntryRow
-                  key={entry.id}
-                  entry={entry}
-                  kindLabel={entry.eventId ? categoryForKind(eventKindById.get(entry.eventId) ?? '')?.label : undefined}
-                  onOpen={() => setOpenEntry(entry)}
+            <>
+              <div style={{ marginTop: '1rem' }}>
+                <StatGrid
+                  stats={[
+                    { value: String(nightsOut), label: 'NIGHTS OUT' },
+                    { value: String(firstSeen), label: 'FIRST SEEN' },
+                    { value: String(places), label: 'PLACES' },
+                  ]}
                 />
+              </div>
+
+              <button type="button" className="az-btn az-btn-dashed az-btn-block" style={{ marginTop: '0.875rem' }} onClick={() => setCaptureOpen(true)}>
+                + Log tonight's session
+              </button>
+              <div className="az-first-use-secondary" aria-label="Other journal actions">
+                <button type="button" className="az-text-btn" onClick={() => setPastOpen(true)}>Check in to a past night</button>
+                <button type="button" className="az-text-btn" onClick={() => setSearchParams({ 'sky-night': '1' })}>I went to a sky night</button>
+                <button type="button" className="az-text-btn" onClick={() => setPhotoIdOpen(true)}>Identify a sky photo</button>
+              </div>
+            </>
+          )}
+
+          {/* Nothing to head until there is a first entry (ASV-111). */}
+          {entries.length > 0 && (
+            <div className="az-section-head">
+              <span className="az-kicker">Your entries</span>
+            </div>
+          )}
+
+          {/* Only worth a filter row once the diary genuinely spans years. */}
+          {years.length > 1 && (
+            <div className="az-chip-row" style={{ marginBottom: '0.625rem' }}>
+              <button
+                type="button"
+                className={`az-chip${activeYear === null ? ' is-active' : ''}`}
+                onClick={() => setYearFilter(null)}
+              >
+                All
+              </button>
+              {years.map((year) => (
+                <button
+                  key={year}
+                  type="button"
+                  className={`az-chip${activeYear === year ? ' is-active' : ''}`}
+                  onClick={() => setYearFilter(year)}
+                >
+                  {year}
+                </button>
               ))}
             </div>
+          )}
+
+          {entries.length > 0 && (
+            [...byYear.entries()].map(([year, yearEntries]) => (
+              <div key={year} style={{ marginBottom: '0.875rem' }}>
+                <div className="az-section-head">
+                  <span className="az-kicker">
+                    {year} · {yearEntries.length}
+                  </span>
+                </div>
+                <div className="az-row-group">
+                  {yearEntries.map((entry) => (
+                    <JournalEntryRow
+                      key={entry.id}
+                      entry={entry}
+                      kindLabel={entry.eventId ? categoryForKind(eventKindById.get(entry.eventId) ?? '')?.label : undefined}
+                      onOpen={() => setOpenEntry(entry)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </>
       )}
@@ -186,7 +283,26 @@ export function JournalPage({ draft, onDraftConsumed, currentLocation }: Journal
         onSaved={refresh}
       />
 
+      <SkyNightSheet open={skyNightOpen} onClose={closeSkyNight} onSaved={refresh} />
+
+      <PastCheckInSheet
+        open={pastOpen}
+        onClose={() => setPastOpen(false)}
+        currentLocation={currentLocation}
+        // Straight to Profile, never an inline checkout: a purchase mid-flow
+        // would discard the day and place they have already entered.
+        onUpgradeClick={() => navigate('/app/profile')}
+        onSaved={refresh}
+      />
+
       <EntryDetailSheet entry={openEntry} onClose={() => setOpenEntry(null)} onShared={refresh} />
+
+      <PhotoSkyIdSheet
+        open={photoIdOpen}
+        onClose={() => setPhotoIdOpen(false)}
+        currentLocation={currentLocation}
+        onSignInClick={() => navigate('/app/profile')}
+      />
     </div>
   )
 }

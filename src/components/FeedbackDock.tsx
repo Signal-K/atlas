@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getActiveSurveys, trackEvent } from '../lib/analytics'
 import { useAuth } from '../lib/auth'
 
-type FeedbackMode = 'nps' | 'micro' | 'feature' | null
+type FeedbackMode = 'nps' | 'micro' | 'feature' | 'postplan' | 'wtp' | null
 
 interface AnalyticsEventDetail {
   name: string
@@ -15,20 +15,40 @@ const NPS_DISMISSED_KEY = 'atlas-feedback-nps-dismissed-at'
 const MICRO_STATE_KEY = 'atlas-feedback-micro-state'
 const ACTIVITY_THRESHOLD = 4
 const DISMISS_COOLDOWN_DAYS = 30
+// ASV-116: a survey is queued by its trigger and only shown once nothing else
+// is on screen for this long, so it lands after the outcome rather than on top
+// of it. PostHog showed 14 shown / 8 dismissed within 1-20s / 0 answered.
+const SURVEY_SETTLE_MS = 2500
 
 // PostHog survey object IDs -- set once scripts/posthog-surveys-setup.mjs
 // has created the matching survey in the dashboard. Undefined is fine:
 // these only annotate capture() calls for PostHog's Surveys analytics tab,
 // the local trigger/dedup logic below works identically either way.
 const NPS_SURVEY_ID = import.meta.env.VITE_POSTHOG_NPS_SURVEY_ID as string | undefined
+// ASV-26/ASV-27
+const POSTPLAN_SURVEY_ID = import.meta.env.VITE_POSTHOG_POSTPLAN_SURVEY_ID as string | undefined
+const WTP_SURVEY_ID = import.meta.env.VITE_POSTHOG_PAYWALL_WTP_SURVEY_ID as string | undefined
+const POSTPLAN_STATE_KEY = 'atlas-feedback-postplan-state'
+// ASV-116: the post-plan question used to pop up on first Hub load, straight
+// after the plan generated and before the person had done anything with it.
+// It now waits until a plan has been seen AND an outcome has happened.
+const PLAN_SEEN_KEY = 'atlas-feedback-plan-seen'
+const OUTCOME_KEY = 'atlas-feedback-outcome'
+const OUTCOME_EVENTS = new Set(['Tour completed', 'Logged observation'])
+const WTP_STATE_KEY = 'atlas-feedback-wtp-state'
 
+// Event names below must match src/lib/analytics.ts trackEvent() call sites
+// exactly -- the ASV-2 frontend rebuild renamed several of these
+// (e.g. "Generated first plan" -> "Tonight plan generation succeeded",
+// "Logged observation attempt" -> "Logged observation") and this set had
+// gone stale, silently undercounting activity and never reaching the NPS
+// threshold in the rebuilt app.
 const MEANINGFUL_EVENTS = new Set([
-  'Tapped visible target',
-  'Answered equipment prompt',
-  'Generated first plan',
-  'Scheduled viewing reminder',
-  'Submitted reminder feedback',
-  'Logged observation attempt',
+  'first_plan_target_tapped',
+  'first_plan_equipment_selected',
+  'Tonight plan generation succeeded',
+  'Added get ready reminder',
+  'Logged observation',
   'Sign up completed',
   'Paywall checkout clicked',
 ])
@@ -40,7 +60,10 @@ const MICRO_SURVEY_TRIGGERS: Record<string, { id: string; question: string; opti
     options: ['Yes', 'Somewhat', 'No'],
     surveyId: import.meta.env.VITE_POSTHOG_SURVEY_REMINDER_ID as string | undefined,
   },
-  'Tapped visible target': {
+  // ASV-116: this used to fire on `first_plan_target_tapped` -- the moment a
+  // person tapped a target, i.e. mid-flow -- and was dismissed within seconds.
+  // It now waits for the guided look to be finished.
+  'Tour completed': {
     id: 'target_detail_clarity',
     question: 'Did this help you decide what to look for?',
     options: ['Yes', 'Not sure', 'No'],
@@ -62,6 +85,23 @@ function isVisible(element: Element): boolean {
   const rect = element.getBoundingClientRect()
   const style = window.getComputedStyle(element)
   return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden'
+}
+
+// Feedback is useful, but it must never become a second modal layered over a
+// decision the person is already making. These are the Atlas-owned blocking
+// surfaces; native <dialog>s are included for share and browser-owned flows.
+const FEEDBACK_BLOCKING_SURFACES = [
+  '[role="dialog"][aria-modal="true"]',
+  'dialog[open]',
+  '.az-overlay',
+  '.az-sheet',
+  '.az-nav-drawer',
+  '.entry-choice-overlay',
+  '.onboarding-overlay',
+].join(', ')
+
+function hasFeedbackBlockingSurface(): boolean {
+  return Array.from(document.querySelectorAll(FEEDBACK_BLOCKING_SURFACES)).some(isVisible)
 }
 
 function collectVisibleText(selector: string, limit: number): string[] {
@@ -109,6 +149,7 @@ function daysSince(iso: string | null): number {
 export function FeedbackDock() {
   const { user } = useAuth()
   const [mode, setMode] = useState<FeedbackMode>(null)
+  const [queued, setQueued] = useState<FeedbackMode>(null)
   const [activityCount, setActivityCount] = useState(() => readNumber(ACTIVITY_KEY))
   const [npsTrigger, setNpsTrigger] = useState<string | null>(null)
   const [npsScore, setNpsScore] = useState<number | null>(null)
@@ -117,6 +158,10 @@ export function FeedbackDock() {
   const [featureEmail, setFeatureEmail] = useState('')
   const [microSurvey, setMicroSurvey] = useState<(typeof MICRO_SURVEY_TRIGGERS)[string] | null>(null)
   const [microNote, setMicroNote] = useState('')
+  const [postPlanStopped, setPostPlanStopped] = useState('')
+  const [postPlanMissing, setPostPlanMissing] = useState('')
+  const [wtpAnswer, setWtpAnswer] = useState('')
+  const [wtpBand, setWtpBand] = useState<string | null>(null)
   const npsSubmitted = localStorage.getItem(NPS_STATE_KEY) === 'submitted'
   const npsDismissedRecently = daysSince(localStorage.getItem(NPS_DISMISSED_KEY)) < DISMISS_COOLDOWN_DAYS
   // null = not checked yet. Only surveys with a PostHog survey ID wired up
@@ -125,6 +170,33 @@ export function FeedbackDock() {
   // survey here is unconfigured and display falls back to the local
   // trigger/dedup logic exactly as before.
   const [activeSurveyIds, setActiveSurveyIds] = useState<Set<string> | null>(null)
+  const [isBlocked, setIsBlocked] = useState(() => hasFeedbackBlockingSurface())
+
+  // AppShell owns sheets, search, the navigation drawer, and several route
+  // overlays, so FeedbackDock cannot rely on a single React prop to know when
+  // it would obscure another interaction. Watching the rendered surface keeps
+  // the dock deferred even for a dialog opened deep in a route component.
+  useEffect(() => {
+    const updateBlockedState = () => setIsBlocked(hasFeedbackBlockingSurface())
+    const observer = new MutationObserver(updateBlockedState)
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-modal', 'aria-hidden', 'class', 'open', 'style'],
+    })
+    updateBlockedState()
+    return () => observer.disconnect()
+  }, [])
+
+  // Reserve scroll space whenever the persistent affordance is visible. This
+  // is deliberately on the app's scroll owner rather than an individual page,
+  // so a Journal, Profile, or Hub last row cannot be hidden behind the dock.
+  useEffect(() => {
+    const visible = !isBlocked
+    document.body.classList.toggle('has-feedback-dock', visible)
+    return () => document.body.classList.remove('has-feedback-dock')
+  }, [isBlocked])
 
   useEffect(() => {
     getActiveSurveys().then((surveys) => setActiveSurveyIds(new Set(surveys.map((s) => s.id))))
@@ -148,26 +220,59 @@ export function FeedbackDock() {
 
         if (!npsSubmitted && !npsDismissedRecently && nextCount >= ACTIVITY_THRESHOLD && surveyIsActive(NPS_SURVEY_ID)) {
           setNpsTrigger(detail.name)
-          setMode((current) => {
-            if (current == null && NPS_SURVEY_ID) trackEvent('survey shown', { $survey_id: NPS_SURVEY_ID })
-            return current ?? 'nps'
-          })
+          setQueued((current) => current ?? 'nps')
         }
       }
 
       const survey = MICRO_SURVEY_TRIGGERS[detail.name]
-      if (!survey || localStorage.getItem(`${MICRO_STATE_KEY}:${survey.id}`) || !surveyIsActive(survey.surveyId)) return
-      setMicroSurvey(survey)
-      setMicroNote('')
-      setMode((current) => {
-        if (current == null && survey.surveyId) trackEvent('survey shown', { $survey_id: survey.surveyId })
-        return current ?? 'micro'
-      })
+      if (survey && !localStorage.getItem(`${MICRO_STATE_KEY}:${survey.id}`) && surveyIsActive(survey.surveyId)) {
+        setMicroSurvey(survey)
+        setMicroNote('')
+        setQueued((current) => current ?? 'micro')
+      }
+
+      // ASV-26: once per user, after the value moment (a plan was generated)
+      // AND a completed outcome (guided look finished / observation logged).
+      if (detail.name === 'Tonight plan generation succeeded') localStorage.setItem(PLAN_SEEN_KEY, '1')
+      if (OUTCOME_EVENTS.has(detail.name)) localStorage.setItem(OUTCOME_KEY, '1')
+      if (
+        (detail.name === 'Tonight plan generation succeeded' || OUTCOME_EVENTS.has(detail.name)) &&
+        localStorage.getItem(PLAN_SEEN_KEY) &&
+        localStorage.getItem(OUTCOME_KEY) &&
+        !localStorage.getItem(POSTPLAN_STATE_KEY) &&
+        surveyIsActive(POSTPLAN_SURVEY_ID)
+      ) {
+        setQueued((current) => current ?? 'postplan')
+      }
+
+      // ASV-27: once per user, the first time they actually reach a
+      // paywall (not on every checkout click) -- pairs with the
+      // "Paywall checkout clicked" feature breakdown as the
+      // stated-preference half of the WTP question.
+      if (detail.name === 'Paywall viewed' && !localStorage.getItem(WTP_STATE_KEY) && surveyIsActive(WTP_SURVEY_ID)) {
+        setQueued((current) => current ?? 'wtp')
+      }
     }
 
     window.addEventListener('atlas:analytics-event', onAnalyticsEvent)
     return () => window.removeEventListener('atlas:analytics-event', onAnalyticsEvent)
   }, [npsDismissedRecently, npsSubmitted, activeSurveyIds])
+
+  useEffect(() => {
+    if (!queued || mode || isBlocked) return
+    const timer = window.setTimeout(() => {
+      const surveyId =
+        queued === 'nps' ? NPS_SURVEY_ID
+          : queued === 'micro' ? microSurvey?.surveyId
+            : queued === 'postplan' ? POSTPLAN_SURVEY_ID
+              : queued === 'wtp' ? WTP_SURVEY_ID
+                : undefined
+      if (surveyId) trackEvent('survey shown', { $survey_id: surveyId })
+      setMode(queued)
+      setQueued(null)
+    }, SURVEY_SETTLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [queued, mode, isBlocked, microSurvey])
 
   useEffect(() => {
     function openFeatureRequest() {
@@ -179,10 +284,13 @@ export function FeedbackDock() {
 
   const canSubmitFeature = featureText.trim().length >= 6
   const canSubmitNps = npsScore != null
+  const canSubmitWtp = wtpBand != null
 
   const panelTitle = useMemo(() => {
     if (mode === 'feature') return 'Request a feature'
     if (mode === 'micro') return microSurvey?.question ?? 'Quick check'
+    if (mode === 'postplan') return 'Quick question about tonight'
+    if (mode === 'wtp') return 'What would make Sky Pass worth it?'
     return 'Quick score'
   }, [microSurvey?.question, mode])
 
@@ -203,6 +311,37 @@ export function FeedbackDock() {
         trackEvent('Micro survey dismissed', { surveyId: microSurvey.id })
       }
     }
+    if (mode === 'postplan') {
+      localStorage.setItem(POSTPLAN_STATE_KEY, 'dismissed')
+      trackEvent('survey dismissed', POSTPLAN_SURVEY_ID ? { $survey_id: POSTPLAN_SURVEY_ID } : { surveyKey: 'postplan' })
+    }
+    if (mode === 'wtp') {
+      localStorage.setItem(WTP_STATE_KEY, 'dismissed')
+      trackEvent('survey dismissed', WTP_SURVEY_ID ? { $survey_id: WTP_SURVEY_ID } : { surveyKey: 'paywall_wtp' })
+    }
+    setMode(null)
+  }
+
+  function submitPostPlan() {
+    localStorage.setItem(POSTPLAN_STATE_KEY, 'submitted')
+    trackEvent('survey sent', {
+      ...(POSTPLAN_SURVEY_ID ? { $survey_id: POSTPLAN_SURVEY_ID } : { surveyKey: 'postplan' }),
+      almostStopped: postPlanStopped.trim() || undefined,
+      missingForTomorrow: postPlanMissing.trim() || undefined,
+      source: 'feedback_dock',
+    })
+    setMode(null)
+  }
+
+  function submitWtp() {
+    if (!canSubmitWtp) return
+    localStorage.setItem(WTP_STATE_KEY, 'submitted')
+    trackEvent('survey sent', {
+      ...(WTP_SURVEY_ID ? { $survey_id: WTP_SURVEY_ID } : { surveyKey: 'paywall_wtp' }),
+      whatWouldMakeItWorthPaying: wtpAnswer.trim() || undefined,
+      wtpBand,
+      source: 'feedback_dock',
+    })
     setMode(null)
   }
 
@@ -279,12 +418,12 @@ export function FeedbackDock() {
   }
 
   return (
-    <div className={`feedback-dock${mode ? ' feedback-dock--open' : ''}`} aria-live="polite">
-      <button type="button" className="feedback-dock-trigger" onClick={() => setMode('feature')} aria-label="Request feature">
+    <div className={`feedback-dock${mode ? ' feedback-dock--open' : ''}${isBlocked ? ' feedback-dock--deferred' : ''}`} aria-live="polite" aria-hidden={isBlocked || undefined}>
+      <button type="button" className="feedback-dock-trigger" onClick={() => setMode('feature')} aria-label="Send feedback" tabIndex={isBlocked ? -1 : undefined}>
         <span className="feedback-dock-trigger-icon" aria-hidden="true">
           +
         </span>
-        <span className="feedback-dock-trigger-label">Request feature</span>
+        <span className="feedback-dock-trigger-label">Feedback</span>
       </button>
 
       {mode && (
@@ -374,6 +513,61 @@ export function FeedbackDock() {
                 Send request
               </button>
             </form>
+          )}
+
+          {mode === 'postplan' && (
+            <div className="feedback-panel-body">
+              <label className="feedback-field">
+                <span>What almost stopped you?</span>
+                <textarea
+                  value={postPlanStopped}
+                  onChange={(event) => setPostPlanStopped(event.target.value)}
+                  placeholder="Optional"
+                  rows={2}
+                />
+              </label>
+              <label className="feedback-field">
+                <span>What's missing for tomorrow night?</span>
+                <textarea
+                  value={postPlanMissing}
+                  onChange={(event) => setPostPlanMissing(event.target.value)}
+                  placeholder="Optional"
+                  rows={2}
+                />
+              </label>
+              <button type="button" className="feedback-submit" onClick={submitPostPlan}>
+                Send
+              </button>
+            </div>
+          )}
+
+          {mode === 'wtp' && (
+            <div className="feedback-panel-body">
+              <label className="feedback-field">
+                <span>What would make this worth paying for?</span>
+                <textarea
+                  value={wtpAnswer}
+                  onChange={(event) => setWtpAnswer(event.target.value)}
+                  placeholder="Optional"
+                  rows={2}
+                />
+              </label>
+              <div className="feedback-option-row">
+                {['Free only', '$3-5', '$6-10', 'Tours only'].map((band) => (
+                  <button
+                    type="button"
+                    key={band}
+                    className={wtpBand === band ? 'is-selected' : ''}
+                    onClick={() => setWtpBand(band)}
+                  >
+                    {band}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="feedback-submit" onClick={submitWtp} disabled={!canSubmitWtp}>
+                Send
+              </button>
+            </div>
           )}
         </div>
       )}

@@ -16,6 +16,7 @@ import { recipeKeyForEventKind, type RecipeKey } from './cameraRecipes'
 import { buildEventGuide, type GuideStep } from './eventGuide'
 import { KIND_LABELS } from '../widgets/EventRow'
 import type { BrightStar } from '../data/brightStars'
+import { eventDisplayInstant, formatZonedTime } from './eventTiming.mjs'
 
 export interface EntryDetailLocation {
   lat: number
@@ -51,6 +52,7 @@ export interface EntryDetailSubject {
   // shower peak/moon note, etc.) -- null for kinds buildEventGuide doesn't
   // cover, or when no location was available to compute it against.
   guideSteps: GuideStep[] | null
+  timeZone?: string
 }
 
 const DIFFICULTY_LABEL: Record<TargetDifficulty, string> = {
@@ -61,7 +63,8 @@ const DIFFICULTY_LABEL: Record<TargetDifficulty, string> = {
 
 // Kinds where a moving/brief target makes binoculars impractical even
 // though naked-eye or a phone can still catch it.
-const BINOCULARS_UNHELPFUL = new Set(['meteor_shower', 'fireball', 'solar_flare', 'iss_pass', 'satellite_flare'])
+const BINOCULARS_UNHELPFUL = new Set(['meteor_shower', 'fireball', 'solar_flare', 'iss_pass', 'satellite_flare', 'telescope_target'])
+const TELESCOPE_UNHELPFUL = new Set(['meteor_shower', 'fireball', 'solar_flare', 'iss_pass', 'satellite_flare'])
 
 // Moon illumination is useful context for dark-sky targets and lunar events,
 // but it is not a property of a planet such as Venus. Keep the detail facts
@@ -70,7 +73,7 @@ const MOON_RELEVANT_EVENT_KINDS = new Set(['moon_phase', 'eclipse', 'meteor_show
 
 export function formatTimeLabel(iso: string | null, timeZone?: string): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
+  return formatZonedTime(iso, timeZone, true)
 }
 
 function markerPctFor(bestTimeIso: string | null, window: DarknessWindow): number {
@@ -94,18 +97,21 @@ function eventSuitability(kind: string, phoneFriendly: boolean, nakedEyeVisible:
   return [
     { label: 'Naked eye', active: nakedEyeVisible },
     { label: 'Binoculars', active: !BINOCULARS_UNHELPFUL.has(kind) },
+    { label: 'Telescope', active: !TELESCOPE_UNHELPFUL.has(kind) },
     { label: 'Phone', active: phoneFriendly },
   ]
 }
 
 function eventSuitabilityNote(pills: SuitabilityPill[]): string {
+  const telescope = pills.find((pill) => pill.label === 'Telescope')?.active
   const phone = pills.find((pill) => pill.label === 'Phone')?.active
   const binoculars = pills.find((pill) => pill.label === 'Binoculars')?.active
   const nakedEye = pills.find((pill) => pill.label === 'Naked eye')?.active
   if (phone) return 'Bright enough for a handheld or tripod phone shot to pick out clearly.'
   if (binoculars) return 'Binoculars or a longer lens reveal it better than a phone alone will.'
   if (nakedEye) return 'Easy to find naked-eye, though a phone will struggle to resolve much detail.'
-  return 'A challenging target — best attempted with a telescope and tracking.'
+  if (telescope) return 'A challenging target — best attempted with a telescope and tracking.'
+  return 'Not a target for optics — this is best experienced with the naked eye or as a record of activity.'
 }
 
 interface EventDetailInput {
@@ -136,7 +142,7 @@ export function buildEventDetail(input: EventDetailInput, advisory: DailyViewing
       input.phoneFriendly ? 'phone-friendly' : input.nakedEyeVisible ? 'naked-eye' : 'needs optics'
     }`,
     bestTimeIso: input.bestTimeIso,
-    bestTimeLabel: formatTimeLabel(input.bestTimeIso),
+    bestTimeLabel: formatTimeLabel(input.bestTimeIso, input.location?.timeZone),
     direction: input.direction ? { compassLabel: input.direction.compassLabel, altitudeDeg: input.direction.altitudeDeg } : null,
     moonPct: input.moonPct,
     suitability,
@@ -148,6 +154,7 @@ export function buildEventDetail(input: EventDetailInput, advisory: DailyViewing
     markerPct: markerPctFor(input.bestTimeIso, input.darknessWindow),
     sourceEvent: input.sourceEvent,
     guideSteps,
+    timeZone: input.location?.timeZone,
   }
 }
 
@@ -161,11 +168,13 @@ export function detailInputFromTonightTarget(
   sourceEvent?: SkyEvent,
   location?: EntryDetailLocation,
 ): EventDetailInput {
+  const bestTimeIso =
+    sourceEvent?.kind === 'meteor_shower' ? eventDisplayInstant(sourceEvent, location?.timeZone).toISOString() : target.bestTime
   return {
     id: target.eventId,
     kind: target.kind,
     title: target.title,
-    bestTimeIso: target.bestTime,
+    bestTimeIso,
     direction: target.direction,
     difficulty: target.difficulty,
     phoneFriendly: target.phoneFriendly,
@@ -183,7 +192,7 @@ export function detailInputFromTonightTarget(
 // anchored to the event's own start time instead of a transit search.
 export function detailInputFromEvent(event: SkyEvent, location: EntryDetailLocation, darknessWindow: DarknessWindow): EventDetailInput {
   const meta = metaFor(event.kind)
-  const bestTime = new Date(event.startsAt)
+  const bestTime = eventDisplayInstant(event, location.timeZone)
   const primary = getPrimarySkyMapObjectForEvent(event, bestTime, location.lat, location.lon)
   return {
     id: event.id,

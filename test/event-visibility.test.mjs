@@ -45,3 +45,16 @@ test('Perseids require darkness and a radiant above the horizon', () => {
   assert.equal(visibilityForEvent(event, ...CITIES.Zurich).visible, true)
   assert.equal(visibilityForEvent(event, ...CITIES.Melbourne).visible, false)
 })
+
+// ASV-39: point events (starts_at === ends_at) were only sampled at that one
+// instant, so a real conjunction whose exact peak fell in daylight was hidden
+// from a place that saw it fine in the evening twilight either side of it.
+test('a zero-duration Moon-Venus conjunction stays visible from Perth on 2026-09-14', async () => {
+  const { fetchEvents } = await import('../src/lib/eventSources/conjunctions.mjs')
+  const events = await fetchEvents({ now: new Date('2026-09-10T00:00:00.000Z'), windowDays: 14 })
+  const found = events.find((e) => e.target === 'moon_venus')
+  assert.ok(found, 'expected the Moon-Venus conjunction')
+  const event = { kind: found.kind, target: found.target, startsAt: found.starts_at, endsAt: found.ends_at }
+  assert.equal(event.startsAt, event.endsAt, 'fixture must stay zero-duration')
+  assert.equal(visibilityForEvent(event, -31.9523, 115.8613).visible, true)
+})

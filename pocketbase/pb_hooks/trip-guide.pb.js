@@ -52,12 +52,21 @@ routerAdd(
     const interests = Array.isArray(payload.interests) ? payload.interests.slice(0, 10).map((v) => String(v).slice(0, 40)) : []
     const highlights = Array.isArray(payload.highlights) ? payload.highlights.slice(0, 10) : []
     const nearbyDarkSites = Array.isArray(payload.nearbyDarkSites) ? payload.nearbyDarkSites.slice(0, 5) : []
+    const nightlyConditions = Array.isArray(payload.nightlyConditions) ? payload.nightlyConditions.slice(0, 14) : []
 
     const highlightsLines = highlights
       .map((h) => `- ${String((h && h.title) || '').slice(0, 120)} (${String((h && h.kind) || '').slice(0, 40)}, ${String((h && h.date) || '').slice(0, 20)})`)
       .join('\n')
     const darkSiteLines = nearbyDarkSites
       .map((s) => `- ${String((s && s.name) || '').slice(0, 120)}, Bortle ${Number((s && s.bortleClass) || 0)}, ~${Number((s && s.distanceKm) || 0).toFixed(0)}km away`)
+      .join('\n')
+    const nightlyConditionLines = nightlyConditions
+      .map((night) => {
+        const date = String((night && night.date) || '').slice(0, 10)
+        const moon = Number((night && night.moonIlluminationPct) || 0)
+        const cloud = Number((night && night.cloudCoverPct))
+        return `- ${date}: moon ${Math.round(moon)}%${Number.isFinite(cloud) ? `; cloud ${Math.round(cloud)}%` : '; cloud forecast unavailable'}`
+      })
       .join('\n')
 
     // Grounds the model in what Atlas already computed for this leg instead
@@ -69,6 +78,7 @@ routerAdd(
       `- Moon illumination: ${Math.round(moonIlluminationPct)}%\n` +
       `- Milky Way visibility verdict (already decided, do not contradict it): ${milkyWayVisible}\n` +
       (cloudCoverPct != null ? `- Typical cloud cover: ${Math.round(cloudCoverPct)}%\n` : '') +
+      (nightlyConditionLines ? `- Per-night local conditions:\n${nightlyConditionLines}\n` : '') +
       (equipment.length ? `- Equipment on hand: ${equipment.join(', ')}\n` : '- Equipment on hand: naked eye only\n') +
       (interests.length ? `- Traveler's interests: ${interests.join(', ')}\n` : '') +
       (highlightsLines ? `\nNotable events during the stay:\n${highlightsLines}\n` : '\nNo major scheduled sky events during the stay.\n') +

@@ -32,7 +32,15 @@ async function mockSkyEvents(page: Page) {
   await page.route('**/api/collections/sky_events/records**', async (route) => {
     const now = new Date()
     const startsAt = new Date(now.getTime() + 2 * 3_600_000)
-    const endsAt = new Date(now.getTime() + 3 * 3_600_000)
+    // A moon_phase event only survives eventFilters' visibility gate if the
+    // Moon is above the observer's horizon during the event window
+    // (eventVisibility.mjs takes 7 evenly-spaced samples across it). A
+    // one-hour window two hours from "now" therefore renders or vanishes
+    // purely according to what time of day the suite happens to run at --
+    // which is why these specs passed in the morning and failed in the
+    // evening. A full day guarantees at least one sample with the Moon up
+    // from London, without pinning the clock.
+    const endsAt = new Date(startsAt.getTime() + 24 * 3_600_000)
 
     await route.fulfill({
       status: 200,

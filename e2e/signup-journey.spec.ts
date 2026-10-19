@@ -1,8 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { setupClerkTestingToken } from '@clerk/testing/playwright'
 import { clerkTestEmail, createClerkTestUser, deleteClerkTestUser, fillClerkSignIn, fillClerkSignUp, primeClerkPocketBaseLink } from './support/clerk'
+import { completeOnboarding } from './support/onboarding'
+import { resolvePbUrl } from './support/pbUrl'
+import { ONBOARDING_VERSION } from '../src/lib/onboarding'
 
-const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const PB_URL = resolvePbUrl()
 
 async function mockTonightData(page: Page) {
   await page.route('https://api.open-meteo.com/**', async (route) => {
@@ -31,7 +34,12 @@ async function mockTonightData(page: Page) {
   await page.route('**/api/collections/sky_events/records**', async (route) => {
     const now = new Date()
     const startsAt = new Date(now.getTime() + 2 * 3_600_000)
-    const endsAt = new Date(now.getTime() + 3 * 3_600_000)
+    // Same trap as plan-screen: a moon_phase event only clears the
+    // visibility gate if the Moon is above London's horizon during the
+    // window, so a one-hour slot makes the Full Moon row appear or vanish
+    // according to what time of day the suite runs. A full day always
+    // contains a Moon-up sample.
+    const endsAt = new Date(startsAt.getTime() + 24 * 3_600_000)
 
     await route.fulfill({
       status: 200,
@@ -77,12 +85,12 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-// "Get started" now requires an account before onboarding or the app shell
-// render at all (see AuthGate in App.tsx) -- signup no longer happens
-// after a guest has already saved something locally (that whole flow,
-// SignupWallModal, was removed as dead code). This proves the new order:
-// landing -> auth gate -> account created -> onboarding -> the feature that
-// used to require a signup wall (logging an observation) just works.
+// ASV-47: the landing CTA opens tonight's sky as a guest -- no account, no
+// signup form. Onboarding runs on entry (that is where a guest sets their
+// location), and the auth gate is reached by asking for something an account
+// actually owns. This proves the order: landing -> guest Hub -> onboarding ->
+// gated feature -> account created -> the gated feature works, without
+// dragging the new account back through onboarding a second time.
 //
 // KES-189: AuthGate now renders Clerk's own <SignUp>, exchanged for a
 // PocketBase session via /auth/clerk-exchange -- both real, per Clerk's
@@ -95,9 +103,21 @@ test('signup happens via the auth gate before onboarding, then observations save
   try {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: 'What can I see in the sky tonight?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Get started' }).click()
+    await expect(page.getByRole('heading', { name: 'There is something worth going outside for.' })).toBeVisible()
+    await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Start guided tour' }).click()
 
+    // Straight into the product as a guest -- no account demanded first.
+    await expect(page).toHaveURL('/app/hub?tour=tonight')
+
+    // Guests are not put through onboarding; it waits for an account.
+    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
+
+    // Tonight's sky is readable without an account.
+    await expect(page.getByText("You're browsing as a guest.")).toBeVisible()
+
+    // The gate appears only when the guest asks for something an account owns.
+    await page.getByRole('link', { name: /All events/ }).click()
     await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
     await fillClerkSignUp(page, email, password)
 
@@ -110,16 +130,9 @@ test('signup happens via the auth gate before onboarding, then observations save
       )
       .toBe(email)
 
-    // Onboarding runs right after account creation, not before it.
-    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
-    await page.getByRole('button', { name: 'Skip' }).click()
-    await expect(page.getByRole('heading', { name: 'What do you want to see?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Skip' }).click()
-    await expect(page.getByRole('heading', { name: 'Where are you observing from?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Looks good' }).click()
-    await page.getByRole('button', { name: 'Not now' }).click()
+    // Onboarding runs now that there is an account to keep the answers on.
+    await completeOnboarding(page)
 
-    await expect(page).toHaveURL('/app/events')
     await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
 
     await page.getByRole('button', { name: 'Full Moon' }).click()
@@ -137,32 +150,64 @@ test('signup happens via the auth gate before onboarding, then observations save
   }
 })
 
-test('an existing account signs in without being sent through onboarding again', async ({ page }) => {
+// This test used to assert the opposite -- that a returning account signs in
+// and lands straight in the product without seeing onboarding. That is no
+// longer the behaviour: ASV-53 made the gate a *version* comparison, so an
+// account whose onboarding_version predates the current flow is sent through
+// it rather than exempted by `onboarded`. The Clerk-side setup below is
+// unchanged and still worth keeping -- it is what exercises the account's
+// second login (created:false), which is the real returning-account case.
+test('an existing account is re-run through the current onboarding flow', async ({ page }) => {
   const email = clerkTestEmail('signup-journey-returning')
   const password = 'Correct-horse-battery1!'
   const clerkUser = await createClerkTestUser(email, password)
-  // Establishes the clerk_user_id <-> PocketBase link ahead of time, so the
-  // sign-in below is the account's *second* login (created:false) -- the
-  // actual "existing account" case this test is about, not a first-time
-  // signup that happens to use the sign-in tab.
-  await primeClerkPocketBaseLink(PB_URL, clerkUser.id)
 
-  await setupClerkTestingToken({ page })
-
+  // Everything after the user exists belongs inside the try: priming the link
+  // reaches PocketBase over the network, and when that throws (a stale
+  // VITE_PB_URL is enough) the account created a line above never reaches the
+  // finally below. That leak is what silently filled this Clerk development
+  // instance to its 100-user cap, at which point every spec that signs up
+  // fails for a reason that looks nothing like the real cause.
   try {
+    // Establishes the clerk_user_id <-> PocketBase link ahead of time, so the
+    // sign-in below is the account's *second* login (created:false) -- the
+    // actual "existing account" case this test is about, not a first-time
+    // signup that happens to use the sign-in tab.
+    await primeClerkPocketBaseLink(PB_URL, clerkUser.id)
+
+    await setupClerkTestingToken({ page })
+
     await page.goto('/')
 
-    await page.getByRole('button', { name: 'Get started' }).click()
+    await page.getByRole('button', { name: 'See my sky', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Start guided tour' }).click()
+    await expect(page).toHaveURL('/app/hub?tour=tonight')
+
+    // Guests get Hub; an account-owned area still puts up the gate (ASV-47).
+    // Navigated directly rather than via the rail, since onboarding is
+    // covering the shell at this point in the journey.
+    await page.goto('/app/events')
+    // A device that has never held an account opens on Create account (ASV-103);
+    // this visitor already has one, so they switch to the Sign in tab.
     await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
-    await page.getByRole('tab', { name: 'Sign in' }).click()
-    await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+    await page.getByRole('tab', { name: 'Sign in', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 
     await fillClerkSignIn(page, email, password)
 
-    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toHaveCount(0)
+    // Signed in, and sent through the current flow -- not waved past it by
+    // the account's existing `onboarded` flag.
+    await expect(page.getByRole('heading', { name: 'What should Atlas call you?' })).toBeVisible({ timeout: 15_000 })
+    await completeOnboarding(page)
+
+    // The flow is an overlay on the route the gate interrupted, so finishing it
+    // reveals Events rather than navigating anywhere new.
     await expect(page).toHaveURL('/app/events')
     await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete'))).toBe('1')
+    // The stored marker is a version, not a flag -- see lib/onboarding.ts.
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem('atlas-onboarding-flow-complete')))
+      .toBe(String(ONBOARDING_VERSION))
   } finally {
     await deleteClerkTestUser({ id: clerkUser.id })
   }

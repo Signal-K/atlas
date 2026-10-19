@@ -12,6 +12,9 @@ import { getPrimarySkyMapObjectForEvent } from './skyMapLayers'
 import { haversineKm } from './cities'
 import { tonightWindowForTimeZone } from './timeZone'
 import { getDarknessWindow, type DarknessWindow } from './darknessWindow'
+import { trackEvent } from './analytics'
+import { buildDailyObservingTargets } from './visiblePlanets'
+import { combineTonightTargets } from './tonightMerge.mjs'
 
 export { getDarknessWindow }
 export type { DarknessWindow }
@@ -71,6 +74,7 @@ export interface KindMeta {
   difficulty: TargetDifficulty
   phoneFriendly: boolean
   nakedEyeVisible: boolean
+  binocularFriendly?: boolean
   reason: string
 }
 
@@ -126,7 +130,24 @@ const KIND_META: Record<string, KindMeta> = {
     difficulty: 'hard',
     phoneFriendly: false,
     nakedEyeVisible: false,
-    reason: 'Faint — only worth a phone attempt on a clear, dark, moonless night, and usually needs binoculars or a scope to see at all.',
+    binocularFriendly: true,
+    reason: 'Faint — a clear, dark, moonless night matters, and binoculars or a scope usually reveal far more than a phone can.',
+  },
+  telescope_target: {
+    priority: 8,
+    difficulty: 'hard',
+    phoneFriendly: false,
+    nakedEyeVisible: false,
+    binocularFriendly: false,
+    reason: 'A telescope target selected for its altitude from your location tonight.',
+  },
+  bright_star: {
+    priority: 7,
+    difficulty: 'easy',
+    phoneFriendly: true,
+    nakedEyeVisible: true,
+    binocularFriendly: true,
+    reason: 'One of the brightest stars well placed from your location tonight.',
   },
   satellite_flare: {
     priority: 3,
@@ -177,6 +198,7 @@ const DEFAULT_META: KindMeta = {
   difficulty: 'hard',
   phoneFriendly: false,
   nakedEyeVisible: false,
+  binocularFriendly: false,
   reason: 'A niche target for tonight.',
 }
 
@@ -334,7 +356,6 @@ function rankTargets(
       if (aLow !== bLow) return aLow - bLow
       return a.event.startsAt.localeCompare(b.event.startsAt)
     })
-    .slice(0, MAX_TARGETS)
     .map(({ event, bestTime, direction }) => {
       const meta = metaFor(event.kind)
       return {
@@ -352,8 +373,33 @@ function rankTargets(
     })
 }
 
+function observingTargetsFor(lat: number, lon: number, now: Date, timeZone: string | undefined, cloudCoverPct: number | null): TonightTarget[] {
+  return buildDailyObservingTargets(now, 1, lat, lon, timeZone).map((event) => {
+    const meta = metaFor(event.kind)
+    const bestTime = new Date(event.startsAt)
+    const primaryObject = getPrimarySkyMapObjectForEvent(event, bestTime, lat, lon)
+    return {
+      eventId: event.id,
+      title: event.title,
+      kind: event.kind,
+      bestTime: bestTime.toISOString(),
+      difficulty: meta.difficulty,
+      phoneFriendly: meta.phoneFriendly,
+      nakedEyeVisible: meta.nakedEyeVisible,
+      reason: event.description || meta.reason,
+      viewingNote: viewingNoteFor(cloudCoverPct),
+      direction: primaryObject
+        ? { altitudeDeg: primaryObject.altitudeDeg, azimuthDeg: primaryObject.azimuthDeg, compassLabel: primaryObject.compassLabel }
+        : null,
+    }
+  })
+}
+
 export async function getTonightPlan(lat: number, lon: number, now = new Date(), locationTimeZone?: string): Promise<TonightPlan> {
-  const forecast = await fetchViewingForecast(lat, lon, 7).catch(() => ({ days: [], timeZone: undefined }))
+  const forecast = await fetchViewingForecast(lat, lon, 7).catch((err) => {
+    trackEvent('sync_failed', { stage: 'tonight_plan_forecast', error: String(err) })
+    return { days: [], timeZone: undefined }
+  })
   const advisory = forecast.days
   const { start, end } = tonightWindowForTimeZone(now, locationTimeZone ?? forecast.timeZone)
   const allEvents = await getEventsInRange(start, end)
@@ -382,12 +428,15 @@ export async function getTonightPlan(lat: number, lon: number, now = new Date(),
 
   const darknessWindow = getDarknessWindow(lat, lon, start, end)
   const cloudCoverPct = weatherAvailable ? today.cloudCoverPct : null
+  const zone = locationTimeZone ?? forecast.timeZone
+  const calendarTargets = rankTargets(events, rating, lat, lon, start, end, cloudCoverPct)
+  const observing = observingTargetsFor(lat, lon, now, zone, cloudCoverPct)
 
   return {
-    timeZone: locationTimeZone ?? forecast.timeZone,
+    timeZone: zone,
     rating,
     reasons,
-    targets: rankTargets(events, rating, lat, lon, start, end, cloudCoverPct),
+    targets: combineTonightTargets(calendarTargets, observing, rating, MAX_TARGETS),
     moonIlluminationPct,
     darknessWindow,
     weatherAvailable,

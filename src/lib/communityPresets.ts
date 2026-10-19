@@ -7,7 +7,7 @@
 // until a real fetch/import pipeline exists. Seeds surface in the same
 // recommendation path as builtin/imported presets (see
 // recommendPresetsForTarget in cameraPresets.ts).
-import type { CameraPreset } from './db'
+import { CAMERA_PRESET_SCHEMA_VERSION, type CameraPreset } from './db'
 import type { RecipeKey } from './cameraRecipes'
 import type { DeviceId } from './cameraProfiles'
 
@@ -27,7 +27,10 @@ export const COMMUNITY_PRESET_SEEDS: CommunityPresetSeed[] = [
     targetKey: 'milky_way',
     device: 'iphone-16-pro',
     name: 'Deep dark-sky Milky Way (manual app)',
-    settings: { mode: 'Manual (third-party app)', lens: 'Ultra-wide', iso: 3200, exposureSec: 20 },
+    settings: {
+      schemaVersion: CAMERA_PRESET_SCHEMA_VERSION,
+      capture: { mode: 'Manual (third-party app)', lens: 'Ultra-wide', iso: 3200, exposureSec: 20 },
+    },
     notes: 'Community consensus for phone Milky Way shots: push exposure to the star-trailing limit at your focal length rather than pushing ISO further, which mostly adds noise.',
   },
   {
@@ -35,7 +38,10 @@ export const COMMUNITY_PRESET_SEEDS: CommunityPresetSeed[] = [
     targetKey: 'milky_way',
     device: 'nothing-phone-3a',
     name: 'Night mode max-duration Milky Way',
-    settings: { mode: 'Night mode, max duration', lens: 'Main', iso: 1600, exposureSec: 16 },
+    settings: {
+      schemaVersion: CAMERA_PRESET_SCHEMA_VERSION,
+      capture: { mode: 'Night mode, max duration', lens: 'Main', iso: 1600, exposureSec: 16 },
+    },
     notes: 'Nothing Camera night mode already multi-frame-stacks, so a moderate ISO with the longest available duration outperforms forcing a high manual ISO.',
   },
   {
@@ -43,7 +49,10 @@ export const COMMUNITY_PRESET_SEEDS: CommunityPresetSeed[] = [
     targetKey: 'moon',
     device: 'iphone-16-pro',
     name: 'Crisp lunar disc (manual app)',
-    settings: { mode: 'Manual (third-party app)', lens: 'Telephoto (5x)', iso: 100, exposureSec: 0.008, whiteBalanceKelvin: 5600 },
+    settings: {
+      schemaVersion: CAMERA_PRESET_SCHEMA_VERSION,
+      capture: { mode: 'Manual (third-party app)', lens: 'Telephoto (5x)', iso: 100, exposureSec: 0.008, whiteBalanceKelvin: 5600 },
+    },
     notes: 'The Moon is far brighter than the surrounding sky is metered for -- a fast shutter at base ISO avoids the blown-out disc that auto-exposure produces.',
   },
   {
@@ -51,7 +60,10 @@ export const COMMUNITY_PRESET_SEEDS: CommunityPresetSeed[] = [
     targetKey: 'meteor_shower',
     device: 'other-phone',
     name: 'Wide-field meteor capture (repeated frames)',
-    settings: { mode: 'Night mode, repeated', lens: 'Main', exposureSec: 15 },
+    settings: {
+      schemaVersion: CAMERA_PRESET_SCHEMA_VERSION,
+      capture: { mode: 'Night mode, repeated', lens: 'Main', exposureSec: 15 },
+    },
     notes: 'Community advice for basic phones without full manual control: prioritise a wide field of view and volume of frames over any single frame being perfect.',
   },
 ]

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { getPushSubscription, isIOSSafariNotStandalone, isPushSupported, subscribeToPush, unsubscribeFromPush } from '../lib/push'
 import { defaultsToTaggedOnly, setDefaultsToTaggedOnly } from '../lib/eventFeedPreferences'
+import { trackEvent } from '../lib/analytics'
 
 export function PushSettings() {
   const { user } = useAuth()
@@ -29,6 +30,7 @@ export function PushSettings() {
       setSubscribed(!subscribed)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
+      trackEvent('push_toggle_failed', { subscribing: !subscribed, error: String(err) })
     } finally {
       setBusy(false)
     }

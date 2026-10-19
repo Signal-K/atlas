@@ -9,6 +9,15 @@ export function moonIlluminationPctAt(date: Date): number {
 // quarter. Bucket it into the 8 named phases (each spans 45deg, centered on
 // the 8 canonical angles) rather than just showing illumination %, which
 // doesn't distinguish waxing from waning.
+// Elongation runs 0 (new) -> 180 (full) -> 360 (new again), so the first half
+// of the cycle is waxing. Illumination percentage alone can't tell the two
+// apart -- 30% waxing and 30% waning look identical as a number but are lit on
+// opposite limbs, which is what the phase graphic needs to know.
+export function isMoonWaxingAt(date: Date): boolean {
+  const angle = ((Astronomy.MoonPhase(date) % 360) + 360) % 360
+  return angle < 180
+}
+
 export function moonPhaseNameAt(date: Date): string {
   const angle = ((Astronomy.MoonPhase(date) % 360) + 360) % 360
   const names = [

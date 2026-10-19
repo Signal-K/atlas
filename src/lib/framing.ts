@@ -29,7 +29,7 @@ const DEEP_SKY_ANGULAR_SIZE_DEG: Record<string, number> = {
 const DEFAULT_DEEP_SKY_DEG = 0.5
 
 export function angularSizeDegForTarget(target: Pick<TonightTarget, 'kind' | 'title'>): number {
-  if (target.kind === 'deep_sky') {
+  if (target.kind === 'deep_sky' || target.kind === 'telescope_target') {
     const key = target.title.toLowerCase().replace(/[^a-z]+/g, '_')
     return DEEP_SKY_ANGULAR_SIZE_DEG[key] ?? DEFAULT_DEEP_SKY_DEG
   }

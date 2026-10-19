@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { hasValidSession, refreshEntitlement, type AuthUser, useAuth } from '../lib/auth'
 import { POLAR_CHECKOUT_URL, startPolarCheckout } from '../lib/entitlement'
 import { trackEvent } from '../lib/analytics'
+import { FREE_FEATURES_SUMMARY, SKY_PASS_FEATURES_SUMMARY, SKY_PASS_SUMMARY, SKY_PASS_TIERS } from '../lib/pricing'
 
 interface PaywallGateProps {
   user: AuthUser | null
@@ -29,8 +30,8 @@ export function PaywallGate({
   onSignInClick,
   children,
   freeNote,
-  freeBullets = 'Tonight, 14-day event browsing, check-ins, and your private journal.',
-  paidBullets = '90-day plans, saved targets, reminders, dark sites, gear fit, community, and archive.',
+  freeBullets = FREE_FEATURES_SUMMARY,
+  paidBullets = SKY_PASS_FEATURES_SUMMARY,
 }: PaywallGateProps) {
   const { entitlementRefreshing: authEntitlementRefreshing } = useAuth()
   const isEntitlementRefreshing = entitlementRefreshing || (user != null && authEntitlementRefreshing)
@@ -38,6 +39,16 @@ export function PaywallGate({
   const [isCheckingPurchase, setIsCheckingPurchase] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
   const [purchaseStatus, setPurchaseStatus] = useState('')
+
+  // ASV-27: which gated feature people actually reach for is the whole
+  // point of this event -- fire it once per gate shown, not per render,
+  // so a re-render from an unrelated state change doesn't inflate counts.
+  useEffect(() => {
+    if (user?.entitled) return
+    if (user && isEntitlementRefreshing) return
+    trackEvent('Paywall viewed', { feature })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-fire when the gated feature or entitlement outcome changes
+  }, [feature, user?.entitled, isEntitlementRefreshing])
 
   if (user?.entitled) return <>{children}</>
 
@@ -60,10 +71,11 @@ export function PaywallGate({
       if (refreshedUser?.entitled) return
       const url = await startPolarCheckout()
       window.location.href = url
-    } catch {
+    } catch (err) {
       // Dynamic checkout unavailable (PocketBase unreachable, not
       // configured, etc.) -- fall back to the static checkout link rather
       // than stranding the user on a spinner.
+      trackEvent('checkout_start_failed', { feature, error: String(err), fellBackToStaticLink: Boolean(POLAR_CHECKOUT_URL) })
       if (POLAR_CHECKOUT_URL) {
         window.location.href = POLAR_CHECKOUT_URL
       } else {
@@ -94,7 +106,7 @@ export function PaywallGate({
 
   return (
     <div className="paywall-card">
-      <span className="paywall-card-badge">One-time Sky Pass</span>
+      <span className="paywall-card-badge">Sky Pass</span>
       <h2>Plan the whole trip, not just tonight</h2>
       <p className="paywall-card-description">{description}</p>
       <div className="paywall-card-breakdown">
@@ -107,9 +119,17 @@ export function PaywallGate({
           <span>{paidBullets}</span>
         </div>
       </div>
-      <p className="paywall-card-note">One purchase works on desktop and mobile when you sign in with the same email.</p>
+      <ul className="paywall-card-tiers">
+        {SKY_PASS_TIERS.map((tier) => (
+          <li key={tier.id}>
+            <span>{tier.label}</span>
+            <span>{tier.price}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="paywall-card-note">Your Sky Pass works on desktop and mobile when you sign in with the same email.</p>
       {freeNote && <p className="paywall-card-note">{freeNote}</p>}
-      {!user && <p className="paywall-card-note">Create a free account first, then upgrade.</p>}
+      {!user && <p className="paywall-card-note">{SKY_PASS_SUMMARY} Create a free account first, then upgrade.</p>}
       {user && <p className="paywall-card-account">Signed in as <strong>{user.email}</strong> · no Sky Pass found on this account.</p>}
       <div className="paywall-card-actions">
         {!user ? (
@@ -124,7 +144,7 @@ export function PaywallGate({
               onClick={handleCheckoutClick}
               disabled={isStartingCheckout || isCheckingPurchase}
             >
-              {isStartingCheckout ? 'Starting checkout…' : 'Get Sky Pass · £24 once'}
+              {isStartingCheckout ? 'Starting checkout…' : 'Get Sky Pass'}
             </button>
             <button
               type="button"

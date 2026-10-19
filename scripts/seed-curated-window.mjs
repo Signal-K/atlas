@@ -4,12 +4,23 @@
 // volatile forecasts: those are opt-in utilities, not primary sky events.
 
 import PocketBase from 'pocketbase'
-import { fetchEvents as fetchMoonPhaseEvents } from './sources/moon-phase.mjs'
-import { fetchEvents as fetchMeteorShowerEvents } from './sources/meteor-showers.mjs'
-import { fetchEvents as fetchEclipseEvents } from './sources/eclipses.mjs'
-import { fetchEvents as fetchPlanetEvents } from './sources/planets.mjs'
-import { fetchEvents as fetchConjunctionEvents } from './sources/conjunctions.mjs'
+// The five deterministic generators live in src/lib/eventSources/, not
+// scripts/sources/, because the past-check-in matcher generates historical
+// days from the exact same definitions. They are imported here rather than
+// duplicated: two copies would drift, and the drift would be invisible --
+// the seed would keep writing correct forward windows while the matcher
+// quietly diverged. asteroid-approaches stays local: it needs live JPL data
+// and cannot be reconstructed for a past date.
+import { fetchEvents as fetchMoonPhaseEvents } from '../src/lib/eventSources/moon-phase.mjs'
+import { fetchEvents as fetchMeteorShowerEvents } from '../src/lib/eventSources/meteor-showers.mjs'
+import { fetchEvents as fetchEclipseEvents } from '../src/lib/eventSources/eclipses.mjs'
+import { fetchEvents as fetchPlanetEvents } from '../src/lib/eventSources/planets.mjs'
+import { fetchEvents as fetchConjunctionEvents } from '../src/lib/eventSources/conjunctions.mjs'
 import { fetchEvents as fetchAsteroidApproachEvents } from './sources/asteroid-approaches.mjs'
+import { canonicalKey, dateKeyOf as dateKey, isInCuratedWindow } from '../src/lib/eventSources/canonical.mjs'
+
+// Re-exported so existing callers and tests keep importing them from here.
+export { canonicalKey, isInCuratedWindow }
 
 export const CURATED_WINDOW_DAYS = 14
 
@@ -21,25 +32,6 @@ const SOURCES = [
   { id: 'astronomy-engine-conjunctions', label: 'Astronomy Engine conjunction calculation', url: 'https://github.com/cosinekitty/astronomy', fetch: fetchConjunctionEvents },
   { id: 'jpl-cad', label: 'NASA JPL Small-Body Database close-approach data', url: 'https://ssd-api.jpl.nasa.gov/doc/cad.html', fetch: fetchAsteroidApproachEvents },
 ]
-
-function dateKey(value) {
-  return new Date(value).toISOString().slice(0, 10)
-}
-
-export function canonicalKey(event) {
-  return `${event.kind}:${event.target}:${dateKey(event.starts_at)}`
-}
-
-export function isInCuratedWindow(event, { now = new Date(), windowDays = CURATED_WINDOW_DAYS } = {}) {
-  const start = now.getTime()
-  const end = start + windowDays * 86_400_000
-  const startsAt = new Date(event.starts_at).getTime()
-  const endsAt = new Date(event.ends_at ?? event.starts_at).getTime()
-  // A peak event can start the previous evening and still be happening on
-  // the calendar day people expect to find it. Keep all events that overlap
-  // the window, not only ones whose start timestamp falls inside it.
-  return startsAt <= end && endsAt >= start
-}
 
 function escapeFilter(value) {
   return String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')

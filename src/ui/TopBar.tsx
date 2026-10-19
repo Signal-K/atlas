@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react'
 import { MobileIcon } from '../components/mobile/MobileIcon'
+import { MobileNavTrigger } from '../components/mobile/MobileNavDrawer'
 import type { Theme } from '../lib/theme'
 
 // Persistent header chrome shown above Hub/Events/Planner/Journal/Profile:
-// live clock, location chip (opens the Location sheet), search icon (opens
-// the Search overlay), theme toggle. Hidden while the Search overlay is
-// open, matching the mockup's showChrome.
+// live clock, mobile-only nav drawer trigger, location chip (opens the
+// Location sheet), search icon (opens the Search overlay), theme toggle.
+// Hidden while the Search overlay is open, matching the mockup's
+// showChrome.
 export function TopBar({
   locationName,
   onOpenLocation,
   onOpenSearch,
   theme,
   onToggleTheme,
+  navDrawerOpen,
+  onOpenNavDrawer,
 }: {
   locationName: string
   onOpenLocation: () => void
   onOpenSearch: () => void
   theme: Theme
   onToggleTheme: () => void
+  navDrawerOpen: boolean
+  onOpenNavDrawer: () => void
 }) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -32,16 +38,24 @@ export function TopBar({
         <span>{clock}</span>
       </div>
       <div className="az-topbar">
-        <button type="button" onClick={onOpenLocation} className="az-location-chip">
-          <span className="az-dot" aria-hidden="true" />
-          {locationName}
-          <span className="az-caret" aria-hidden="true">
-            ▾
-          </span>
-        </button>
+        <div className="az-topbar-lead">
+          <MobileNavTrigger open={navDrawerOpen} onOpen={onOpenNavDrawer} />
+          <button type="button" onClick={onOpenLocation} className="az-location-chip" title={locationName}>
+            <span className="az-dot" aria-hidden="true" />
+            {/* ASV-110: one line, ellipsized -- the full "City, Region, Country"
+                wrapped to two lines on a phone. Kept in full (not city-only)
+                so two places with the same name stay distinguishable. */}
+            <span className="az-location-chip-label">{locationName}</span>
+            <span className="az-caret" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+        </div>
         <div className="az-topbar-actions">
           <button type="button" onClick={onOpenSearch} aria-label="Search" className="az-icon-btn">
             <MobileIcon name="search" />
+            <span className="az-search-button-label">Search anything</span>
+            <kbd className="az-search-button-key">⌘ K</kbd>
           </button>
           <button type="button" onClick={onToggleTheme} aria-label="Toggle theme" className="az-icon-btn">
             <MobileIcon name={theme === 'dark' ? 'sun' : 'moon'} />

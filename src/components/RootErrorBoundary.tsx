@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { trackEvent } from '../lib/analytics'
 
 declare global {
   interface Window {
@@ -23,6 +24,10 @@ export class RootErrorBoundary extends Component<RootErrorBoundaryProps, RootErr
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Atlas root render failed', error, info.componentStack)
+    // Top-level app crash -- otherwise invisible to analytics except as a
+    // support message (or nothing at all). No raw componentStack (can embed
+    // prop values); message + name are enough to spot a recurring crash.
+    trackEvent('Root render crashed', { errorMessage: error.message, errorName: error.name })
   }
 
   render() {
@@ -38,6 +43,7 @@ export class RootErrorBoundary extends Component<RootErrorBoundaryProps, RootErr
           <button
             type="button"
             onClick={() => {
+              trackEvent('Root error reload clicked')
               if (window.__atlasRecover) window.__atlasRecover(true)
               else window.location.reload()
             }}

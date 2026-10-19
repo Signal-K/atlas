@@ -3,6 +3,8 @@
 // used to hardcode for every geolocation-sourced fix. BigDataCloud's
 // client-side reverse-geocode endpoint is free, keyless, and CORS-enabled
 // -- no backend/API key wiring needed.
+import { trackEvent } from './analytics'
+
 const CACHE_KEY = 'atlas-reverse-geocode-cache'
 const CACHE_TTL_MS = 24 * 3_600_000
 
@@ -25,7 +27,8 @@ function readCache(lat: number, lon: number): string | null {
     const entry = all[cacheKeyFor(lat, lon)]
     if (!entry || Date.now() - entry.cachedAt > CACHE_TTL_MS) return null
     return entry.name
-  } catch {
+  } catch (err) {
+    trackEvent('reverse_geocode_failed', { stage: 'read_cache', error: String(err) })
     return null
   }
 }
@@ -36,8 +39,9 @@ function writeCache(lat: number, lon: number, name: string) {
     const all = raw ? (JSON.parse(raw) as Record<string, CachedEntry>) : {}
     all[cacheKeyFor(lat, lon)] = { name, cachedAt: Date.now() }
     localStorage.setItem(CACHE_KEY, JSON.stringify(all))
-  } catch {
+  } catch (err) {
     // Best-effort; a failed cache write just means the next call re-fetches.
+    trackEvent('reverse_geocode_failed', { stage: 'write_cache', error: String(err) })
   }
 }
 
@@ -71,7 +75,8 @@ export async function reverseGeocodeCity(lat: number, lon: number): Promise<stri
     const name = data.city || data.locality || data.principalSubdivision || null
     if (name) writeCache(lat, lon, name)
     return name
-  } catch {
+  } catch (err) {
+    trackEvent('reverse_geocode_failed', { stage: 'fetch', error: String(err) })
     return null
   }
 }

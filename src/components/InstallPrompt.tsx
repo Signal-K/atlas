@@ -70,7 +70,17 @@ export function InstallPrompt() {
     setDeferredPrompt(null)
   }
 
-  if (!deferredPrompt && !showIosHint) return null
+  const visible = Boolean(deferredPrompt) || showIosHint
+
+  // Reserves bottom scroll space for this toast (see .nav-shell-main in
+  // headless.css) so it never sits on top of the last row of whatever page
+  // is showing underneath it.
+  useEffect(() => {
+    document.body.classList.toggle('has-install-prompt', visible)
+    return () => document.body.classList.remove('has-install-prompt')
+  }, [visible])
+
+  if (!visible) return null
 
   return (
     <div className="install-prompt" role="dialog" aria-label="Install Atlas">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ShareIcon } from '../ui/icons'
 import { isAtlasMediaUploadBlockedError } from '../lib/atlasMedia'
+import { trackEvent } from '../lib/analytics'
 
 interface PostShareDialogProps {
   onCreateLink: () => Promise<string>
@@ -36,6 +37,7 @@ export function PostShareDialog({ onCreateLink }: PostShareDialogProps) {
       setStatus(isAtlasMediaUploadBlockedError(error)
         ? error.message
         : 'Could not create a link. Please sign in and try again.')
+      trackEvent('post_share_link_failed', { error: String(error) })
     } finally {
       setBusy(false)
     }

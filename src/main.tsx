@@ -2,6 +2,7 @@ import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom'
 import './index.css'
+import './styles/house.css'
 import './styles/headless.css'
 import './styles/atlas.css'
 import App from './App.tsx'
@@ -14,9 +15,13 @@ const CityStampSharePage = lazy(() =>
 )
 import { initAnalytics } from './lib/analytics.ts'
 import { startSyncQueue } from './lib/syncQueue.ts'
+import { startViewportInsetTracking } from './lib/viewportInset.ts'
+import { startDirtyFormBridge } from './lib/dirtyForms.ts'
 
 initAnalytics()
 startSyncQueue()
+startViewportInsetTracking()
+startDirtyFormBridge()
 
 function SharePageRoute() {
   const { remoteId } = useParams<{ remoteId: string }>()

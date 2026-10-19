@@ -36,7 +36,17 @@ export async function fetchViewingForecast(lat: number, lon: number, days = 7): 
   // minutes) whenever Open-Meteo was slow or unreachable, since a hung fetch
   // never rejects for a .catch() to handle. AbortSignal.timeout turns that
   // into a real, boundeded failure the caller's fallback path can act on.
-  const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+  // A transient network failure (mobile Safari's "Load failed", a dropped
+  // connection on a flaky signal) is worth one quick retry before the caller
+  // falls back; HTTP errors and timeouts are not retried.
+  let response: Response
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+  } catch (err) {
+    if (!(err instanceof TypeError)) throw err
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+  }
   if (!response.ok) throw new Error(`Open-Meteo request failed: ${response.status}`)
   const data = await response.json()
 
@@ -105,6 +115,16 @@ export function localDateKey(isoString: string, timeZone?: string): string {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date(isoString))
+}
+
+// Shared by any day-grouped event list (Events, Hub's upcoming feed).
+export function dayGroupLabel(dateKey: string, todayKey: string, timeZone?: string): string {
+  if (dateKey === todayKey) return 'Today'
+  const date = new Date(dateKey + 'T12:00:00')
+  const tomorrow = new Date(todayKey + 'T12:00:00')
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (localDateKey(date.toISOString(), timeZone) === localDateKey(tomorrow.toISOString(), timeZone)) return 'Tomorrow'
+  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 // STS-319: when tonight is cloudy, the plan screen's weather section offers

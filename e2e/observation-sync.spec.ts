@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { seedSignedInUser } from './support/auth'
+import { resolvePbUrl } from './support/pbUrl'
 
-const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const PB_URL = resolvePbUrl()
 
 test('Journal hydrates private PocketBase observations in a fresh browser', async ({ page }) => {
   await seedSignedInUser(page, { id: 'remote-observation-user', entitled: true })

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getPublicCityStamp, type PublicCityStamp } from '../lib/cityStamps'
+import { PublicShareRecovery } from '../components/PublicShareRecovery'
 
 export function CityStampSharePage({ slug }: { slug: string }) {
   const [stamp, setStamp] = useState<PublicCityStamp | null | 'loading'>('loading')
@@ -9,24 +10,14 @@ export function CityStampSharePage({ slug }: { slug: string }) {
   }, [slug])
 
   if (stamp === 'loading') {
-    return (
-      <main className="share-page">
-        <p>Loading stamp&hellip;</p>
-      </main>
-    )
+    return <PublicShareRecovery item="city stamp" state="loading" />
   }
 
   if (!stamp) {
-    return (
-      <main className="share-page">
-        <h1>Stamp not found</h1>
-        <p>This city stamp is private or no longer exists.</p>
-      </main>
-    )
+    return <PublicShareRecovery item="city stamp" state="unavailable" />
   }
 
   return (
-    <main className="share-page">
       <article className="share-card city-stamp-share-card">
         <span className="city-stamp-share-kicker">Atlas city stamp</span>
         <h1>{stamp.cityName}</h1>
@@ -44,6 +35,5 @@ export function CityStampSharePage({ slug }: { slug: string }) {
           </div>
         </dl>
       </article>
-    </main>
   )
 }

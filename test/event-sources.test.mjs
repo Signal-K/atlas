@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { fetchEvents as fetchEclipseEvents } from '../scripts/sources/eclipses.mjs'
-import { fetchEvents as fetchMeteorShowerEvents } from '../scripts/sources/meteor-showers.mjs'
+import { fetchEvents as fetchEclipseEvents } from '../src/lib/eventSources/eclipses.mjs'
+import { fetchEvents as fetchMeteorShowerEvents } from '../src/lib/eventSources/meteor-showers.mjs'
+import { fetchEvents as fetchConjunctionEvents } from '../src/lib/eventSources/conjunctions.mjs'
 import { isInCuratedWindow } from '../scripts/seed-curated-window.mjs'
 
 const TODAY = new Date('2026-08-12T00:00:00.000Z')
@@ -29,6 +30,49 @@ test('August 12 2026 includes the real total solar eclipse', async () => {
   assert.equal(eclipse.starts_at, '2026-08-12T16:15:46.794Z')
   assert.equal(eclipse.ends_at, '2026-08-12T19:15:46.794Z')
   assert.equal(isInCuratedWindow(eclipse, { now: TODAY, windowDays: 1 }), true)
+})
+
+// ASV-34: real Venus-Moon conjunction over Perth on 2026-09-14, evening
+// twilight -- ~1.4deg separation by photo/EXIF, missed entirely before the
+// fix because a 1-day UTC-midnight grid can straddle a fast Moon-planet
+// conjunction (both neighbouring midnight samples were >5deg apart even
+// though the true minimum between them was ~0.5deg). See conjunctions.mjs's
+// MOON_STEP_DAYS.
+test('the 2026-09-14 Moon-Venus conjunction is surfaced as a real sky event', async () => {
+  const now = new Date('2026-09-10T00:00:00.000Z')
+  const events = await fetchConjunctionEvents({ now, windowDays: 14 })
+  const conjunction = events.find((event) => event.target === 'moon_venus')
+
+  assert.ok(conjunction, 'expected a Moon-Venus conjunction event in the Sept 10-24 2026 window')
+  assert.equal(conjunction.starts_at.slice(0, 10), '2026-09-14')
+  assert.equal(isInCuratedWindow(conjunction, { now, windowDays: 14 }), true)
+})
+
+test('October 2026 conjunction copy uses sky separation, not a 0.0° longitude placeholder', async () => {
+  const now = new Date('2026-10-01T00:00:00.000Z')
+  const events = await fetchConjunctionEvents({ now, windowDays: 40 })
+  const saturn = events.find((event) => event.target === 'moon_saturn' && event.starts_at.startsWith('2026-10-24'))
+  const mars = events.find((event) => event.target === 'moon_mars' && event.starts_at.startsWith('2026-11-02'))
+
+  assert.ok(saturn, 'expected the 24 Oct 2026 Moon-Saturn conjunction')
+  assert.ok(mars, 'expected the 2 Nov 2026 Moon-Mars conjunction')
+  assert.match(saturn.description, /about 6\.1° apart/)
+  assert.match(mars.description, /about (0\.[5-9]|1\.0)° apart/)
+  assert.doesNotMatch(saturn.description, /0\.0°/)
+  assert.doesNotMatch(mars.description, /0\.0°/)
+})
+
+test('a just-past full Moon remains an observing window rather than vanishing at its peak', async () => {
+  const { fetchEvents } = await import('../src/lib/eventSources/moon-phase.mjs')
+  const peak = new Date('2026-09-27T00:00:00.000Z')
+  const eventsAtPeak = await fetchEvents({ now: peak, windowDays: 1 })
+  const fullMoon = eventsAtPeak.find((event) => event.title === 'Full Moon')
+  assert.ok(fullMoon, 'expected a full Moon fixture in the generated window')
+  const afterPeak = new Date(new Date(fullMoon.starts_at).getTime() + 24 * 60 * 60 * 1000)
+  const activeEvents = await fetchEvents({ now: afterPeak, windowDays: 1 })
+  const activeFullMoon = activeEvents.find((event) => event.title === 'Full Moon')
+  assert.ok(activeFullMoon, 'full Moon should still be offered the following night')
+  assert.ok(new Date(activeFullMoon.ends_at) >= afterPeak)
 })
 
 test('AI caption hook is authenticated, secret-gated, and uses the configured vision model', async () => {

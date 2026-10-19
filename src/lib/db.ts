@@ -46,6 +46,9 @@ export interface ObservationLogEntry {
   deviceUsed?: string
   cameraRecipeUsed?: string
   locationLabel?: string
+  // ASV-92: set on a self-reported community sky night (host-city label). Local
+  // only and unindexed, so no Dexie bump; the projector reads it for Community.
+  communityNightHost?: string
   conditionSummary?: string
   attemptRating?: AttemptRating
   photo?: Blob
@@ -86,6 +89,41 @@ export interface ObservationLogEntry {
   // actually got rather than silently claiming RAW-grade precision.
   skyBrightnessSourceFormat?: 'raw' | 'jpeg' | 'unknown'
   skyBrightnessFlaggedForReview?: boolean
+
+  // --- Backdated check-ins (see src/lib/checkInRules.ts) ---
+  //
+  // All optional and none indexed, which is why adding them needs no Dexie
+  // version bump: Dexie stores whatever is on the object and only the
+  // documented indexes matter. An entry predating this feature simply has
+  // them undefined, and every reader treats undefined as "not a backdated
+  // check-in" -- which is the truth for those rows.
+  //
+  // `checkInKind` is stored rather than inferred from `observedAt < now`,
+  // because that comparison is true of *every* entry in a diary and would
+  // label the whole journal as backdated.
+  checkInKind?: 'tonight' | 'past'
+  matchConfidence?: 'strong' | 'possible' | 'weak' | 'none'
+  matchedBy?: 'photo-exif' | 'photo-exif-heading' | 'manual'
+  // How the place was established when there was no photo GPS to read it
+  // from. The reviewer and the diary both need to show why this place, and
+  // re-deriving it later would read today's trips, not the ones that applied.
+  anchorSource?: 'trip' | 'trip-plan' | 'journal-location' | 'current-location' | 'manual'
+  anchorLabel?: string
+  // The only honest record that the civil date was a judgement call -- see
+  // resolvePhotoDay in exifDateTime.mjs.
+  photoDayAmbiguous?: boolean
+  // Offline-first: the Journal has to render review state with no network
+  // round-trip, so it is mirrored locally. The queue collection owns the
+  // truth; this is a copy. `unsent` is required rather than cosmetic -- see
+  // submitForReview in checkInReview.ts.
+  //
+  // `withdrawn` is the user retracting their own claim (the entry stays in the
+  // diary, it just stops counting toward a city stamp). It is a distinct state
+  // from `rejected`, which is the reviewer's word, and from `unsent`, which the
+  // retry sweep would helpfully resubmit.
+  reviewStatus?: 'not_required' | 'unsent' | 'pending' | 'approved' | 'rejected' | 'withdrawn'
+  // Reconciles a pulled queue row back to this Dexie entry.
+  reviewSubmissionId?: string
 }
 
 export interface StreakState {
@@ -114,6 +152,15 @@ export interface PinnedEvent {
 // single event instance). Tagging an event is "I want this specific
 // occurrence in my feed and to be notified about it", not "notify me about
 // every future event like this."
+// ASV-88: what the person said they want Atlas for (onboarding survey chips).
+// Device-local on purpose -- a `users` field would be a production PocketBase
+// migration; this keeps the answer readable for the training path (ASV-89).
+export interface PurposeChips {
+  userId: string
+  choices: string[]
+  savedAt: string
+}
+
 export interface TaggedEvent {
   id: string
   userId: string
@@ -124,9 +171,47 @@ export interface TaggedEvent {
 
 export type PresetSource = 'builtin' | 'imported' | 'community'
 
-// A single device's settings within a preset (mirrors DeviceRecipe's shape
-// in cameraRecipes.ts but as structured, matchable data rather than prose).
+export const CAMERA_PRESET_SCHEMA_VERSION = 2
+
+// Capture parameters (mirrors DeviceRecipe's shape in cameraRecipes.ts but as
+// structured, matchable data rather than prose). No OS lets a third-party
+// app inject these into a stock camera app without native code, so this half
+// of a preset stays a manual checklist for now (see KES-295/KES-302).
+export interface CaptureSettings {
+  mode?: string
+  lens?: string
+  iso?: number
+  whiteBalanceKelvin?: number
+  exposureSec?: number
+  focusDistance?: string
+}
+
+// Color-grade parameters. Unlike `capture`, these can be computed into a
+// real importable file today -- a .cube 3D LUT (Nothing Camera) or a
+// Lightroom .xmp preset (iOS) -- since color grading is just a pixel
+// transform, not a camera-hardware control (see KES-297/KES-298).
+export interface LookSettings {
+  contrast?: number // -100..100
+  saturation?: number // -100..100
+  highlights?: number // -100..100
+  shadows?: number // -100..100
+  temperatureShiftKelvin?: number
+  tint?: number // -100..100, green/magenta
+  toneCurve?: Array<[number, number]> // [input, output] control points, 0-255
+  filters?: string[]
+}
+
 export interface CameraPresetSettings {
+  schemaVersion: typeof CAMERA_PRESET_SCHEMA_VERSION
+  capture?: CaptureSettings
+  look?: LookSettings
+}
+
+// Pre-v2 shape: flat capture fields at the top level, no schemaVersion.
+// Preserved so callers holding older CameraPreset records (Dexie rows saved
+// before this split, or a re-imported bundle) can be normalized -- see
+// normalizePresetSettings() in cameraPresets.ts.
+export interface LegacyCameraPresetSettingsV1 {
   mode?: string
   lens?: string
   iso?: number
@@ -158,6 +243,7 @@ class AtlasDB extends Dexie {
   pinnedEvents!: EntityTable<PinnedEvent, 'eventId'>
   cameraPresets!: EntityTable<CameraPreset, 'id'>
   taggedEvents!: EntityTable<TaggedEvent, 'id'>
+  purposeChips!: EntityTable<PurposeChips, 'userId'>
 
   constructor() {
     super('atlas')
@@ -180,6 +266,9 @@ class AtlasDB extends Dexie {
     })
     this.version(5).stores({
       taggedEvents: 'id, userId, eventId, [userId+eventId]',
+    })
+    this.version(6).stores({
+      purposeChips: 'userId',
     })
     // New observation fields (targetName, deviceUsed, etc.) don't need a
     // schema/index change -- Dexie stores whatever properties are on the

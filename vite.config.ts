@@ -20,8 +20,11 @@ export default defineConfig({
         name: 'Atlas',
         short_name: 'Atlas',
         description: 'Astronomical events, calendar, and sky-watching companion',
-        theme_color: '#0b1120',
-        background_color: '#0b1120',
+        // Matches --bg in the dark theme; see the theme-color note in
+        // index.html. background_color is the splash-screen fill, so it
+        // wants to be the same near-black the app opens onto.
+        theme_color: '#0a0a11',
+        background_color: '#0a0a11',
         display: 'standalone',
         icons: [
           { src: 'favicon.png', sizes: '64x64', type: 'image/png' },

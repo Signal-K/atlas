@@ -2,6 +2,7 @@ import type { RecordModel } from 'pocketbase'
 import { pb } from './pocketbase'
 import type { SkyEvent } from './db'
 import { parsePbDate } from './pocketbaseDate'
+import { syncXpLedgerSoon } from './xpLedger'
 
 export interface PhotoChallenge {
   id: string
@@ -105,6 +106,7 @@ export async function submitPhotoChallenge(input: NewPhotoChallengeSubmission): 
   form.append('caption', input.caption)
   form.append('image', input.image)
   await pb.collection('atlas_photo_challenge_submissions').create(form)
+  void syncXpLedgerSoon()
 }
 
 // The list/view rule (`approved = true || user = @request.auth.id`) already

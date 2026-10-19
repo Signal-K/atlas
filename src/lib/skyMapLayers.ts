@@ -187,6 +187,22 @@ function getDeepSkyObject(id: string, date: Date, lat: number, lon: number): Sky
   }
 }
 
+function getStarObject(id: string, date: Date, lat: number, lon: number): SkyMapObject | null {
+  const star = BRIGHT_STARS.find((item) => item.id === id)
+  if (!star) return null
+  return {
+    id: star.id,
+    kind: 'star',
+    name: star.name,
+    magnitude: star.magnitude,
+    objectType: 'star',
+    constellation: constellationName(star.raHours, star.decDeg),
+    sourceLabel: 'SIMBAD object record',
+    sourceUrl: simbadUrl(star.name),
+    ...horizontalForEquatorial(date, lat, lon, star.raHours, star.decDeg),
+  }
+}
+
 export function getStarObjects(date: Date, lat: number, lon: number): SkyMapObject[] {
   return BRIGHT_STARS.map((star) => ({
     id: star.id,
@@ -208,7 +224,7 @@ export function getSkyMapObjects(date: Date, lat: number, lon: number): SkyMapOb
 function eventTargetIds(event: Pick<SkyEvent, 'kind' | 'target'>): string[] {
   if (event.kind === 'moon_phase') return ['moon']
   if (event.kind === 'planet_event') return [event.target]
-  if (event.kind === 'deep_sky') return [event.target]
+  if (event.kind === 'deep_sky' || event.kind === 'telescope_target' || event.kind === 'bright_star') return [event.target]
   if (event.kind === 'conjunction') return event.target.split('_')
   if (event.kind === 'eclipse') return ['sun', 'moon']
   return []
@@ -216,7 +232,7 @@ function eventTargetIds(event: Pick<SkyEvent, 'kind' | 'target'>): string[] {
 
 export function getSkyMapObjectsForEvent(event: Pick<SkyEvent, 'kind' | 'target'>, date: Date, lat: number, lon: number): SkyMapObject[] {
   return eventTargetIds(event)
-    .map((id) => getSolarSystemObject(id, date, lat, lon) ?? getDeepSkyObject(id, date, lat, lon))
+    .map((id) => getSolarSystemObject(id, date, lat, lon) ?? getDeepSkyObject(id, date, lat, lon) ?? getStarObject(id, date, lat, lon))
     .filter((object): object is SkyMapObject => object != null)
 }
 

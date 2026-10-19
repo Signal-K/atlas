@@ -56,11 +56,19 @@ function localDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-// The trip covering `date` (defaults to now), if any. When more than one
-// trip somehow overlaps the same date, the soonest-starting one wins --
-// arbitrary but deterministic, and overlapping trips shouldn't happen via
-// the UI in the first place.
+// The trip covering `date` (defaults to now), if any.
+//
+// Overlaps are real, not hypothetical: a handover day belongs to the trip
+// ending that day *and* the trip starting it. Flying Perth -> Darwin on the
+// 27th of a 24-27 and a 27-30 trip puts the 27th in both windows, and the old
+// soonest-starting-wins rule picked Perth -- the city the user had just left,
+// with the wrong forecast for the one they'd arrived in. The later-starting
+// trip wins, so the newest leg is the one in force. Ties fall back to list
+// order, which is harmless because a tie means both trips cover the date
+// identically.
 export function activeTripFor(date: Date = new Date()): Trip | null {
   const key = localDateKey(date)
-  return listTrips().find((trip) => trip.startDate <= key && key <= trip.endDate) ?? null
+  // listTrips() is start-ascending, so the last match is the latest-starting.
+  const matches = listTrips().filter((trip) => trip.startDate <= key && key <= trip.endDate)
+  return matches[matches.length - 1] ?? null
 }

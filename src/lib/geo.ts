@@ -58,39 +58,52 @@ export function useLocationSeed({ autoRequest = true }: { autoRequest?: boolean 
   // an identical second one underneath, which reads as "won't dismiss."
   const requestInFlight = useRef(false)
 
-  const requestLocation = useCallback((force = false) => {
+  // Resolves with the fix on success and null on denial/unsupported/refusal --
+  // the caller has to know the outcome to decide whether to replace an existing
+  // home. Onboarding's "use my current location" is the reason this returns a
+  // value rather than being fire-and-forget: it must not clear the previous
+  // home before it knows a new one exists (ASV-53), and a status-watching
+  // effect cannot distinguish "my request was denied" from "a concurrent
+  // request was already in flight and returned early" -- the early return
+  // below never transitions status at all, so a spinner keyed on one would
+  // hang forever.
+  const requestLocation = useCallback((force = false): Promise<Coordinates | null> => {
     if (!force) {
       const fresh = readCache()
       if (fresh) {
         setSeed(hashSeed(`${fresh.lat},${fresh.lon}`))
         setCoordinates({ lat: fresh.lat, lon: fresh.lon })
         setStatus('granted')
-        return
+        return Promise.resolve({ lat: fresh.lat, lon: fresh.lon })
       }
     }
     if (!('geolocation' in navigator)) {
       setStatus('unsupported')
-      return
+      return Promise.resolve(null)
     }
-    if (requestInFlight.current) return
+    if (requestInFlight.current) return Promise.resolve(null)
     requestInFlight.current = true
     setStatus('pending')
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        requestInFlight.current = false
-        const lat = Number(position.coords.latitude.toFixed(1))
-        const lon = Number(position.coords.longitude.toFixed(1))
-        writeCache({ lat, lon, cachedAt: Date.now() })
-        setSeed(hashSeed(`${lat},${lon}`))
-        setCoordinates({ lat, lon })
-        setStatus('granted')
-      },
-      () => {
-        requestInFlight.current = false
-        setStatus('denied')
-      },
-      { timeout: 8000, maximumAge: CACHE_TTL_MS },
-    )
+    return new Promise<Coordinates | null>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          requestInFlight.current = false
+          const lat = Number(position.coords.latitude.toFixed(1))
+          const lon = Number(position.coords.longitude.toFixed(1))
+          writeCache({ lat, lon, cachedAt: Date.now() })
+          setSeed(hashSeed(`${lat},${lon}`))
+          setCoordinates({ lat, lon })
+          setStatus('granted')
+          resolve({ lat, lon })
+        },
+        () => {
+          requestInFlight.current = false
+          setStatus('denied')
+          resolve(null)
+        },
+        { timeout: 8000, maximumAge: CACHE_TTL_MS },
+      )
+    })
   }, [])
 
   useEffect(() => {

@@ -1,0 +1,46 @@
+{
+  /* The Playwright specs were previously typechecked by nothing: the solution
+     tsconfig.json references only tsconfig.app.json ("include": ["src"]) and
+     tsconfig.node.json ("include": ["vite.config.ts"]), so `tsc -b` skipped
+     e2e/ entirely and a broken seed or a stale import could only surface as a
+     runtime failure mid-suite. This project closes that gap.
+
+     Compiler options mirror tsconfig.app.json so the specs' imports of src
+     modules (e.g. ../../src/lib/onboarding) are checked under the same rules
+     the app itself is. The differences are deliberate: "types": ["node"] for
+     process/Buffer/node:fs, and no vite/client. */
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.e2e.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    /* node for the specs' own process/Buffer/node:fs; vite/client because the
+       paths mapping below now pulls src/ into this program, and src modules
+       read import.meta.env. */
+    "types": ["node", "vite/client"],
+    "skipLibCheck": true,
+
+    /* Specs run `await import('/src/lib/…')` inside page.evaluate to reach the
+       app's own modules in the browser, where Vite serves them off the dev
+       server root. TypeScript has no dev server, so it reads that specifier as
+       an absolute filesystem path and fails to resolve it -- which turns the
+       evaluated expression into `any` and cascades into implicit-any errors on
+       every callback over its result (account-merge.spec.ts, reminder-loop.spec.ts).
+       Mapping the Vite-root form back onto ./src resolves them for the
+       typechecker without touching the specs. */
+    "paths": { "/src/*": ["../src/*"] },
+
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["**/*.ts"]
+}

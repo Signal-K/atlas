@@ -1,4 +1,11 @@
 import type { PostHog } from 'posthog-js'
+import { pb } from './pocketbase'
+import { describeSyncFailure } from './syncFailure.mjs'
+import { isInjectedWebviewNoise } from './injectedNoise.mjs'
+
+// posthog.init's `loaded` callback is typed as PostHogInterface, not the
+// PostHog class. Helpers only need identify + startSessionRecording.
+type SessionReplayClient = Pick<PostHog, 'identify' | 'startSessionRecording'>
 
 // No-ops when VITE_POSTHOG_KEY isn't set (local dev, CI) so nothing has to
 // guard every capture() call with an "is analytics configured" check.
@@ -11,27 +18,132 @@ const apiKey = import.meta.env.VITE_POSTHOG_KEY as string | undefined
 // still lands before the capture() that follows it).
 let loading: Promise<PostHog> | null = null
 
+type AnalyticsUser = { id: string; email: string; entitled: boolean; entitlementSource?: string }
+
+// Checkout and recovery links legitimately carry one-time query parameters.
+// Analytics and replay need the route, never those credentials. Use the same
+// logical URL for page events and replay URL targeting so a sensitive query
+// can neither be captured nor decide whether a recording starts.
+function analyticsUrl(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl, window.location.origin)
+    url.search = ''
+    return url.toString()
+  } catch {
+    return rawUrl.split('?')[0]
+  }
+}
+
+// Product surfaces the replay URL trigger is meant to cover. Landing (`/`,
+// `/landing`) is deliberately excluded so anonymous marketing traffic is
+// not specially started from the client.
+export function isProductAnalyticsPath(pathname = defaultPathname()): boolean {
+  return pathname === '/app' || pathname.startsWith('/app/') || pathname === '/tonight' || pathname.startsWith('/tonight/')
+}
+
+function defaultPathname(): string {
+  return typeof window === 'undefined' ? '' : window.location.pathname
+}
+
+// Read the persisted PocketBase session directly so identify can run in
+// posthog.init's `loaded` callback -- before React mounts, and before the
+// first `$pageview`. Importing `currentUser()` from auth.ts would cycle
+// (auth already imports this module).
+function persistedAnalyticsUser(): AnalyticsUser | null {
+  const model = pb.authStore.record
+  if (!model || !pb.authStore.isValid) return null
+  return {
+    id: model.id as string,
+    email: model.email as string,
+    entitled: Boolean(model.entitled),
+    entitlementSource: String(model.entitlement_source || ''),
+  }
+}
+
+function applyIdentifiedUser(posthog: SessionReplayClient, user: AnalyticsUser) {
+  posthog.identify(user.id, {
+    email: user.email,
+    atlas_user_id: user.id,
+    entitled: user.entitled,
+    // Which processor granted Sky Pass (polar | apple | ...); matches the
+    // server-side entitlement_changed event so web and iOS share one person.
+    entitlement_source: user.entitlementSource || (user.entitled ? 'unknown' : 'none'),
+  })
+}
+
+// Starts recording only on product routes. Does not pass `true`, so PostHog
+// still honours the project's URL/event triggers, minimum duration, and
+// sampling. Landing-only sessions are left for those remote controls.
+function maybeStartProductSessionRecording(posthog: SessionReplayClient) {
+  if (!isProductAnalyticsPath()) return
+  posthog.startSessionRecording()
+}
+
 export function initAnalytics() {
   if (!apiKey || loading) return
   loading = import('posthog-js').then(({ default: posthog }) => {
+    const persistedUser = persistedAnalyticsUser()
     posthog.init(apiKey, {
-      api_host: (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ?? 'https://us.i.posthog.com',
+      // Capture is served first-party through the Atlas domain (see
+      // functions/uplink/[[path]].ts) so ad blockers can't drop events by
+      // matching PostHog's hostname. The relative default keeps this working on
+      // every deploy target -- production, pages.dev, and branch previews --
+      // with no extra config, since it resolves against whatever origin serves
+      // the app. VITE_POSTHOG_HOST still overrides it (e.g. a dedicated proxy
+      // subdomain); an empty value falls back to the built-in proxy.
+      api_host: (import.meta.env.VITE_POSTHOG_HOST as string | undefined) || '/uplink',
+      // With api_host pointing at the proxy, ui_host names the real PostHog app
+      // so the toolbar and in-app links resolve to the right place.
+      ui_host: 'https://us.posthog.com',
       // Atlas is a client-side-routed SPA (react-router), so a one-shot
       // pageview on init would miss every subsequent route change --
       // 'history_change' hooks the History API directly instead of
       // requiring a manual $pageview capture() on every navigate() call.
       capture_pageview: 'history_change',
+      get_current_url: analyticsUrl,
+      before_send: (event) => {
+        if (!event) return event
+        if (isInjectedWebviewNoise(event)) return null
+        const properties = event.properties
+        if (!properties) return event
+        const currentUrl = properties.$current_url
+        const referrer = properties.$referrer
+        if (typeof currentUrl !== 'string' && typeof referrer !== 'string') return event
+        if (typeof currentUrl === 'string') properties.$current_url = analyticsUrl(currentUrl)
+        if (typeof referrer === 'string') properties.$referrer = analyticsUrl(referrer)
+        return event
+      },
       persistence: 'localStorage',
-      // Session recording's beacon endpoint is blocked in some production
-      // browsers/networks and only creates console noise; product analytics
-      // events and surveys do not require replay recording.
-      disable_session_recording: true,
-      // Mask all form input by default (unknown recording audience); the
-      // feedback/email fields get an explicit second mask since they're
-      // the most likely place free-text PII shows up.
+      // Autocapture unhandled JS errors/promise rejections as PostHog
+      // exception events. Atlas has plan generation, camera-recipe imports,
+      // location lookups, and paywall/entitlement checks that can all fail
+      // silently client-side -- without this, a broken build ships and the
+      // only signal is a support message (or nothing at all).
+      capture_exceptions: true,
+      // Do not set disable_session_recording or a client sampleRate.
+      // Ingestion is owned by the PostHog project: URL trigger
+      // youratlas.cc/(app|tonight), event triggers (sign-in / plan / recipe /
+      // onboarding / device), and a 5s minimum duration. A client sampleRate
+      // of 0.2 previously marked most /app sessions `$recording_status:
+      // disabled` even when those remote triggers matched.
+      //
+      // Recording is not disabled at init, so startSessionRecording() below
+      // does not override sampling/triggers (never called with `true`).
       session_recording: {
         maskAllInputs: true,
+        // Mask the feedback/email fields explicitly since they're the most
+        // likely place free-text PII shows up even with inputs masked.
         maskTextSelector: '.feedback-panel textarea, input[type="email"]',
+      },
+      // Already-signed-in product users should not start as an anonymous
+      // distinct_id. Bootstrap + identify-in-loaded attaches email/person
+      // onto the recording that URL-triggers on /app or /tonight.
+      ...(persistedUser
+        ? { bootstrap: { distinctID: persistedUser.id, isIdentifiedID: true } }
+        : {}),
+      loaded: (loadedPosthog) => {
+        if (persistedUser) applyIdentifiedUser(loadedPosthog, persistedUser)
+        maybeStartProductSessionRecording(loadedPosthog)
       },
     })
     return posthog
@@ -47,20 +159,30 @@ function withPostHog(fn: (posthog: PostHog) => void) {
   void loading.then(fn).catch(() => {})
 }
 
-export function trackEvent(name: string, properties?: Record<string, unknown>) {
+export function trackEvent(name: string, rawProperties?: Record<string, unknown>) {
+  // ASV-112: every sync_failed gets a reason/status/online/attempt so the
+  // failures are diagnosable without touching each of the call sites.
+  const properties = name === 'sync_failed'
+    ? describeSyncFailure(rawProperties, typeof navigator === 'undefined' ? true : navigator.onLine)
+    : rawProperties
   window.dispatchEvent(new CustomEvent('atlas:analytics-event', { detail: { name, properties } }))
   withPostHog((posthog) => posthog.capture(name, properties))
 }
 
-export function identifyAnalyticsUser(user: { id: string; email: string; entitled: boolean } | null) {
+export function identifyAnalyticsUser(user: AnalyticsUser | null) {
   if (!user) return
-  withPostHog((posthog) =>
-    posthog.identify(user.id, {
-      email: user.email,
-      atlas_user_id: user.id,
-      entitled: user.entitled,
-    }),
-  )
+  withPostHog((posthog) => {
+    applyIdentifiedUser(posthog, user)
+    maybeStartProductSessionRecording(posthog)
+  })
+}
+
+// SPA navigations from landing → /app (or a bookmarked /tonight) happen
+// after init. Re-check the path so an already-identified user actually
+// starts recording once they enter the product, without overriding
+// ingestion controls.
+export function startProductSessionRecording() {
+  withPostHog((posthog) => maybeStartProductSessionRecording(posthog))
 }
 
 // Analytics never having loaded (no key, blocked chunk) reads as "flag off"

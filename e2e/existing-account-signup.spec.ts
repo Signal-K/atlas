@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { setupClerkTestingToken } from '@clerk/testing/playwright'
 import { clerkTestEmail, deleteClerkTestUser, fillClerkSignUp } from './support/clerk'
+import { resolvePbUrl } from './support/pbUrl'
 
-const PB_URL = process.env.VITE_PB_URL || 'http://localhost:8094'
+const PB_URL = resolvePbUrl()
 
 // Covers the email-fallback matching in backend/clerk_exchange.go: an
 // account created before this person ever went through Clerk (no

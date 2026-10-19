@@ -24,11 +24,32 @@ function sunAltitude(date, lat, lon) {
   return position(Astronomy.Body.Sun, date, lat, lon)
 }
 
+// Point-in-time events (conjunction closest-approach, moon_phase peak,
+// planet_event best time) all come from their source plugins with
+// starts_at === ends_at -- a single exact instant, not a viewing window.
+// Sampling only that instant is fragile: the mathematically-exact peak can
+// land in daylight or with the bodies below the horizon even though the
+// event is genuinely visible for hours around it that same evening (ASV-34
+// found this exact failure for a real Moon-Venus conjunction -- 5.87deg at
+// one midnight sample, 6.26deg at the next, either side of a 0.5deg minimum
+// hours in between). Widen zero-duration events to a +/-6h window instead
+// of trusting the single instant.
+// Exported because the past-check-in matcher has to apply the same widening
+// when deciding whether an instant falls "during" an event. Almost every
+// historical candidate the matcher sees -- moon_phase, planet_event,
+// conjunction -- ships with starts_at === ends_at, so a naive containment
+// check matches nothing at all and a photo of a real Moon-Venus conjunction
+// would fall through to the review queue.
+export const POINT_EVENT_WINDOW_HOURS = 6
+
 function samples(event) {
   const start = new Date(event.startsAt).getTime()
   const end = new Date(event.endsAt || event.startsAt).getTime()
   const span = Math.max(0, end - start)
-  return Array.from({ length: span ? 7 : 1 }, (_, index) => new Date(start + (span * index) / (span ? 6 : 1)))
+  if (span > 0) {
+    return Array.from({ length: 7 }, (_, index) => new Date(start + (span * index) / 6))
+  }
+  return Array.from({ length: 13 }, (_, index) => new Date(start + (index - 6) * POINT_EVENT_WINDOW_HOURS * 3_600_000 / 6))
 }
 
 function anySample(event, predicate) {

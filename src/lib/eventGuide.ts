@@ -6,6 +6,7 @@ import type { SkyEvent } from './db'
 import { localSolarEclipseCircumstances } from './eclipseCircumstances'
 import { moonIlluminationPctAt } from './moonPhase'
 import { rankDarkSkySites } from './darkSky'
+import { formatZonedTime, meteorBestViewingInstant } from './eventTiming.mjs'
 
 export interface GuideStep {
   label: string
@@ -80,12 +81,13 @@ function buildEclipseGuide(event: SkyEvent, location: GuideLocation): GuideStep[
 }
 
 function buildMeteorShowerGuide(event: SkyEvent, location: GuideLocation): GuideStep[] {
-  const peakLocalTime = formatLocalTime(event.startsAt, location.timeZone)
-  const moonPct = Math.round(moonIlluminationPctAt(new Date(event.startsAt)))
+  const best = meteorBestViewingInstant(event.startsAt, location.timeZone)
+  const peakLocalTime = formatZonedTime(best.toISOString(), location.timeZone, true)
+  const moonPct = Math.round(moonIlluminationPctAt(best))
   const nearestSite = rankDarkSkySites(location.lat, location.lon, 1)[0]
 
   const steps: GuideStep[] = [
-    { label: 'Peak window starts', detail: `${peakLocalTime} local time — rates build toward the pre-dawn hours.` },
+    { label: 'Best time', detail: `${peakLocalTime} — after midnight, when the radiant is highest. Rates build through the pre-dawn hours.` },
     {
       label: 'Moon interference',
       detail:

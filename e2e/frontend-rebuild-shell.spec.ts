@@ -40,6 +40,15 @@ test('Planner route renders the Sky Pass trip planner entry point', async ({ pag
   await page.goto('/app/planner')
   await expect(page).toHaveURL('/app/planner')
   await expect(page.getByRole('heading', { name: 'Planner', exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Turn a trip into nights worth planning for.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start a plan' })).toBeVisible()
+})
+
+test('a new journal presents one primary first-use action', async ({ page }) => {
+  await page.goto('/app/journal')
+  await expect(page.getByRole('heading', { name: 'Keep a record of the sky you actually saw.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: "Log tonight's session" })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Check in to a past night' })).toHaveClass(/az-text-btn/)
 })
 
 test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
@@ -52,9 +61,18 @@ test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
   // gated on having at least one stop.
   await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled()
 
-  // City search is a live-geocoding combobox (curated fallback covers this
-  // offline); the option's accessible name carries the place plus its
-  // coordinates, so match on the name substring.
+  // City search is a live-geocoding combobox. The real Open-Meteo geocoder
+  // returns several "Tallinn*" places (so a bare /Tallinn/ option match is a
+  // strict-mode violation) and needs the network, so pin it to one result.
+  await page.route('https://geocoding-api.open-meteo.com/**', (route) =>
+    route.fulfill({
+      json: {
+        results: [
+          { id: 588409, name: 'Tallinn', latitude: 59.43696, longitude: 24.75353, admin1: 'Harju', country: 'Estonia', timezone: 'Europe/Tallinn' },
+        ],
+      },
+    }),
+  )
   const citySearch = page.getByPlaceholder('Search any town or city')
   await citySearch.fill('Tallinn')
   await page.getByRole('option', { name: /Tallinn/ }).click()
@@ -66,6 +84,29 @@ test('trip planner adds a stop with prefilled stay dates', async ({ page }) => {
   await addStop.click()
 
   await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled()
+})
+
+test('trip stay ordering and overlap detection are chronological', async ({ page }) => {
+  await page.goto('/app/planner')
+  const result = await page.evaluate(async () => {
+    const { activeLegFor, dateKeyForTimeZone, sortTripLegs, tripLegIssues } = await import('/src/lib/tripPlans.ts')
+    const legs = [
+      { id: 'tallinn-return', cityKey: 'tallinn', cityName: 'Tallinn', lat: 59.437, lon: 24.754, startDate: '2026-10-10', endDate: '2026-10-12' },
+      { id: 'riga-outbound', cityKey: 'riga', cityName: 'Riga', lat: 56.9496, lon: 24.1052, startDate: '2026-10-03', endDate: '2026-10-05' },
+    ]
+    const overlapping = [...legs, { id: 'vilnius-overlap', cityKey: 'vilnius', cityName: 'Vilnius', lat: 54.6872, lon: 25.2797, startDate: '2026-10-05', endDate: '2026-10-07' }]
+    const sorted = sortTripLegs(legs)
+    return {
+      route: sorted.map((leg) => leg.cityName),
+      active: activeLegFor({ id: 'trip', startDate: '2026-10-03', endDate: '2026-10-12', legs: sorted, equipment: [], interests: [], guides: {} }, new Date('2026-10-04T12:00:00Z'))?.cityName,
+      overlapIssues: tripLegIssues(overlapping),
+      perthDate: dateKeyForTimeZone(new Date('2026-10-04T23:30:00Z'), 'Australia/Perth'),
+    }
+  })
+  expect(result.route).toEqual(['Riga', 'Tallinn'])
+  expect(result.active).toBe('Riga')
+  expect(result.overlapIssues).toEqual(['Riga and Vilnius overlap on the same nights.'])
+  expect(result.perthDate).toBe('2026-10-05')
 })
 
 test('nav links switch between areas without a full reload', async ({ page }) => {
@@ -100,21 +141,38 @@ test('legacy routes redirect to their new homes', async ({ page }) => {
 
   await page.goto('/app/search')
   await expect(page).toHaveURL('/app/hub')
+
+  await page.goto('/app/tonight')
+  await expect(page).toHaveURL('/app/hub')
+
+  await page.goto('/tonight')
+  await expect(page).toHaveURL('/app/hub')
 })
 
-test('narrow viewport uses the persistent Atlas tab bar for primary navigation', async ({ page }) => {
+test('narrow viewport uses a hamburger + slide-in drawer for primary navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/events')
-  const tabBar = page.locator('.atlas-tab-bar')
-  await expect(tabBar.getByRole('link', { name: 'Hub', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Events', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Planner', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
-  await expect(tabBar.getByRole('link', { name: 'You', exact: true })).toBeVisible()
-  // The old compact menu was removed; secondary actions remain available
-  // through the floating feedback trigger.
-  await expect(page.getByRole('button', { name: 'Open menu' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Request feature' })).toBeVisible()
+
+  // No persistent bottom tab bar on mobile -- primary nav lives behind the
+  // TopBar's hamburger trigger instead (deliberate divergence from the
+  // Atlas Mobile design canvas; see AppShell's doc comment).
+  await expect(page.locator('.atlas-tab-bar')).toHaveCount(0)
+  const trigger = page.getByRole('button', { name: 'Open menu' })
+  await expect(trigger).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Send feedback' })).toBeVisible()
+
+  await trigger.click()
+  const drawer = page.getByRole('dialog', { name: 'Primary navigation' })
+  await expect(drawer.getByRole('link', { name: 'Hub', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'All events', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'Planner', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'Journal', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'You', exact: true })).toBeVisible()
+
+  await drawer.getByRole('link', { name: 'Planner', exact: true }).click()
+  await expect(page).toHaveURL('/app/planner')
+  // Navigating closes the drawer instead of leaving it open over the new area.
+  await expect(page.getByRole('dialog', { name: 'Primary navigation' })).toHaveCount(0)
 })
 
 test('wide viewport renders the nav as a side nav, not a mobile dock', async ({ page }) => {

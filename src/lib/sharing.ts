@@ -10,6 +10,7 @@ import { pb } from './pocketbase'
 import { db, type AttemptRating, type ObservationLogEntry } from './db'
 import { parsePbDate } from './pocketbaseDate'
 import { isAtlasMediaEnabled, publicObservationPhotoUrl, uploadObservationPhoto } from './atlasMedia'
+import { syncXpLedgerSoon } from './xpLedger'
 
 export interface PublicObservationCard {
   targetName?: string
@@ -58,6 +59,7 @@ export async function shareObservation(entry: ObservationLogEntry): Promise<stri
     }
     await pb.collection('atlas_observations').update(entry.remoteId, { public: true })
     await db.observations.update(entry.id, { remoteId: entry.remoteId, isPublic: true })
+    void syncXpLedgerSoon()
     return shareUrlForRemoteId(entry.remoteId)
   }
 
@@ -81,5 +83,6 @@ export async function shareObservation(entry: ObservationLogEntry): Promise<stri
     await pb.collection('atlas_observations').update(record.id, { photo_r2_key: uploaded.key, photo_r2_size: uploaded.size })
   }
   await db.observations.update(entry.id, { remoteId: record.id, isPublic: true })
+  void syncXpLedgerSoon()
   return shareUrlForRemoteId(record.id)
 }
