@@ -230,6 +230,158 @@
   pointer-events: none;
 }
 
+.orionids-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.orionids-haze {
+  position: absolute;
+  inset: -8%;
+  background:
+    radial-gradient(ellipse at 18% 8%, rgba(186, 214, 255, 0.14), transparent 52%),
+    radial-gradient(ellipse at 82% 28%, rgba(255, 255, 255, 0.07), transparent 46%);
+}
+
+.orionids-streak {
+  position: absolute;
+  width: 4.5rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232, 242, 255, 0.8), transparent);
+  opacity: 0.45;
+  transform: rotate(-32deg);
+}
+
+.orionids-streak-short {
+  width: 2.25rem;
+  opacity: 0.3;
+}
+
+.orionids-banner,
+.spacetober-strip {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, #9eb6d4 35%, var(--line));
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--bg) 88%, #d7e6f8);
+  color: var(--ink);
+  font: 400 0.875rem var(--az-font-sans);
+}
+
+.orionids-banner p,
+.spacetober-strip p {
+  margin: 0;
+}
+
+.orionids-banner-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.orionids-banner a,
+.spacetober-strip a,
+.orionids-article a {
+  color: var(--az-violet-strong);
+}
+
+.orionids-article {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  max-width: 40rem;
+}
+
+.orionids-article h2 {
+  font: 600 1.05rem var(--az-font-display);
+  margin: 0.75rem 0 0.35rem;
+}
+
+.orionids-article p {
+  margin: 0.35rem 0;
+}
+
+.orionids-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.orionids-activity fieldset,
+.orionids-read,
+.orionids-activity label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.orionids-activity fieldset label {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.orionids-read {
+  flex-direction: row;
+  align-items: center;
+}
+
+.orionids-activity input[type='number'] {
+  max-width: 8rem;
+  font: 500 1rem var(--az-font-sans);
+  padding: 0.4rem 0.5rem;
+}
+
+.orionids-status {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .orionids-streak {
+    animation: orionids-fall 9s linear infinite;
+  }
+
+  .orionids-haze {
+    animation: orionids-haze 18s ease-in-out infinite alternate;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orionids-streak {
+    opacity: 0.22;
+  }
+}
+
+@keyframes orionids-fall {
+  from {
+    transform: translate3d(0, -12px, 0) rotate(-32deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  to {
+    transform: translate3d(-36px, 64px, 0) rotate(-32deg);
+    opacity: 0;
+  }
+}
+
+@keyframes orionids-haze {
+  from {
+    opacity: 0.75;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .nav-shell-topbar {
   position: sticky;
   top: 0;

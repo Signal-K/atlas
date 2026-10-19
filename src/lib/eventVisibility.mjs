@@ -135,3 +135,34 @@ export function visibilityForEvent(event, lat, lon) {
 export function isVisibleFromLocation(event, lat, lon) {
   return visibilityForEvent(event, lat, lon).visible
 }
+
+// First useful look at a shower on its catalogue peak night, after the Moon
+// has set. Scanning from 12:00 UTC covers the whole night through the
+// following morning in the Americas (a 22h window reaches ~10:00 UTC next
+// day). A gibbous Moon is often up at dusk and sets after midnight, so the
+// first dark sample is not enough — that can be the hour before moonrise.
+// Wait until the Moon has been above the horizon, then take the next sample
+// that is dark, moon-down, and has the radiant up. Visibility itself stays
+// moon-agnostic; this is only the "best time" instant.
+const MOON_FREE_STEP_MS = 4 * 60 * 1000
+const MOON_FREE_SPAN_MS = 22 * 3_600_000
+
+export function meteorMoonFreeInstant(target, peakDate, lat, lon) {
+  const radiant = METEOR_RADIANTS[target]
+  if (!radiant || !Number.isFinite(lat) || !Number.isFinite(lon) || !(peakDate instanceof Date) || Number.isNaN(peakDate.getTime())) {
+    return null
+  }
+  const start = Date.UTC(peakDate.getUTCFullYear(), peakDate.getUTCMonth(), peakDate.getUTCDate(), 12, 0, 0)
+  let seenMoonUp = false
+  let firstDarkWithoutMoon = null
+  for (let time = start; time <= start + MOON_FREE_SPAN_MS; time += MOON_FREE_STEP_MS) {
+    const date = new Date(time)
+    const moon = position(Astronomy.Body.Moon, date, lat, lon)
+    if (moon >= 0) seenMoonUp = true
+    const dark = sunAltitude(date, lat, lon) < -6 && radiantAltitude(radiant[0], radiant[1], date, lat, lon) > 15 && moon < 0
+    if (!dark) continue
+    if (seenMoonUp) return date
+    if (!firstDarkWithoutMoon) firstDarkWithoutMoon = date
+  }
+  return seenMoonUp ? null : firstDarkWithoutMoon
+}

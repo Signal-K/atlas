@@ -190,6 +190,9 @@ export function PhotoSkyIdSheet({ open, onClose, currentLocation, onSignInClick 
       const date = new Date(whenLocal)
       const computed = identifySky({ date, lat, lon, headingDeg: headingDeg ?? undefined })
       setResult(computed)
+      void import('../../lib/eventBadges').then(({ awardObservationCampaign }) => {
+        awardObservationCampaign(date.toISOString(), true)
+      })
       trackEvent('photo_sky_id_succeeded', {
         objectCount: computed.objects.length,
         hasConjunction: computed.closestPair != null,

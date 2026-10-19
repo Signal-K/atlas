@@ -502,6 +502,9 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
       }
     }
     void syncXpLedgerSoon()
+    void import('./eventBadges').then(({ awardObservationCampaign }) => {
+      awardObservationCampaign(entry.observedAt, Boolean(entry.photo))
+    })
     return record.id
   } catch (error) {
     // Stays local-only; the user still sees it in their Scrapbook.

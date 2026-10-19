@@ -1,16 +1,27 @@
 // Shared clock for list rows and the event detail page.
 //
-// Meteor showers are stored as a wide UTC window (meteor-showers.mjs: the
-// catalogue peak is 18h after starts_at). Formatting that window start made
-// the hub say "Tue Oct 20, 17:00" while the detail, in the browser's zone,
-// said "Wed Oct 21" and "5:00 PM" — against copy that says the shower is best
-// after midnight. The display instant for a shower is 02:00 on the catalogue
-// peak date in the observer's zone. Every other event keeps its start instant.
-// Both surfaces format that instant in the same zone and append the abbreviation.
+// Most showers are stored as a wide UTC window whose catalogue peak is 18h
+// after starts_at. The Orionids are the exception: the stored window is the
+// whole activity (about 2 Oct–7 Nov), while the peak night stays 21–22 Oct.
+// With coordinates, the display instant is the first dark, radiant-up moment
+// after moonset on that peak night. Without coordinates, other showers stay
+// at 02:00 local on the catalogue peak's UTC date, and the Orionids use
+// 02:00 local on the morning after that date (22 Oct). Every other event
+// keeps its start instant. Both surfaces format that instant in the same
+// zone and append the abbreviation.
+
+import { meteorMoonFreeInstant } from './eventVisibility.mjs'
 
 export const METEOR_PEAK_OFFSET_MS = 18 * 3_600_000
 
-export function meteorPeakInstant(startsAtIso) {
+export function meteorPeakInstant(startsAtIso, target) {
+  if (target === 'orionids') {
+    const start = new Date(startsAtIso)
+    // activeStart is 2 Oct of the peak year, so the UTC year of starts_at is
+    // the year of the 21 Oct 04:00 UTC catalogue peak. Do not use start+18h
+    // or the long activity window moves the peak to 2 Oct.
+    return new Date(Date.UTC(start.getUTCFullYear(), 9, 21, 4, 0, 0))
+  }
   return new Date(new Date(startsAtIso).getTime() + METEOR_PEAK_OFFSET_MS)
 }
 
@@ -49,22 +60,31 @@ export function zonedWallTimeToUtc(year, month, day, hour, minute, timeZone) {
   return new Date(wall - offsetAt(candidate, timeZone))
 }
 
-export function meteorBestViewingInstant(startsAtIso, timeZone) {
-  const peak = meteorPeakInstant(startsAtIso)
+export function meteorBestViewingInstant(startsAtIso, timeZone, coords, target) {
+  const peak = meteorPeakInstant(startsAtIso, target)
+  if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lon)) {
+    try {
+      const moonFree = meteorMoonFreeInstant(target, peak, coords.lat, coords.lon)
+      if (moonFree) return moonFree
+    } catch {
+      // Fall through to the civil-time hint when the ephemeris cannot run.
+    }
+  }
   if (!timeZone) return peak
   try {
-    // The catalogue peak is a UTC calendar date (Orionids: 21 Oct 04:00 UTC),
-    // not "whatever local date that instant falls on". 02:00 on that UTC date
-    // in the observer's zone is the pre-dawn of the named peak, including for
-    // zones behind UTC where the peak instant itself is still the evening before.
-    return zonedWallTimeToUtc(peak.getUTCFullYear(), peak.getUTCMonth() + 1, peak.getUTCDate(), 2, 0, timeZone)
+    // Orionids: 02:00 local on the morning after the catalogue peak UTC date
+    // (22 Oct), which is the practical stand-in for "after moonset". Other
+    // showers keep 02:00 on the peak's own UTC date.
+    const day = target === 'orionids' ? peak.getUTCDate() + 1 : peak.getUTCDate()
+    const morning = new Date(Date.UTC(peak.getUTCFullYear(), peak.getUTCMonth(), day))
+    return zonedWallTimeToUtc(morning.getUTCFullYear(), morning.getUTCMonth() + 1, morning.getUTCDate(), 2, 0, timeZone)
   } catch {
     return peak
   }
 }
 
-export function eventDisplayInstant(event, timeZone) {
-  if (event?.kind === 'meteor_shower') return meteorBestViewingInstant(event.startsAt, timeZone)
+export function eventDisplayInstant(event, timeZone, coords) {
+  if (event?.kind === 'meteor_shower') return meteorBestViewingInstant(event.startsAt, timeZone, coords, event.target)
   return new Date(event.startsAt)
 }
 

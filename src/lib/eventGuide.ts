@@ -81,17 +81,24 @@ function buildEclipseGuide(event: SkyEvent, location: GuideLocation): GuideStep[
 }
 
 function buildMeteorShowerGuide(event: SkyEvent, location: GuideLocation): GuideStep[] {
-  const best = meteorBestViewingInstant(event.startsAt, location.timeZone)
+  const best = meteorBestViewingInstant(event.startsAt, location.timeZone, { lat: location.lat, lon: location.lon }, event.target)
   const peakLocalTime = formatZonedTime(best.toISOString(), location.timeZone, true)
   const moonPct = Math.round(moonIlluminationPctAt(best))
   const nearestSite = rankDarkSkySites(location.lat, location.lon, 1)[0]
+  const orionids = event.target === 'orionids'
 
   const steps: GuideStep[] = [
-    { label: 'Best time', detail: `${peakLocalTime} — after midnight, when the radiant is highest. Rates build through the pre-dawn hours.` },
+    {
+      label: 'Best time',
+      detail: orionids
+        ? `${peakLocalTime} — after moonset on the night of 21–22 October. The radiant climbs through the rest of the night.`
+        : `${peakLocalTime} — after midnight, when the radiant is highest. Rates build through the pre-dawn hours.`,
+    },
     {
       label: 'Moon interference',
-      detail:
-        moonPct > 50
+      detail: orionids
+        ? `The Moon is about ${moonPct}% lit on the peak night, and it washes out faint meteors until it sets. ${peakLocalTime} is after moonset.`
+        : moonPct > 50
           ? `Moon is ${moonPct}% illuminated — its glow will wash out fainter meteors. Face away from it for the best view.`
           : `Moon is only ${moonPct}% illuminated — good dark-sky conditions for this shower.`,
     },

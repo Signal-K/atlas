@@ -35,7 +35,7 @@ const APP_HOME = '/app/hub'
 // Guests get the sky, the event list, the calendar, a device-local journal,
 // and a few Ask Atlas questions. Planner and profile stay behind an account;
 // Watch, camera recipes and Places stay behind Sky Pass inside those screens.
-const GUEST_ROUTES = new Set([APP_HOME, '/app/events', '/app/calendar', '/app/journal', '/app/ask'])
+const GUEST_ROUTES = new Set([APP_HOME, '/app/events', '/app/calendar', '/app/journal', '/app/ask', '/app/orionids'])
 
 // Human name for the area a guest was bounced from, e.g. /app/calendar -> "Calendar".
 function lockedAreaLabel(pathname: string) {
@@ -97,9 +97,11 @@ function App() {
   // uses right after onboarding. "/tonight" must stay a product route so
   // PostHog's replay URL trigger (app|tonight) can match signed-in use
   // instead of bouncing to the landing page.
+  const isOrionidsPath = routerLocation.pathname === '/orionids'
   useEffect(() => {
     if (routerLocation.pathname === '/app' || isTonightRoute) navigate(APP_HOME, { replace: true })
-  }, [routerLocation.pathname, isTonightRoute, navigate])
+    if (isOrionidsPath) navigate('/app/orionids', { replace: true })
+  }, [routerLocation.pathname, isTonightRoute, isOrionidsPath, navigate])
 
   // Public legal pages (App Store requires reachable privacy + terms URLs).
   const showLegal = routerLocation.pathname === '/privacy' || routerLocation.pathname === '/terms'
@@ -112,6 +114,7 @@ function App() {
       routerLocation.pathname !== '/' &&
       routerLocation.pathname !== '/landing' &&
       routerLocation.pathname !== '/hosts' &&
+      routerLocation.pathname !== '/orionids' &&
       !showLegal &&
       !isAppRoute
     ) {

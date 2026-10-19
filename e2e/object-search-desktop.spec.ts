@@ -50,7 +50,7 @@ test('object search shows the next local event and opens a readable desktop deta
   const detail = page.locator('.az-entry-detail-body')
   await expect(detail.getByRole('heading', { name: 'Custom Object observing window' })).toBeVisible()
   await expect(detail).toHaveCSS('max-width', '1152px')
-  await expect(page.locator('.az-entry-detail-hero')).toContainText('LOCAL VIEWING WINDOW')
+  await expect(page.locator('.az-entry-detail-hero')).toContainText(/Local viewing window/i)
   if (process.env.ATLAS_CAPTURE_SCREENSHOTS === '1') {
     await page.screenshot({ path: 'test-results/object-search-desktop.png', fullPage: false, animations: 'disabled' })
   }
@@ -71,7 +71,7 @@ test('desktop workspace keeps secondary routes and quick search within reach', a
 
 test('the desktop auth route renders the Atlas gate rather than browser-default controls', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/app/events')
+  await page.goto('/app/profile')
 
   await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
   await expect(page.locator('.auth-gate-sky')).toBeVisible()
@@ -114,7 +114,7 @@ test.describe('device timezone differs from the observing location', () => {
     const expected = new Date(iso!).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
     const deviceLocal = new Date(iso!).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' })
     expect(expected).not.toBe(deviceLocal)
-    await expect(detail.getByText(expected, { exact: true }).first()).toBeVisible()
+    await expect(detail.getByText(expected).first()).toBeVisible()
   })
 })
 

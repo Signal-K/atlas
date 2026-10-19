@@ -92,8 +92,8 @@ test('a guest with no location sees global events, never a Melbourne default', a
   await expect(page.getByRole('button', { name: 'Set your location' })).toHaveCount(0)
 })
 
-test('everything beyond tonight still requires an account', async ({ page }) => {
-  for (const path of ['/app/events', '/app/planner', '/app/journal', '/app/profile']) {
+test('planner and profile still require an account', async ({ page }) => {
+  for (const path of ['/app/planner', '/app/profile']) {
     await page.goto(path)
     await expect(
       page.getByRole('heading', { name: /Create your free account|Welcome back/ }),
@@ -105,7 +105,7 @@ test('everything beyond tonight still requires an account', async ({ page }) => 
 test('the gate returns a guest to tonight rather than ejecting them to the landing page', async ({ page }) => {
   await page.goto('/app/hub')
 
-  await page.getByRole('link', { name: /All events/ }).click()
+  await page.getByRole('link', { name: /Planner/ }).click()
   await expect(page.getByRole('heading', { name: /Create your free account|Welcome back/ })).toBeVisible()
 
   await page.getByRole('button', { name: /Back to tonight/ }).click()
@@ -113,16 +113,16 @@ test('the gate returns a guest to tonight rather than ejecting them to the landi
 })
 
 test('the gate names the area a guest tried to open and points new users to Create account', async ({ page }) => {
-  await page.goto('/app/calendar')
-  await expect(page.getByRole('status')).toContainText(/Calendar is part of your free account/)
+  await page.goto('/app/profile')
+  await expect(page.getByRole('status')).toContainText(/Profile is part of your free account/)
   await expect(page.getByRole('status')).toContainText(/Create account/)
 })
 
 test('a first-time guest lands on Create account, a returning device on Welcome back', async ({ page }) => {
-  await page.goto('/app/events')
+  await page.goto('/app/profile')
   await expect(page.getByRole('heading', { name: 'Create your free account' })).toBeVisible()
 
   await page.evaluate(() => window.localStorage.setItem('atlas-returning-account', '1'))
-  await page.goto('/app/events')
+  await page.goto('/app/profile')
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 })
