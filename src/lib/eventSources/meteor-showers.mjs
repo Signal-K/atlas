@@ -35,12 +35,12 @@ const SHOWERS = [
     name: 'Orionids',
     month: 10,
     day: 21,
-    // IMO activity runs from early October through about 7 November. The
-    // sharp peak is the night of 21–22 October; the stored window is the
+    // The 2026 gold window is 19 October through 8 November, inclusive.
+    // The sharp peak is the night of 21–22 October; the stored window is the
     // whole activity, not only the peak night.
-    activeStart: { month: 10, day: 2 },
-    activeEnd: { month: 11, day: 7 },
-    description: 'A second shower from Halley’s Comet debris, radiating from Orion with fast, occasionally bright meteors. Active from about 2 October through 7 November; the peak night is 21–22 October.',
+    activeStart: { month: 10, day: 19 },
+    activeEnd: { month: 11, day: 8 },
+    description: 'A second shower from Halley’s Comet debris, radiating from Orion with fast, occasionally bright meteors. Active from 19 October through 8 November; the peak night is 21–22 October.',
     imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/39/Orionids_Meteor_shower.jpg',
   },
   {

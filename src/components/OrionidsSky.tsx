@@ -1,12 +1,11 @@
-import { orionidsActivity } from '../lib/eventSources/meteor-showers.mjs'
-import { orionidsLive } from '../lib/spacetober.mjs'
+import { liveShowerCampaign } from '../lib/spacetober.mjs'
 
-// Fixed, click-through haze. Cool white and blue only. Motion is limited to
-// prefers-reduced-motion: no-preference; the streaks stay faint when motion
-// is reduced so the sky still reads as a shower.
+// Fixed, click-through haze while a shower campaign is inside its gold window.
+// Cool white and blue only. Motion is limited to prefers-reduced-motion:
+// no-preference; the streaks stay faint when motion is reduced so the sky
+// still reads as a shower. Queued showers draw nothing before their dates.
 export function OrionidsSky() {
-  const activity = orionidsActivity(2026)
-  if (!orionidsLive(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone, activity)) return null
+  if (!liveShowerCampaign(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)) return null
   return (
     <div className="orionids-sky" aria-hidden="true">
       <div className="orionids-haze" />
