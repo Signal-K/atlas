@@ -29,8 +29,8 @@ test('Orionids best viewing is after moonset on the night of 21–22 Oct, not 02
   const events = await fetchMeteorShowerEvents({ now: new Date('2026-10-13T00:00:00.000Z'), windowDays: 30 })
   const orionids = events.find((event) => event.target === 'orionids')
   assert.ok(orionids, 'expected the Orionids')
-  assert.equal(orionids.starts_at.slice(0, 10), '2026-10-02')
-  assert.equal(orionids.ends_at.slice(0, 10), '2026-11-07')
+  assert.equal(orionids.starts_at.slice(0, 10), '2026-10-19')
+  assert.equal(orionids.ends_at.slice(0, 10), '2026-11-08')
 
   for (const timeZone of ['America/Chicago', 'Europe/Zurich']) {
     const best = meteorBestViewingInstant(orionids.starts_at, timeZone, undefined, 'orionids')
@@ -97,4 +97,14 @@ test('a late-evening full Moon keeps the same calendar day on the list and the d
   const time = formatZonedTime(shown, 'America/Chicago', false)
   assert.match(time, /23:12/)
   assert.match(time, /CDT/)
+})
+
+test('Leonids and Geminids catalogue windows stay the short peak, separate from the campaign presets', async () => {
+  const events = await fetchMeteorShowerEvents({ now: new Date('2026-11-01T00:00:00.000Z'), windowDays: 60 })
+  const leonids = events.find((event) => event.target === 'leonids')
+  const geminids = events.find((event) => event.target === 'geminids')
+  assert.equal(leonids.starts_at, '2026-11-16T10:00:00.000Z')
+  assert.equal(leonids.ends_at, '2026-11-18T22:00:00.000Z')
+  assert.equal(geminids.starts_at, '2026-12-13T10:00:00.000Z')
+  assert.equal(geminids.ends_at, '2026-12-15T22:00:00.000Z')
 })

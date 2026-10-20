@@ -28,14 +28,18 @@ Rows Atlas writes:
 
 | action | `event_id` | `subject_id` | `tier` | `marker` |
 | --- | --- | --- | --- | --- |
-| Any photo in the web app during 2 Oct–7 Nov 2026 | `orionids-2026` | `photo` | `gold` | |
-| The same photo after 7 Nov 2026 | `orionids-2026` | `photo` | `silver` | |
+| Any photo in the web app during 19 Oct–8 Nov 2026 | `orionids-2026` | `photo` | `gold` | |
+| The same photo after 8 Nov 2026 | `orionids-2026` | `photo` | `silver` | |
 | Check-in on 22 Oct 2026 local, 02:00 inclusive until noon | `orionids-2026` | `check-in` | `gold` | `after-moonset` |
 | Check-in during World Space Week (4–10 Oct) or the Orionids window | `spacetober-2026` | `stamp` | `gold` | |
 | Fireballs in the Sky reading plus the quiz or a 10-minute watch, during the window | `fireball-spotter-2026` | `reading-activity` | `gold` | |
 | That same reading after the window | `fireball-spotter-2026` | `reading-activity` | `silver` | |
+| Any photo on 17 Nov 2026 | `leonids-2026` | `photo` | `gold` | |
+| The same photo after 17 Nov 2026 | `leonids-2026` | `photo` | `silver` | |
+| Any photo on 13–14 Dec 2026 | `geminids-2026` | `photo` | `gold` | |
+| The same photo after 14 Dec 2026 | `geminids-2026` | `photo` | `silver` | |
 
-A photo before 2 Oct 2026 writes nothing. A check-in alone does not raise mastery.
+Dates are inclusive local civil dates. A photo before 19 Oct 2026 writes no Orionids row. A photo before 17 Nov writes no Leonids row, and a photo before 13 Dec writes no Geminids row. One photo can write a row for every shower that has already opened: gold for the live window, silver for each earlier one. Leonids and Geminids do not write a check-in marker, a Spacetober stamp, or a Fireball Spotter row. Their banner and sky overlay appear only inside the gold window. The Leonids and Geminids entries in the meteor catalogue stay the short peak-night observing windows; these presets do not widen them. A check-in alone does not raise mastery.
 
 **Joint badge for Landnam.** Read the row where:
 
@@ -55,12 +59,12 @@ One row per user. Unique on `user`.
 | field | type | Atlas |
 | --- | --- | --- |
 | `user` | relation | the signed-in user |
-| `level` | number | set to at least `1`. Never lowered. |
-| `source` | text | `atlas` when Atlas creates the row |
-| `event_id` | text | `orionids-2026` when Atlas creates the row |
-| `earned_at` | number | unix ms |
+| `level` | number | Orionids `1`, Leonids `2`, Geminids `3`. Never lowered. |
+| `source` | text | `atlas` when Atlas creates or raises the row |
+| `event_id` | text | the shower that set the current level |
+| `earned_at` | number | unix ms of that raise |
 
-Level 1 is granted by the Orionids photo (`subject_id` `photo`) or by finishing the Fireball Spotter reading. If the row already has `level` >= 1, including a row Landnam wrote with `source` `landnam`, Atlas leaves `source`, `event_id`, and `earned_at` unchanged.
+Level 1 is granted by the Orionids photo (`subject_id` `photo`) or by finishing the Fireball Spotter reading. A Leonids photo raises the row to 2. A Geminids photo raises it to 3. When the stored `level` is already at least the new level, Atlas leaves `level`, `source`, `event_id`, and `earned_at` unchanged, including a row Landnam wrote. A raise writes the new level together with `source` `atlas`, the granting `event_id`, and that action's `earned_at`.
 
 ## Orionids URL
 

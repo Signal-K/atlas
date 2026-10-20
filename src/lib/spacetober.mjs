@@ -11,6 +11,8 @@
 import { orionidsActivity } from './eventSources/meteor-showers.mjs'
 
 export const ORIONIDS_EVENT_ID = 'orionids-2026'
+export const LEONIDS_EVENT_ID = 'leonids-2026'
+export const GEMINIDS_EVENT_ID = 'geminids-2026'
 export const SPACETOBER_EVENT_ID = 'spacetober-2026'
 export const FIREBALL_EVENT_ID = 'fireball-spotter-2026'
 export const ATLAS_SOURCE = 'atlas'
@@ -101,11 +103,61 @@ function utcDateKey(iso) {
   return String(iso).slice(0, 10)
 }
 
-export function orionidsPhase(date, timeZone, activity = orionidsActivity(2026)) {
+// Later showers are campaign presets. Their gold windows are inclusive local
+// civil dates and are independent of the short catalogue observing window.
+// They award nothing, and show no banner or overlay, before goldStart.
+const QUEUED_SHOWERS = [
+  {
+    eventId: LEONIDS_EVENT_ID,
+    badgeName: 'Leonids 2026',
+    goldStart: '2026-11-17',
+    goldEnd: '2026-11-17',
+    masteryLevel: 2,
+    bannerStrong: 'The Leonids are happening',
+    bannerRest: ' on 17 November. Best viewing is once the sky is dark, in the hours before dawn.',
+  },
+  {
+    eventId: GEMINIDS_EVENT_ID,
+    badgeName: 'Geminids 2026',
+    goldStart: '2026-12-13',
+    goldEnd: '2026-12-14',
+    masteryLevel: 3,
+    bannerStrong: 'The Geminids are happening',
+    bannerRest: ' on 13–14 December. Best viewing is once the sky is dark.',
+  },
+]
+
+export function showerCampaigns(activity = orionidsActivity(2026)) {
+  return [
+    {
+      eventId: ORIONIDS_EVENT_ID,
+      badgeName: 'Orionids 2026',
+      goldStart: utcDateKey(activity.startsAt),
+      goldEnd: utcDateKey(activity.endsAt),
+      masteryLevel: 1,
+      bannerStrong: 'The Orionids are happening',
+      bannerRest:
+        ' through 8 November. The peak night is 21–22 October. Best viewing is after moonset, about 02:00 local.',
+    },
+    ...QUEUED_SHOWERS,
+  ]
+}
+
+export function campaignPhase(date, timeZone, campaign) {
   const { key } = civilParts(date, timeZone)
-  if (key < utcDateKey(activity.startsAt)) return 'before'
-  if (key > utcDateKey(activity.endsAt)) return 'after'
+  if (key < campaign.goldStart) return 'before'
+  if (key > campaign.goldEnd) return 'after'
   return 'during'
+}
+
+export function orionidsPhase(date, timeZone, activity = orionidsActivity(2026)) {
+  const orionids = showerCampaigns(activity).find((campaign) => campaign.eventId === ORIONIDS_EVENT_ID)
+  return campaignPhase(date, timeZone, orionids)
+}
+
+// The one shower whose gold window contains this local civil date, if any.
+export function liveShowerCampaign(date, timeZone, activity = orionidsActivity(2026)) {
+  return showerCampaigns(activity).find((campaign) => campaignPhase(date, timeZone, campaign) === 'during') ?? null
 }
 
 export function orionidsLive(date, timeZone, activity) {
@@ -132,7 +184,7 @@ export function isAfterMoonsetCheckIn(date, timeZone, activity = orionidsActivit
   return parts.key === flagKey && parts.hour >= 2 && parts.hour < 12
 }
 
-function badge(eventId, subjectId, tier, at, grantsMastery, marker = '') {
+function badge(eventId, subjectId, tier, at, grantsMastery, marker = '', masteryLevel = 0) {
   return {
     event_id: eventId,
     subject_id: subjectId,
@@ -142,6 +194,7 @@ function badge(eventId, subjectId, tier, at, grantsMastery, marker = '') {
     marker,
     voucher: '',
     grantsMastery,
+    masteryLevel: grantsMastery ? masteryLevel : 0,
   }
 }
 
@@ -151,8 +204,22 @@ export function awardsForObservation({ at, timeZone, hasPhoto, activity = orioni
   const parts = civilParts(when, timeZone)
   const rows = []
 
-  if (hasPhoto && phase !== 'before') {
-    rows.push(badge(ORIONIDS_EVENT_ID, SUBJECT_PHOTO, phase === 'during' ? 'gold' : 'silver', when, true))
+  if (hasPhoto) {
+    for (const campaign of showerCampaigns(activity)) {
+      const showerPhase = campaignPhase(when, timeZone, campaign)
+      if (showerPhase === 'before') continue
+      rows.push(
+        badge(
+          campaign.eventId,
+          SUBJECT_PHOTO,
+          showerPhase === 'during' ? 'gold' : 'silver',
+          when,
+          true,
+          '',
+          campaign.masteryLevel,
+        ),
+      )
+    }
   }
 
   if (inSpaceWeek(parts.key) || phase === 'during') {
@@ -181,11 +248,12 @@ export function fireballAward({
   const when = at instanceof Date ? at : new Date(at)
   const phase = orionidsPhase(when, timeZone, activity)
   if (phase === 'before') return null
-  return badge(FIREBALL_EVENT_ID, SUBJECT_READING, phase === 'during' ? 'gold' : 'silver', when, true)
+  return badge(FIREBALL_EVENT_ID, SUBJECT_READING, phase === 'during' ? 'gold' : 'silver', when, true, '', 1)
 }
 
 export function badgeLabel(eventId, tier) {
-  if (eventId === ORIONIDS_EVENT_ID) return tier === 'gold' ? 'Orionids 2026' : 'Orionids 2026 · Silver · late'
+  const campaign = showerCampaigns().find((item) => item.eventId === eventId)
+  if (campaign) return tier === 'gold' ? campaign.badgeName : `${campaign.badgeName} · Silver · late`
   if (eventId === FIREBALL_EVENT_ID) return tier === 'gold' ? 'Fireball Spotter' : 'Fireball Spotter · Silver · late'
   if (eventId === SPACETOBER_EVENT_ID) return 'Spacetober'
   return eventId
@@ -193,4 +261,22 @@ export function badgeLabel(eventId, tier) {
 
 export function raisesMeteoriteMastery(rows) {
   return rows.some((row) => row.grantsMastery)
+}
+
+// Highest granting row. A later shower can raise mastery; a lower grant does not.
+export function masteryGrant(rows) {
+  let best = null
+  for (const row of rows) {
+    if (!row.grantsMastery) continue
+    if (!best || row.masteryLevel > best.masteryLevel) best = row
+  }
+  if (!best) return null
+  return { level: best.masteryLevel, event_id: best.event_id, earned_at: best.earned_at }
+}
+
+// Null means the stored row is already at least this high and must be left alone.
+export function nextMasteryLevel(existingLevel, requestedLevel) {
+  const current = Number(existingLevel)
+  if (Number.isFinite(current) && current >= requestedLevel) return null
+  return requestedLevel
 }

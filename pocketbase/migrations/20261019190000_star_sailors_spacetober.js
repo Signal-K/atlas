@@ -14,8 +14,9 @@
 //
 // meteorite_mastery — one row per user
 //   user, level, source, event_id, earned_at (unix ms)
-//   Unique (user). Atlas sets level to at least 1 and does not lower it.
-//   A row Landnam already wrote (source "landnam", level >= 1) is left as-is.
+//   Unique (user). Atlas raises level for a later shower and never lowers it.
+//   When the stored level is already at least the new level, source,
+//   event_id, and earned_at stay as they are, including a Landnam row.
 migrate((app) => {
   let users
   try {

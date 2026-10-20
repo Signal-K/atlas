@@ -8,7 +8,7 @@ export function SpacetoberStrip() {
     <section className="spacetober-strip" aria-label="Spacetober">
       <p className="az-kicker">Spacetober</p>
       <p>
-        World Space Week runs 4–10 October. The Orionids stay active through 7 November, with the peak night on 21–22
+        World Space Week runs 4–10 October. The Orionids stay active through 8 November, with the peak night on 21–22
         October.
       </p>
       <p className="orionids-banner-links">

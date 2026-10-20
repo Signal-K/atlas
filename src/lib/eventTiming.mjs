@@ -2,7 +2,7 @@
 //
 // Most showers are stored as a wide UTC window whose catalogue peak is 18h
 // after starts_at. The Orionids are the exception: the stored window is the
-// whole activity (about 2 Oct–7 Nov), while the peak night stays 21–22 Oct.
+// whole activity (19 Oct–8 Nov 2026), while the peak night stays 21–22 Oct.
 // With coordinates, the display instant is the first dark, radiant-up moment
 // after moonset on that peak night. Without coordinates, other showers stay
 // at 02:00 local on the catalogue peak's UTC date, and the Orionids use
@@ -17,9 +17,9 @@ export const METEOR_PEAK_OFFSET_MS = 18 * 3_600_000
 export function meteorPeakInstant(startsAtIso, target) {
   if (target === 'orionids') {
     const start = new Date(startsAtIso)
-    // activeStart is 2 Oct of the peak year, so the UTC year of starts_at is
+    // activeStart is 19 Oct of the peak year, so the UTC year of starts_at is
     // the year of the 21 Oct 04:00 UTC catalogue peak. Do not use start+18h
-    // or the long activity window moves the peak to 2 Oct.
+    // or the long activity window moves the peak to 19 Oct.
     return new Date(Date.UTC(start.getUTCFullYear(), 9, 21, 4, 0, 0))
   }
   return new Date(new Date(startsAtIso).getTime() + METEOR_PEAK_OFFSET_MS)

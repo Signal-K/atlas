@@ -2,9 +2,10 @@ import { pb } from './pocketbase'
 import { orionidsActivity } from './eventSources/meteor-showers.mjs'
 import {
   ATLAS_SOURCE,
-  ORIONIDS_EVENT_ID,
   awardsForObservation,
   fireballAward,
+  masteryGrant,
+  nextMasteryLevel,
   quizIsCorrect,
 } from './spacetober.mjs'
 
@@ -37,6 +38,7 @@ interface AwardRow {
   marker: string
   voucher: string
   grantsMastery: boolean
+  masteryLevel: number
 }
 
 async function upsertBadge(userId: string, row: AwardRow): Promise<void> {
@@ -70,12 +72,13 @@ async function upsertBadge(userId: string, row: AwardRow): Promise<void> {
   }
 }
 
-async function raiseMeteoriteMastery(userId: string, eventId: string, earnedAt: number): Promise<void> {
+async function raiseMeteoriteMastery(userId: string, eventId: string, earnedAt: number, level: number): Promise<void> {
   try {
     const existing = await pb.collection(MASTERY).getFirstListItem(`user = "${userId}"`)
-    if (Number(existing.level) >= 1) return
+    const next = nextMasteryLevel(existing.level, level)
+    if (next == null) return
     await pb.collection(MASTERY).update(existing.id, {
-      level: 1,
+      level: next,
       source: ATLAS_SOURCE,
       event_id: eventId,
       earned_at: earnedAt,
@@ -85,7 +88,7 @@ async function raiseMeteoriteMastery(userId: string, eventId: string, earnedAt: 
     try {
       await pb.collection(MASTERY).create({
         user: userId,
-        level: 1,
+        level,
         source: ATLAS_SOURCE,
         event_id: eventId,
         earned_at: earnedAt,
@@ -96,14 +99,12 @@ async function raiseMeteoriteMastery(userId: string, eventId: string, earnedAt: 
   }
 }
 
-async function persist(rows: AwardRow[], masteryEventId: string): Promise<void> {
+async function persist(rows: AwardRow[]): Promise<void> {
   const userId = pb.authStore.record?.id
   if (!userId || !pb.authStore.isValid) return
   for (const row of rows) await upsertBadge(userId, row)
-  if (rows.some((row) => row.grantsMastery)) {
-    const earnedAt = rows.find((row) => row.grantsMastery)?.earned_at ?? Date.now()
-    await raiseMeteoriteMastery(userId, masteryEventId, earnedAt)
-  }
+  const grant = masteryGrant(rows)
+  if (grant) await raiseMeteoriteMastery(userId, grant.event_id, grant.earned_at, grant.level)
 }
 
 export function awardObservationCampaign(observedAtIso: string, hasPhoto: boolean): void {
@@ -115,7 +116,7 @@ export function awardObservationCampaign(observedAtIso: string, hasPhoto: boolea
     activity: orionidsActivity(2026),
   }) as AwardRow[]
   if (rows.length === 0) return
-  void persist(rows, ORIONIDS_EVENT_ID)
+  void persist(rows)
 }
 
 export interface FireballSubmission {
@@ -139,6 +140,6 @@ export async function awardFireballSpotter(input: FireballSubmission): Promise<{
   if (!row) {
     return { error: 'Read the article, then answer all three questions or log a sky watch of at least 10 minutes.' }
   }
-  await persist([row], ORIONIDS_EVENT_ID)
+  await persist([row])
   return { tier: row.tier }
 }
