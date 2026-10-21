@@ -44,7 +44,7 @@ struct AtlasTabShell: View {
                 session: session,
                 skyPass: skyPass,
                 tonight: tonight,
-                service: LiveAskAtlasService(client: client, tokenProvider: { session.bearerToken }))
+                service: LiveAskAtlasService(client: client))
                 .tag(AtlasTab.ask)
                 .tabItem {
                     Label("Ask", systemImage: "sparkles")

@@ -363,13 +363,23 @@ enum DetailItem: Identifiable {
     var id: String { switch self { case .target(let t): "t-" + t.id; case .event(let e): "e-" + e.id } }
 }
 
+struct EclipseGuideRequest {
+    let entitled: Bool
+    let generate: @MainActor () async throws -> String
+}
+
 struct DetailSheet: View {
     let item: DetailItem
     let timeZone: TimeZone
     let device: DeviceProfile
     /// Settings recommended for this event, and the action that opens the camera with them.
     let camera: CameraPlan
+    var guide: EclipseGuideRequest? = nil
     let openCamera: (CameraPlan) -> Void
+
+    @State private var guideText: String?
+    @State private var guideError: String?
+    @State private var guideBusy = false
 
     private var event: SkyEvent { switch item { case .target(let t): t.event; case .event(let e): e } }
     private var target: PhotoTarget? { if case .target(let t) = item { t } else { nil } }
@@ -401,11 +411,58 @@ struct DetailSheet: View {
                     Label(t.viewingNote, systemImage: "cloud.sun").font(.system(size: 15)).foregroundStyle(Brand.muted)
                 }
                 CameraPlanCard(plan: camera, device: device) { openCamera(camera) }
+                viewingPlan
                 if let content = event.content, !content.isEmpty { Text(content).font(.system(size: 16)).foregroundStyle(Brand.muted) }
             }
             .frame(maxWidth: .infinity, alignment: .leading).padding(24)
         }
+        .atlasKeyboardChrome()
         .background(Brand.bg)
+    }
+
+    @ViewBuilder private var viewingPlan: some View {
+        if event.kind == "eclipse", let guide {
+            VStack(alignment: .leading, spacing: 8) {
+                Kicker(text: "Personalized viewing plan")
+                if guide.entitled {
+                    Button {
+                        Task { await generatePlan(guide) }
+                    } label: {
+                        HStack(spacing: 8) {
+                            if guideBusy { ProgressView().controlSize(.small) }
+                            Text(guideBusy ? "Generating…" : (guideText == nil ? "Generate my viewing plan" : "Regenerate plan"))
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 46)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Brand.violet)
+                    .disabled(guideBusy)
+                    .accessibilityLabel("Generate my viewing plan")
+                    if let guideError {
+                        Text(guideError).font(.system(size: 14)).foregroundStyle(Brand.flagship)
+                    }
+                    if let guideText {
+                        Text(guideText).font(.system(size: 15)).foregroundStyle(Brand.ink).fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    Text("Sky Pass unlocks a personalized viewing plan for this eclipse.")
+                        .font(.system(size: 15)).foregroundStyle(Brand.muted)
+                }
+            }
+        }
+    }
+
+    private func generatePlan(_ guide: EclipseGuideRequest) async {
+        guideBusy = true
+        guideError = nil
+        Keyboard.dismiss()
+        do {
+            guideText = try await guide.generate()
+        } catch {
+            guideError = (error as? LocalizedError)?.errorDescription ?? "Could not generate a viewing plan."
+        }
+        guideBusy = false
     }
 }
 
