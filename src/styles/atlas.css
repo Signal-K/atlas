@@ -4305,6 +4305,68 @@ body.has-feedback-dock.has-install-prompt .az-toast-stack {
   color: var(--bg);
 }
 
+.deep-sky-card {
+  margin-top: 1rem;
+}
+
+.deep-sky-title {
+  margin: 0.25rem 0 0.25rem;
+  font: 600 1.125rem/1.3 var(--az-font-sans);
+}
+
+.deep-sky-summary {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.deep-sky-list {
+  list-style: none;
+  margin: 0.875rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deep-sky-pick {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.deep-sky-pick-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.deep-sky-pick-name {
+  font-weight: 600;
+}
+
+.deep-sky-pick-class {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.deep-sky-pick p {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+}
+
+.deep-sky-pick-how,
+.deep-sky-pick-moon,
+.deep-sky-foot {
+  color: var(--muted);
+}
+
+.deep-sky-foot {
+  margin: 0.875rem 0 0;
+  font-size: 0.75rem;
+}
+
 .camera-recipe-open {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { DeepSkyTonightCard } from '../components/DeepSkyTonightCard'
 import { MobileIcon, type MobileIconName } from '../components/mobile/MobileIcon'
 import { EntryDetailView, type EntryDetailActions, type QuickActionOutcome } from '../views/mobile/EntryDetailView'
 import { CAMERA_PROFILES, getDefaultDevice } from '../lib/cameraProfiles'
@@ -250,6 +251,8 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
         </select>
         <span aria-live="polite">· {instrumentNote}</span>
       </label>
+
+      <DeepSkyTonightCard lat={city.lat} lon={city.lon} timeZone={city.timeZone} />
 
       {groups.map((group) => (
           <div key={group.key} style={{ marginTop: '1.125rem' }}>
