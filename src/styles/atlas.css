@@ -4305,6 +4305,25 @@ body.has-feedback-dock.has-install-prompt .az-toast-stack {
   color: var(--bg);
 }
 
+.camera-recipe-open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.camera-recipe-shot {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.camera-recipe-shot img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
 .camera-preset-download {
   display: flex;
   align-items: center;

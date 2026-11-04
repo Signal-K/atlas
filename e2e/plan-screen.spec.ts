@@ -162,3 +162,21 @@ test('camera recipe reveals device setup and a downloadable preset for an entitl
   ])
   expect(download.suggestedFilename()).toMatch(/^atlas-moon-.*\.atlas-preset\.json$/)
 })
+
+test('camera recipe opens the rear camera and offers the shot back for saving', async ({ page }) => {
+  await seedSignedInUser(page, { entitled: true })
+  await page.goto('/app/events')
+  await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible({ timeout: 15_000 })
+
+  await openFullMoonEntry(page)
+  await page.getByRole('button', { name: 'Camera recipe' }).click()
+
+  const input = page.getByTestId('camera-capture-input')
+  await expect(input).toHaveAttribute('capture', 'environment')
+  await expect(page.getByRole('button', { name: 'Open camera' })).toBeVisible()
+
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+  await input.setInputFiles({ name: 'shot.png', mimeType: 'image/png', buffer: png })
+  await expect(page.getByAltText('Your shot')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Save photo' })).toBeVisible()
+})

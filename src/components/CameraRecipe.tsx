@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   CAMERA_PROFILES,
   MAKER_LABELS,
@@ -58,6 +58,8 @@ export function CameraRecipe({ recipeKey, target, liveConditions }: { recipeKey:
   const [maker, setMaker] = useState<DeviceMaker>(() => makerForDevice(initialDevice))
   const [presets, setPresets] = useState<CameraPreset[]>([])
   const [importError, setImportError] = useState<string | null>(null)
+  const captureInputRef = useRef<HTMLInputElement>(null)
+  const [shot, setShot] = useState<{ url: string; name: string } | null>(null)
 
   useEffect(() => {
     trackEvent('Opened camera recipe', { recipeKey })
@@ -73,6 +75,19 @@ export function CameraRecipe({ recipeKey, target, liveConditions }: { recipeKey:
       cancelled = true
     }
   }, [scopeId, recipeKey, device])
+
+  useEffect(() => {
+    return () => {
+      if (shot) URL.revokeObjectURL(shot.url)
+    }
+  }, [shot])
+
+  function handleCapture(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+    setShot({ url: URL.createObjectURL(file), name: `atlas-${recipeKey}-${Date.now()}.jpg` })
+    trackEvent('Captured from camera recipe', { recipeKey, device })
+  }
 
   async function handleImportFile(fileList: FileList | null) {
     const file = fileList?.[0]
@@ -119,6 +134,38 @@ export function CameraRecipe({ recipeKey, target, liveConditions }: { recipeKey:
     >
       <div className="camera-recipe">
         {liveTip && <p className="camera-recipe-live-tip">Tonight: {liveTip}</p>}
+        <div className="camera-recipe-open">
+          {/* Browsers cannot apply exposure settings; this opens the phone's rear camera and the recipe stays on screen. */}
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent('Opened camera from recipe', { recipeKey, device })
+              captureInputRef.current?.click()
+            }}
+          >
+            Open camera
+          </button>
+          <input
+            ref={captureInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            aria-label="Camera capture"
+            data-testid="camera-capture-input"
+            onChange={(e) => {
+              handleCapture(e.target.files)
+              e.target.value = ''
+            }}
+          />
+          {shot && (
+            <figure className="camera-recipe-shot">
+              <img src={shot.url} alt="Your shot" />
+              <a href={shot.url} download={shot.name}>Save photo</a>
+            </figure>
+          )}
+        </div>
+
         <div className="camera-device-flow">
           <span className="camera-flow-label">1. Phone maker</span>
           <div className="filter-tabs camera-maker-tabs">
