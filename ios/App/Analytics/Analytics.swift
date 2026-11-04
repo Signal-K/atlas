@@ -59,5 +59,6 @@ enum Analytics {
         case checkInOpened = "check_in_opened"
         case checkInCompleted = "check_in_completed"
         case checkInFailed = "check_in_failed"
+        case deepSkyGearChanged = "deep_sky_gear_changed"
     }
 }

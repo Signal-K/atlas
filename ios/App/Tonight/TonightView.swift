@@ -160,6 +160,7 @@ struct TonightView: View {
         VStack(spacing: 12) {
             VerdictCard(plan: plan, weatherProblem: model.weatherProblem).feedEntrance()
             SkyEntryCard(equipment: settings.equipment ?? .phone, count: visibleCount(plan)) { Haptics.tap(); showSky = true }.feedEntrance()
+            DeepSkyCard(plan: plan, equipment: settings.equipment).feedEntrance()
         }
         bestShotSection(plan)
         comingSection(plan)
