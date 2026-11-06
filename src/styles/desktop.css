@@ -1,89 +1,25 @@
-/* ASV-150: a feed-first desktop workspace. Mobile retains its existing kit. */
-.calendar-scope { display:flex; gap:4px; margin-top:16px; }
-.calendar-scope button { padding:7px 13px; border:1px solid var(--line); border-radius:7px; background:transparent; color:var(--muted); cursor:pointer; }
-.calendar-scope button[aria-pressed='true'] { background:var(--chip); color:var(--ink); }
-@media (min-width:900px) {
-  .nav-shell { grid-template-columns:220px minmax(0,1fr); --az-teal:var(--az-violet); --az-amber:var(--az-violet); --az-green:var(--az-violet); --az-flagship:var(--az-violet); --az-font-display:var(--az-font-sans); }
-  :root[data-theme='dark'] .nav-shell { --bg:#0d1016; --surface:#151920; --surface2:#1c212a; --ink:#e9ecf2; --muted:#a0a8b6; --line:#ffffff12; --line2:#ffffff24; --chip:#ffffff09; --az-violet:#b9b1ed; --az-violet-strong:#c6bef7; --az-violet-wash:#b9b1ed12; }
-  .nav-shell-nav { background:var(--surface); padding:32px 18px 24px; border-right:1px solid var(--line); }
-  .az-rail-brand { font:600 25px var(--az-font-sans); letter-spacing:-1px; gap:11px; padding:0 12px; }
-  .az-rail-brand-mark { background:none; color:var(--ink); border:0; font-size:29px; }
-  .az-rail-workspace { margin:32px 0 28px; background:transparent; border:0; padding:0 12px; font-size:12px; color:var(--muted); }
-  .az-rail-workspace-dot { background:var(--az-violet); box-shadow:none; }
-  .az-rail-label { font-size:10px; letter-spacing:1.5px; padding-left:12px; }
-  .nav-shell-item.az-rail-item { min-height:45px; margin:3px 0; padding:10px 12px; border-radius:7px; font-size:14px; }
-  .nav-shell-item.az-rail-item.nav-shell-item-active { background:var(--chip); color:var(--ink); box-shadow:inset 2px 0 var(--az-violet); }
-  .az-rail-note { line-height:1.8; padding:24px 12px 0; border-top:1px solid var(--line); }
-  .nav-shell-body { position:relative; isolation:isolate; background:var(--bg); }
-  .az-shell-bg { position:fixed; inset:0; pointer-events:none; opacity:.65; filter:grayscale(1); z-index:0; }
-  .nav-shell-topbar { position:relative; background:transparent; border-bottom:1px solid var(--line); padding:22px 40px; }
-  .az-clock-row { display:none; }
-  .az-topbar-actions > .az-icon-btn { display:inline-flex; flex-direction:row; align-items:center; justify-content:center; gap:10px; }
-  .az-topbar-actions .az-search-button-key { position:static; margin-left:24px; }
-  .nav-shell-main { max-width:1420px; padding:30px 40px 80px; margin:0 auto; }
-  .nav-shell-main > .guest-strip { padding:12px 16px; margin-bottom:28px; border:1px solid var(--line); background:var(--chip); font-size:12px; border-radius:8px; }
-  .desktop-workspace { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:36px; align-items:start; }
-  .desktop-feed { min-width:0; }
-  .desktop-feed-heading { padding:4px 0 25px; }
-  .desktop-feed-heading .az-kicker { color:var(--muted); font-size:10px; letter-spacing:1.7px; margin-bottom:12px; }
-  .desktop-feed-heading h1 { font:500 clamp(26px,2.5vw,38px)/1.18 var(--az-font-sans); letter-spacing:-1.2px; max-width:540px; margin:0 0 12px; }
-  .desktop-feed-heading > p:last-child { color:var(--muted); font-size:14px; line-height:1.7; max-width:440px; margin:0; }
-  .desktop-feed-tabs { display:flex; gap:28px; border-bottom:1px solid var(--line2); margin-bottom:25px; }
-  .desktop-feed-tabs button { background:transparent; border:0; border-bottom:2px solid transparent; padding:14px 0; color:var(--muted); font-size:14px; cursor:pointer; }
-  .desktop-feed-tabs button[aria-pressed='true'] { color:var(--ink); border-bottom-color:var(--az-violet); }
-  .desktop-event-feed > div:first-child .az-h1 { font:500 15px var(--az-font-sans); letter-spacing:0; margin:0; }
-  .desktop-event-feed .az-hero-title { color:var(--muted); font-size:12px; margin-top:5px; }
-  .desktop-event-feed > label { flex-wrap:wrap; line-height:1.8; padding-bottom:12px; }
-  .desktop-event-feed > label select { width:auto; min-width:160px; padding:7px 12px; }
-  .desktop-event-feed > label > span:last-child { flex-basis:100%; font-size:12px; }
-  .desktop-event-feed .az-row-group { display:grid; gap:14px; background:transparent; border:0; overflow:visible; }
-  .desktop-event-card { padding:24px; border:1px solid var(--line2); background:color-mix(in srgb,var(--surface) 94%,transparent); border-radius:12px; transition:border-color .15s; }
-  .desktop-event-card:hover { border-color:var(--muted); }
-  .desktop-event-meta { display:flex; justify-content:space-between; gap:12px; color:var(--muted); font-size:11px; }
-  .desktop-event-meta > span { display:flex; align-items:center; gap:8px; }
-  .desktop-event-meta svg { width:16px; height:16px; color:var(--az-violet); }
-  .az-page button.desktop-event-title { display:block; background:none; border:0; padding:0; text-align:left; font:500 23px/1.35 var(--az-font-sans); letter-spacing:-.5px; color:var(--ink); margin:22px 0 8px; cursor:pointer; }
-  .desktop-event-card > p { color:var(--muted); font-size:12px; margin-bottom:22px; }
-  .desktop-event-card > .desktop-event-description { font-size:14px; line-height:1.8; white-space:pre-line; }
-  .desktop-event-image { width:100%; max-height:260px; object-fit:cover; border-radius:7px; margin-bottom:18px; }
-  .desktop-event-card footer { display:flex; justify-content:space-between; align-items:center; gap:12px; padding-top:18px; border-top:1px solid var(--line); }
-  .az-page button.desktop-calendar-action { border:1px solid var(--line2); background:var(--ink); color:var(--bg); border-radius:7px; padding:9px 13px; font-size:12px; font-weight:500; cursor:pointer; }
-  .az-page button.desktop-calendar-action[aria-pressed='true'] { background:var(--az-violet-wash); color:var(--az-violet); border-color:var(--line2); }
-  .desktop-calendar-action:disabled { opacity:.6; cursor:wait; }
-  .desktop-agenda { position:sticky; top:24px; padding-top:4px; }
-  .desktop-calendar { padding:20px; background:color-mix(in srgb,var(--surface) 95%,transparent); border:1px solid var(--line2); border-radius:12px; }
-  .desktop-calendar-heading { display:flex; justify-content:space-between; align-items:center; }
-  .desktop-calendar-heading h2 { font:500 15px var(--az-font-sans); margin:0; }
-  .desktop-calendar-heading a { font-size:20px; color:var(--muted); }
-  .desktop-calendar .az-calendar { border:0; background:transparent; padding:0; }
-  .desktop-calendar .az-calendar-head { padding:12px 0; font-size:12px; }
-  .desktop-calendar .az-calendar-cell { min-height:30px; border-radius:6px; font-size:11px; aspect-ratio:1; }
-  .desktop-calendar .az-calendar-weekdays { font-size:10px; color:var(--muted); }
-  .desktop-calendar .az-calendar-legend { font-size:9px; }
-  .desktop-calendar > .az-row-group { background:transparent; border:0; border-top:1px solid var(--line); border-radius:0; }
-  .desktop-calendar .az-kicker { font-size:10px; letter-spacing:.6px; line-height:1.7; }
-  .desktop-calendar .az-muted { font-size:12px; line-height:1.8; }
-  .desktop-calendar .az-row { padding:12px 0; }
-  .desktop-calendar .az-row-title { font-size:13px; }
-  .desktop-upcoming { border-top:1px solid var(--line); padding-top:16px; }
-  .desktop-upcoming > div { display:flex; gap:14px; margin-top:14px; font-size:12px; line-height:1.5; }
-  .desktop-upcoming time { flex:0 0 45px; color:var(--muted); }
-  .desktop-upcoming strong { font-weight:400; }
-  .desktop-agenda-note { display:flex; gap:12px; padding:22px 10px; color:var(--muted); }
-  .desktop-agenda-note > span { font-size:24px; color:var(--az-violet); }
-  .desktop-agenda-note p { font-size:12px; line-height:1.9; }
-  .desktop-feed-empty { padding:35px 24px; background:var(--surface); border:1px solid var(--line); border-radius:12px; }
-  .desktop-feed-empty h3 { font-size:17px; font-weight:500; }
-  .desktop-feed-empty p { font-size:14px; color:var(--muted); line-height:1.7; }
-  .desktop-feed .dt-feed { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:24px; }
-  .desktop-feed .dt-feed-title { font:500 22px var(--az-font-sans); }
-  .desktop-feed .dt-feed-card { background:var(--surface2); border:1px solid var(--line); border-radius:10px; box-shadow:none; transform:none; }
-  .desktop-feed .dt-feed-card-title { font-family:var(--az-font-sans); }
-}
-@media (min-width:900px) and (max-width:1199px) {
-  .nav-shell { grid-template-columns:180px minmax(0,1fr); }
-  .nav-shell-main { padding:24px; }
-  .nav-shell-topbar { padding:20px 24px; }
-  .desktop-workspace { grid-template-columns:minmax(0,1fr); }
-  .desktop-agenda { position:static; display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+/* Desktop starts here, independent of the legacy application shell.
+   Reference matching is pending an accessible plate.to screenshot. */
+@media (min-width: 900px) {
+  .feed-only { min-height:100dvh; background:#0a0a0a; color:#f0f0f0; font:400 15px/1.6 Arial,Helvetica,sans-serif; isolation:isolate; }
+  .feed-only-stars { position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.35; filter:grayscale(1); }
+  .feed-only-column { width:min(100% - 64px,640px); margin:0 auto; padding:32px 0 96px; }
+  .feed-only-header { display:flex; align-items:center; justify-content:space-between; padding-bottom:32px; }
+  .feed-only-header a { color:#f0f0f0; font-size:25px; font-weight:700; letter-spacing:-1px; text-decoration:none; }
+  .feed-only button { background:none; border:0; color:inherit; font:inherit; cursor:pointer; padding:0; border-radius:0; box-shadow:none; }
+  .feed-only-header button { color:#a0a0a0; font-size:13px; }
+  .feed-only h1 { font:500 16px/1.4 Arial,Helvetica,sans-serif; margin:0; padding-bottom:20px; border-bottom:1px solid #292929; }
+  .feed-only-post { padding:28px 0; border-bottom:1px solid #292929; }
+  .feed-only-meta { display:flex; justify-content:space-between; gap:20px; font-size:12px; color:#989898; }
+  .feed-only h2 { font:500 22px/1.35 Arial,Helvetica,sans-serif; letter-spacing:-.4px; margin:14px 0; }
+  .feed-only-post p { color:#b5b5b5; font-size:15px; line-height:1.8; margin:0 0 20px; white-space:pre-line; }
+  .feed-only-post img { display:block; width:100%; max-height:420px; object-fit:cover; margin:20px 0; }
+  .feed-only-post footer { display:flex; justify-content:space-between; align-items:center; gap:20px; font-size:12px; color:#989898; }
+  .feed-only-post footer button { font-size:12px; color:#e0e0e0; }
+  .feed-only button:hover { text-decoration:underline; }
+  .feed-only button:disabled { opacity:.5; cursor:wait; }
+  .feed-only-empty { color:#989898; padding:28px 0; }
+  body:has(.feed-only) { background:#0a0a0a; }
+  body:has(.feed-only) .feedback-dock,
+  body:has(.feed-only) .dev-preview-panel { display:none; }
 }

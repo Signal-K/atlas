@@ -88,8 +88,6 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
   const [searchOpen, setSearchOpen] = useState(false)
   const [navDrawerOpen, setNavDrawerOpen] = useState(false)
   const navItems = navItemsFor(Boolean(user))
-  const { search } = useLocation()
-  const guidedTour = new URLSearchParams(search).get('tour') === 'tonight'
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 900px)').matches)
   useEffect(() => {
     const query = window.matchMedia('(min-width: 900px)')
@@ -113,11 +111,18 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  if (desktop) {
+    return <>
+      <DesktopHome city={currentLocation} onOpenLocation={() => setLocationSheetOpen(true)} />
+      <LocationSheet open={locationSheetOpen} onClose={() => setLocationSheetOpen(false)} locationStatus={profileProps.locationStatus} requestLocation={profileProps.requestLocation} currentLocation={currentLocation} manualCity={profileProps.manualCity} setManualLocation={profileProps.setManualLocation} />
+    </>
+  }
+
   return (
     <ToastProvider>
       <ScrollToTop />
       <NavShell
-        items={desktop ? navItems.map(item => item.path === '/app/hub' ? { ...item, label: 'Feed' } : item) : navItems}
+        items={navItems}
         dark={theme === 'dark'}
         topBar={
           <TopBar
@@ -146,7 +151,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
           </div>
         )}
         <Routes>
-          <Route path="/app/hub" element={desktop && !guidedTour ? <DesktopHome city={currentLocation} onLogAttempt={onLogAttempt} onOpenLocation={() => setLocationSheetOpen(true)} /> : <HubPage city={currentLocation} onLogAttempt={onLogAttempt} onOpenLocation={() => setLocationSheetOpen(true)} />} />
+          <Route path="/app/hub" element={<HubPage city={currentLocation} onLogAttempt={onLogAttempt} onOpenLocation={() => setLocationSheetOpen(true)} />} />
           <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
           <Route path="/app/calendar" element={<CalendarPage city={currentLocation} />} />
           <Route path="/app/planner" element={<PlannerPage />} />
