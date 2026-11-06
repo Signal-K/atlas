@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type FormEvent } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Starfield } from './components/mobile/Starfield'
+import { SkillsTree } from './components/SkillsTree'
+import { ObservationHistory } from './components/ObservationHistory'
 import { AuthForm } from './components/AuthForm'
 import { useAppLocation } from './providers/useAppLocation'
 import { useAuth, signOut } from './lib/auth'
@@ -14,8 +16,11 @@ import { eventLookaheadDays } from './lib/entitlementLimits'
 import { pb } from './lib/pocketbase'
 import { useEntitlementSync } from './providers/useEntitlementSync'
 
-type IconName = 'feed' | 'collections' | 'calendar' | 'journal' | 'search' | 'account'
+type IconName = 'feed' | 'collections' | 'calendar' | 'journal' | 'search' | 'account' | 'skills' | 'history' | 'settings'
 const paths: Record<IconName, string> = {
+  skills: 'M12 3v6 M5 14v6 M19 14v6 M5 14V9h14v5 M9 3h6',
+  history: 'M3 11a9 9 0 1 1 3 7 M3 4v7h7 M12 7v6l4 2',
+  settings: 'M4 6h16 M4 12h16 M4 18h16 M8 3v6 M16 9v6 M10 15v6',
   feed: 'M5 5h14v14H5z',
   collections: 'M7 4h10v6H7z M4 14h6v6H4z M14 14h6v6h-6z',
   calendar: 'M4 6h16v14H4z M8 3v6 M16 3v6 M4 11h16',
@@ -33,9 +38,10 @@ function Sheet({ title, children, close }: { title: string; children: ReactNode;
 }
 const NAV: { to: string; name: string; icon: IconName }[] = [
   { to: '/app/hub', name: 'Feed', icon: 'feed' },
-  { to: '/app/events', name: 'Collections', icon: 'collections' },
-  { to: '/app/calendar', name: 'Calendar', icon: 'calendar' },
   { to: '/app/journal', name: 'Journal', icon: 'journal' },
+  { to: '/app/skills', name: 'Skills tree', icon: 'skills' },
+  { to: '/app/history', name: 'History', icon: 'history' },
+  { to: '/app/settings', name: 'Settings', icon: 'settings' },
 ]
 
 function Workspace() {
@@ -61,7 +67,7 @@ function Workspace() {
   const days = eventLookaheadDays(Boolean(user?.entitled))
   const scopeId = user?.id ?? 'local'
   const category = new URLSearchParams(search).get('category')
-  const view = pathname === '/app/events' ? 'collections' : pathname === '/app/calendar' ? 'calendar' : pathname === '/app/journal' ? 'journal' : pathname === '/app/profile' ? 'account' : 'feed'
+  const view = pathname === '/app/events' ? 'collections' : pathname === '/app/calendar' ? 'calendar' : pathname === '/app/journal' ? 'journal' : pathname === '/app/profile' || pathname === '/app/settings' ? 'account' : pathname === '/app/skills' ? 'skills' : pathname === '/app/history' ? 'history' : 'feed'
 
   useEffect(() => {
     let active = true
@@ -142,7 +148,7 @@ function Workspace() {
     finally { setPending(null) }
   }
 
-  const title = view === 'collections' ? 'Collections' : view === 'calendar' ? 'Calendar' : view === 'journal' ? 'Journal' : view === 'account' ? 'Your space' : EVENT_CATEGORIES.find(item => item.id === category)?.label ?? 'Feed'
+  const title = view === 'collections' ? 'Collections' : view === 'calendar' ? 'Calendar' : view === 'journal' ? 'Journal' : view === 'account' ? 'Settings' : view === 'skills' ? 'Skills tree' : view === 'history' ? 'History' : EVENT_CATEGORIES.find(item => item.id === category)?.label ?? 'Feed'
   const matches = CITIES.filter(item => cityLabel(item).toLowerCase().includes(locationQuery.toLowerCase())).slice(0, 20)
 
   return <div className="atlas-workspace">
@@ -150,13 +156,13 @@ function Workspace() {
     <nav className="workspace-rail" aria-label="Primary">
       <NavLink to="/app/hub" className="workspace-mark" aria-label="Atlas home">Atlas</NavLink>
       <div className="rail-pages">{NAV.map(item => <NavLink key={item.to} to={item.to} title={item.name} aria-label={item.name} className={({ isActive }) => isActive ? 'rail-button active' : 'rail-button'}><Icon name={item.icon} /><span className="rail-label">{item.name}</span></NavLink>)}</div>
-      <div className="rail-bottom"><button type="button" className="rail-button" title="Search" aria-label="Search" onClick={() => searchRef.current?.focus()}><Icon name="search" /><span className="rail-label">Search</span></button><NavLink to="/app/profile" className="rail-button" title="Account" aria-label="Account"><Icon name="account" /><span className="rail-label">Account</span></NavLink></div>
+
     </nav>
     <main className={`workspace-document ${view === 'collections' ? 'workspace-document-wide' : ''}`}>
       <div className="document-tools"><button type="button" onClick={() => setLocationOpen(true)}>{city.name} <span aria-hidden="true">⌄</span></button><label className="document-search"><Icon name="search" /><input ref={searchRef} type="search" aria-label="Search" placeholder="Search" value={query} onChange={event => setQuery(event.target.value)} /></label></div>
       <header className="document-heading"><h1>{title}</h1>{view === 'journal' && <button type="button" className="quiet-button" onClick={() => setComposeOpen(true)}>Add entry</button>}</header>
       {message && <p className="workspace-message" role="status">{message}</p>}
-      {view === 'collections' ? <div className="collection-grid">{EVENT_CATEGORIES.filter(item => item.id !== 'guides' && item.label.toLowerCase().includes(query.toLowerCase())).map(item => {
+      {view === 'skills' ? <SkillsTree entries={entries} /> : view === 'history' ? <ObservationHistory entries={entries} query={query} /> : view === 'collections' ? <div className="collection-grid">{EVENT_CATEGORIES.filter(item => item.id !== 'guides' && item.label.toLowerCase().includes(query.toLowerCase())).map(item => {
         const count = events.filter(event => item.kinds.includes(event.kind)).length
         return <button type="button" className="collection-tile" key={item.id} onClick={() => navigate(`/app/hub?category=${item.id}`)}><strong>{item.label}</strong><footer><span className="tile-mark" aria-hidden="true">✦</span><span>{count} {count === 1 ? 'event' : 'events'}</span></footer></button>
       })}</div> : view === 'account' ? <section className="account-content"><h2>{user ? user.email : 'A space for your sky'}</h2><p>{user ? 'Your calendar and journal are connected to your account.' : 'Explore the sky and keep notes on this device. Sign in to keep your observations across devices.'}</p><button type="button" className="quiet-button" onClick={() => user ? signOut() : setAuthOpen(true)}>{user ? 'Sign out' : 'Sign in / create account'}</button><section><h2>Location</h2><p>{city.name}</p><button type="button" className="text-button" onClick={() => setLocationOpen(true)}>Change location</button></section></section> : view === 'journal' ? <section className="journal-list">{entries.length === 0 ? <p className="empty-state">No entries yet. Start with something you noticed tonight.</p> : entries.filter(entry => `${entry.targetName} ${entry.note}`.toLowerCase().includes(query.toLowerCase())).map(entry => <article className="journal-entry" key={entry.id}><time dateTime={entry.observedAt}>{new Date(entry.observedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time><h2>{entry.targetName || 'An observing night'}</h2>{entry.note && <p>{entry.note}</p>}<small>{entry.locationLabel}</small></article>)}</section> : <>
@@ -164,7 +170,7 @@ function Workspace() {
         <div className="document-filter">{view === 'calendar' ? <><button type="button" aria-pressed={calendarScope === 'saved'} onClick={() => setCalendarScope('saved')}>Saved events</button><button type="button" aria-pressed={calendarScope === 'all'} onClick={() => setCalendarScope('all')}>All events</button></> : <button type="button" onClick={() => navigate('/app/events')}>{category ? 'All collections' : 'Collections'} <span aria-hidden="true">⌄</span></button>}</div>
         {loading && <p className="empty-state" role="status">Loading your sky…</p>}
         {!loading && groups.length === 0 && <p className="empty-state">{query ? 'No events match your search.' : view === 'calendar' && calendarScope === 'saved' ? 'Nothing saved yet. Add an event from your feed.' : 'No scheduled events in this window. Try another location or check back later.'}</p>}
-        {groups.map(([label, rows]) => <section className="event-section" key={label}><h2>{label}</h2><ul>{rows.map(event => <li className="event-line" key={event.id}><button type="button" className="save-checkbox" aria-label={`${saved.has(event.id) ? 'Remove' : 'Add'} ${event.title} ${saved.has(event.id) ? 'from' : 'to'} calendar`} aria-pressed={saved.has(event.id)} disabled={pending !== null} onClick={() => void toggleSave(event)}>{saved.has(event.id) ? '✓' : ''}</button><button type="button" className="event-open" onClick={() => setDetail(event)}>{event.title}</button><span className="event-category">{categoryForKind(event.kind)?.label}</span></li>)}</ul></section>)}
+        {groups.map(([label, rows]) => <section className="event-section" key={label}><h2>{label}</h2>{rows.map(event => <article className="feed-entry" key={event.id}><p className="feed-entry-category">{categoryForKind(event.kind)?.label}</p><button type="button" className="event-open" onClick={() => setDetail(event)}>{event.title}</button>{event.description && <p className="feed-entry-description">{event.description}</p>}<footer><button type="button" className="text-button" onClick={() => setDetail(event)}>Viewing details</button><button type="button" className="quiet-button" aria-label={`${saved.has(event.id) ? 'Remove' : 'Add'} ${event.title} ${saved.has(event.id) ? 'from' : 'to'} calendar`} disabled={pending !== null} onClick={() => void toggleSave(event)}>{pending === event.id ? 'Saving…' : saved.has(event.id) ? 'Remove from calendar' : 'Add to calendar'}</button></footer></article>)}</section>)}
       </>}
     </main>
     {locationOpen && <Sheet title="Your location" close={() => setLocationOpen(false)}><input type="search" aria-label="Find a city" placeholder="Find a city" value={locationQuery} onChange={event => setLocationQuery(event.target.value)} /><ul className="city-list">{matches.map(item => <li key={`${item.name}-${item.lat}-${item.lon}`}><button type="button" onClick={() => { setManualLocation(item); setLocationOpen(false) }}>{cityLabel(item)}</button></li>)}</ul>{matches.length === 0 && <p>No matching cities.</p>}</Sheet>}

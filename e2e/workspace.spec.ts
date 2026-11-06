@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 test('feed saves into calendar, persists, and exposes event details', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.getByRole('button', { name: 'Add An evening of shooting stars to calendar' }).click()
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Calendar', exact: true }).click()
+  await page.goto('/app/calendar')
   await expect(page.getByRole('button', { name: 'An evening of shooting stars', exact: true })).toBeVisible()
   await page.reload()
   await page.getByRole('button', { name: 'An evening of shooting stars', exact: true }).click()
@@ -30,7 +30,7 @@ test('feed saves into calendar, persists, and exposes event details', async ({ p
 })
 
 test('collections open a filtered feed and search narrows the results', async ({ page }) => {
-  await page.getByRole('navigation').getByRole('link', { name: 'Collections', exact: true }).click()
+  await page.goto('/app/events')
   await page.getByRole('button', { name: /Meteors & fireballs/ }).click()
   await expect(page.getByRole('heading', { name: 'Meteors & fireballs', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'An evening of shooting stars', exact: true })).toBeVisible()
@@ -50,5 +50,27 @@ test('journal saves a real local entry and the layout works on mobile', async ({
   await expect(page.getByRole('heading', { name: 'Moon over Tallinn' })).toBeVisible()
   await page.reload()
   await expect(page.getByText('A clear patch between the clouds.')).toBeVisible()
+  await page.getByRole('navigation').getByRole('link', { name: 'History', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Moon over Tallinn' })).toBeVisible()
+  await page.getByRole('navigation').getByRole('link', { name: 'Skills tree' }).click()
+  await expect(page.locator('.skill-node').first()).toContainText('Experienced')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
+
+
+test('sidebar has only the requested destinations and skills and history use journal evidence', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  const navigation = page.getByRole('navigation', { name: 'Primary' })
+  await expect(navigation.getByRole('link')).toHaveCount(6)
+  for (const name of ['Feed', 'Journal', 'Skills tree', 'History', 'Settings']) {
+    await expect(navigation.getByRole('link', { name, exact: true })).toBeVisible()
+  }
+  await expect(page.locator('.save-checkbox, input[type="checkbox"]')).toHaveCount(0)
+  await navigation.getByRole('link', { name: 'Skills tree' }).click()
+  await expect(page.getByRole('heading', { name: 'Skills tree', exact: true })).toBeVisible()
+  await expect(page.getByText('Log a night outside', { exact: true })).toBeVisible()
+  await navigation.getByRole('link', { name: 'History', exact: true }).click()
+  await expect(page.getByText('Your history will grow as you add observations to your journal.')).toBeVisible()
+  await navigation.getByRole('link', { name: 'Settings', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Change location' })).toBeVisible()
 })

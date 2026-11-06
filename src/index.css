@@ -13,15 +13,15 @@ h1,h2,p { margin-top:0; }
 .workspace-stars { position:fixed; inset:0; z-index:-1; background:#0a0a0a; pointer-events:none; }
 .az-starfield { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
 .az-starfield-dot { position:absolute; display:block; border-radius:50%; }
-.workspace-rail { position:fixed; z-index:3; left:0; top:0; bottom:0; width:192px; padding:32px 16px; display:flex; flex-direction:column; align-items:stretch; background:transparent; }
+.workspace-rail { position:fixed; z-index:3; left:0; top:0; bottom:0; width:224px; padding:32px 16px; display:flex; flex-direction:column; align-items:stretch; background:transparent; }
 .workspace-mark { display:block; align-self:stretch; margin:0 12px 40px; color:#f1f1f1; font-size:24px; font-weight:600; letter-spacing:-1px; text-decoration:none; }
 .rail-pages,.rail-bottom { display:flex; flex-direction:column; gap:8px; align-items:stretch; }
 .rail-bottom { margin-top:auto; }
-.rail-button { position:relative; border:0; text-decoration:none; background:none; color:#aaa; width:160px; height:40px; border-radius:9px; display:flex; align-items:center; justify-content:flex-start; gap:12px; padding:0 12px; }
+.rail-button { position:relative; border:0; text-decoration:none; background:none; color:#aaa; width:192px; height:44px; border-radius:9px; display:flex; align-items:center; justify-content:flex-start; gap:12px; padding:0 12px; }
 .rail-button:hover,.rail-button.active { background:#ffffff0c; color:#f5f5f5; }
 .rail-label { font-size:14px; line-height:1; }
-.workspace-document { position:relative; width:min(100% - 272px,920px); min-height:100dvh; margin:0 0 0 calc(192px + (100% - 192px - min(100% - 272px,920px)) / 2); padding:112px 48px 100px; background:transparent; }
-.workspace-document-wide { width:min(100% - 272px,1120px); margin-left:calc(192px + (100% - 192px - min(100% - 272px,1120px)) / 2); }
+.workspace-document { position:relative; width:min(100% - 304px,920px); min-height:100dvh; margin:0 0 0 calc(224px + (100% - 224px - min(100% - 304px,920px)) / 2); padding:112px 48px 100px; background:transparent; }
+.workspace-document-wide { width:min(100% - 304px,1120px); margin-left:calc(224px + (100% - 224px - min(100% - 304px,1120px)) / 2); }
 .document-tools { position:absolute; top:29px; left:48px; right:48px; display:flex; align-items:center; justify-content:space-between; gap:24px; color:#aaa; font-size:12px; }
 .document-tools > button { background:none; border:0; color:#aaa; padding:0; max-width:65%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .document-search { display:flex; align-items:center; gap:8px; }
@@ -37,8 +37,6 @@ h1 { font-size:40px; line-height:1.15; letter-spacing:-1.5px; margin:0; font-wei
 .event-section h2 { font-size:23px; line-height:1.4; letter-spacing:-.5px; margin:0 0 14px; font-weight:600; }
 .event-section ul { margin:0; padding:0; list-style:none; }
 .event-line { display:flex; align-items:baseline; gap:9px; padding:5px 0; min-height:32px; }
-.save-checkbox { width:15px; height:15px; flex:0 0 15px; padding:0; border:1.5px solid #777; border-radius:4px; background:transparent; color:#ccc; font-size:11px; line-height:12px; position:relative; top:1px; }
-.save-checkbox[aria-pressed='true'] { background:#ffffff16; border-color:#aaa; }
 .event-open { background:none; border:0; text-align:left; padding:0; color:#ededed; font-size:16px; line-height:1.5; }
 .event-open:hover { text-decoration:underline; text-underline-offset:3px; }
 .event-category { margin-left:auto; flex-shrink:0; color:#aaa; font-size:11px; padding-left:12px; }
@@ -76,11 +74,11 @@ h1 { font-size:40px; line-height:1.15; letter-spacing:-1.5px; margin:0; font-wei
 .detail-image { width:100%; max-height:320px; object-fit:cover; margin:0 0 20px; }
 @media (min-width:1200px) {
   .atlas-workspace { background:transparent; }
-  .workspace-document { margin-left:calc(192px + (100% - 192px - min(100% - 272px,920px)) / 2); }
-  .workspace-document-wide { margin-left:calc(192px + (100% - 192px - min(100% - 272px,1120px)) / 2); }
+  .workspace-document { margin-left:calc(224px + (100% - 224px - min(100% - 304px,920px)) / 2); }
+  .workspace-document-wide { margin-left:calc(224px + (100% - 224px - min(100% - 304px,1120px)) / 2); }
 }
 @media (max-width:1000px) {
-  .workspace-document,.workspace-document-wide { width:calc(100% - 192px); margin-left:192px; padding:100px 36px 70px; }
+  .workspace-document,.workspace-document-wide { width:calc(100% - 224px); margin-left:224px; padding:100px 36px 70px; }
   .document-tools { left:36px; right:36px; }
   .collection-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
   .event-category { display:none; }
@@ -102,3 +100,21 @@ h1 { font-size:40px; line-height:1.15; letter-spacing:-1.5px; margin:0; font-wei
   .document-heading { align-items:start; }
   .document-intro { font-size:16px; }
 }
+
+.feed-entry { padding:24px 0; border-bottom:1px solid #ffffff16; }
+.feed-entry-category { color:#aaa; font-size:12px; margin:0 0 10px; }
+.feed-entry .event-open { font-size:23px; font-weight:500; line-height:1.4; }
+.feed-entry-description { color:#bbb; font-size:15px; line-height:1.8; margin:14px 0 20px; white-space:pre-line; }
+.feed-entry footer { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-top:20px; font-size:13px; }
+.skill-node { display:flex; gap:24px; position:relative; padding:0 0 40px; }
+.skill-node:not(:last-child)::before { content:''; position:absolute; left:19px; top:40px; bottom:0; width:1px; background:#ffffff20; }
+.skill-number { display:grid; place-items:center; width:40px; height:40px; flex:0 0 40px; border:1px solid #ffffff30; border-radius:50%; color:#bbb; }
+.skill-node h2 { font-size:22px; margin:6px 0 10px; }
+.skill-node p { color:#aaa; line-height:1.7; }
+.skill-node .skill-status { font-size:12px; margin:0; }
+.history-month { margin:40px 0; }
+.history-month h2 { font-size:22px; }
+.history-entry { display:flex; gap:28px; padding:20px 0; border-bottom:1px solid #ffffff16; }
+.history-entry time { flex:0 0 60px; color:#aaa; font-size:13px; padding-top:3px; }
+.history-entry h3 { font-size:18px; font-weight:500; margin:0 0 8px; }
+.history-entry p { color:#aaa; font-size:14px; line-height:1.7; white-space:pre-line; }

@@ -6,12 +6,12 @@ The three plate.to screenshots supplied by the author on 6 November 2026 are the
 
 ## Structure
 
-- A fixed 192px navigation rail with an Atlas text wordmark. Icons have visible destination labels: Feed, Collections, Calendar, Journal, Search, and Account. On phones it narrows to 58px; accessible names remain.
+- A fixed 224px navigation rail with an Atlas text wordmark. Icons have visible destination labels: Feed, Journal, Skills tree, History, and Settings. On phones it narrows to 58px; accessible names remain.
 - A transparent document area over a continuous full-viewport starfield. Neither the navigation nor the main area has an opaque background. Feed, calendar, journal, and account share its reading width. Collections use a wider three-column grid.
 - Large plain headings, a single fine rule, short introductory text, then content. No marketing hero, coloured status panels, gradients, nebula washes, glass effects, or decorative dashboard cards.
-- Calendar saving appears as a small checkbox beside each event. Clicking its title opens details. Saved events appear in Calendar.
-- Collections are light grey tiles with a bold name at the top and quiet metadata at the bottom. Clicking opens the corresponding filtered feed.
-- Journal uses plain entries with a date, title, and note. Its compose dialog saves to the existing local-first observation store.
+- Feed entries have a title, description, viewing details, and an explicit Add to calendar action. Never present sky events as tickable tasks. Calendar saving remains available within the feed, without a sidebar destination.
+- Category browsing remains reachable from the feed rather than a separate sidebar entry.
+- Journal uses plain entries with a date, title, and note. Its compose dialog saves to the existing local-first observation store. History groups those observations into a chronological archive. Skills tree derives progress from existing journal evidence and Atlas training rules. Settings holds account and location controls. Add further capabilities incrementally.
 
 ## Typography and colour
 
