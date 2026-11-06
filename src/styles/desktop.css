@@ -1,25 +1,18 @@
-/* Desktop starts here, independent of the legacy application shell.
-   Reference matching is pending an accessible plate.to screenshot. */
 @media (min-width: 900px) {
-  .feed-only { min-height:100dvh; background:#0a0a0a; color:#f0f0f0; font:400 15px/1.6 Arial,Helvetica,sans-serif; isolation:isolate; }
-  .feed-only-stars { position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.35; filter:grayscale(1); }
-  .feed-only-column { width:min(100% - 64px,640px); margin:0 auto; padding:32px 0 96px; }
-  .feed-only-header { display:flex; align-items:center; justify-content:space-between; padding-bottom:32px; }
-  .feed-only-header a { color:#f0f0f0; font-size:25px; font-weight:700; letter-spacing:-1px; text-decoration:none; }
-  .feed-only button { background:none; border:0; color:inherit; font:inherit; cursor:pointer; padding:0; border-radius:0; box-shadow:none; }
-  .feed-only-header button { color:#a0a0a0; font-size:13px; }
-  .feed-only h1 { font:500 16px/1.4 Arial,Helvetica,sans-serif; margin:0; padding-bottom:20px; border-bottom:1px solid #292929; }
-  .feed-only-post { padding:28px 0; border-bottom:1px solid #292929; }
-  .feed-only-meta { display:flex; justify-content:space-between; gap:20px; font-size:12px; color:#989898; }
-  .feed-only h2 { font:500 22px/1.35 Arial,Helvetica,sans-serif; letter-spacing:-.4px; margin:14px 0; }
-  .feed-only-post p { color:#b5b5b5; font-size:15px; line-height:1.8; margin:0 0 20px; white-space:pre-line; }
-  .feed-only-post img { display:block; width:100%; max-height:420px; object-fit:cover; margin:20px 0; }
-  .feed-only-post footer { display:flex; justify-content:space-between; align-items:center; gap:20px; font-size:12px; color:#989898; }
-  .feed-only-post footer button { font-size:12px; color:#e0e0e0; }
-  .feed-only button:hover { text-decoration:underline; }
-  .feed-only button:disabled { opacity:.5; cursor:wait; }
-  .feed-only-empty { color:#989898; padding:28px 0; }
-  body:has(.feed-only) { background:#0a0a0a; }
-  body:has(.feed-only) .feedback-dock,
-  body:has(.feed-only) .dev-preview-panel { display:none; }
+  .desktop-starfield {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: #0a0a0a;
+    isolation: isolate;
+  }
+  .desktop-starfield .az-starfield {
+    opacity: .35;
+    filter: grayscale(1);
+  }
+  body:has(.desktop-starfield) .feedback-dock,
+  body:has(.desktop-starfield) .dev-preview-panel,
+  body:has(.desktop-starfield) .install-prompt {
+    display: none;
+  }
 }

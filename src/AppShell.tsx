@@ -112,10 +112,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
   }, [])
 
   if (desktop) {
-    return <>
-      <DesktopHome city={currentLocation} onOpenLocation={() => setLocationSheetOpen(true)} />
-      <LocationSheet open={locationSheetOpen} onClose={() => setLocationSheetOpen(false)} locationStatus={profileProps.locationStatus} requestLocation={profileProps.requestLocation} currentLocation={currentLocation} manualCity={profileProps.manualCity} setManualLocation={profileProps.setManualLocation} />
-    </>
+    return <DesktopHome />
   }
 
   return (
