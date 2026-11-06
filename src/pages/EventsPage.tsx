@@ -27,6 +27,7 @@ import type { SkyEvent } from '../lib/db'
 export interface EventsPageProps {
   city: CurrentLocation
   onLogAttempt: (draft: ObservationDraft) => void
+  feed?: boolean
 }
 
 const INSTRUMENTS: Array<{ id: 'eye' | 'binoculars' | 'telescope'; label: string }> = [
@@ -35,7 +36,7 @@ const INSTRUMENTS: Array<{ id: 'eye' | 'binoculars' | 'telescope'; label: string
   { id: 'telescope', label: 'Telescope' },
 ]
 
-export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
+export function EventsPage({ city, onLogAttempt, feed = false }: EventsPageProps) {
   const [theme] = useThemeState()
   const navigate = useNavigate()
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
@@ -44,6 +45,8 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
   const [reminders, setReminders] = useState(() => listGetReadyReminders())
   const [instrument, setInstrument] = useState<'eye' | 'binoculars' | 'telescope'>('eye')
   const [entryDetail, setEntryDetail] = useState<{ subject: EntryDetailSubject; actions: EntryDetailActions } | null>(null)
+  const [saving, setSaving] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState('')
   const { user } = useAuth()
   const hasPremium = Boolean(user?.entitled)
   const lookaheadDays = eventLookaheadDays(hasPremium)
@@ -231,11 +234,24 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
     })
   }
 
+  async function saveToCalendar(event: SkyEvent) {
+    setSaving(event.id)
+    setSaveError('')
+    try {
+      await toggleEventTag(event.id, taggedIds.has(event.id))
+      setTaggedIds(await getTaggedEventIds())
+    } catch {
+      setSaveError('Could not update your calendar. Please try again.')
+    } finally {
+      setSaving(null)
+    }
+  }
+
   return (
-    <div className="az-page">
+    <div className={`az-page${feed ? ' desktop-event-feed' : ''}`}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
         <div>
-          <h1 className="az-h1">Events</h1>
+          {feed ? <h2 className="az-h1">Coming up in your sky</h2> : <h1 className="az-h1">Events</h1>}
           <p className="az-hero-title">{events ? `${filtered.length} scheduled event${filtered.length === 1 ? '' : 's'}` : 'Finding scheduled events…'}</p>
         </div>
         <button type="button" className="az-text-btn" onClick={() => navigate('/app/calendar')}>
@@ -251,6 +267,9 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
         <span aria-live="polite">· {instrumentNote}</span>
       </label>
 
+      {saveError && <p role="alert">{saveError}</p>}
+      {events !== null && groups.length === 0 && <div className="desktop-feed-empty"><h3>No scheduled events in this window</h3><p>Try different viewing equipment or check back as new sky events arrive.</p></div>}
+
       {groups.map((group) => (
           <div key={group.key} style={{ marginTop: '1.125rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.5rem' }}>
@@ -258,7 +277,16 @@ export function EventsPage({ city, onLogAttempt }: EventsPageProps) {
               <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
             </div>
             <div className="az-row-group">
-              {group.events.map((event) => (
+              {group.events.map((event) => feed ? (
+                <article className="desktop-event-card" key={event.id}>
+                  <div className="desktop-event-meta"><span><MobileIcon name={(categoryForKind(event.kind)?.icon as MobileIconName) ?? 'zap'} />{categoryForKind(event.kind)?.label ?? event.kind.replaceAll('_', ' ')}</span><time dateTime={event.startsAt}>{formatZonedTime(eventDisplayInstant(event, city.timeZone, { lat: city.lat, lon: city.lon }).toISOString(), city.timeZone, false)}</time></div>
+                  <button type="button" className="desktop-event-title" onClick={() => selectEvent(event)}>{event.title}</button>
+                  <p>{city.name} · {group.label}</p>
+                  {event.imageUrl && <img className="desktop-event-image" src={event.imageUrl} alt="" loading="lazy" />}
+                  {event.description && <p className="desktop-event-description">{event.description}</p>}
+                  <footer><button type="button" className="az-text-btn" onClick={() => selectEvent(event)}>Viewing details <span aria-hidden="true">↗</span></button><button type="button" className="desktop-calendar-action" aria-pressed={taggedIds.has(event.id)} disabled={saving !== null} onClick={() => void saveToCalendar(event)}>{saving === event.id ? 'Saving…' : taggedIds.has(event.id) ? '✓ In your calendar' : '+ Add to calendar'}</button></footer>
+                </article>
+              ) : (
                 <button type="button" key={event.id} className="az-row" onClick={() => selectEvent(event)}>
                   <span className="az-row-icon">
                     <MobileIcon name={(categoryForKind(event.kind)?.icon as MobileIconName) ?? 'zap'} />

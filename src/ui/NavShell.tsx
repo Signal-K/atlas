@@ -37,10 +37,9 @@ export function NavShell({ items, children, topBar, dark = false }: NavShellProp
         </NavLink>
         <div className="az-rail-workspace">
           <span className="az-rail-workspace-dot" aria-hidden="true" />
-          <span>My sky</span>
-          <span className="az-rail-workspace-caret" aria-hidden="true">⌄</span>
+          <span>Your observing space</span>
         </div>
-        <p className="az-rail-label">Workspace</p>
+        <p className="az-rail-label">Explore & plan</p>
         <div className="az-rail-links">
           {items.map((item) => (
             <NavLink

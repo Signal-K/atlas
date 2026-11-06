@@ -5,6 +5,8 @@ import { localDateKey } from '../lib/weather'
 import { GUIDE_KIND_IDS } from '../lib/eventCategories'
 import type { CurrentLocation } from '../lib/currentLocation'
 import type { SkyEvent } from '../lib/db'
+import { getTaggedEventIds } from '../lib/eventTags'
+import { Link } from 'react-router-dom'
 
 const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
@@ -13,10 +15,20 @@ function dayLabel(key: string, count: number) {
   return count ? `${date}, ${count} ${count === 1 ? 'event' : 'events'}` : date
 }
 
-export function CalendarPage({ city }: { city: CurrentLocation }) {
+export function CalendarPage({ city, compact = false }: { city: CurrentLocation; compact?: boolean }) {
   const [events, setEvents] = useState<SkyEvent[] | null>(null)
   const [cursor, setCursor] = useState(() => new Date())
   const [selectedDay, setSelectedDay] = useState(() => localDateKey(new Date().toISOString(), city.timeZone))
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+  const [savedOnly, setSavedOnly] = useState(compact)
+  useEffect(() => {
+    let active = true
+    const refresh = () => { void getTaggedEventIds().then(ids => { if (active) setSavedIds(ids) }) }
+    refresh()
+    window.addEventListener('atlas:tagged-events-changed', refresh)
+    return () => { active = false; window.removeEventListener('atlas:tagged-events-changed', refresh) }
+  }, [])
+  const visibleEvents = useMemo(() => (events ?? []).filter(event => !savedOnly || savedIds.has(event.id)), [events, savedOnly, savedIds])
 
   useEffect(() => {
     let cancelled = false
@@ -39,7 +51,7 @@ export function CalendarPage({ city }: { city: CurrentLocation }) {
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const firstWeekday = new Date(year, month, 1).getDay()
     const eventCounts = new Map<string, number>()
-    for (const event of events ?? []) {
+    for (const event of visibleEvents) {
       const start = new Date(event.startsAt)
       const end = new Date(event.endsAt)
       for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
@@ -59,22 +71,23 @@ export function CalendarPage({ city }: { city: CurrentLocation }) {
         return { day, key, count: eventCounts.get(key) ?? 0, isToday: key === todayKey }
       }),
     }
-  }, [cursor, events, city.timeZone])
+  }, [cursor, visibleEvents, city.timeZone])
 
-  const selectedEvents = useMemo(() => (events ?? []).filter((event) => {
+  const selectedEvents = useMemo(() => visibleEvents.filter((event) => {
     const start = localDateKey(event.startsAt, city.timeZone)
     const end = localDateKey(event.endsAt, city.timeZone)
     return start <= selectedDay && end >= selectedDay
-  }), [events, selectedDay, city.timeZone])
+  }), [visibleEvents, selectedDay, city.timeZone])
 
   function moveMonth(offset: number) {
     setCursor((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1))
   }
 
   return (
-    <div className="az-page">
-      <h1 className="az-h1">Calendar</h1>
-      <p className="az-hero-title">{city.name} · scheduled events and ongoing phenomena</p>
+    <div className={`az-page${compact ? ' desktop-calendar' : ''}`}>
+      {compact ? <div className="desktop-calendar-heading"><h2>Your calendar</h2><Link to="/app/calendar" aria-label="Open full calendar">↗</Link></div> : <h1 className="az-h1">Calendar</h1>}
+      {!compact && <p className="az-hero-title">{city.name} · scheduled events and ongoing phenomena</p>}
+      <div className="calendar-scope" role="group" aria-label="Calendar events"><button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly(true)}>Saved</button><button type="button" aria-pressed={!savedOnly} onClick={() => setSavedOnly(false)}>All events</button></div>
       <div className="az-calendar" style={{ marginTop: '1rem' }}>
         <div className="az-calendar-head">
           <button type="button" className="az-text-btn" onClick={() => moveMonth(-1)} aria-label="Previous month">←</button>
@@ -93,11 +106,12 @@ export function CalendarPage({ city }: { city: CurrentLocation }) {
             </button>
           ))}
         </div>
-        <div className="az-calendar-legend"><span><i style={{ background: 'var(--az-violet)' }} />SCHEDULED EVENT</span></div>
+        <div className="az-calendar-legend"><span><i style={{ background: 'var(--az-violet)' }} />{savedOnly ? 'SAVED EVENT' : 'SCHEDULED EVENT'}</span></div>
       </div>
       <section className="az-row-group" style={{ marginTop: '1rem' }} aria-live="polite">
         <p className="az-kicker" style={{ margin: '0.75rem 0.875rem 0' }}>{new Date(`${selectedDay}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-        {selectedEvents.length ? selectedEvents.map((event) => <div key={event.id} className="az-row"><span className="az-row-main"><span className="az-row-kind">{event.kind.replaceAll('_', ' ')}</span><span className="az-row-title">{event.title}</span></span></div>) : <p className="az-muted" style={{ padding: '0 0.875rem 0.875rem' }}>No scheduled events. Check Tonight for ordinary-night recommendations.</p>}
+        {selectedEvents.length ? selectedEvents.map((event) => <div key={event.id} className="az-row"><span className="az-row-main"><span className="az-row-kind">{event.kind.replaceAll('_', ' ')}</span><span className="az-row-title">{event.title}</span></span></div>) : <p className="az-muted" style={{ padding: '0 0.875rem 0.875rem' }}>{savedOnly ? 'Nothing saved for this day. Add an event from your feed.' : 'No scheduled events for this day.'}</p>}
+        {compact && savedOnly && visibleEvents.length > 0 && <div className="desktop-upcoming"><p className="az-kicker">Next on your calendar</p>{visibleEvents.slice(0, 3).map(event => <div key={event.id}><time dateTime={event.startsAt}>{new Date(event.startsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: city.timeZone })}</time><strong>{event.title}</strong></div>)}</div>}
       </section>
     </div>
   )

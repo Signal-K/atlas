@@ -5,6 +5,7 @@ import './index.css'
 import './styles/house.css'
 import './styles/headless.css'
 import './styles/atlas.css'
+import './styles/desktop.css'
 import App from './App.tsx'
 import { RootErrorBoundary } from './components/RootErrorBoundary.tsx'
 // Share pages are their own entry points -- someone opening the app never

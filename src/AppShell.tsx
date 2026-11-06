@@ -8,6 +8,7 @@ import { LocationSheet } from './components/mobile/LocationSheet'
 import { MobileNavDrawer } from './components/mobile/MobileNavDrawer'
 import { SearchOverlay } from './components/mobile/SearchOverlay'
 import { HubPage } from './pages/HubPage'
+import { DesktopHome } from './pages/DesktopHome'
 import { EventsPage } from './pages/EventsPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { PlannerPage } from './pages/PlannerPage'
@@ -87,6 +88,15 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
   const [searchOpen, setSearchOpen] = useState(false)
   const [navDrawerOpen, setNavDrawerOpen] = useState(false)
   const navItems = navItemsFor(Boolean(user))
+  const { search } = useLocation()
+  const guidedTour = new URLSearchParams(search).get('tour') === 'tonight'
+  const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 900px)').matches)
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 900px)')
+    const update = () => setDesktop(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
 
   // The desktop search affordance advertises its shortcut, so keep the
   // command useful as well as visible. Avoid stealing a browser/editor
@@ -107,7 +117,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
     <ToastProvider>
       <ScrollToTop />
       <NavShell
-        items={navItems}
+        items={desktop ? navItems.map(item => item.path === '/app/hub' ? { ...item, label: 'Feed' } : item) : navItems}
         dark={theme === 'dark'}
         topBar={
           <TopBar
@@ -136,7 +146,7 @@ export function AppShell({ onLogAttempt, profileProps, journalProps, currentLoca
           </div>
         )}
         <Routes>
-          <Route path="/app/hub" element={<HubPage city={currentLocation} onLogAttempt={onLogAttempt} onOpenLocation={() => setLocationSheetOpen(true)} />} />
+          <Route path="/app/hub" element={desktop && !guidedTour ? <DesktopHome city={currentLocation} onLogAttempt={onLogAttempt} onOpenLocation={() => setLocationSheetOpen(true)} /> : <HubPage city={currentLocation} onLogAttempt={onLogAttempt} onOpenLocation={() => setLocationSheetOpen(true)} />} />
           <Route path="/app/events" element={<EventsPage city={currentLocation} onLogAttempt={onLogAttempt} />} />
           <Route path="/app/calendar" element={<CalendarPage city={currentLocation} />} />
           <Route path="/app/planner" element={<PlannerPage />} />
