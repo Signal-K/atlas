@@ -52,3 +52,9 @@ Secondary interfaces load in separate chunks. The briefing shares one forecast r
 PocketBase `atlas_workspace_state` stores one owner-scoped row per lesson or preference key, with a unique user/key index. Lesson completion is monotonic; preferences include their client update timestamp. Local cells remain dirty until an acknowledged server write and retry on reconnect, focus and visible-page polling. Existing local lesson completion migrates on sign-in; new-account merge carries guest learning and saved-target data forward.
 
 Journal/history hydrate from `atlas_observations`; failed and offline journal writes use the durable IndexedDB queue. New UUID-backed observations use deterministic server IDs to recover lost responses without duplicate records. All retry handlers reject an account-owner mismatch. Saved targets hydrate from `atlas_tagged_events`, and removal uses a queued tombstone until server deletion succeeds. Navigation and skill-tree progress derive from these records rather than a second independent state store.
+
+## Location selection
+
+Offer browser location as the primary action, requested only by an explicit click with a fresh position fix. Reverse-geocode its coordinates and resolve the location timezone through the forecast provider; retain coordinates even when naming is unavailable. Keep the previous selection if permission is denied or the request fails.
+
+City/town search uses the worldwide Open-Meteo geocoding service, not a picker restricted to CITIES. Debounce and abort stale searches, show region/country for ambiguous names, and make loading, empty, and service-error states explicit. Search results and successful browser fixes use the existing PocketBase-synced location preference.

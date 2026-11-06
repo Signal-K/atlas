@@ -205,3 +205,8 @@ h1 { font-size:40px; line-height:1.15; letter-spacing:-1.5px; margin:0; font-wei
 .lesson legend { font-size:14px; margin-bottom:12px; }
 .lesson-answer { display:block; background:none; border:1px solid #ffffff20; border-radius:7px; color:#ddd; padding:10px 14px; margin:8px 0; text-align:left; }
 .lesson-feedback { font-size:13px; }
+.browser-location-button { width:100%; padding:13px 16px; border:1px solid #b8adf655; border-radius:7px; background:#b8adf612; color:#ddd5ff; text-align:left; }
+.city-search-label { display:block; margin:26px 0 10px; color:#bbb; font-size:13px; }
+.location-picker .city-list { max-height:40dvh; overflow:auto; }
+.location-picker .source-credit { display:block; border:0; margin:16px 0 0; padding:0; }
+.location-error { color:#eabca4; font-size:13px; line-height:1.7; }

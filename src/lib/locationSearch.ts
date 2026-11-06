@@ -25,11 +25,11 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
 
   const url = new URL('https://geocoding-api.open-meteo.com/v1/search')
   url.searchParams.set('name', normalized)
-  url.searchParams.set('count', '8')
+  url.searchParams.set('count', '20')
   url.searchParams.set('language', 'en')
   url.searchParams.set('format', 'json')
 
-  const response = await fetch(url, { signal })
+  const response = await fetch(url, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000) })
   if (!response.ok) {
     trackEvent('location_search_performed', { resultCount: 0, error: `status_${response.status}` })
     throw new Error(`Location search failed: ${response.status}`)
@@ -48,7 +48,7 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
       population: result.population,
     }]
   })
-  const results = mergeLocationResults(normalized, CITIES, remote)
+  const results = mergeLocationResults(normalized, CITIES, remote, 20)
   trackEvent('location_search_performed', { resultCount: results.length })
   return results
 }

@@ -5,10 +5,11 @@ const FeedBriefing = lazy(() => import('./components/FeedBriefing').then(module 
 import { matchesEquipment, type Equipment } from './lib/feedEquipment'
 const SkillsTree = lazy(() => import('./components/SkillsTree').then(module => ({ default: module.SkillsTree })))
 const ObservationHistory = lazy(() => import('./components/ObservationHistory').then(module => ({ default: module.ObservationHistory })))
+const LocationPicker = lazy(() => import('./components/LocationPicker').then(module => ({ default: module.LocationPicker })))
 const AuthForm = lazy(() => import('./components/AuthForm').then(module => ({ default: module.AuthForm })))
 import { useAppLocation } from './providers/useAppLocation'
 import { useAuth, signOut } from './lib/auth'
-import { CITIES, cityLabel, type City } from './lib/cities'
+import { type City } from './lib/cities'
 import { db, type ObservationLogEntry, type SkyEvent } from './lib/db'
 import { getEventsInRange, pullSkyEvents, pullObservations, pushObservation } from './lib/sync'
 import { getTaggedEventIds, pullTaggedEvents, toggleEventTag } from './lib/eventTags'
@@ -66,7 +67,6 @@ function Workspace() {
   const [pending, setPending] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [locationOpen, setLocationOpen] = useState(false)
-  const [locationQuery, setLocationQuery] = useState('')
   const [authOpen, setAuthOpen] = useState(false)
   const [composeOpen, setComposeOpen] = useState(false)
   const [detail, setDetail] = useState<SkyEvent | null>(null)
@@ -181,7 +181,6 @@ function Workspace() {
   }
 
   const title = view === 'collections' ? 'Collections' : view === 'calendar' ? 'Calendar' : view === 'journal' ? 'Journal' : view === 'account' ? 'Settings' : view === 'skills' ? 'Skills tree' : view === 'history' ? 'History' : EVENT_CATEGORIES.find(item => item.id === category)?.label ?? 'Feed'
-  const matches = CITIES.filter(item => cityLabel(item).toLowerCase().includes(locationQuery.toLowerCase())).slice(0, 20)
 
   return <div className={`atlas-workspace${collapsed ? ' rail-collapsed' : ''}`}>
     <div className="workspace-stars"><Starfield dark palette="mono" motion="static" density={110} /></div>
@@ -209,7 +208,7 @@ function Workspace() {
         {groups.map(([label, rows]) => <section className="event-section" key={label}><h2>{label}</h2>{rows.map(event => <article className="feed-entry" key={event.id}><p className="feed-entry-category">{categoryForKind(event.kind)?.label}</p><button type="button" className="event-open" onClick={() => { trackEvent('Event details opened', { event_id: event.id, kind: event.kind }); setDetail(event) }}>{event.title}</button>{event.imageUrl && <img className="feed-event-image" src={event.imageUrl} alt="" loading="lazy" onError={event => { event.currentTarget.hidden = true }} />}<div className="event-data"><time dateTime={event.startsAt}>{new Date(event.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: city.timeZone })}</time><span>{event.target}</span><span>{event.endsAt && new Date(event.endsAt) > new Date(event.startsAt) ? `Until ${new Date(event.endsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: city.timeZone })}` : ''}</span></div><footer><button type="button" className="text-button" onClick={() => { trackEvent('Event details opened', { event_id: event.id, kind: event.kind }); setDetail(event) }}>Viewing details</button><button type="button" className="quiet-button" aria-label={`${saved.has(event.id) ? 'Remove' : 'Add'} ${event.title} ${saved.has(event.id) ? 'from' : 'to'} calendar`} disabled={pending !== null} onClick={() => void toggleSave(event)}>{pending === event.id ? 'Saving…' : saved.has(event.id) ? 'Remove from calendar' : 'Add to calendar'}</button></footer></article>)}</section>)}
       </>}
     </main></Suspense>
-    {locationOpen && <Sheet title="Your location" close={() => setLocationOpen(false)}><input type="search" aria-label="Find a city" placeholder="Find a city" value={locationQuery} onChange={event => setLocationQuery(event.target.value)} /><ul className="city-list">{matches.map(item => <li key={`${item.name}-${item.lat}-${item.lon}`}><button type="button" onClick={() => { setManualLocation(item); setWorkspaceValue(scopeId, 'preference:location', item); setLocationOpen(false) }}>{cityLabel(item)}</button></li>)}</ul>{matches.length === 0 && <p>No matching cities.</p>}</Sheet>}
+    {locationOpen && <Sheet title="Your location" close={() => setLocationOpen(false)}><Suspense fallback={<p role="status">Loading location search…</p>}><LocationPicker onSelect={place => { setManualLocation(place); setWorkspaceValue(scopeId, 'preference:location', place); setLocationOpen(false) }} /></Suspense></Sheet>}
     {detail && <Sheet title={detail.title} close={() => setDetail(null)}><p className="detail-date">{new Date(detail.startsAt).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short', timeZone: city.timeZone })}</p>{detail.imageUrl && <img className="detail-image" src={detail.imageUrl} alt="" />}<p className="detail-description">{detail.description || 'Viewing details will appear here as they become available.'}</p><button type="button" className="quiet-button" disabled={pending !== null} onClick={() => void toggleSave(detail)}>{saved.has(detail.id) ? 'Remove from calendar' : 'Add to calendar'}</button></Sheet>}
     {composeOpen && <Sheet title="New journal entry" close={() => setComposeOpen(false)}><form onSubmit={event => void addNote(event)}><label>What did you observe?<input name="title" required maxLength={200} /></label><label>Notes<textarea name="note" rows={6} maxLength={10000} /></label><button type="submit" className="quiet-button" disabled={pending !== null}>{pending === 'journal' ? 'Saving…' : 'Save entry'}</button></form></Sheet>}
     {authOpen && <Sheet title="Your Atlas account" close={() => setAuthOpen(false)}><Suspense fallback={<p role="status">Loading sign in…</p>}><AuthForm source="workspace" onSignedIn={() => setAuthOpen(false)} onSignedUp={() => setAuthOpen(false)} /></Suspense></Sheet>}
