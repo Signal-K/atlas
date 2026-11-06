@@ -30,3 +30,11 @@ Keep the same visual language on smaller screens. Narrow the rail to 58px, use 2
 The old App/AppShell presentation, legacy pages, and original stylesheets are replaced. Existing astronomical calculations, local storage, synchronization, authentication, and event data remain the underlying services. Do not use fixture data in production screens.
 
 The previous journal-only design document is preserved at docs/archive/journal-design-before-asv150.md.
+
+## Feed briefing and navigation
+
+The sidebar collapses to icons and remembers its state. Destination labels and icons have distinct muted colours. Preserve the continuous starfield when switching or collapsing views.
+
+Model the main feed on ios/App/Tonight/TonightView.swift: an observing verdict, sky targets, night timings, and upcoming events. Expose the existing web data values directly: cloud and rain percentages, moon illumination, the computed five-point rating, sunset/darkness/dawn, target best time/direction/altitude, and a seven-night forecast. Attribute weather to Open-Meteo and astronomy to Astronomy Engine.
+
+Naked eye, binoculars, and telescope filters apply consistently to upcoming events and recommended targets. Use KindMeta equipment eligibility; telescope is inclusive of easier equipment. Do not replace missing weather with invented values or describe a weather-dependent score as measured when the source is unavailable. Keep event prose in the detail dialog; the feed shows structured source fields and source images when available.

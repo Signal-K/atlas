@@ -4,6 +4,7 @@ import { seedSignedInUser } from './support/auth'
 test.beforeEach(async ({ page }) => {
   await seedSignedInUser(page)
   await page.route('**/api/**', route => route.abort())
+  await page.route('**/v1/forecast**', route => route.fulfill({ json: { timezone: 'Europe/Tallinn', daily: { time: [new Date().toISOString().slice(0, 10)], cloud_cover_mean: [22], precipitation_probability_mean: [7] } } }))
   await page.goto('/app/hub')
   await expect(page.getByRole('heading', { name: 'Feed', exact: true })).toBeVisible()
   await page.evaluate(async () => {
@@ -73,4 +74,27 @@ test('sidebar has only the requested destinations and skills and history use jou
   await expect(page.getByText('Your history will grow as you add observations to your journal.')).toBeVisible()
   await navigation.getByRole('link', { name: 'Settings', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Change location' })).toBeVisible()
+})
+
+
+test('sidebar collapse persists and the feed shows source metrics with equipment filters', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await expect(page.getByRole('region', { name: "Tonight's scorecard" })).toContainText('22%')
+  await expect(page.getByRole('region', { name: "Tonight's scorecard" })).toContainText('7%')
+  await expect(page.getByRole('region', { name: 'Seven-night forecast' })).toContainText('22%')
+  await page.getByRole('button', { name: 'Collapse sidebar' }).click()
+  await expect(page.locator('.atlas-workspace')).toHaveClass(/rail-collapsed/)
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible()
+  await page.getByRole('button', { name: 'Expand sidebar' }).click()
+  await page.evaluate(async () => {
+    const { db } = await import('/src/lib/db.ts')
+    await db.skyEvents.put({ id: 'scope-only', kind: 'telescope_target', target: 'saturn', title: 'Saturn through a telescope', description: 'Scope-only test event.', startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 86400000).toISOString(), updatedAt: new Date().toISOString() })
+  })
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Saturn through a telescope', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Telescope', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Saturn through a telescope', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Naked eye', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Saturn through a telescope', exact: true })).toHaveCount(0)
 })
