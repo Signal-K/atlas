@@ -38,7 +38,7 @@ export function reconcilePlace(city, curatedCities) {
   }
 }
 
-export function mergeLocationResults(query, curatedCities, remote) {
+export function mergeLocationResults(query, curatedCities, remote, limit = 8) {
   const normalized = query.trim().toLocaleLowerCase()
   const curated = curatedCities.filter((city) => {
     const haystack = [city.name, city.admin1, city.country].filter(Boolean).join(' ').toLocaleLowerCase()
@@ -57,5 +57,5 @@ export function mergeLocationResults(query, curatedCities, remote) {
     merged.push(place)
   }
 
-  return merged.slice(0, 8)
+  return merged.slice(0, limit)
 }

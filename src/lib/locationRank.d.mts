@@ -12,4 +12,4 @@ export interface RankedPlace {
 
 export function reconcilePlace<T extends RankedPlace>(city: T, curatedCities: readonly RankedPlace[]): T
 
-export function mergeLocationResults(query: string, curatedCities: readonly RankedPlace[], remote: readonly RankedPlace[]): RankedPlace[]
+export function mergeLocationResults(query: string, curatedCities: readonly RankedPlace[], remote: readonly RankedPlace[], limit?: number): RankedPlace[]
