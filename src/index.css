@@ -190,3 +190,18 @@ h1 { font-size:40px; line-height:1.15; letter-spacing:-1.5px; margin:0; font-wei
   .rail-collapsed .workspace-mark::before { font-size:16px; }
   .sky-scorecard,.night-window { padding:16px; }
 }
+.daily-focus { border-left:2px solid #b8adf6; padding:4px 0 16px 22px; margin:0 0 32px; }
+.daily-picker { display:flex; flex-wrap:wrap; gap:6px; margin:18px 0; }
+.daily-picker button { border:0; border-radius:6px; color:#aaa; background:transparent; font-size:12px; padding:7px 10px; }
+.daily-picker button[aria-pressed='true'] { background:#b8adf618; color:#d6ccff; }
+.daily-focus h3 { font-size:26px; font-weight:500; margin:16px 0 10px; }
+.daily-focus p { font-size:15px; color:#bbb; line-height:1.8; max-width:600px; }
+.daily-focus time { font-size:13px; color:#ddd; }
+.daily-focus > small { display:block; margin-top:12px; font-size:11px; color:#999; }
+.lesson { padding:22px 0; border-top:1px solid #ffffff20; }
+.lesson summary { cursor:pointer; font-size:19px; }
+.lesson p { color:#bbb; line-height:1.8; }
+.lesson fieldset { border:0; padding:10px 0; }
+.lesson legend { font-size:14px; margin-bottom:12px; }
+.lesson-answer { display:block; background:none; border:1px solid #ffffff20; border-radius:7px; color:#ddd; padding:10px 14px; margin:8px 0; text-align:left; }
+.lesson-feedback { font-size:13px; }

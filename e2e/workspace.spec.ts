@@ -98,3 +98,26 @@ test('sidebar collapse persists and the feed shows source metrics with equipment
   await page.getByRole('button', { name: 'Naked eye', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Saturn through a telescope', exact: true })).toHaveCount(0)
 })
+
+test('daily focus selects a calculated target for each observing day', async ({ page }) => {
+  const focus = page.getByRole('region', { name: 'Daily observing focus' })
+  await expect(focus.getByRole('heading', { name: 'One thing to see' })).toBeVisible()
+  await expect(focus.getByRole('heading', { level: 3 })).not.toBeEmpty()
+  const days = focus.getByRole('group', { name: 'Choose observing day' }).getByRole('button')
+  await expect(days).toHaveCount(7)
+  await days.nth(1).click()
+  await expect(days.nth(1)).toHaveAttribute('aria-pressed', 'true')
+  await expect(focus.locator('time')).toBeVisible()
+})
+
+test('education checks understanding and preserves lesson progress', async ({ page }) => {
+  await page.getByRole('navigation').getByRole('link', { name: 'Skills tree' }).click()
+  const lessons = page.getByRole('region', { name: 'Learn the sky' })
+  await lessons.getByText('Let your eyes adjust', { exact: true }).click()
+  await lessons.getByRole('button', { name: 'Keep checking a bright phone screen' }).click()
+  await expect(lessons.getByRole('status')).toContainText('Not quite')
+  await lessons.getByRole('button', { name: 'Spend time away from bright lights' }).click()
+  await expect(lessons).toContainText('1 of 3 short lessons completed')
+  await page.reload()
+  await expect(page.getByRole('region', { name: 'Learn the sky' })).toContainText('1 of 3 short lessons completed')
+})

@@ -38,3 +38,11 @@ The sidebar collapses to icons and remembers its state. Destination labels and i
 Model the main feed on ios/App/Tonight/TonightView.swift: an observing verdict, sky targets, night timings, and upcoming events. Expose the existing web data values directly: cloud and rain percentages, moon illumination, the computed five-point rating, sunset/darkness/dawn, target best time/direction/altitude, and a seven-night forecast. Attribute weather to Open-Meteo and astronomy to Astronomy Engine.
 
 Naked eye, binoculars, and telescope filters apply consistently to upcoming events and recommended targets. Use KindMeta equipment eligibility; telescope is inclusive of easier equipment. Do not replace missing weather with invented values or describe a weather-dependent score as measured when the source is unavailable. Keep event prose in the detail dialog; the feed shows structured source fields and source images when available.
+
+## Release: daily focus and education
+
+Each day has one calculated observing recommendation, selected for the user's location and equipment from Atlas's daily observing sources. The seven-day picker uses the location's calendar date. Do not imply that calculated visibility predicts cloud cover.
+
+Education begins with dark adaptation, altitude/direction, and low-power telescope setup. A short understanding check records completion locally per account scope. Lesson events report lesson identifiers and correctness, never journal notes or search text. The current analytics include view, equipment, sidebar, event-details, calendar-save, journal-save, daily-focus and education interactions.
+
+Secondary interfaces load in separate chunks. The briefing shares one forecast response with the tonight planner, avoiding duplicate weather requests.

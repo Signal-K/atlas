@@ -16,12 +16,15 @@ export function FeedBriefing({ city, equipment, catalogueKey }: { city: CurrentL
     setPlan(null)
     setForecast(null)
     const now = new Date()
-    void Promise.allSettled([getTonightPlan(city.lat, city.lon, now, city.timeZone), fetchViewingForecast(city.lat, city.lon, 7)]).then(([tonight, weather]) => {
+    void (async () => {
+      const weather = await fetchViewingForecast(city.lat, city.lon, 7).catch(() => ({ days: [], timeZone: city.timeZone }))
       if (!active) return
-      if (tonight.status === 'fulfilled') setPlan(tonight.value)
-      if (weather.status === 'fulfilled') setForecast(weather.value)
-      setLoading(false)
-    })
+      setForecast(weather)
+      try {
+        const tonight = await getTonightPlan(city.lat, city.lon, now, city.timeZone, weather)
+        if (active) setPlan(tonight)
+      } finally { if (active) setLoading(false) }
+    })().catch(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [city.lat, city.lon, city.timeZone, attempt, catalogueKey])
   const clock = (value: string | null | undefined) => value ? new Date(value).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: city.timeZone }) : '—'

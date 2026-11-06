@@ -5,7 +5,7 @@
 import * as Astronomy from 'astronomy-engine'
 import { getEventsInRange } from './sync'
 import type { SkyEvent } from './db'
-import { fetchViewingForecast, findNextClearWindow, type DailyViewingAdvisory } from './weather'
+import { fetchViewingForecast, findNextClearWindow, type DailyViewingAdvisory, type ViewingForecast } from './weather'
 import { scoreTonight, type TonightRating } from './tonightScore'
 import { bodyForTarget, type HorizontalPosition } from './skyPosition'
 import { getPrimarySkyMapObjectForEvent } from './skyMapLayers'
@@ -395,8 +395,8 @@ function observingTargetsFor(lat: number, lon: number, now: Date, timeZone: stri
   })
 }
 
-export async function getTonightPlan(lat: number, lon: number, now = new Date(), locationTimeZone?: string): Promise<TonightPlan> {
-  const forecast = await fetchViewingForecast(lat, lon, 7).catch((err) => {
+export async function getTonightPlan(lat: number, lon: number, now = new Date(), locationTimeZone?: string, suppliedForecast?: ViewingForecast): Promise<TonightPlan> {
+  const forecast = suppliedForecast ?? await fetchViewingForecast(lat, lon, 7).catch((err) => {
     trackEvent('sync_failed', { stage: 'tonight_plan_forecast', error: String(err) })
     return { days: [], timeZone: undefined }
   })
