@@ -1,285 +1,199 @@
-import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { LandingPage } from './views/LandingPage'
-import { HostPage } from './views/HostPage'
-import { LegalPage } from './views/LegalPage'
-import { AppShell } from './AppShell'
-import { useParallax } from './lib/motion'
-import { useAuth } from './lib/auth'
-import { FeedbackDock } from './components/FeedbackDock'
-import { InstallPrompt } from './components/InstallPrompt'
-import { OnboardingFlow } from './components/OnboardingFlow'
-import { OfflineBanner } from './components/OfflineBanner'
-import { AuthGate } from './components/AuthGate'
-import { DevPreviewPanel } from './components/DevPreviewPanel'
-import { useThemeBootstrap } from './providers/useThemeBootstrap'
-import { useEntitlementSync } from './providers/useEntitlementSync'
-import { useOnboardingGate } from './providers/useOnboardingGate'
+import { useEffect, useMemo, useRef, useState, lazy, Suspense, type ReactNode, type FormEvent } from 'react'
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Starfield } from './components/mobile/Starfield'
+const FeedBriefing = lazy(() => import('./components/FeedBriefing').then(module => ({ default: module.FeedBriefing })))
+import { matchesEquipment, type Equipment } from './lib/feedEquipment'
+const SkillsTree = lazy(() => import('./components/SkillsTree').then(module => ({ default: module.SkillsTree })))
+const ObservationHistory = lazy(() => import('./components/ObservationHistory').then(module => ({ default: module.ObservationHistory })))
+const AuthForm = lazy(() => import('./components/AuthForm').then(module => ({ default: module.AuthForm })))
 import { useAppLocation } from './providers/useAppLocation'
-import type { ObservationDraft } from './lib/observationDraft'
+import { useAuth, signOut } from './lib/auth'
+import { CITIES, cityLabel } from './lib/cities'
+import { db, type ObservationLogEntry, type SkyEvent } from './lib/db'
+import { getEventsInRange, pullSkyEvents, pushObservation } from './lib/sync'
+import { getTaggedEventIds, toggleEventTag } from './lib/eventTags'
+import { categoryForKind, EVENT_CATEGORIES, GUIDE_KIND_IDS } from './lib/eventCategories'
+import { isVisibleLocalEvent } from './lib/eventFilters'
+import { eventLookaheadDays } from './lib/entitlementLimits'
+import { pb } from './lib/pocketbase'
+import { trackEvent } from './lib/analytics'
+import { DailyFocus } from './components/DailyFocus'
+import { useEntitlementSync } from './providers/useEntitlementSync'
 
-const APP_HOME = '/app/hub'
-
-// Routes a visitor can use without an account (ASV-47).
-//
-// Tonight's sky is the entire promise of the product, and it used to sit
-// behind a signup form: every landing CTA -- including "Set your location" --
-// navigated here and hit AuthGate, so the free tier's advertised "Tonight's
-// plan for your location" was unreachable without registering, and anyone who
-// declined got Melbourne's twilight times instead of their own.
-//
-// Hub is safe to open to guests because it is today-only and computed
-// client-side from a location the browser already has; nothing on it needs a
-// server-side identity. Everything that persists across devices (journal,
-// watchlist, saved plans), costs money, or writes to the account stays gated.
-// Guests get the sky, the event list, the calendar, a device-local journal,
-// and a few Ask Atlas questions. Planner and profile stay behind an account;
-// Watch, camera recipes and Places stay behind Sky Pass inside those screens.
-const GUEST_ROUTES = new Set([APP_HOME, '/app/events', '/app/calendar', '/app/journal', '/app/ask', '/app/orionids'])
-
-// Human name for the area a guest was bounced from, e.g. /app/calendar -> "Calendar".
-function lockedAreaLabel(pathname: string) {
-  const segment = pathname.split('/').filter(Boolean)[1]
-  return segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : undefined
+type IconName = 'feed' | 'collections' | 'calendar' | 'journal' | 'search' | 'account' | 'skills' | 'history' | 'settings'
+const paths: Record<IconName, string> = {
+  skills: 'M12 3v6 M5 14v6 M19 14v6 M5 14V9h14v5 M9 3h6',
+  history: 'M3 11a9 9 0 1 1 3 7 M3 4v7h7 M12 7v6l4 2',
+  settings: 'M4 6h16 M4 12h16 M4 18h16 M8 3v6 M16 9v6 M10 15v6',
+  feed: 'M5 5h14v14H5z',
+  collections: 'M7 4h10v6H7z M4 14h6v6H4z M14 14h6v6h-6z',
+  calendar: 'M4 6h16v14H4z M8 3v6 M16 3v6 M4 11h16',
+  journal: 'M4 5h7v15H4z M14 5h6v15h-6z',
+  search: 'M16 16l5 5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
+  account: 'M20 21a8 8 0 0 0-16 0 M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
 }
-
-// ASV-103: remembers that this device has held an account, so a locked route
-// opened by a first-time guest lands on Create account while a returning user
-// still gets Welcome back.
-const RETURNING_KEY = 'atlas-returning-account'
-
-function isReturningDevice() {
-  try {
-    return window.localStorage.getItem(RETURNING_KEY) === '1'
-  } catch {
-    return false
-  }
+function Icon({ name }: { name: IconName }) {
+  return <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>
 }
+function Sheet({ title, children, close }: { title: string; children: ReactNode; close: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => { ref.current?.showModal() }, [])
+  return <dialog ref={ref} className="sheet" aria-label={title} onCancel={close} onClick={event => { if (event.target === event.currentTarget) close() }}><header><h2>{title}</h2><button type="button" onClick={close} aria-label="Close">×</button></header>{children}</dialog>
+}
+const NAV: { to: string; name: string; icon: IconName }[] = [
+  { to: '/app/hub', name: 'Feed', icon: 'feed' },
+  { to: '/app/journal', name: 'Journal', icon: 'journal' },
+  { to: '/app/skills', name: 'Skills tree', icon: 'skills' },
+  { to: '/app/history', name: 'History', icon: 'history' },
+  { to: '/app/settings', name: 'Settings', icon: 'settings' },
+]
 
-function App() {
-  const routerLocation = useLocation()
-  const navigate = useNavigate()
-  const isTonightRoute = routerLocation.pathname === '/tonight' || routerLocation.pathname.startsWith('/tonight/')
-  const isAppRoute = routerLocation.pathname.startsWith('/app') || isTonightRoute
-  const isGuidedTour = routerLocation.pathname === APP_HOME && new URLSearchParams(routerLocation.search).get('tour') === 'tonight'
-  const { user } = useAuth()
-  const [showEntryChoice, setShowEntryChoice] = useState(false)
-  useEffect(() => {
-    if (!user) return
-    try {
-      window.localStorage.setItem(RETURNING_KEY, '1')
-    } catch {
-      // Storage blocked: guests simply keep seeing Create account.
-    }
-  }, [user])
-  const [accountDefaultMode, setAccountDefaultMode] = useState<'sign-in' | 'sign-up'>(() => (isReturningDevice() ? 'sign-in' : 'sign-up'))
-  const {
-    showOnboardingFlow,
-    markEntered,
-    handleSignedIn,
-    handleSignedUp,
-    dismissOnboardingFlow,
-  } = useOnboardingGate({ user, isAppRoute })
-  const { location, currentLocation, manualCity, setManualLocation } = useAppLocation()
-  const motion = useParallax()
-  const [observationDraft, setObservationDraft] = useState<ObservationDraft | null>(null)
-
-  function logAttempt(draft: ObservationDraft) {
-    setObservationDraft(draft)
-    navigate('/app/journal')
-  }
-
-  useThemeBootstrap()
+function Workspace() {
   useEntitlementSync()
+  const { user } = useAuth()
+  const { currentLocation: city, setManualLocation } = useAppLocation()
+  const { pathname, search } = useLocation()
+  const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('atlas-sidebar-collapsed') === '1')
+  const [equipment, setEquipment] = useState<Equipment>(() => { const stored = localStorage.getItem('atlas-feed-equipment'); return stored === 'binoculars' || stored === 'telescope' ? stored : 'eye' })
+  const [events, setEvents] = useState<SkyEvent[]>([])
+  const [saved, setSaved] = useState<Set<string>>(new Set())
+  const [entries, setEntries] = useState<ObservationLogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState('')
+  const [pending, setPending] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [locationOpen, setLocationOpen] = useState(false)
+  const [locationQuery, setLocationQuery] = useState('')
+  const [authOpen, setAuthOpen] = useState(false)
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [detail, setDetail] = useState<SkyEvent | null>(null)
+  const [calendarScope, setCalendarScope] = useState<'saved' | 'all'>('saved')
+  const searchRef = useRef<HTMLInputElement>(null)
+  const days = eventLookaheadDays(Boolean(user?.entitled))
+  const scopeId = user?.id ?? 'local'
+  const category = new URLSearchParams(search).get('category')
+  const view = pathname === '/app/events' ? 'collections' : pathname === '/app/calendar' ? 'calendar' : pathname === '/app/journal' ? 'journal' : pathname === '/app/profile' || pathname === '/app/settings' ? 'account' : pathname === '/app/skills' ? 'skills' : pathname === '/app/history' ? 'history' : 'feed'
 
-  // Bare "/app" and the pre-rebuild "/tonight" alias have no view of their
-  // own -- redirect to the app's home area, same target enterApp() below
-  // uses right after onboarding. "/tonight" must stay a product route so
-  // PostHog's replay URL trigger (app|tonight) can match signed-in use
-  // instead of bouncing to the landing page.
-  const isOrionidsPath = routerLocation.pathname === '/orionids'
   useEffect(() => {
-    if (routerLocation.pathname === '/app' || isTonightRoute) navigate(APP_HOME, { replace: true })
-    if (isOrionidsPath) navigate('/app/orionids', { replace: true })
-  }, [routerLocation.pathname, isTonightRoute, isOrionidsPath, navigate])
-
-  // Public legal pages (App Store requires reachable privacy + terms URLs).
-  const showLegal = routerLocation.pathname === '/privacy' || routerLocation.pathname === '/terms'
-
-  // Any path that isn't "/", "/landing", "/hosts", "/tonight", or under
-  // "/app" is not a real route. Unknown public URLs resolve to the
-  // landing-page alias rather than silently falling through to the app shell.
-  useEffect(() => {
-    if (
-      routerLocation.pathname !== '/' &&
-      routerLocation.pathname !== '/landing' &&
-      routerLocation.pathname !== '/hosts' &&
-      routerLocation.pathname !== '/orionids' &&
-      !showLegal &&
-      !isAppRoute
-    ) {
-      navigate('/landing', { replace: true })
+    let active = true
+    async function load() {
+      setLoading(true)
+      try {
+        await pullSkyEvents()
+        const now = new Date()
+        const [rows, ids, notes] = await Promise.all([
+          getEventsInRange(now, new Date(now.getTime() + days * 86400000)),
+          getTaggedEventIds(),
+          db.observations.where('userId').equals(scopeId).reverse().sortBy('observedAt'),
+        ])
+        if (!active) return
+        setEvents(rows.filter(event => !GUIDE_KIND_IDS.has(event.kind) && isVisibleLocalEvent(event, city.lat, city.lon)))
+        setSaved(ids)
+        setEntries(notes)
+      } catch {
+        if (active) setMessage('Could not refresh your sky. Your saved data stays on this device. Try reloading.')
+      } finally {
+        if (active) setLoading(false)
+      }
     }
-  }, [routerLocation.pathname, isAppRoute, showLegal, navigate])
+    void load()
+    return () => { active = false }
+  }, [city.lat, city.lon, days, scopeId])
 
-  // "/" is the landing page, full stop. Signed-in visitors see their active
-  // session identified here, but are only sent into the product when they
-  // choose to open it. "/landing" remains a permanent alias.
-  const showLanding = routerLocation.pathname === '/' || routerLocation.pathname === '/landing'
-  // "/hosts" is a public marketing page for prospective event hosts -- no
-  // account required, same as landing.
-  const showHosts = routerLocation.pathname === '/hosts'
-
+  useEffect(() => { trackEvent('Workspace viewed', { view }); setQuery(''); setMessage(''); window.scrollTo(0, 0) }, [pathname, search, view])
   useEffect(() => {
-    if (!showEntryChoice) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowEntryChoice(false) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [showEntryChoice])
-
-  function enterApp(startTour = false) {
-    markEntered()
-    setAccountDefaultMode('sign-up')
-    navigate(startTour ? `${APP_HOME}?tour=tonight` : APP_HOME, { replace: true })
-  }
-
-  function handleLandingEntry() {
-    if (user) {
-      enterApp(true)
-      return
+    function shortcut(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        searchRef.current?.focus()
+      }
     }
-    setShowEntryChoice(true)
+    window.addEventListener('keydown', shortcut)
+    return () => window.removeEventListener('keydown', shortcut)
+  }, [])
+
+  const filtered = useMemo(() => events.filter(event => {
+    if (!matchesEquipment(event.kind, equipment)) return false
+    if (category && categoryForKind(event.kind)?.id !== category) return false
+    if (view === 'calendar' && calendarScope === 'saved' && !saved.has(event.id)) return false
+    return `${event.title} ${event.description}`.toLowerCase().includes(query.toLowerCase())
+  }), [events, category, view, calendarScope, saved, query, equipment])
+  const groups = useMemo(() => {
+    const result = new Map<string, SkyEvent[]>()
+    for (const event of filtered) {
+      const ongoing = new Date(event.startsAt).getTime() <= Date.now() && new Date(event.endsAt).getTime() >= Date.now()
+      const label = ongoing ? 'Happening now' : new Date(event.startsAt).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: city.timeZone })
+      result.set(label, [...(result.get(label) ?? []), event])
+    }
+    return [...result]
+  }, [filtered, city.timeZone])
+
+  async function toggleSave(event: SkyEvent) {
+    setPending(event.id)
+    try {
+      await toggleEventTag(event.id, saved.has(event.id))
+      trackEvent('Calendar event changed', { event_id: event.id, kind: event.kind, saved: !saved.has(event.id) })
+      setSaved(await getTaggedEventIds())
+    } catch {
+      setMessage('Could not update your calendar. Please try again.')
+    } finally { setPending(null) }
   }
 
-  function enterSignIn() {
-    markEntered()
-    setAccountDefaultMode('sign-in')
-    setShowEntryChoice(false)
-    navigate('/app/profile', { replace: true })
+  async function addNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    const title = String(data.get('title') ?? '').trim()
+    const note = String(data.get('note') ?? '').trim()
+    if (!title) return
+    setPending('journal')
+    try {
+      const entry: ObservationLogEntry = { id: crypto.randomUUID(), userId: scopeId, observedAt: new Date().toISOString(), targetName: title, note, locationLabel: city.name }
+      await db.observations.put(entry)
+      if (pb.authStore.isValid) await pushObservation(entry)
+      trackEvent('Journal entry saved', { has_note: Boolean(note), signed_in: Boolean(user) })
+      setEntries(current => [entry, ...current])
+      setComposeOpen(false)
+    } catch { setMessage('Could not finish saving your note. Please check your journal before trying again.') }
+    finally { setPending(null) }
   }
 
-  // ASV-51: the Sky Pass CTA must land somewhere that actually offers
-  // checkout. /app/planner is already wrapped in PaywallGate, so a visitor
-  // signs up (AuthGate gates any non-guest route) or, if already signed in,
-  // goes straight to the working "Get Sky Pass" checkout button there --
-  // instead of the free, guest-open Hub that enterApp() sends every other
-  // CTA to.
-  function enterPaidApp() {
-    markEntered()
-    setAccountDefaultMode('sign-up')
-    navigate('/app/planner', { replace: true })
-  }
+  const title = view === 'collections' ? 'Collections' : view === 'calendar' ? 'Calendar' : view === 'journal' ? 'Journal' : view === 'account' ? 'Settings' : view === 'skills' ? 'Skills tree' : view === 'history' ? 'History' : EVENT_CATEGORIES.find(item => item.id === category)?.label ?? 'Feed'
+  const matches = CITIES.filter(item => cityLabel(item).toLowerCase().includes(locationQuery.toLowerCase())).slice(0, 20)
 
-  if (showLanding) {
-    return (
-      <>
-        <LandingPage authenticatedEmail={user?.email} onEnter={handleLandingEntry} onEnterPaid={enterPaidApp} />
-        {showEntryChoice && !user && (
-          <div className="entry-choice-overlay atlas-almanac" role="presentation">
-            <section className="entry-choice-modal" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
-              <p className="entry-choice-kicker">Open Atlas</p>
-              <h2 id="entry-choice-title">How would you like to begin?</h2>
-              <p>Sign in to pick up your plans and journal, or take a look around first.</p>
-              <div className="entry-choice-actions">
-                <button type="button" className="am-btn am-btn-primary" autoFocus onClick={enterSignIn}>
-                  Sign in first
-                </button>
-                <button type="button" className="am-btn" onClick={() => { setShowEntryChoice(false); enterApp(true) }}>
-                  Start guided tour
-                </button>
-              </div>
-              <button type="button" className="entry-choice-cancel" onClick={() => setShowEntryChoice(false)}>
-                Not now
-              </button>
-            </section>
-          </div>
-        )}
-      </>
-    )
-  }
+  return <div className={`atlas-workspace${collapsed ? ' rail-collapsed' : ''}`}>
+    <div className="workspace-stars"><Starfield dark palette="mono" motion="static" density={110} /></div>
+    <nav className="workspace-rail" aria-label="Primary">
+      <NavLink to="/app/hub" className="workspace-mark" aria-label="Atlas home">Atlas</NavLink>
+      <button type="button" className="rail-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} onClick={() => { trackEvent('Sidebar toggled', { collapsed: !collapsed }); setCollapsed(!collapsed); localStorage.setItem('atlas-sidebar-collapsed', collapsed ? '0' : '1') }}>{collapsed ? '›' : '‹'}<span className="rail-label">Collapse</span></button>
+      <div className="rail-pages">{NAV.map(item => <NavLink key={item.to} to={item.to} title={item.name} aria-label={item.name} className={({ isActive }) => `rail-button rail-${item.icon}${isActive ? ' active' : ''}`}><Icon name={item.icon} /><span className="rail-label">{item.name}</span></NavLink>)}</div>
 
-  if (showHosts) {
-    return <HostPage />
-  }
-
-  if (showLegal) {
-    return <LegalPage kind={routerLocation.pathname === '/privacy' ? 'privacy' : 'terms'} />
-  }
-
-  // Not "/", not "/landing", not a product route -- the redirect effect
-  // above is already sending this to landing; render nothing in the meantime
-  // rather than falling through to the app shell below.
-  if (!isAppRoute) {
-    return null
-  }
-
-  // Events, calendar, the on-device journal and a short Ask Atlas allowance
-  // are open. Anything else still requires an account before it renders.
-  // Local journal rows are merged in on sign-up via mergeLocalDataIntoAccount.
-  if (!user && !GUEST_ROUTES.has(routerLocation.pathname)) {
-    return (
-      <>
-        <AuthGate
-          defaultMode={accountDefaultMode}
-          onSignedIn={handleSignedIn}
-          onSignedUp={handleSignedUp}
-          currentLocation={currentLocation}
-          // A guest who taps a locked tab came from Hub, not the landing
-          // page -- send them back where they were rather than all the way
-          // out of the product.
-          backTo={APP_HOME}
-          backLabel="Back to tonight"
-          lockedArea={lockedAreaLabel(routerLocation.pathname)}
-        />
-        <DevPreviewPanel />
-      </>
-    )
-  }
-
-  // One shell for every viewport -- NavShell is responsive by itself, with
-  // the neutral headless baseline supplied by styles/headless.css.
-  return (
-    <>
-      <OfflineBanner />
-      {showOnboardingFlow && (
-        <OnboardingFlow
-          city={currentLocation}
-          user={user}
-          setManualLocation={setManualLocation}
-          requestLocation={() => location.requestLocation(true)}
-          onDone={dismissOnboardingFlow}
-        />
-      )}
-      <AppShell
-        currentLocation={currentLocation}
-        onLogAttempt={logAttempt}
-        journalProps={{ draft: observationDraft, onDraftConsumed: () => setObservationDraft(null), currentLocation }}
-        profileProps={{
-          locationStatus: location.status,
-          // Force a fresh GPS fix here (never useLocationSeed's up-to-30-day
-          // cache) -- this is the settings/profile "Use current location"
-          // path, an explicit re-check the user reaches for specifically
-          // because their real position has likely moved since the last
-          // fix (ASV-35: reused a stale cached fix and silently stayed on
-          // wherever that old fix was, e.g. Melbourne after moving to Perth).
-          requestLocation: () => location.requestLocation(true),
-          currentLocation,
-          manualCity,
-          setManualLocation,
-          needsMotionPermission: motion.needsMotionPermission,
-          requestMotionPermission: motion.requestMotionPermission,
-          accountDefaultMode,
-        }}
-      />
-      {!showOnboardingFlow && !isGuidedTour && (
-        <>
-          <FeedbackDock />
-          <InstallPrompt />
-        </>
-      )}
-      <DevPreviewPanel />
-    </>
-  )
+    </nav>
+    <Suspense fallback={<p className="empty-state" role="status">Loading…</p>}><main className={`workspace-document ${view === 'collections' ? 'workspace-document-wide' : ''}`}>
+      <div className="document-tools"><button type="button" onClick={() => setLocationOpen(true)}>{city.name} <span aria-hidden="true">⌄</span></button><label className="document-search"><Icon name="search" /><input ref={searchRef} type="search" aria-label="Search" placeholder="Search" value={query} onChange={event => setQuery(event.target.value)} /></label></div>
+      <header className="document-heading"><h1>{title}</h1>{view === 'journal' && <button type="button" className="quiet-button" onClick={() => setComposeOpen(true)}>Add entry</button>}</header>
+      {message && <p className="workspace-message" role="status">{message}</p>}
+      {view === 'skills' ? <SkillsTree entries={entries} userId={scopeId} /> : view === 'history' ? <ObservationHistory entries={entries} query={query} /> : view === 'collections' ? <div className="collection-grid">{EVENT_CATEGORIES.filter(item => item.id !== 'guides' && item.label.toLowerCase().includes(query.toLowerCase())).map(item => {
+        const count = events.filter(event => item.kinds.includes(event.kind)).length
+        return <button type="button" className="collection-tile" key={item.id} onClick={() => navigate(`/app/hub?category=${item.id}`)}><strong>{item.label}</strong><footer><span className="tile-mark" aria-hidden="true">✦</span><span>{count} {count === 1 ? 'event' : 'events'}</span></footer></button>
+      })}</div> : view === 'account' ? <section className="account-content"><h2>{user ? user.email : 'A space for your sky'}</h2><p>{user ? 'Your calendar and journal are connected to your account.' : 'Explore the sky and keep notes on this device. Sign in to keep your observations across devices.'}</p><button type="button" className="quiet-button" onClick={() => user ? signOut() : setAuthOpen(true)}>{user ? 'Sign out' : 'Sign in / create account'}</button><section><h2>Location</h2><p>{city.name}</p><button type="button" className="text-button" onClick={() => setLocationOpen(true)}>Change location</button></section></section> : view === 'journal' ? <section className="journal-list">{entries.length === 0 ? <p className="empty-state">No entries yet. Start with something you noticed tonight.</p> : entries.filter(entry => `${entry.targetName} ${entry.note}`.toLowerCase().includes(query.toLowerCase())).map(entry => <article className="journal-entry" key={entry.id}><time dateTime={entry.observedAt}>{new Date(entry.observedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time><h2>{entry.targetName || 'An observing night'}</h2>{entry.note && <p>{entry.note}</p>}<small>{entry.locationLabel}</small></article>)}</section> : <>
+        <div className="equipment-filter" role="group" aria-label="Viewing equipment">{(['eye', 'binoculars', 'telescope'] as const).map(value => <button type="button" key={value} aria-pressed={equipment === value} onClick={() => { trackEvent('Equipment filter changed', { equipment: value }); setEquipment(value); localStorage.setItem('atlas-feed-equipment', value) }}>{value === 'eye' ? 'Naked eye' : value === 'binoculars' ? 'Binoculars' : 'Telescope'}</button>)}</div>
+        {view === 'feed' && <DailyFocus city={city} equipment={equipment} />}
+        {view === 'feed' && <FeedBriefing city={city} equipment={equipment} catalogueKey={events.map(event => `${event.id}:${event.updatedAt}`).join('|')} />}
+        <h2 className="upcoming-heading">{view === 'calendar' ? 'Saved nights' : 'Coming up'}</h2>
+        <div className="document-filter">{view === 'calendar' ? <><button type="button" aria-pressed={calendarScope === 'saved'} onClick={() => setCalendarScope('saved')}>Saved events</button><button type="button" aria-pressed={calendarScope === 'all'} onClick={() => setCalendarScope('all')}>All events</button></> : <button type="button" onClick={() => navigate('/app/events')}>{category ? 'All collections' : 'Collections'} <span aria-hidden="true">⌄</span></button>}</div>
+        {loading && <p className="empty-state" role="status">Loading your sky…</p>}
+        {!loading && groups.length === 0 && <p className="empty-state">{query ? 'No events match your search.' : view === 'calendar' && calendarScope === 'saved' ? 'Nothing saved yet. Add an event from your feed.' : 'No scheduled events in this window. Try another location or check back later.'}</p>}
+        {groups.map(([label, rows]) => <section className="event-section" key={label}><h2>{label}</h2>{rows.map(event => <article className="feed-entry" key={event.id}><p className="feed-entry-category">{categoryForKind(event.kind)?.label}</p><button type="button" className="event-open" onClick={() => { trackEvent('Event details opened', { event_id: event.id, kind: event.kind }); setDetail(event) }}>{event.title}</button>{event.imageUrl && <img className="feed-event-image" src={event.imageUrl} alt="" loading="lazy" onError={event => { event.currentTarget.hidden = true }} />}<div className="event-data"><time dateTime={event.startsAt}>{new Date(event.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: city.timeZone })}</time><span>{event.target}</span><span>{event.endsAt && new Date(event.endsAt) > new Date(event.startsAt) ? `Until ${new Date(event.endsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: city.timeZone })}` : ''}</span></div><footer><button type="button" className="text-button" onClick={() => { trackEvent('Event details opened', { event_id: event.id, kind: event.kind }); setDetail(event) }}>Viewing details</button><button type="button" className="quiet-button" aria-label={`${saved.has(event.id) ? 'Remove' : 'Add'} ${event.title} ${saved.has(event.id) ? 'from' : 'to'} calendar`} disabled={pending !== null} onClick={() => void toggleSave(event)}>{pending === event.id ? 'Saving…' : saved.has(event.id) ? 'Remove from calendar' : 'Add to calendar'}</button></footer></article>)}</section>)}
+      </>}
+    </main></Suspense>
+    {locationOpen && <Sheet title="Your location" close={() => setLocationOpen(false)}><input type="search" aria-label="Find a city" placeholder="Find a city" value={locationQuery} onChange={event => setLocationQuery(event.target.value)} /><ul className="city-list">{matches.map(item => <li key={`${item.name}-${item.lat}-${item.lon}`}><button type="button" onClick={() => { setManualLocation(item); setLocationOpen(false) }}>{cityLabel(item)}</button></li>)}</ul>{matches.length === 0 && <p>No matching cities.</p>}</Sheet>}
+    {detail && <Sheet title={detail.title} close={() => setDetail(null)}><p className="detail-date">{new Date(detail.startsAt).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short', timeZone: city.timeZone })}</p>{detail.imageUrl && <img className="detail-image" src={detail.imageUrl} alt="" />}<p className="detail-description">{detail.description || 'Viewing details will appear here as they become available.'}</p><button type="button" className="quiet-button" disabled={pending !== null} onClick={() => void toggleSave(detail)}>{saved.has(detail.id) ? 'Remove from calendar' : 'Add to calendar'}</button></Sheet>}
+    {composeOpen && <Sheet title="New journal entry" close={() => setComposeOpen(false)}><form onSubmit={event => void addNote(event)}><label>What did you observe?<input name="title" required maxLength={200} /></label><label>Notes<textarea name="note" rows={6} maxLength={10000} /></label><button type="submit" className="quiet-button" disabled={pending !== null}>{pending === 'journal' ? 'Saving…' : 'Save entry'}</button></form></Sheet>}
+    {authOpen && <Sheet title="Your Atlas account" close={() => setAuthOpen(false)}><Suspense fallback={<p role="status">Loading sign in…</p>}><AuthForm source="workspace" onSignedIn={() => setAuthOpen(false)} onSignedUp={() => setAuthOpen(false)} /></Suspense></Sheet>}
+  </div>
 }
 
-export default App
+export default function App() {
+  return <Routes><Route path="/app/*" element={<Workspace />} /><Route path="/tonight" element={<Navigate to="/app/hub" replace />} /><Route path="*" element={<Navigate to="/app/hub" replace />} /></Routes>
+}
