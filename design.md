@@ -2,12 +2,12 @@
 
 ## Visual reference
 
-The three plate.to screenshots supplied by the author on 6 November 2026 are the visual reference: a narrow icon rail, a generously spaced document view, grouped checklist rows, and a collection index of soft grey square tiles. Preserve Atlas's starfield background around the content. Do not restore the previous dashboard kit.
+The three plate.to screenshots supplied by the author on 6 November 2026 are the visual reference: a narrow icon rail, a generously spaced document view, grouped checklist rows, and a collection index of soft grey square tiles. Preserve Atlas's starfield background around the content. Do not restore the previous dashboard kit. Plate supplies the spacing and content hierarchy; do not copy its logo.
 
 ## Structure
 
-- A fixed 88px icon rail, with a small circular mark at the top, primary destinations below, and search/account at the bottom. Names appear on hover and keyboard focus and remain available to assistive technology.
-- A restrained white document plane over the starfield. Feed, calendar, journal, and account share its reading width. Collections use a wider three-column grid.
+- A fixed 192px navigation rail with an Atlas text wordmark. Icons have visible destination labels: Feed, Collections, Calendar, Journal, Search, and Account. On phones it narrows to 58px; accessible names remain.
+- A transparent document area over a continuous full-viewport starfield. Neither the navigation nor the main area has an opaque background. Feed, calendar, journal, and account share its reading width. Collections use a wider three-column grid.
 - Large plain headings, a single fine rule, short introductory text, then content. No marketing hero, coloured status panels, gradients, nebula washes, glass effects, or decorative dashboard cards.
 - Calendar saving appears as a small checkbox beside each event. Clicking its title opens details. Saved events appear in Calendar.
 - Collections are light grey tiles with a bold name at the top and quiet metadata at the bottom. Clicking opens the corresponding filtered feed.
@@ -15,7 +15,7 @@ The three plate.to screenshots supplied by the author on 6 November 2026 are the
 
 ## Typography and colour
 
-Arial/Helvetica/system sans-serif. Main title 40px, section headings 23px, list rows 16px. Near-black text, neutral grey metadata, fine light-grey rules. Flat white content surfaces and #f5f5f5 collection tiles. Starfield remains monochrome on #0a0a0a outside the document. No coloured accents.
+Arial/Helvetica/system sans-serif. Main title 40px, section headings 23px, list rows 16px. Off-white text, neutral grey metadata, subtle light rules. Collection tiles use a faint translucent neutral fill. The monochrome starfield on #0a0a0a spans the whole page without white panels or black cutouts. No coloured accents.
 
 ## Spacing
 

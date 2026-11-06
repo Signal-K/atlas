@@ -148,9 +148,9 @@ function Workspace() {
   return <div className="atlas-workspace">
     <div className="workspace-stars"><Starfield dark palette="mono" motion="static" density={110} /></div>
     <nav className="workspace-rail" aria-label="Primary">
-      <NavLink to="/app/hub" className="workspace-mark" aria-label="Atlas home"><span /></NavLink>
-      <div className="rail-pages">{NAV.map(item => <NavLink key={item.to} to={item.to} title={item.name} aria-label={item.name} className={({ isActive }) => isActive ? 'rail-button active' : 'rail-button'}><Icon name={item.icon} /><span className="rail-tooltip">{item.name}</span></NavLink>)}</div>
-      <div className="rail-bottom"><button type="button" className="rail-button" title="Search" aria-label="Search" onClick={() => searchRef.current?.focus()}><Icon name="search" /></button><NavLink to="/app/profile" className="rail-button" title="Account" aria-label="Account"><Icon name="account" /></NavLink></div>
+      <NavLink to="/app/hub" className="workspace-mark" aria-label="Atlas home">Atlas</NavLink>
+      <div className="rail-pages">{NAV.map(item => <NavLink key={item.to} to={item.to} title={item.name} aria-label={item.name} className={({ isActive }) => isActive ? 'rail-button active' : 'rail-button'}><Icon name={item.icon} /><span className="rail-label">{item.name}</span></NavLink>)}</div>
+      <div className="rail-bottom"><button type="button" className="rail-button" title="Search" aria-label="Search" onClick={() => searchRef.current?.focus()}><Icon name="search" /><span className="rail-label">Search</span></button><NavLink to="/app/profile" className="rail-button" title="Account" aria-label="Account"><Icon name="account" /><span className="rail-label">Account</span></NavLink></div>
     </nav>
     <main className={`workspace-document ${view === 'collections' ? 'workspace-document-wide' : ''}`}>
       <div className="document-tools"><button type="button" onClick={() => setLocationOpen(true)}>{city.name} <span aria-hidden="true">⌄</span></button><label className="document-search"><Icon name="search" /><input ref={searchRef} type="search" aria-label="Search" placeholder="Search" value={query} onChange={event => setQuery(event.target.value)} /></label></div>
