@@ -167,6 +167,7 @@ export interface TaggedEvent {
   eventId: string
   taggedAt: string
   remoteId?: string
+  deleted?: boolean
 }
 
 export type PresetSource = 'builtin' | 'imported' | 'community'

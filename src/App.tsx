@@ -8,14 +8,16 @@ const ObservationHistory = lazy(() => import('./components/ObservationHistory').
 const AuthForm = lazy(() => import('./components/AuthForm').then(module => ({ default: module.AuthForm })))
 import { useAppLocation } from './providers/useAppLocation'
 import { useAuth, signOut } from './lib/auth'
-import { CITIES, cityLabel } from './lib/cities'
+import { CITIES, cityLabel, type City } from './lib/cities'
 import { db, type ObservationLogEntry, type SkyEvent } from './lib/db'
-import { getEventsInRange, pullSkyEvents, pushObservation } from './lib/sync'
-import { getTaggedEventIds, toggleEventTag } from './lib/eventTags'
+import { getEventsInRange, pullSkyEvents, pullObservations, pushObservation } from './lib/sync'
+import { getTaggedEventIds, pullTaggedEvents, toggleEventTag } from './lib/eventTags'
 import { categoryForKind, EVENT_CATEGORIES, GUIDE_KIND_IDS } from './lib/eventCategories'
 import { isVisibleLocalEvent } from './lib/eventFilters'
 import { eventLookaheadDays } from './lib/entitlementLimits'
 import { pb } from './lib/pocketbase'
+import { enqueueObservationRetry, flushSyncQueue } from './lib/syncQueue'
+import { workspaceValue, setWorkspaceValue, syncWorkspaceState, workspacePending } from './lib/workspaceSync'
 import { trackEvent } from './lib/analytics'
 import { DailyFocus } from './components/DailyFocus'
 import { useEntitlementSync } from './providers/useEntitlementSync'
@@ -72,6 +74,26 @@ function Workspace() {
   const searchRef = useRef<HTMLInputElement>(null)
   const days = eventLookaheadDays(Boolean(user?.entitled))
   const scopeId = user?.id ?? 'local'
+  const appliedLocation = useRef('')
+  const [syncPending, setSyncPending] = useState(0)
+  useEffect(() => {
+    const refresh = () => {
+      setEquipment(workspaceValue<Equipment>(scopeId, 'preference:equipment', 'eye'))
+      setCollapsed(workspaceValue<boolean>(scopeId, 'preference:sidebar', false))
+      setSyncPending(workspacePending(scopeId))
+      const place = workspaceValue<City | null>(scopeId, 'preference:location', null)
+      const key = place ? `${scopeId}:${place.name}:${place.lat}:${place.lon}` : ''
+      if (place && Number.isFinite(place.lat) && Number.isFinite(place.lon) && appliedLocation.current !== key) { appliedLocation.current = key; setManualLocation(place) }
+    }
+    refresh()
+    const sync = () => { void syncWorkspaceState(scopeId); void flushSyncQueue() }
+    sync()
+    const timer = window.setInterval(() => { if (document.visibilityState !== 'visible') return; if (workspacePending(scopeId) > 0) void syncWorkspaceState(scopeId); void db.syncQueue.count().then(count => { if (count > 0) void flushSyncQueue() }) }, 30000)
+    window.addEventListener('atlas:workspace-state', refresh)
+    window.addEventListener('online', sync)
+    window.addEventListener('focus', sync)
+    return () => { window.clearInterval(timer); window.removeEventListener('atlas:workspace-state', refresh); window.removeEventListener('online', sync); window.removeEventListener('focus', sync) }
+  }, [scopeId, setManualLocation])
   const category = new URLSearchParams(search).get('category')
   const view = pathname === '/app/events' ? 'collections' : pathname === '/app/calendar' ? 'calendar' : pathname === '/app/journal' ? 'journal' : pathname === '/app/profile' || pathname === '/app/settings' ? 'account' : pathname === '/app/skills' ? 'skills' : pathname === '/app/history' ? 'history' : 'feed'
 
@@ -80,7 +102,7 @@ function Workspace() {
     async function load() {
       setLoading(true)
       try {
-        await pullSkyEvents()
+        await Promise.allSettled([pullSkyEvents(), pullObservations(), pullTaggedEvents()])
         const now = new Date()
         const [rows, ids, notes] = await Promise.all([
           getEventsInRange(now, new Date(now.getTime() + days * 86400000)),
@@ -150,7 +172,7 @@ function Workspace() {
     try {
       const entry: ObservationLogEntry = { id: crypto.randomUUID(), userId: scopeId, observedAt: new Date().toISOString(), targetName: title, note, locationLabel: city.name }
       await db.observations.put(entry)
-      if (pb.authStore.isValid) await pushObservation(entry)
+      if (pb.authStore.isValid && !(await pushObservation(entry))) await enqueueObservationRetry(entry.id)
       trackEvent('Journal entry saved', { has_note: Boolean(note), signed_in: Boolean(user) })
       setEntries(current => [entry, ...current])
       setComposeOpen(false)
@@ -165,7 +187,7 @@ function Workspace() {
     <div className="workspace-stars"><Starfield dark palette="mono" motion="static" density={110} /></div>
     <nav className="workspace-rail" aria-label="Primary">
       <NavLink to="/app/hub" className="workspace-mark" aria-label="Atlas home">Atlas</NavLink>
-      <button type="button" className="rail-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} onClick={() => { trackEvent('Sidebar toggled', { collapsed: !collapsed }); setCollapsed(!collapsed); localStorage.setItem('atlas-sidebar-collapsed', collapsed ? '0' : '1') }}>{collapsed ? '›' : '‹'}<span className="rail-label">Collapse</span></button>
+      <button type="button" className="rail-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} onClick={() => { trackEvent('Sidebar toggled', { collapsed: !collapsed }); setCollapsed(!collapsed); localStorage.setItem('atlas-sidebar-collapsed', collapsed ? '0' : '1'); setWorkspaceValue(scopeId, 'preference:sidebar', !collapsed) }}>{collapsed ? '›' : '‹'}<span className="rail-label">Collapse</span></button>
       <div className="rail-pages">{NAV.map(item => <NavLink key={item.to} to={item.to} title={item.name} aria-label={item.name} className={({ isActive }) => `rail-button rail-${item.icon}${isActive ? ' active' : ''}`}><Icon name={item.icon} /><span className="rail-label">{item.name}</span></NavLink>)}</div>
 
     </nav>
@@ -176,8 +198,8 @@ function Workspace() {
       {view === 'skills' ? <SkillsTree entries={entries} userId={scopeId} /> : view === 'history' ? <ObservationHistory entries={entries} query={query} /> : view === 'collections' ? <div className="collection-grid">{EVENT_CATEGORIES.filter(item => item.id !== 'guides' && item.label.toLowerCase().includes(query.toLowerCase())).map(item => {
         const count = events.filter(event => item.kinds.includes(event.kind)).length
         return <button type="button" className="collection-tile" key={item.id} onClick={() => navigate(`/app/hub?category=${item.id}`)}><strong>{item.label}</strong><footer><span className="tile-mark" aria-hidden="true">✦</span><span>{count} {count === 1 ? 'event' : 'events'}</span></footer></button>
-      })}</div> : view === 'account' ? <section className="account-content"><h2>{user ? user.email : 'A space for your sky'}</h2><p>{user ? 'Your calendar and journal are connected to your account.' : 'Explore the sky and keep notes on this device. Sign in to keep your observations across devices.'}</p><button type="button" className="quiet-button" onClick={() => user ? signOut() : setAuthOpen(true)}>{user ? 'Sign out' : 'Sign in / create account'}</button><section><h2>Location</h2><p>{city.name}</p><button type="button" className="text-button" onClick={() => setLocationOpen(true)}>Change location</button></section></section> : view === 'journal' ? <section className="journal-list">{entries.length === 0 ? <p className="empty-state">No entries yet. Start with something you noticed tonight.</p> : entries.filter(entry => `${entry.targetName} ${entry.note}`.toLowerCase().includes(query.toLowerCase())).map(entry => <article className="journal-entry" key={entry.id}><time dateTime={entry.observedAt}>{new Date(entry.observedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time><h2>{entry.targetName || 'An observing night'}</h2>{entry.note && <p>{entry.note}</p>}<small>{entry.locationLabel}</small></article>)}</section> : <>
-        <div className="equipment-filter" role="group" aria-label="Viewing equipment">{(['eye', 'binoculars', 'telescope'] as const).map(value => <button type="button" key={value} aria-pressed={equipment === value} onClick={() => { trackEvent('Equipment filter changed', { equipment: value }); setEquipment(value); localStorage.setItem('atlas-feed-equipment', value) }}>{value === 'eye' ? 'Naked eye' : value === 'binoculars' ? 'Binoculars' : 'Telescope'}</button>)}</div>
+      })}</div> : view === 'account' ? <section className="account-content"><h2>{user ? user.email : 'A space for your sky'}</h2><p>{user ? 'Your calendar and journal are connected to your account.' : 'Explore the sky and keep notes on this device. Sign in to keep your observations across devices.'}</p><button type="button" className="quiet-button" onClick={() => user ? signOut() : setAuthOpen(true)}>{user ? 'Sign out' : 'Sign in / create account'}</button><section><h2>Sync</h2><p>{!user ? 'Sign in to sync your journal, lessons and preferences across devices.' : syncPending ? `${syncPending} workspace changes waiting to sync.` : 'Workspace changes saved. Journal retries run on reconnect.'}</p></section><section><h2>Location</h2><p>{city.name}</p><button type="button" className="text-button" onClick={() => setLocationOpen(true)}>Change location</button></section></section> : view === 'journal' ? <section className="journal-list">{entries.length === 0 ? <p className="empty-state">No entries yet. Start with something you noticed tonight.</p> : entries.filter(entry => `${entry.targetName} ${entry.note}`.toLowerCase().includes(query.toLowerCase())).map(entry => <article className="journal-entry" key={entry.id}><time dateTime={entry.observedAt}>{new Date(entry.observedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time><h2>{entry.targetName || 'An observing night'}</h2>{entry.note && <p>{entry.note}</p>}<small>{entry.locationLabel}</small></article>)}</section> : <>
+        <div className="equipment-filter" role="group" aria-label="Viewing equipment">{(['eye', 'binoculars', 'telescope'] as const).map(value => <button type="button" key={value} aria-pressed={equipment === value} onClick={() => { trackEvent('Equipment filter changed', { equipment: value }); setEquipment(value); localStorage.setItem('atlas-feed-equipment', value); setWorkspaceValue(scopeId, 'preference:equipment', value) }}>{value === 'eye' ? 'Naked eye' : value === 'binoculars' ? 'Binoculars' : 'Telescope'}</button>)}</div>
         {view === 'feed' && <DailyFocus city={city} equipment={equipment} />}
         {view === 'feed' && <FeedBriefing city={city} equipment={equipment} catalogueKey={events.map(event => `${event.id}:${event.updatedAt}`).join('|')} />}
         <h2 className="upcoming-heading">{view === 'calendar' ? 'Saved nights' : 'Coming up'}</h2>
@@ -187,7 +209,7 @@ function Workspace() {
         {groups.map(([label, rows]) => <section className="event-section" key={label}><h2>{label}</h2>{rows.map(event => <article className="feed-entry" key={event.id}><p className="feed-entry-category">{categoryForKind(event.kind)?.label}</p><button type="button" className="event-open" onClick={() => { trackEvent('Event details opened', { event_id: event.id, kind: event.kind }); setDetail(event) }}>{event.title}</button>{event.imageUrl && <img className="feed-event-image" src={event.imageUrl} alt="" loading="lazy" onError={event => { event.currentTarget.hidden = true }} />}<div className="event-data"><time dateTime={event.startsAt}>{new Date(event.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: city.timeZone })}</time><span>{event.target}</span><span>{event.endsAt && new Date(event.endsAt) > new Date(event.startsAt) ? `Until ${new Date(event.endsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: city.timeZone })}` : ''}</span></div><footer><button type="button" className="text-button" onClick={() => { trackEvent('Event details opened', { event_id: event.id, kind: event.kind }); setDetail(event) }}>Viewing details</button><button type="button" className="quiet-button" aria-label={`${saved.has(event.id) ? 'Remove' : 'Add'} ${event.title} ${saved.has(event.id) ? 'from' : 'to'} calendar`} disabled={pending !== null} onClick={() => void toggleSave(event)}>{pending === event.id ? 'Saving…' : saved.has(event.id) ? 'Remove from calendar' : 'Add to calendar'}</button></footer></article>)}</section>)}
       </>}
     </main></Suspense>
-    {locationOpen && <Sheet title="Your location" close={() => setLocationOpen(false)}><input type="search" aria-label="Find a city" placeholder="Find a city" value={locationQuery} onChange={event => setLocationQuery(event.target.value)} /><ul className="city-list">{matches.map(item => <li key={`${item.name}-${item.lat}-${item.lon}`}><button type="button" onClick={() => { setManualLocation(item); setLocationOpen(false) }}>{cityLabel(item)}</button></li>)}</ul>{matches.length === 0 && <p>No matching cities.</p>}</Sheet>}
+    {locationOpen && <Sheet title="Your location" close={() => setLocationOpen(false)}><input type="search" aria-label="Find a city" placeholder="Find a city" value={locationQuery} onChange={event => setLocationQuery(event.target.value)} /><ul className="city-list">{matches.map(item => <li key={`${item.name}-${item.lat}-${item.lon}`}><button type="button" onClick={() => { setManualLocation(item); setWorkspaceValue(scopeId, 'preference:location', item); setLocationOpen(false) }}>{cityLabel(item)}</button></li>)}</ul>{matches.length === 0 && <p>No matching cities.</p>}</Sheet>}
     {detail && <Sheet title={detail.title} close={() => setDetail(null)}><p className="detail-date">{new Date(detail.startsAt).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short', timeZone: city.timeZone })}</p>{detail.imageUrl && <img className="detail-image" src={detail.imageUrl} alt="" />}<p className="detail-description">{detail.description || 'Viewing details will appear here as they become available.'}</p><button type="button" className="quiet-button" disabled={pending !== null} onClick={() => void toggleSave(detail)}>{saved.has(detail.id) ? 'Remove from calendar' : 'Add to calendar'}</button></Sheet>}
     {composeOpen && <Sheet title="New journal entry" close={() => setComposeOpen(false)}><form onSubmit={event => void addNote(event)}><label>What did you observe?<input name="title" required maxLength={200} /></label><label>Notes<textarea name="note" rows={6} maxLength={10000} /></label><button type="submit" className="quiet-button" disabled={pending !== null}>{pending === 'journal' ? 'Saving…' : 'Save entry'}</button></form></Sheet>}
     {authOpen && <Sheet title="Your Atlas account" close={() => setAuthOpen(false)}><Suspense fallback={<p role="status">Loading sign in…</p>}><AuthForm source="workspace" onSignedIn={() => setAuthOpen(false)} onSignedUp={() => setAuthOpen(false)} /></Suspense></Sheet>}

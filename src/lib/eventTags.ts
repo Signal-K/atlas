@@ -1,6 +1,6 @@
 import { db, type SkyEvent } from './db'
 import { pb } from './pocketbase'
-import { enqueueSync } from './syncQueue'
+import { enqueueSync, clearQueuedSyncItems, flushSyncQueue } from './syncQueue'
 
 const LOCAL_USER_ID = 'local'
 
@@ -15,7 +15,7 @@ function scopeId(): string {
 export async function getTaggedEventIds(): Promise<Set<string>> {
   const user = scopeId()
   const entries = await db.taggedEvents.where('userId').equals(user).toArray()
-  return new Set(entries.map((entry) => entry.eventId))
+  return new Set(entries.filter(entry => !entry.deleted).map((entry) => entry.eventId))
 }
 
 export function isTagged(taggedIds: Set<string>, eventId: string): boolean {
@@ -29,29 +29,17 @@ export async function tagEvent(eventId: string): Promise<void> {
     .equals(user)
     .and((entry) => entry.eventId === eventId)
     .first()
-  if (existing) return
-
-  const entry = { id: crypto.randomUUID(), userId: user, eventId, taggedAt: new Date().toISOString() }
+  if (existing && !existing.deleted) return
+  const entry = { id: existing?.id ?? crypto.randomUUID(), userId: user, eventId, taggedAt: new Date().toISOString(), remoteId: existing?.remoteId, deleted: false }
   await db.taggedEvents.put(entry)
   if (pb.authStore.isValid) {
-    const payload = { user: pb.authStore.record?.id, event_id: eventId, tagged_at: entry.taggedAt }
-    if (!navigator.onLine) {
-      await enqueueSync('atlas_tagged_events', 'create', entry.id, payload)
-    } else {
-      try {
-        await pb.collection('atlas_tagged_events').create(payload)
-      } catch {
-        await enqueueSync('atlas_tagged_events', 'create', entry.id, payload)
-      }
-    }
+    await clearQueuedSyncItems('atlas_tagged_events', entry.id)
+    await enqueueSync('atlas_tagged_events', 'create', entry.id, { user, event_id: eventId })
+    await flushSyncQueue()
   }
   window.dispatchEvent(new Event('atlas:tagged-events-changed'))
 }
 
-// Remote deletion is skipped, same limitation as watchlist.ts's
-// removeFromWatchlist: the local mirror doesn't track the PocketBase record
-// id for a tagged event, so removing while online only clears the local
-// cache. It's re-created locally next pull if it still exists server-side.
 export async function untagEvent(eventId: string): Promise<void> {
   const user = scopeId()
   const existing = await db.taggedEvents
@@ -60,7 +48,12 @@ export async function untagEvent(eventId: string): Promise<void> {
     .and((entry) => entry.eventId === eventId)
     .first()
   if (!existing) return
-  await db.taggedEvents.delete(existing.id)
+  if (pb.authStore.isValid) {
+    await db.taggedEvents.update(existing.id, { deleted: true })
+    await clearQueuedSyncItems('atlas_tagged_events', existing.id)
+    await enqueueSync('atlas_tagged_events', 'delete', existing.id, { user, event_id: eventId })
+    await flushSyncQueue()
+  } else await db.taggedEvents.delete(existing.id)
   window.dispatchEvent(new Event('atlas:tagged-events-changed'))
 }
 
@@ -102,4 +95,30 @@ export async function getSignedUpEventsDueSoon(now = new Date()): Promise<SkyEve
     if (aOngoing !== bOngoing) return aOngoing ? -1 : 1
     return a.startsAt.localeCompare(b.startsAt)
   })
+}
+
+const pulls = new Map<string, Promise<void>>()
+export function pullTaggedEvents(): Promise<void> {
+  const user = scopeId()
+  const existing = pulls.get(user)
+  if (existing) return existing
+  const promise = pullTagsForUser(user).finally(() => pulls.delete(user))
+  pulls.set(user, promise)
+  return promise
+}
+async function pullTagsForUser(user: string): Promise<void> {
+  if (!pb.authStore.isValid || !navigator.onLine) return
+  await flushSyncQueue()
+  const rows = await pb.collection('atlas_tagged_events').getFullList({ filter: pb.filter('user = {:user}', { user }), requestKey: null })
+  if (scopeId() !== user) return
+  const queued = new Set((await db.syncQueue.where('collection').equals('atlas_tagged_events').toArray()).map(item => item.recordId))
+  const local = await db.taggedEvents.where('userId').equals(user).toArray()
+  const remoteIds = new Set(rows.map(row => row.id))
+  for (const entry of local) if (entry.remoteId && !remoteIds.has(entry.remoteId) && !queued.has(entry.id)) await db.taggedEvents.delete(entry.id)
+  for (const row of rows) {
+    const existing = local.find(entry => entry.eventId === row.event_id)
+    if (existing && (existing.deleted || queued.has(existing.id))) continue
+    await db.taggedEvents.put({ id: existing?.id ?? row.id, userId: user, eventId: String(row.event_id), taggedAt: String(row.tagged_at), remoteId: row.id })
+  }
+  window.dispatchEvent(new Event('atlas:tagged-events-changed'))
 }

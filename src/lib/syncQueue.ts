@@ -15,11 +15,29 @@ const handlers: Partial<Record<SyncQueueItem['collection'], (item: SyncQueueItem
     await pb.collection('atlas_watchlist').create(item.payload as Record<string, unknown>)
   },
   atlas_tagged_events: async (item) => {
-    await pb.collection('atlas_tagged_events').create(item.payload as Record<string, unknown>)
+    const entry = await db.taggedEvents.get(item.recordId)
+    if (!entry) return
+    if (entry.userId !== pb.authStore.record?.id) throw new Error('tag belongs to a different account')
+    const collection = pb.collection('atlas_tagged_events')
+    let record = await collection.getFirstListItem(pb.filter('user = {:user} && event_id = {:event}', { user: entry.userId, event: entry.eventId }), { requestKey: null }).catch(error => {
+      if (error instanceof ClientResponseError && error.status === 404) return null
+      throw error
+    })
+    if (entry.userId !== pb.authStore.record?.id) throw new Error('account changed during tag sync')
+    if (entry.deleted) {
+      if (record) await collection.delete(record.id)
+      const current = await db.taggedEvents.get(entry.id)
+      if (current?.deleted && current.taggedAt === entry.taggedAt) await db.taggedEvents.delete(entry.id)
+    } else {
+      if (!record) record = await collection.create({ user: entry.userId, event_id: entry.eventId, tagged_at: entry.taggedAt })
+      if (!record) throw new Error('tag row unavailable')
+      await db.taggedEvents.update(entry.id, { remoteId: record.id })
+    }
   },
   atlas_observations: async (item) => {
     const entry = await db.observations.get(item.recordId)
     if (!entry || entry.remoteId) return
+    if (entry.userId !== pb.authStore.record?.id) throw new Error('observation belongs to a different account')
     const { pushObservation } = await import('./sync')
     const remoteId = await pushObservation(entry)
     if (!remoteId) throw new Error('observation still waiting for a successful sync')
@@ -76,6 +94,8 @@ export async function flushSyncQueue(): Promise<void> {
       const handler = handlers[item.collection]
       if (!handler) continue // Not yet supported for replay -- stays queued.
       try {
+        const owner = (item.payload as { user?: string } | undefined)?.user
+        if (owner && owner !== pb.authStore.record?.id) continue
         await handler(item)
         if (item.id != null) await db.syncQueue.delete(item.id)
       } catch (error) {
