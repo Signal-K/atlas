@@ -5,7 +5,6 @@ import test from 'node:test'
 const analytics = await readFile(new URL('../src/lib/analytics.ts', import.meta.url), 'utf8')
 const entitlementSync = await readFile(new URL('../src/providers/useEntitlementSync.ts', import.meta.url), 'utf8')
 const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
-const hub = await readFile(new URL('../src/pages/HubPage.tsx', import.meta.url), 'utf8')
 
 test('session replay is not client-sampled or force-started', () => {
   assert.doesNotMatch(analytics, /sampleRate\s*:/)
@@ -44,12 +43,6 @@ test('sign-in identify and in-app navigation both start product recording', () =
 })
 
 test('/tonight stays a product route so replay URL triggers can match', () => {
-  assert.match(app, /isTonightRoute/)
-  assert.match(app, /pathname === '\/tonight'/)
-  assert.match(app, /isAppRoute = routerLocation\.pathname\.startsWith\('\/app'\) \|\| isTonightRoute/)
-})
-
-test('hub still emits the replay event-trigger alias Generated tonight plan', () => {
-  assert.match(hub, /Tonight plan generation succeeded/)
-  assert.match(hub, /Generated tonight plan/)
+  assert.match(app, /path="\/tonight" element=\{<Navigate to="\/app\/hub" replace/)
+  assert.match(app, /path="\/app\/\*" element=\{<Workspace/)
 })

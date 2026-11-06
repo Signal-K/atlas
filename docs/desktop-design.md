@@ -1,7 +1,5 @@
-# Desktop reset — ASV-150
+# Desktop interface
 
-Current instruction: keep only the starfield texture/background.
+The current visual specification is [design.md](../design.md), based on the author's three plate.to screenshots. The background-only reset and previous desktop dashboard have been replaced by the new app interface.
 
-Render a full-viewport, flat neutral background with sparse monochrome stars. No feed, headings, navigation, controls, cards, calendar, gradients, or tinted surfaces.
-
-The supplied plate.to screenshots are the reference for subsequent layout work. No new layout is included in this reset.
+Implemented screens: Feed, Collections, Calendar, Journal, Account, plus location selection and event-detail dialogs. The starfield remains behind the white document area.
