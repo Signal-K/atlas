@@ -473,7 +473,10 @@ export { FLAGSHIP_KINDS } from './pastCheckInMatch.mjs'
 // back onto that same record -- don't have to duplicate this create call
 // the way shareObservation() previously did.
 export async function pushObservation(entry: ObservationLogEntry): Promise<string | null> {
-  if (!pb.authStore.isValid || !navigator.onLine) return null
+  if (!pb.authStore.isValid || !navigator.onLine || entry.userId !== pb.authStore.record?.id) return null
+
+  if (entry.remoteId) return entry.remoteId
+  const stableId = /^[0-9a-f-]{36}$/i.test(entry.id) ? entry.id.replaceAll('-', '').slice(0, 15).toLowerCase() : undefined
 
   try {
     // R2 keeps uploaded image bytes out of the shared PocketBase volume. The
@@ -481,6 +484,7 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
     // Worker URL is configured in the deployed client.
     const useR2 = Boolean(entry.photo && isAtlasMediaEnabled())
     const record = await pb.collection('atlas_observations').create({
+      ...(stableId ? { id: stableId } : {}),
       user: pb.authStore.record?.id,
       observed_at: entry.observedAt,
       // Omitted, not nulled, for a backdated check-in: its matched event is a
@@ -541,6 +545,15 @@ export async function pushObservation(entry: ObservationLogEntry): Promise<strin
     })
     return record.id
   } catch (error) {
+    // A request may commit successfully and lose its response. Recover its
+    // deterministic record instead of creating a second observation on retry.
+    if (stableId && entry.userId === pb.authStore.record?.id) {
+      const existing = await pb.collection('atlas_observations').getOne(stableId).catch(() => null)
+      if (existing && existing.user === entry.userId) {
+        await db.observations.update(entry.id, { remoteId: existing.id })
+        return existing.id
+      }
+    }
     // Stays local-only; the user still sees it in their Scrapbook.
     if (isAtlasMediaUploadBlockedError(error)) throw error
     trackEvent('sync_failed', { stage: 'push_observation', error: String(error) })

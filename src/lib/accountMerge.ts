@@ -1,3 +1,5 @@
+import { mergeGuestWorkspaceState } from './workspaceSync'
+import { enqueueSync, flushSyncQueue } from './syncQueue'
 import { db, type CameraPreset, type Favourite, type ObservationLogEntry, type WatchlistEntry } from './db'
 import { getEquipmentChoice, listLocalTargetTaps } from './firstPlanJourney'
 import { pb } from './pocketbase'
@@ -108,6 +110,16 @@ export async function mergeLocalDataIntoAccount(newUserId: string): Promise<Merg
   }
 
   const targetTaps = listLocalTargetTaps().length
+  const guestTags = await db.taggedEvents.where('userId').equals(LOCAL_USER_ID).toArray()
+  for (const tag of guestTags) {
+    const duplicate = await db.taggedEvents.where('userId').equals(newUserId).and(row => row.eventId === tag.eventId).first()
+    if (!duplicate) {
+      await db.taggedEvents.update(tag.id, { userId: newUserId })
+      await enqueueSync('atlas_tagged_events', 'create', tag.id, { user: newUserId, event_id: tag.eventId })
+    } else await db.taggedEvents.delete(tag.id)
+  }
+  await mergeGuestWorkspaceState(newUserId)
+  void flushSyncQueue()
   const equipmentChoice = getEquipmentChoice() ? 1 : 0
   const tourUnlock = await syncGuestFirstTourToAccount().then((merged) => merged ? 1 : 0).catch(() => 0)
 

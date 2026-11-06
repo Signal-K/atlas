@@ -46,3 +46,9 @@ Each day has one calculated observing recommendation, selected for the user's lo
 Education begins with dark adaptation, altitude/direction, and low-power telescope setup. A short understanding check records completion locally per account scope. Lesson events report lesson identifiers and correctness, never journal notes or search text. The current analytics include view, equipment, sidebar, event-details, calendar-save, journal-save, daily-focus and education interactions.
 
 Secondary interfaces load in separate chunks. The briefing shares one forecast response with the tonight planner, avoiding duplicate weather requests.
+
+## Account synchronization
+
+PocketBase `atlas_workspace_state` stores one owner-scoped row per lesson or preference key, with a unique user/key index. Lesson completion is monotonic; preferences include their client update timestamp. Local cells remain dirty until an acknowledged server write and retry on reconnect, focus and visible-page polling. Existing local lesson completion migrates on sign-in; new-account merge carries guest learning and saved-target data forward.
+
+Journal/history hydrate from `atlas_observations`; failed and offline journal writes use the durable IndexedDB queue. New UUID-backed observations use deterministic server IDs to recover lost responses without duplicate records. All retry handlers reject an account-owner mismatch. Saved targets hydrate from `atlas_tagged_events`, and removal uses a queued tombstone until server deletion succeeds. Navigation and skill-tree progress derive from these records rather than a second independent state store.

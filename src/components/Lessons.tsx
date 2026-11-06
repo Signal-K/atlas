@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useEffect } from 'react'
+import { completedLessons, setWorkspaceValue } from '../lib/workspaceSync'
 import { trackEvent } from '../lib/analytics'
 const lessons = [
   { id: 'dark-adaptation', title: 'Let your eyes adjust', text: 'Give your eyes about 20–30 minutes away from bright lights. A dim red light helps preserve dark adaptation. Start with a bright star, then try fainter stars nearby.', question: 'What helps you see fainter stars?', answers: ['Keep checking a bright phone screen', 'Spend time away from bright lights'], correct: 1 },
@@ -7,7 +9,12 @@ const lessons = [
 ]
 export function Lessons({ userId }: { userId: string }) {
   const storageKey = `atlas-lessons:${userId}`
-  const [completed, setCompleted] = useState<string[]>(() => { try { const stored: unknown = JSON.parse(localStorage.getItem(storageKey) ?? '[]'); return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string') : [] } catch { return [] } })
+  const [completed, setCompleted] = useState<string[]>(() => completedLessons(userId))
+  useEffect(() => {
+    const refresh = () => setCompleted(completedLessons(userId))
+    window.addEventListener('atlas:workspace-state', refresh)
+    return () => window.removeEventListener('atlas:workspace-state', refresh)
+  }, [userId])
   const [feedback, setFeedback] = useState<Record<string, string>>({})
   function answer(id: string, index: number, correct: number) {
     const passed = index === correct
@@ -17,8 +24,9 @@ export function Lessons({ userId }: { userId: string }) {
       const next = [...completed, id]
       setCompleted(next)
       localStorage.setItem(storageKey, JSON.stringify(next))
+      setWorkspaceValue(userId, `lesson:${id}`, true)
       trackEvent('Lesson completed', { lesson_id: id })
     }
   }
-  return <section aria-label="Learn the sky"><h2>Learn the sky</h2><p className="data-note">{completed.length} of {lessons.length} short lessons completed · saved on this device</p>{lessons.map(lesson => <details className="lesson" key={lesson.id} onToggle={event => { if (event.currentTarget.open) trackEvent('Lesson opened', { lesson_id: lesson.id }) }}><summary>{lesson.title}{completed.includes(lesson.id) ? ' · Completed' : ''}</summary><p>{lesson.text}</p><fieldset><legend>{lesson.question}</legend>{lesson.answers.map((option, index) => <button type="button" className="lesson-answer" key={option} onClick={() => answer(lesson.id, index, lesson.correct)}>{option}</button>)}</fieldset>{feedback[lesson.id] && <p role="status" className="lesson-feedback">{feedback[lesson.id]}</p>}</details>)}</section>
+  return <section aria-label="Learn the sky"><h2>Learn the sky</h2><p className="data-note">{completed.length} of {lessons.length} short lessons completed · saved locally and synced when signed in</p>{lessons.map(lesson => <details className="lesson" key={lesson.id} onToggle={event => { if (event.currentTarget.open) trackEvent('Lesson opened', { lesson_id: lesson.id }) }}><summary>{lesson.title}{completed.includes(lesson.id) ? ' · Completed' : ''}</summary><p>{lesson.text}</p><fieldset><legend>{lesson.question}</legend>{lesson.answers.map((option, index) => <button type="button" className="lesson-answer" key={option} onClick={() => answer(lesson.id, index, lesson.correct)}>{option}</button>)}</fieldset>{feedback[lesson.id] && <p role="status" className="lesson-feedback">{feedback[lesson.id]}</p>}</details>)}</section>
 }

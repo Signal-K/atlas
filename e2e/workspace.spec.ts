@@ -121,3 +121,68 @@ test('education checks understanding and preserves lesson progress', async ({ pa
   await page.reload()
   await expect(page.getByRole('region', { name: 'Learn the sky' })).toContainText('1 of 3 short lessons completed')
 })
+
+test('lesson completion and equipment preference hydrate on a second device', async ({ page, browser }) => {
+  const records: Array<Record<string, unknown>> = []
+  async function stateRoute(route: import('@playwright/test').Route) {
+    const method = route.request().method()
+    if (method === 'POST') { const row = { ...route.request().postDataJSON(), id: `state${records.length}` }; records.push(row); await route.fulfill({ json: row }); return }
+    if (method === 'PATCH') { const id = new URL(route.request().url()).pathname.split('/').pop(); const row = records.find(item => item.id === id)!; Object.assign(row, route.request().postDataJSON()); await route.fulfill({ json: row }); return }
+    await route.fulfill({ json: { page: 1, perPage: 500, totalItems: records.length, totalPages: 1, items: records } })
+  }
+  await page.route('**/api/collections/atlas_workspace_state/records**', stateRoute)
+  await page.reload()
+  await page.getByRole('button', { name: 'Telescope', exact: true }).click()
+  await expect.poll(() => records.some(row => row.key === 'preference:equipment' && row.value === 'telescope')).toBe(true)
+  await page.getByRole('navigation').getByRole('link', { name: 'Skills tree' }).click()
+  await page.getByText('Let your eyes adjust', { exact: true }).click()
+  await page.getByRole('button', { name: 'Spend time away from bright lights' }).click()
+  await expect.poll(() => records.some(row => row.key === 'lesson:dark-adaptation' && row.value === true)).toBe(true)
+  const device = await browser.newContext()
+  const other = await device.newPage()
+  await seedSignedInUser(other)
+  await other.route('**/api/**', route => route.abort())
+  await other.route('**/api/collections/atlas_workspace_state/records**', stateRoute)
+  await other.goto(new URL('/app/skills', page.url()).href)
+  await expect(other.getByRole('region', { name: 'Learn the sky' })).toContainText('1 of 3 short lessons completed')
+  await other.getByRole('navigation').getByRole('link', { name: 'Feed', exact: true }).click()
+  await expect(other.getByRole('button', { name: 'Telescope', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await device.close()
+})
+
+test('offline journal entries are retained in the retry queue', async ({ page, context }) => {
+  await page.getByRole('navigation').getByRole('link', { name: 'Journal', exact: true }).click()
+  await page.getByRole('button', { name: 'Add entry' }).click()
+  await page.getByRole('dialog').getByLabel('What did you observe?').fill('Offline Venus')
+  await context.setOffline(true)
+  await page.getByRole('button', { name: 'Save entry', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Offline Venus' })).toBeVisible()
+  const queued = await page.evaluate(async () => { const { db } = await import('/src/lib/db.ts'); return db.syncQueue.where('collection').equals('atlas_observations').count() })
+  expect(queued).toBeGreaterThan(0)
+  await context.setOffline(false)
+})
+
+test('saved target additions and removals reconcile across devices', async ({ page, browser }) => {
+  let tags: Array<Record<string, unknown>> = []
+  async function tagRoute(route: import('@playwright/test').Route) {
+    const method = route.request().method()
+    if (method === 'POST') { const row = { ...route.request().postDataJSON(), id: 'remote-tag' }; tags.push(row); await route.fulfill({ json: row }); return }
+    if (method === 'DELETE') { tags = []; await route.fulfill({ status: 204 }); return }
+    await route.fulfill({ json: { page: 1, perPage: 500, totalItems: tags.length, totalPages: 1, items: tags } })
+  }
+  await page.route('**/api/collections/atlas_tagged_events/records**', tagRoute)
+  await page.getByRole('button', { name: 'Add An evening of shooting stars to calendar' }).click()
+  await expect.poll(() => tags.length).toBe(1)
+  const context = await browser.newContext()
+  const second = await context.newPage()
+  await seedSignedInUser(second)
+  await second.route('**/api/**', route => route.abort())
+  await second.route('**/api/collections/atlas_tagged_events/records**', tagRoute)
+  await second.goto(new URL('/app/hub', page.url()).href)
+  await expect.poll(async () => second.evaluate(async () => { const { db } = await import('/src/lib/db.ts'); return db.taggedEvents.where('userId').equals('e2e-user').count() })).toBe(1)
+  await page.getByRole('button', { name: 'Remove An evening of shooting stars from calendar' }).click()
+  await expect.poll(() => tags.length).toBe(0)
+  await second.reload()
+  await expect.poll(async () => second.evaluate(async () => { const { db } = await import('/src/lib/db.ts'); return db.taggedEvents.where('userId').equals('e2e-user').count() })).toBe(0)
+  await context.close()
+})
