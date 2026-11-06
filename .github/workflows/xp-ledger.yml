@@ -1,10 +1,7 @@
 name: XP ledger
 
-# Dedicated pipeline for the level / training system and its append-only XP
-# ledger (ASV-82, ASV-93). Fast and PocketBase-free: the projector and ledger
-# rules are unit-tested, and the client write path is e2e-tested against a
-# stubbed atlas_xp_ledger endpoint that enforces the collection's unique key.
-# The migration itself is tested in the Navigation repo (atlas-xp-ledger-ci).
+# Verify ledger/projector domain rules and the current journal-to-skills UI.
+# Scenarios for the retired XP card UI are archived in tests/retired-ui.
 
 on:
   pull_request:
