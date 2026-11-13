@@ -116,9 +116,10 @@ final class AskAtlasViewModel {
         messages.append(outgoing)
         historyStore.save(messages, userID: userID)
 
+        let token = tokenProvider() ?? ""
         do {
             let combinedContext = mergedContext(screenContext: context)
-            let answer = try await service.ask(question: question, context: combinedContext)
+            let answer = try await service.ask(question: question, context: combinedContext, token: token)
             messages.append(AskAtlasMessage(role: .assistant, text: answer))
             historyStore.save(messages, userID: userID)
         } catch let askError as AskAtlasError {

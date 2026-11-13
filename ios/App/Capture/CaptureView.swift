@@ -31,6 +31,7 @@ struct CaptureView: View {
                 .padding(.bottom, 28)
             }
             .background(Brand.bg.ignoresSafeArea())
+            .atlasKeyboardChrome()
             .navigationTitle("Capture")
             .sheet(isPresented: $showCamera) {
                 CameraImagePicker { image in
@@ -239,7 +240,15 @@ struct CaptureView: View {
                     .accessibilityLabel("Upload error: \(error)")
             }
 
+            if let caption = model.aiCaption {
+                Text(caption)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Brand.ink)
+                    .accessibilityLabel("Atlas caption: \(caption)")
+            }
+
             Button {
+                Keyboard.dismiss()
                 Task { await model.submitCapture() }
             } label: {
                 if model.isBusy {

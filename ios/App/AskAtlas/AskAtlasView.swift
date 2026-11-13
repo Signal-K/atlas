@@ -31,6 +31,16 @@ struct AskAtlasView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Brand.bg.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if session.userID != nil && session.isEntitled {
+                composer
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                    .background(Brand.bg.opacity(0.96))
+            }
+        }
+        .atlasKeyboardChrome()
         .task { viewModel.activate(for: session.userID) }
         .onChange(of: session.userID) { _, id in
             viewModel.activate(for: id)
@@ -131,7 +141,6 @@ struct AskAtlasView: View {
 
             promptChips
             transcript
-            composer
 
             if let error = viewModel.errorText {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -239,6 +248,7 @@ struct AskAtlasView: View {
                 .focused($composerFocused)
                 .accessibilityLabel("Ask Atlas question")
             Button {
+                composerFocused = false
                 Task { await viewModel.send(context: tonightContext) }
             } label: {
                 HStack(spacing: 8) {

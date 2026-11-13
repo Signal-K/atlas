@@ -38,6 +38,7 @@ struct WelcomeView: View {
             .padding(.horizontal, 20)
         }
         .animation(.smooth(duration: 0.4), value: compact)
+        .atlasKeyboardChrome()
         .task {
             withAnimation(.spring(response: 1.0, dampingFraction: 0.82).delay(0.5)) { arrived = true }
             withAnimation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true)) { rock = true }

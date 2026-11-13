@@ -18,13 +18,16 @@ final class CaptureViewModel: ObservableObject {
     @Published var uploadError: String?
     @Published var queuedCount = 0
     @Published var isBusy = false
+    @Published var aiCaption: String?
 
     private let session: SessionStore
     private let service: CaptureUploadService
+    private let ai: AtlasAIClient
     private var preparedJPEGData: Data?
 
     init(session: SessionStore) {
         self.session = session
+        self.ai = AtlasAIClient(baseURL: Config.pocketBaseURL)
         let queueURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first?
             .appending(path: "capture-upload-queue.json")
@@ -43,6 +46,7 @@ final class CaptureViewModel: ObservableObject {
         selectedImage = image
         photoIDResult = nil
         uploadError = nil
+        aiCaption = nil
 
         let prepared = optimizedJPEG(from: image)
         preparedJPEGData = prepared ?? originalData
@@ -96,6 +100,7 @@ final class CaptureViewModel: ObservableObject {
         }
         isBusy = true
         uploadError = nil
+        aiCaption = nil
         let conditionSummary = attachPhotoIDResult ? photoIDResult?.summary : nil
         let payload = ObservationUploadPayload(
             userID: userID,
@@ -126,6 +131,18 @@ final class CaptureViewModel: ObservableObject {
                     self?.handleUploadEvent(event, focusedQueueID: queueID)
                 }
             })
+            if session.isEntitled,
+               let token = session.bearerToken,
+               case .succeeded(let remoteID) = uploadPhase,
+               !remoteID.isEmpty {
+                aiCaption = try? await ai.photoCaption(
+                    jpeg: photoData,
+                    targetName: payload.targetName,
+                    conditionSummary: conditionSummary,
+                    observationID: remoteID,
+                    token: token
+                )
+            }
             note = ""
             targetName = ""
             clearSelection()

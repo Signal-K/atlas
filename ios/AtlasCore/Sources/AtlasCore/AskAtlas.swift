@@ -74,52 +74,17 @@ public enum AskAtlasError: Error, LocalizedError, Equatable, Sendable {
 }
 
 public protocol AskAtlasService: Sendable {
-    func ask(question: String, context: String?) async throws -> String
+    func ask(question: String, context: String?, token: String) async throws -> String
 }
 
 public struct LiveAskAtlasService: AskAtlasService, Sendable {
-    private let client: PocketBaseClient
-    private let tokenProvider: @Sendable () -> String?
-    private let session: URLSession
+    private let client: AtlasAIClient
 
-    public init(client: PocketBaseClient, tokenProvider: @escaping @Sendable () -> String?, session: URLSession = .shared) {
-        self.client = client
-        self.tokenProvider = tokenProvider
-        self.session = session
+    public init(client: PocketBaseClient, session: URLSession = .shared) {
+        self.client = AtlasAIClient(baseURL: client.baseURL, session: session)
     }
 
-    public func ask(question: String, context: String?) async throws -> String {
-        let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw AskAtlasError.invalidQuestion }
-        guard let token = tokenProvider(), !token.isEmpty else { throw AskAtlasError.unauthorized }
-
-        var request = URLRequest(url: client.baseURL.appendingPathComponent("atlas/ask"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(token, forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONEncoder().encode(AskAtlasRequest(question: trimmed, context: context))
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch {
-            throw AskAtlasError.offline
-        }
-
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        if !(200 ..< 300).contains(status) {
-            let message = (try? JSONDecoder().decode(PocketBaseAPIError.self, from: data))?.message
-            throw AskAtlasError.fromHTTP(status: status, message: message)
-        }
-
-        let decoded = try JSONDecoder().decode(AskAtlasResponse.self, from: data)
-        let answer = decoded.answer.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !answer.isEmpty else { throw AskAtlasError.emptyResponse }
-        return answer
+    public func ask(question: String, context: String?, token: String) async throws -> String {
+        try await client.ask(question: question, context: context, token: token)
     }
-}
-
-private struct PocketBaseAPIError: Decodable {
-    let message: String?
 }
