@@ -1,5 +1,14 @@
 # AGENTS
 
+## Cloud development
+
+Use a local PocketBase for interactive and write tests. If the sibling backend
+checkout is `../tickets-please/backend`, follow its parent `AGENTS.md` cloud
+setup, then start Vite with `VITE_PB_URL=http://127.0.0.1:8094 npm run dev`.
+Check `/api/health` before testing; do not point test writes at production.
+Keep agent instructions concise and update existing guidance instead of
+duplicating or accumulating stale rules.
+
 ## Cycle branch policy
 
 This policy is mandatory for every agent and every implementation task in this repository.
