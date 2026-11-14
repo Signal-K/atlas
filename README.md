@@ -235,3 +235,12 @@ yet):
 Until `VITE_ATLAS_MEDIA_URL` is set, the app deliberately retains the existing
 PocketBase attachment path, so this rollout is reversible and does not strand
 current photos.
+
+### Selective CI
+
+The main CI workflow separates unit/lint checks from the frontend build and
+Playwright suite. Changes to shared application code run both; test-only or
+browser-only changes run the relevant job. Manual dispatch runs both. Other
+specialized and deployment workflows continue to enforce their own checks.
+Selection is at the component/suite level, not individual functions: shared
+changes deliberately run the broader suite to catch indirect dependencies.

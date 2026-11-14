@@ -1,22 +1,50 @@
 name: CI
-
 on:
   pull_request: {}
   push:
-    branches:
-      - master
-      - 'sprint/**'
+    branches: [master, 'sprint/**', 'cycle/**']
   workflow_dispatch: {}
-
+permissions:
+  contents: read
+  pull-requests: read
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
-  test:
+  changes:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    outputs:
+      unit: ${{ steps.filter.outputs.unit }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            unit:
+              - 'src/**'
+              - 'test/**'
+              - 'scripts/**'
+              - 'functions/**'
+              - 'workers/**'
+              - 'package*.json'
+              - '*config*'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'src/**'
+              - 'public/**'
+              - 'index.html'
+              - 'e2e/**'
+              - 'functions/**'
+              - 'workers/**'
+              - 'package*.json'
+              - '*config*'
+              - '.github/workflows/ci.yml'
+  unit:
+    needs: changes
+    if: needs.changes.outputs.unit == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -24,21 +52,33 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run test:unit
+      - run: npm run lint
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm test
+      - run: npm run test:e2e
         env:
           VITE_PB_URL: ${{ vars.VITE_PB_URL || 'http://localhost:8094' }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
-          # KES-189: the Playwright "setup" project (e2e/global.setup.ts) runs
-          # for every e2e invocation regardless of which specs are targeted,
-          # and always calls clerkSetup() -- so these must always be the
-          # test-mode pk_test_/sk_test_ pair, never the live deploy key.
           VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          # KES-190: VITE_PB_URL above resolves to the production backend
-          # (vars.VITE_PB_URL), which only verifies Clerk tokens against the
-          # live instance -- not the test-mode instance these 4 specs
-          # authenticate against. See playwright.config.ts.
           CLERK_BACKEND_UNAVAILABLE: '1'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          if-no-files-found: ignore
