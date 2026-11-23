@@ -141,7 +141,7 @@ Several guides exist. None of them record that the advice was followed.
 | AI photo caption | `src/lib/photoCaption.ts`, `pocketbase/pb_hooks/photo-caption.pb.js` | `atlas_observations.ai_caption` | None on success |
 | Scrapbook prompt and caption suggestion | `src/lib/scrapbookPrompt.ts`, `src/lib/observationCaptionSuggestion.ts` | The suggestion is editable text, not a record of advice | None |
 
-Ask Atlas, trip guides, and photo captions all require `ANTHROPIC_API_KEY` and Sky Pass. The hooks say a deployment without the key rejects every call. `docs/posthog-product-analysis-2026-07-21.md` already found camera recipes barely used (two `Opened camera recipe` events in that snapshot).
+**Paused (cycle/11): Anthropic credits are exhausted, so the iOS Ask tab is hidden via `AtlasFeatures.askAtlasEnabled` in `ios/App/AppShell/AtlasTabShell.swift`. The web UI has no live AI surface.** Ask Atlas, trip guides, and photo captions all require `ANTHROPIC_API_KEY` and Sky Pass. The hooks say a deployment without the key rejects every call. `docs/posthog-product-analysis-2026-07-21.md` already found camera recipes barely used (two `Opened camera recipe` events in that snapshot).
 
 The notebook's "next attempt on an entity" loop is not built. The nearest join is: user opened recipe R, then later saved an observation with `camera_recipe_used = R` and the same target.
 
