@@ -2,7 +2,7 @@
 
 // Server-side "personalized trip guide" for Sky Pass trip planning (see
 // src/lib/tripPlans.ts / src/lib/tripGuide.ts). Same pattern as
-// eclipse-roadmap.pb.js and photo-caption.pb.js: requires ANTHROPIC_API_KEY
+// eclipse-roadmap.pb.js and photo-caption.pb.js: requires an AI provider key (see ai-provider.js)
 // -- built and usable, but deliberately NOT enabled anywhere until that
 // secret is actually configured. A deployment with no key set rejects every
 // request here with a plain "not enabled" error, same as if this file
@@ -18,8 +18,8 @@ routerAdd(
   'POST',
   '/atlas/trips/guide',
   (e) => {
-    const apiKey = $os.getenv('ANTHROPIC_API_KEY')
-    if (!apiKey) {
+    const ai = require(`${__hooks}/ai-provider.js`)
+    if (!ai.enabled()) {
       throw new BadRequestError('Trip guides are not enabled on this deployment.')
     }
 
@@ -87,37 +87,11 @@ routerAdd(
       "standout sights given the equipment on hand and interests. Be concrete and specific to this city and these " +
       'dates, not generic astronomy trivia. Keep it under 200 words.'
 
-    let res
-    try {
-      res = $http.send({
-        url: 'https://api.anthropic.com/v1/messages',
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 500,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      })
-    } catch (err) {
-      console.error('Anthropic trip-guide request failed: ' + err)
-      throw new BadRequestError('Could not reach the planning service.')
-    }
-
-    if (res.statusCode >= 400) {
-      console.error('Anthropic trip-guide request failed: ' + res.statusCode + ' ' + res.raw)
-      throw new BadRequestError('Could not generate a trip guide.')
-    }
-
-    const body = res.json
-    const narrative = body && body.content && body.content[0] && body.content[0].text
-    if (!narrative) {
-      throw new BadRequestError('Planning service returned an empty response.')
-    }
+    const narrative = ai.generate({
+      label: 'trip-guide',
+      maxTokens: 500,
+      prompt,
+    })
 
     return e.json(200, { narrative })
   },

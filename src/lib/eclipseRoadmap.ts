@@ -3,7 +3,7 @@ import type { GuideStep } from './eventGuide'
 
 // Client for the Sky Pass "personalized eclipse viewing plan" endpoint
 // (pocketbase/pb_hooks/eclipse-roadmap.pb.js). That endpoint requires a
-// server-side ANTHROPIC_API_KEY and is not enabled on every deployment,
+// server-side AI provider key (GEMINI_API_KEY or ANTHROPIC_API_KEY) and is not enabled on every deployment,
 // same pattern as photoCaption.ts. Unlike that best-effort auto-caption,
 // this is an explicit button tap -- callers should surface the thrown
 // error message rather than swallow it.

@@ -1,7 +1,7 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 // Server-side "AI photo caption" for Sky Pass observations (see
-// outbox/story-ai-photo-captions.md). Requires ANTHROPIC_API_KEY -- same
+// outbox/story-ai-photo-captions.md). Requires an AI provider key (GEMINI_API_KEY or ANTHROPIC_API_KEY, see ai-provider.js) -- same
 // pattern as the atlas repo's DONKI solar-flare source: built and usable,
 // but deliberately NOT enabled anywhere until that secret is actually
 // configured. A deployment with no key set rejects every request here with
@@ -18,8 +18,8 @@ routerAdd(
   'POST',
   '/atlas/observations/caption',
   (e) => {
-    const apiKey = $os.getenv('ANTHROPIC_API_KEY')
-    if (!apiKey) {
+    const ai = require(`${__hooks}/ai-provider.js`)
+    if (!ai.enabled()) {
       throw new BadRequestError('AI photo captions are not enabled on this deployment.')
     }
 
@@ -69,45 +69,13 @@ routerAdd(
       'name any recognizable object if you can see one clearly, and be honest if the photo is too dark, blurry, or ' +
       "overexposed to tell. Don't be effusive -- write like a field log entry, not marketing copy."
 
-    let res
-    try {
-      res = $http.send({
-        url: 'https://api.anthropic.com/v1/messages',
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 200,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'image', source: { type: 'base64', media_type: mimeType, data: photoBase64 } },
-                { type: 'text', text: prompt },
-              ],
-            },
-          ],
-        }),
-      })
-    } catch (err) {
-      console.error('Anthropic vision request failed: ' + err)
-      throw new BadRequestError('Could not reach the captioning service.')
-    }
-
-    if (res.statusCode >= 400) {
-      console.error('Anthropic vision request failed: ' + res.statusCode + ' ' + res.raw)
-      throw new BadRequestError('Could not generate a caption.')
-    }
-
-    const body = res.json
-    const caption = body && body.content && body.content[0] && body.content[0].text
-    if (!caption) {
-      throw new BadRequestError('Captioning service returned an empty response.')
-    }
+    const caption = ai.generate({
+      label: 'caption',
+      maxTokens: 200,
+      prompt,
+      imageBase64: photoBase64,
+      mimeType,
+    })
 
     // Best-effort persistence -- the caption is still returned to the
     // client (and shown immediately) even if this save fails or the

@@ -2,7 +2,7 @@
 
 // Server-side "personalized eclipse viewing plan" for Sky Pass users (see
 // the eclipse timeline in src/lib/eventGuide.ts / EntryDetailView.tsx).
-// Same pattern as photo-caption.pb.js: requires ANTHROPIC_API_KEY -- built
+// Same pattern as photo-caption.pb.js: requires an AI provider key (see ai-provider.js) -- built
 // and usable, but deliberately NOT enabled anywhere until that secret is
 // actually configured. A deployment with no key set rejects every request
 // here with a plain "not enabled" error, same as if this file didn't exist.
@@ -10,8 +10,8 @@ routerAdd(
   'POST',
   '/atlas/events/eclipse-roadmap',
   (e) => {
-    const apiKey = $os.getenv('ANTHROPIC_API_KEY')
-    if (!apiKey) {
+    const ai = require(`${__hooks}/ai-provider.js`)
+    if (!ai.enabled()) {
       throw new BadRequestError('Eclipse viewing plans are not enabled on this deployment.')
     }
 
@@ -54,37 +54,11 @@ routerAdd(
       'phase from the timeline above, and one safety reminder about never looking at the Sun unfiltered outside of ' +
       "totality. Keep it under 250 words, concrete and actionable -- not generic astronomy trivia."
 
-    let res
-    try {
-      res = $http.send({
-        url: 'https://api.anthropic.com/v1/messages',
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      })
-    } catch (err) {
-      console.error('Anthropic roadmap request failed: ' + err)
-      throw new BadRequestError('Could not reach the planning service.')
-    }
-
-    if (res.statusCode >= 400) {
-      console.error('Anthropic roadmap request failed: ' + res.statusCode + ' ' + res.raw)
-      throw new BadRequestError('Could not generate a viewing plan.')
-    }
-
-    const body = res.json
-    const roadmap = body && body.content && body.content[0] && body.content[0].text
-    if (!roadmap) {
-      throw new BadRequestError('Planning service returned an empty response.')
-    }
+    const roadmap = ai.generate({
+      label: 'roadmap',
+      maxTokens: 600,
+      prompt,
+    })
 
     return e.json(200, { roadmap })
   },

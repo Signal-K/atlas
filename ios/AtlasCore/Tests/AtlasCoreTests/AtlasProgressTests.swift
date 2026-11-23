@@ -2,30 +2,6 @@ import Foundation
 import XCTest
 @testable import AtlasCore
 
-final class AskAtlasModelTests: XCTestCase {
-    func testAskAtlasRequestEncoding() throws {
-        let payload = AskAtlasRequest(question: "What can I see tonight?", context: "Perth, mostly clear")
-        let data = try JSONEncoder().encode(payload)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: String]
-        XCTAssertEqual(json?["question"], "What can I see tonight?")
-        XCTAssertEqual(json?["context"], "Perth, mostly clear")
-    }
-
-    func testAskAtlasResponseDecoding() throws {
-        let data = Data(#"{"answer":"Try Jupiter near midnight."}"#.utf8)
-        let decoded = try JSONDecoder().decode(AskAtlasResponse.self, from: data)
-        XCTAssertEqual(decoded.answer, "Try Jupiter near midnight.")
-    }
-
-    func testAskAtlasHTTPErrorMapping() {
-        XCTAssertEqual(AskAtlasError.fromHTTP(status: 429, message: nil), .rateLimited)
-        XCTAssertEqual(AskAtlasError.fromHTTP(status: 403, message: "denied"), .unauthorized)
-        XCTAssertEqual(AskAtlasError.fromHTTP(status: 400, message: "Ask Atlas is a Sky Pass feature."), .notEntitled)
-        XCTAssertEqual(AskAtlasError.fromHTTP(status: 400, message: "Ask Atlas is not enabled on this deployment."), .notEnabled)
-        XCTAssertEqual(AskAtlasError.fromHTTP(status: 400, message: "A question is required."), .invalidQuestion)
-    }
-}
-
 final class AtlasProgressTests: XCTestCase {
     func testLevelThresholdsMatchWebProjector() {
         XCTAssertEqual(AtlasProgress.levelSummary(totalPoints: 0), AtlasLevelSummary(level: 1, nextLevelAt: 40, pointsToNextLevel: 40))

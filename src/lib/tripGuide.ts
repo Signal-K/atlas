@@ -9,7 +9,7 @@ import { categoryForKind } from './eventCategories'
 
 // Client for the Sky Pass "personalized trip guide" endpoint
 // (pocketbase/pb_hooks/trip-guide.pb.js). That endpoint requires a
-// server-side ANTHROPIC_API_KEY and is not enabled on every deployment,
+// server-side AI provider key (GEMINI_API_KEY or ANTHROPIC_API_KEY) and is not enabled on every deployment,
 // same pattern as eclipseRoadmap.ts. This is an explicit "Generate guide"
 // button tap -- callers should surface the thrown error message rather
 // than swallow it.

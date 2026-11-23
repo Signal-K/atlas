@@ -1,13 +1,6 @@
 import AtlasCore
 import SwiftUI
 
-/// Server-side AI (Ask Atlas, trip guides, photo captions) is paused while no
-/// LLM provider credits are available. Flip back to `true` once
-/// `ANTHROPIC_API_KEY` (or a replacement provider) is live on the server.
-enum AtlasFeatures {
-    static let askAtlasEnabled = false
-}
-
 struct AtlasTabShell: View {
     let session: SessionStore
     let skyPass: SkyPassStore
@@ -47,18 +40,6 @@ struct AtlasTabShell: View {
                     Label("Challenges", systemImage: "trophy")
                 }
 
-            if AtlasFeatures.askAtlasEnabled {
-                AskAtlasView(
-                    session: session,
-                    skyPass: skyPass,
-                    tonight: tonight,
-                    service: LiveAskAtlasService(client: client, tokenProvider: { session.bearerToken }))
-                    .tag(AtlasTab.ask)
-                    .tabItem {
-                        Label("Ask", systemImage: "sparkles")
-                    }
-            }
-
             ProfileView(
                 session: session,
                 skyPass: skyPass,
@@ -93,6 +74,5 @@ private enum AtlasTab: Hashable {
     case tonight
     case capture
     case challenges
-    case ask
     case profile
 }

@@ -3,7 +3,7 @@ import { db } from './db'
 
 // Client for the Sky Pass "AI photo caption" endpoint
 // (pocketbase/pb_hooks/photo-caption.pb.js). That endpoint requires a
-// server-side ANTHROPIC_API_KEY and is not enabled on every deployment --
+// server-side AI provider key (GEMINI_API_KEY or ANTHROPIC_API_KEY) and is not enabled on every deployment --
 // this call is expected to fail with a plain 400 ("not enabled on this
 // deployment") wherever it isn't configured, so callers should treat a
 // failure here as "feature unavailable," not an error worth surfacing loudly.

@@ -137,11 +137,10 @@ Several guides exist. None of them record that the advice was followed.
 | Phone camera recipes | `src/lib/cameraRecipes.ts`, `src/components/CameraRecipe.tsx`, live notes in `describeLiveConditions` | If the user logs from an event sheet, `camera_recipe_used` is copied onto the observation (`HubPage.tsx`, `EventsPage.tsx`, CaptureSheet). A blank journal log does not set it. | `Opened camera recipe`, `Imported camera preset`, `Changed device profile` |
 | Eclipse / meteor steps | `src/lib/eventGuide.ts` | Computed at read time | None |
 | Trip guide | `src/lib/tripGuide.ts`, hook `pocketbase/pb_hooks/trip-guide.pb.js`, route that calls Claude | Saved on the plan as `guide_json` | `Generated trip guide` |
-| Ask Atlas | `src/pages/AskAtlasPage.tsx`, `src/components/AskAtlas.tsx`, `src/lib/ai.ts`, `POST /atlas/ask` | Nothing is stored | `ask_atlas_failed` only |
 | AI photo caption | `src/lib/photoCaption.ts`, `pocketbase/pb_hooks/photo-caption.pb.js` | `atlas_observations.ai_caption` | None on success |
 | Scrapbook prompt and caption suggestion | `src/lib/scrapbookPrompt.ts`, `src/lib/observationCaptionSuggestion.ts` | The suggestion is editable text, not a record of advice | None |
 
-**Paused (cycle/11): Anthropic credits are exhausted, so the iOS Ask tab is hidden via `AtlasFeatures.askAtlasEnabled` in `ios/App/AppShell/AtlasTabShell.swift`. The web UI has no live AI surface.** Ask Atlas, trip guides, and photo captions all require `ANTHROPIC_API_KEY` and Sky Pass. The hooks say a deployment without the key rejects every call. `docs/posthog-product-analysis-2026-07-21.md` already found camera recipes barely used (two `Opened camera recipe` events in that snapshot).
+Ask Atlas was removed permanently (cycle/11). Trip guides, eclipse plans, and photo captions need Sky Pass and an AI provider key (`GEMINI_API_KEY` or `ANTHROPIC_API_KEY`, chosen by `AI_PROVIDER`; see `pocketbase/pb_hooks/ai-provider.js`). The hooks say a deployment without the key rejects every call. `docs/posthog-product-analysis-2026-07-21.md` already found camera recipes barely used (two `Opened camera recipe` events in that snapshot).
 
 The notebook's "next attempt on an entity" loop is not built. The nearest join is: user opened recipe R, then later saved an observation with `camera_recipe_used = R` and the same target.
 
@@ -244,7 +243,7 @@ PostHog, filtered to Atlas: `Progress awarded` (`action`, `skill`, `points`, `ev
 - **Journal.** Leave Nights out / First seen / Places. A level chip in the header is enough. The entry list stays a diary.
 - **Path editor.** Reuse the onboarding chips (`ONBOARDING_SURVEY_CHOICES`) plus `EXPERIENCE_LEVELS` and `InterestsPicker`. Three steps, habit-tracker shaped: "This week, log one conjunction", "Open the planet recipe, then check in", "Plan one stop". Regenerating the path when interests change is the whole personalisation.
 
-Guest progress stays on the device and merges on signup, same as observations. Sky Pass actions (multi-leg plans, Ask Atlas, AI captions) can bonus the path. The core night-out score has to work on the free tier, because tonight's check-in is free.
+Guest progress stays on the device and merges on signup, same as observations. Sky Pass actions (multi-leg plans, AI captions) can bonus the path. The core night-out score has to work on the free tier, because tonight's check-in is free.
 
 ### 5. Hackathon tickets
 
@@ -262,7 +261,7 @@ Ordered so a Profile level and a post-check-in award can be demoed before the la
 
 6. **Three-step path card (M).** From experience level, favourite categories, and those chips, build three concrete steps and render them on the Hub. Completing a step is the same projector as ticket 1 (a matching check-in, recipe, or plan), not a separate checkbox table.
 
-7. **Advice-followed bonus (M).** Record `Opened camera recipe` locally with the recipe key and target. If a later observation stores that `camera_recipe_used`, award the photography bonus once per entry. This is the notebook's "next attempt" without turning on Claude. Ask Atlas stays out until `ANTHROPIC_API_KEY` is actually on.
+7. **Advice-followed bonus (M).** Record `Opened camera recipe` locally with the recipe key and target. If a later observation stores that `camera_recipe_used`, award the photography bonus once per entry. This is the notebook's "next attempt" without turning on Claude.
 
 8. **Analytics for the demo (S).** `Progress awarded` and `Milestone unlocked` through `trackEvent`, with the existing `$host = youratlas.cc` filter documented next to `docs/first-plan-funnel-analytics-contract.md`. Fix or delete the stale `Shared public card` / `Shared city stamp` names so published photos are not "counted" from events that do not fire.
 
@@ -286,7 +285,7 @@ Tickets 1–3 are the demo. 4–6 make it look like Liam's page. 7 is the AI-gui
 
 **Review queue.** A past night in `pending` must not move the level. City stamps already implement this. The level projector has to call the same allowlist.
 
-**AI may be off.** Ask Atlas, trip narratives, and photo captions no-op without the Anthropic key, and they are Sky Pass. The camera-recipe bonus works for free accounts and does not depend on that key.
+**AI may be off.** Trip narratives, eclipse plans, and photo captions no-op without a provider key, and they are Sky Pass. The camera-recipe bonus works for free accounts and does not depend on that key.
 
 **Goals are analytics-only.** Until purpose chips are stored, a "tailored path" can only see experience level and favourite event types.
 
