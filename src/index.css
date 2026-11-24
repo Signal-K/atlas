@@ -210,3 +210,10 @@ h1 { font-size:40px; line-height:1.15; letter-spacing:-1.5px; margin:0; font-wei
 .location-picker .city-list { max-height:40dvh; overflow:auto; }
 .location-picker .source-credit { display:block; border:0; margin:16px 0 0; padding:0; }
 .location-error { color:#eabca4; font-size:13px; line-height:1.7; }
+
+.legal-page { max-width: 42rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; line-height: 1.6; color: #ededed; }
+.legal-page h1 { font-size: 1.75rem; margin: 1.5rem 0 .25rem; }
+.legal-page h2 { font-size: 1.1rem; margin: 1.75rem 0 .5rem; }
+.legal-page a { color: #b9a8ff; }
+.legal-page nav { font-size: .9rem; }
+.legal-page .legal-updated { opacity: .65; font-size: .85rem; }

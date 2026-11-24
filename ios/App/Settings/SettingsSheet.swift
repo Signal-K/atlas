@@ -24,6 +24,7 @@ struct SettingsSheet: View {
                     alerts
                     phone
                     account
+                    about
                 }
                 .padding(20)
             }
@@ -105,6 +106,32 @@ struct SettingsSheet: View {
                 Spacer(minLength: 0)
             }
             .padding(14).frame(maxWidth: .infinity, alignment: .leading).brandCard()
+        }
+    }
+
+    private var about: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Kicker(text: "About")
+            VStack(spacing: 0) {
+                aboutLink("Privacy Policy", "hand.raised", Config.privacyURL)
+                Rectangle().fill(Brand.line).frame(height: 1)
+                aboutLink("Terms of Use", "doc.text", Config.termsURL)
+                Rectangle().fill(Brand.line).frame(height: 1)
+                aboutLink("Support and reporting", "lifepreserver", Config.supportURL)
+            }
+            .brandCard()
+        }
+    }
+
+    private func aboutLink(_ title: String, _ symbol: String, _ url: URL) -> some View {
+        Link(destination: url) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol).frame(width: 24).foregroundStyle(Brand.violet)
+                Text(title).font(.system(size: 17, weight: .medium)).foregroundStyle(Brand.ink)
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Brand.muted.opacity(0.6))
+            }
+            .padding(14).frame(minHeight: 44).contentShape(Rectangle())
         }
     }
 

@@ -22,6 +22,7 @@ import { workspaceValue, setWorkspaceValue, syncWorkspaceState, workspacePending
 import { trackEvent } from './lib/analytics'
 import { DailyFocus } from './components/DailyFocus'
 import { useEntitlementSync } from './providers/useEntitlementSync'
+const LegalPage = lazy(() => import('./views/LegalPage'))
 
 type IconName = 'feed' | 'collections' | 'calendar' | 'journal' | 'search' | 'account' | 'skills' | 'history' | 'settings'
 const paths: Record<IconName, string> = {
@@ -216,5 +217,5 @@ function Workspace() {
 }
 
 export default function App() {
-  return <Routes><Route path="/app/*" element={<Workspace />} /><Route path="/tonight" element={<Navigate to="/app/hub" replace />} /><Route path="*" element={<Navigate to="/app/hub" replace />} /></Routes>
+  return <Routes><Route path="/privacy" element={<Suspense fallback={null}><LegalPage kind="privacy" /></Suspense>} /><Route path="/terms" element={<Suspense fallback={null}><LegalPage kind="terms" /></Suspense>} /><Route path="/support" element={<Suspense fallback={null}><LegalPage kind="support" /></Suspense>} /><Route path="/app/*" element={<Workspace />} /><Route path="/tonight" element={<Navigate to="/app/hub" replace />} /><Route path="*" element={<Navigate to="/app/hub" replace />} /></Routes>
 }

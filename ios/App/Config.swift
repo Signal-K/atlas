@@ -25,6 +25,18 @@ enum Config {
     /// Atlas's own Terms of Use / EULA (web route `/terms`); deploy the web app before App Review.
     static let termsURL = URL(string: "https://youratlas.cc/terms")!
 
+    /// Support page (web route `/support`) and the mailbox behind it. Keep in step with `src/views/LegalPage.tsx`.
+    static let supportURL = URL(string: "https://youratlas.cc/support")!
+    static let supportEmail = "support@youratlas.cc"
+
+    static func supportMailURL(subject: String) -> URL {
+        var parts = URLComponents()
+        parts.scheme = "mailto"
+        parts.path = supportEmail
+        parts.queryItems = [URLQueryItem(name: "subject", value: "Atlas: \(subject)")]
+        return parts.url ?? supportURL
+    }
+
     /// Privacy Policy from Info.plist `AtlasPrivacyURL`; must be a live page before App Review.
     static var privacyURL: URL {
         let raw = Bundle.main.object(forInfoDictionaryKey: "AtlasPrivacyURL") as? String

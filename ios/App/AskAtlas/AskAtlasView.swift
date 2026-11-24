@@ -8,6 +8,8 @@ struct AskAtlasView: View {
 
     @State private var viewModel: AskAtlasViewModel
     @State private var showSkyPass = false
+    @State private var hasConsented = false
+    @State private var reporting: AskAtlasMessage?
     @FocusState private var composerFocused: Bool
 
     init(session: SessionStore, skyPass: SkyPassStore, tonight: TonightModel, service: AskAtlasService) {
@@ -31,9 +33,17 @@ struct AskAtlasView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Brand.bg.ignoresSafeArea())
-        .task { viewModel.activate(for: session.userID) }
+        .task {
+            viewModel.activate(for: session.userID)
+            hasConsented = AskAtlasConsent.isGiven(userID: session.userID)
+        }
         .onChange(of: session.userID) { _, id in
             viewModel.activate(for: id)
+            hasConsented = AskAtlasConsent.isGiven(userID: id)
+        }
+        .sheet(item: $reporting) { message in
+            ReportSheet(session: session, kind: .askAnswer, target: "ask_atlas", excerpt: message.text) { reporting = nil }
+                .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showSkyPass) {
             SkyPassView(store: skyPass, signedIn: session.userID != nil) { showSkyPass = false }
@@ -59,9 +69,36 @@ struct AskAtlasView: View {
             guestCard
         } else if !session.isEntitled {
             paywallCard
+        } else if !hasConsented {
+            consentCard
         } else {
             chatCard
         }
+    }
+
+    /// Ask Atlas sends text to a third-party AI provider, so say so and ask first.
+    private var consentCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Kicker(text: "Before you ask")
+            Text("Ask Atlas uses an AI service")
+                .font(.system(size: 20, weight: .semibold)).foregroundStyle(Brand.ink)
+            Text("When you ask a question, Atlas sends it to Anthropic, an AI provider, to write the answer. It also sends your last few messages and a short summary of tonight: your place name, cloud cover, moon phase and top target. Your email and exact coordinates are not sent. AI answers can be wrong, so double-check anything important.")
+                .font(.system(size: 14)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            Link("Read the Privacy Policy", destination: Config.privacyURL)
+                .font(.system(size: 14, weight: .medium)).foregroundStyle(Brand.violet)
+            Button {
+                Haptics.tap()
+                AskAtlasConsent.give(userID: session.userID)
+                hasConsented = true
+            } label: {
+                Text("Agree and continue")
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Brand.bg)
+                    .frame(maxWidth: .infinity, minHeight: 46).background(Brand.violet, in: Capsule())
+            }
+            .buttonStyle(PressableStyle())
+        }
+        .padding(16)
+        .brandCard()
     }
 
     private var guestCard: some View {
@@ -208,20 +245,34 @@ struct AskAtlasView: View {
 
     private func messageBubble(_ message: AskAtlasMessage) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(message.role == .user ? "YOU" : "ATLAS")
-                .font(.mono(10))
-                .foregroundStyle(message.role == .user ? Brand.violet : Brand.teal)
-            Text(message.text)
-                .font(.system(size: 15))
-                .foregroundStyle(Brand.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(message.role == .user ? "YOU" : "ATLAS")
+                    .font(.mono(10))
+                    .foregroundStyle(message.role == .user ? Brand.violet : Brand.teal)
+                Text(message.text)
+                    .font(.system(size: 15))
+                    .foregroundStyle(Brand.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(message.role == .user ? "You" : "Atlas"): \(message.text)")
+            if message.role == .assistant {
+                Button {
+                    Haptics.tap()
+                    reporting = message
+                } label: {
+                    Label("Report this answer", systemImage: "flag")
+                        .font(.system(size: 13, weight: .medium)).foregroundStyle(Brand.muted)
+                        .frame(minHeight: 44, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(message.role == .user ? Brand.violetWash : Brand.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(message.role == .user ? "You" : "Atlas"): \(message.text)")
     }
 
     private var composer: some View {
@@ -271,4 +322,11 @@ struct AskAtlasView: View {
         }
         return parts.joined(separator: " · ")
     }
+}
+
+/// Remembers, per account, that the person agreed to Ask Atlas sending text to an AI provider.
+enum AskAtlasConsent {
+    private static func key(_ userID: String?) -> String { "atlas.ask.aiConsent.\(userID ?? "guest")" }
+    static func isGiven(userID: String?, defaults: UserDefaults = .standard) -> Bool { defaults.bool(forKey: key(userID)) }
+    static func give(userID: String?, defaults: UserDefaults = .standard) { defaults.set(true, forKey: key(userID)) }
 }
