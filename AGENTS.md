@@ -4,7 +4,7 @@
 
 This policy is mandatory for every agent and every implementation task in this repository.
 
-- Work in one dated branch per cycle, named `cycle/YYYY-MM-DD`. Create or switch to the current cycle branch before making any code, test, documentation, or configuration edit.
+- Work in one branch per cycle, named `cycle/<number>` after the current Linear cycle number for the Atlas team (for example `cycle/11`). Check the number in Linear rather than guessing. Create or switch to the current cycle branch before making any code, test, documentation, or configuration edit.
 - Never commit ordinary work directly to `master`. `master` is the last Friday-approved state; the only permitted direct update is the reviewed Friday-evening cycle merge.
 - At the start of each task, run `git branch --show-current`. If it is not the current `cycle/` branch, stop and create/switch to that branch before editing.
 - Keep all Linear ticket work, validation commits, and cycle evidence on the current cycle branch. Do not create ticket-per-feature branches unless the user explicitly asks for an exception.
