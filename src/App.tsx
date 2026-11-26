@@ -5,7 +5,8 @@ const FeedBriefing = lazy(() => import('./components/FeedBriefing').then(module 
 import { matchesEquipment, type Equipment } from './lib/feedEquipment'
 const SkillsTree = lazy(() => import('./components/SkillsTree').then(module => ({ default: module.SkillsTree })))
 const ObservationHistory = lazy(() => import('./components/ObservationHistory').then(module => ({ default: module.ObservationHistory })))
-const LocationPicker = lazy(() => import('./components/LocationPicker').then(module => ({ default: module.LocationPicker })))
+import { LocationPicker } from './components/LocationPicker'
+import { LandingPage } from './components/LandingPage'
 const AuthForm = lazy(() => import('./components/AuthForm').then(module => ({ default: module.AuthForm })))
 import { useAppLocation } from './providers/useAppLocation'
 import { useAuth, signOut } from './lib/auth'
@@ -216,5 +217,5 @@ function Workspace() {
 }
 
 export default function App() {
-  return <Routes><Route path="/app/*" element={<Workspace />} /><Route path="/tonight" element={<Navigate to="/app/hub" replace />} /><Route path="*" element={<Navigate to="/app/hub" replace />} /></Routes>
+  return <Routes><Route path="/" element={<LandingPage />} /><Route path="/app/*" element={<Workspace />} /><Route path="/tonight" element={<Navigate to="/app/hub" replace />} /><Route path="*" element={<Navigate to="/app/hub" replace />} /></Routes>
 }

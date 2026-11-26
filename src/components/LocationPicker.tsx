@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchLocations } from '../lib/locationSearch'
+import { curatedLocationMatches, searchLocations } from '../lib/locationSearch'
 import { cityLabel, type City } from '../lib/cities'
-import { reverseGeocodeCity } from '../lib/reverseGeocode'
-import { fetchViewingForecast } from '../lib/weather'
 import { trackEvent } from '../lib/analytics'
 
 export function LocationPicker({ onSelect }: { onSelect: (city: City) => void }) {
@@ -15,7 +13,7 @@ export function LocationPicker({ onSelect }: { onSelect: (city: City) => void })
   const active = useRef(true)
   useEffect(() => { active.current = true; return () => { active.current = false } }, [])
   useEffect(() => {
-    setResults([])
+    setResults(curatedLocationMatches(query))
     setSearchError('')
     if (query.trim().length < 2) { setSearching(false); return }
     const controller = new AbortController()
@@ -24,7 +22,7 @@ export function LocationPicker({ onSelect }: { onSelect: (city: City) => void })
       void searchLocations(query, controller.signal).then(cities => {
         if (!controller.signal.aborted) setResults(cities)
       }).catch(() => {
-        if (!controller.signal.aborted) setSearchError('City search is unavailable. Check your connection and try again, or use browser location.')
+        if (!controller.signal.aborted) setSearchError('Worldwide search is unavailable. Showing nearby matches from the built-in city list.')
       }).finally(() => { if (!controller.signal.aborted) setSearching(false) })
     }, 300)
     return () => { window.clearTimeout(timer); controller.abort() }
@@ -38,12 +36,11 @@ export function LocationPicker({ onSelect }: { onSelect: (city: City) => void })
     }
     setLocating(true)
     try {
-      const fix = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }))
+      const fix = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }))
       const lat = Number(fix.coords.latitude.toFixed(3)), lon = Number(fix.coords.longitude.toFixed(3))
-      const [name, forecast] = await Promise.all([reverseGeocodeCity(lat, lon), fetchViewingForecast(lat, lon, 1).catch(() => null)])
       if (!active.current) return
-      trackEvent('Browser location selected', { named: Boolean(name) })
-      onSelect({ name: name ?? 'Your current location', lat, lon, timeZone: forecast?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone })
+      trackEvent('Browser location selected', { named: false })
+      onSelect({ name: 'Your current location', lat, lon, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })
     } catch (error) {
       if (!active.current) return
       const code = (error as GeolocationPositionError).code
@@ -51,5 +48,5 @@ export function LocationPicker({ onSelect }: { onSelect: (city: City) => void })
     } finally { if (active.current) setLocating(false) }
   }
 
-  return <div className="location-picker"><button type="button" className="browser-location-button" onClick={() => void requestBrowserLocation()} disabled={locating}>{locating ? 'Finding your location…' : 'Use browser location'}</button><p className="data-note">Your browser will ask permission. You can also search cities and towns worldwide.</p>{locationError && <p role="alert" className="location-error">{locationError}</p>}<label className="city-search-label" htmlFor="city-search">Search worldwide</label><input id="city-search" type="search" autoComplete="off" placeholder="City or town name" value={query} onChange={event => setQuery(event.target.value)} aria-controls="city-search-results" aria-describedby="city-search-status" /><p id="city-search-status" role="status" className="data-note">{searching ? 'Searching worldwide…' : searchError || (query.trim().length < 2 ? 'Enter at least two characters.' : results.length ? `${results.length} places found. Region and country distinguish matching names.` : 'No matching places. Try another spelling.')}</p><ul id="city-search-results" className="city-list">{results.map(city => <li key={`${city.name}:${city.lat}:${city.lon}`}><button type="button" onClick={() => { trackEvent('City search result selected', { has_timezone: Boolean(city.timeZone) }); onSelect(city) }}>{cityLabel(city)}</button></li>)}</ul><small className="source-credit">City search: Open-Meteo / GeoNames · Location naming: BigDataCloud</small></div>
+  return <div className="location-picker"><button type="button" className="browser-location-button" onClick={() => void requestBrowserLocation()} disabled={locating}>{locating ? 'Finding your location…' : 'Use browser location'}</button><p className="data-note">Your browser will ask permission. You can also search cities and towns worldwide.</p>{locationError && <p role="alert" className="location-error">{locationError}</p>}<label className="city-search-label" htmlFor="city-search">Search worldwide</label><input id="city-search" type="search" autoComplete="off" placeholder="City or town name" value={query} onChange={event => setQuery(event.target.value)} aria-controls="city-search-results" aria-describedby="city-search-status" /><p id="city-search-status" role="status" className="data-note">{searchError || (searching ? 'Searching worldwide…' : (query.trim().length < 2 ? 'Enter at least two characters.' : results.length ? `${results.length} places found. Region and country distinguish matching names.` : 'No matching places. Try another spelling.'))}</p><ul id="city-search-results" className="city-list">{results.map(city => <li key={`${city.name}:${city.lat}:${city.lon}`}><button type="button" onClick={() => { trackEvent('City search result selected', { has_timezone: Boolean(city.timeZone) }); onSelect(city) }}>{cityLabel(city)}</button></li>)}</ul><small className="source-credit">City search: Open-Meteo / GeoNames · Location naming: BigDataCloud</small></div>
 }
