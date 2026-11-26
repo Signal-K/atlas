@@ -22,8 +22,8 @@ test('city matches remain selectable while worldwide search is stalled', async (
 test('browser location completes without waiting for remote services', async ({ page, context }) => {
   await context.grantPermissions(['geolocation'])
   await context.setGeolocation({ latitude: -31.95, longitude: 115.86 })
-  await page.route('**/reverse-geocode-client**', route => new Promise(() => {}))
-  await page.route('**/v1/forecast**', route => new Promise(() => {}))
+  await page.route('**/reverse-geocode-client**', () => new Promise(() => {}))
+  await page.route('**/v1/forecast**', () => new Promise(() => {}))
   await page.goto('/app/hub')
   await page.getByRole('button', { name: /Location not set/ }).click()
   const dialog = page.getByRole('dialog', { name: 'Your location' })
