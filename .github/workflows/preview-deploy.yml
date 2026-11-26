@@ -1,14 +1,14 @@
 name: Deploy Cloudflare Pages preview
 
-# Direct-upload previews use the real Cloudflare Pages project name. Cloudflare
-# returns the canonical preview URL; do not construct a pages.dev hostname here.
+# Cycle branches deploy to the shared staging branch alias; other branches
+# retain their own preview aliases.
 on:
   push:
     branches-ignore: [master]
   workflow_dispatch: {}
 
 concurrency:
-  group: pages-preview-${{ github.ref }}
+  group: pages-preview-${{ startsWith(github.ref_name, 'cycle/') && 'staging' || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -38,4 +38,5 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx wrangler@3 pages deploy dist --project-name=atlas --branch=${{ github.ref_name }}
+          DEPLOY_BRANCH: ${{ startsWith(github.ref_name, 'cycle/') && 'staging' || github.ref_name }}
+        run: npx wrangler@3 pages deploy dist --project-name=atlas --branch="$DEPLOY_BRANCH"

@@ -388,6 +388,14 @@ function ClerkSignInPanel({
     // "wrong password" lives in .errors[0].code, not .code itself (that's
     // the wrapper's own generic 'api_response_error').
     const fieldCode = (error as { errors?: Array<{ code?: string }> }).errors?.[0]?.code
+    if (fieldCode === 'strategy_for_user_invalid' || (error as { code?: string }).code === 'strategy_for_user_invalid') {
+      // This account cannot use the password strategy (for example, it may
+      // have been created with another factor). Let Clerk offer its supported
+      // methods and password recovery instead of showing a raw API error.
+      await signIn.reset()
+      setShowStandardSignIn(true)
+      return
+    }
     if (fieldCode !== 'form_identifier_not_found') {
       setFormError(error.longMessage || error.message || 'Incorrect email or password.')
       return
