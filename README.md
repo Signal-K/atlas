@@ -180,8 +180,9 @@ default branch — not `main`), using
 [`cloudflare/pages-action`](https://github.com/cloudflare/pages-action).
 `.github/workflows/preview-deploy.yml` does the same for every push to any
 other branch, landing on a Cloudflare Pages preview URL instead of
-production. Both run the full deterministic test suite (`npm test`) before
-deploying. Write-action E2E is explicit and only targets an already-provisioned
+production. Preview deploys build without waiting for the full test suite;
+CI runs `npm test` separately on cycle branches and pull requests. Production
+deploys run the suite before deploying. Write-action E2E is explicit and only targets an already-provisioned
 non-production backend — see `ci.yml`/`deploy.yml` for the exact gate.
 
 The one edge-side piece is `functions/uplink/[[path]].ts`, a Cloudflare Pages

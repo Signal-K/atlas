@@ -6,6 +6,7 @@ on:
     branches:
       - master
       - 'sprint/**'
+      - 'cycle/**'
   workflow_dispatch: {}
 
 concurrency:
