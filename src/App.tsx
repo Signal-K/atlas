@@ -189,7 +189,7 @@ function Workspace() {
       <NavLink to="/app/hub" className="workspace-mark" aria-label="Atlas home">Atlas</NavLink>
       <button type="button" className="rail-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} onClick={() => { trackEvent('Sidebar toggled', { collapsed: !collapsed }); setCollapsed(!collapsed); localStorage.setItem('atlas-sidebar-collapsed', collapsed ? '0' : '1'); setWorkspaceValue(scopeId, 'preference:sidebar', !collapsed) }}>{collapsed ? '›' : '‹'}<span className="rail-label">Collapse</span></button>
       <div className="rail-pages">{NAV.map(item => <NavLink key={item.to} to={item.to} title={item.name} aria-label={item.name} className={({ isActive }) => `rail-button rail-${item.icon}${isActive ? ' active' : ''}`}><Icon name={item.icon} /><span className="rail-label">{item.name}</span></NavLink>)}</div>
-
+      <div className="rail-bottom"><button type="button" className="rail-button rail-account" title="Auth" aria-label="Auth" onClick={() => user ? navigate('/app/settings') : setAuthOpen(true)}><Icon name="account" /><span className="rail-label">Auth</span></button></div>
     </nav>
     <Suspense fallback={<p className="empty-state" role="status">Loading…</p>}><main className={`workspace-document ${view === 'collections' ? 'workspace-document-wide' : ''}`}>
       <div className="document-tools"><button type="button" onClick={() => setLocationOpen(true)}>{city.name} <span aria-hidden="true">⌄</span></button><label className="document-search"><Icon name="search" /><input ref={searchRef} type="search" aria-label="Search" placeholder="Search" value={query} onChange={event => setQuery(event.target.value)} /></label></div>
