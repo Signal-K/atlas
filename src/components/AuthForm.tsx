@@ -7,6 +7,7 @@ import { mergeLocalDataIntoAccount } from '../lib/accountMerge'
 import { pb, pocketBaseUrl } from '../lib/pocketbase'
 import { redeemStoredDemoAccessCode } from '../lib/demoAccess'
 import { FormStatus } from './forms/FormStatus'
+import { authDebug } from '../lib/authDebug.mjs'
 
 export interface AuthFormProps {
   defaultMode?: 'sign-in' | 'sign-up'
@@ -155,6 +156,26 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
   // Only fire "started" once per mount, on the visitor's first interaction
   // with the widget -- not on every keystroke.
   const startedRef = useRef(false)
+  const formRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const root = formRef.current
+    if (!root || window.location.hostname !== 'staging.atlas-4xz.pages.dev') return
+    const seen = new WeakMap<Element, string>()
+    const check = () => {
+      const sensitive = Array.from(root.querySelectorAll('input')).map(input => input.value).filter(Boolean)
+      root.querySelectorAll('.cl-rootBox [role=alert], .cl-rootBox .cl-formFieldErrorText, .cl-rootBox .cl-alertText').forEach(node => {
+        const message = node.textContent?.trim()
+        if (!message || seen.get(node) === message) return
+        seen.set(node, message)
+        authDebug('Clerk widget', { message }, {}, sensitive)
+      })
+    }
+    const observer = new MutationObserver(check)
+    observer.observe(root, { childList: true, subtree: true, characterData: true })
+    check()
+    return () => observer.disconnect()
+  }, [])
 
   function trackFormStarted() {
     if (startedRef.current) return
@@ -194,6 +215,7 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
         | { message?: string }
         | null
       if (!response.ok || !payload || !('token' in payload)) {
+        authDebug('Session exchange', payload, { status: response.status, statusText: response.statusText }, [clerkToken])
         throw new Error((payload as { message?: string } | null)?.message ?? 'Could not complete sign-in.')
       }
       pb.authStore.save(payload.token, payload.record)
@@ -225,6 +247,7 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
       })
       onSignedUp?.(result.total)
     } catch (err) {
+      authDebug('Session exchange or account setup', err)
       setError(err instanceof Error ? err.message : 'Something went wrong finishing sign-in.')
       trackEvent(mode === 'sign-in' ? 'Sign in failed' : 'Sign up failed', { source, error: err instanceof Error ? err.message : String(err) })
       // Allow retrying (e.g. the exchange endpoint was briefly unreachable)
@@ -236,7 +259,7 @@ function AuthFormContent({ defaultMode = 'sign-in', source, intro, onSignedUp, o
   }
 
   return (
-    <div className="settings-row settings-row--account" onFocusCapture={trackFormStarted}>
+    <div ref={formRef} className="settings-row settings-row--account" onFocusCapture={trackFormStarted}>
       {intro}
       <div className="account-form-shell">
         <div className="account-mode-tabs" role="tablist" aria-label="Sign in or create an account">
@@ -360,8 +383,9 @@ function ClerkSignInPanel({
 
     try {
       const { error } = await signIn.finalize()
-      if (error) setFormError(error.longMessage || error.message || 'Could not complete sign-in. Please try again.')
+      if (error) { authDebug('Finalize sign-in', error, {}, [email, password]); setFormError(error.longMessage || error.message || 'Could not complete sign-in. Please try again.') }
     } catch (error) {
+      authDebug('Finalize sign-in', error, {}, [email, password])
       setFormError(error instanceof Error ? error.message : 'Could not complete sign-in. Please try again.')
     }
   }
@@ -374,7 +398,8 @@ function ClerkSignInPanel({
     let error
     try {
       ;({ error } = await signIn.password({ identifier: email, password }))
-    } catch {
+    } catch (error) {
+      authDebug('Password sign-in', error, {}, [email, password])
       setFormError('Something went wrong. Please try again.')
       return
     }
@@ -382,6 +407,8 @@ function ClerkSignInPanel({
       await finalizeSignIn()
       return
     }
+
+    authDebug('Password sign-in', error, {}, [email, password])
 
     // signIn.password()'s rejection is a ClerkAPIResponseError: the
     // field-level code we need to distinguish "no such account" from
@@ -425,10 +452,14 @@ function ClerkSignInPanel({
       await signIn.reset()
       const { error: ticketError } = await signIn.create({ strategy: 'ticket', ticket: claimResult.token })
       if (ticketError) {
+        authDebug('Legacy account ticket', ticketError, {}, [email, password, claimResult.token])
         setFormError('Incorrect email or password.')
         return
       }
       await finalizeSignIn()
+    } catch (error) {
+      authDebug('Legacy account sign-in', error, {}, [email, password])
+      setFormError('Could not complete sign-in. Please try again.')
     } finally {
       setClaiming(false)
     }
@@ -509,9 +540,13 @@ async function claimLegacyAccount(email: string, password: string): Promise<{ to
     })
     const payload = (await response.json().catch(() => null)) as { token?: string; alreadyClerk?: boolean } | null
     if (payload?.alreadyClerk) return { alreadyClerk: true }
-    if (!response.ok || !payload?.token) return { alreadyClerk: false }
+    if (!response.ok || !payload?.token) {
+      authDebug('Legacy account claim', payload, { status: response.status, statusText: response.statusText }, [email, password])
+      return { alreadyClerk: false }
+    }
     return { token: payload.token, alreadyClerk: false }
-  } catch {
+  } catch (error) {
+    authDebug('Legacy account claim', error, {}, [email, password])
     return { alreadyClerk: false }
   }
 }
