@@ -2,10 +2,25 @@ import { test, expect } from '@playwright/test'
 
 test('landing introduces Atlas and opens the feed', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /Look up/ })).toBeVisible()
-  await page.getByRole('link', { name: /Explore your sky/ }).first().click()
+  await expect(page.getByRole('heading', { name: /See what’s up tonight/ })).toBeVisible()
+  await page.getByRole('link', { name: /Open your sky/ }).first().click()
   await expect(page).toHaveURL(/\/app\/hub/)
   await expect(page.getByRole('heading', { name: 'Feed', exact: true })).toBeVisible()
+})
+
+test('landing preview responds to location and equipment', async ({ page }) => {
+  await page.route('**/v1/search**', route => route.abort())
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: /Melbourne · example/ })).toBeVisible()
+  await page.getByRole('button', { name: /Melbourne · example/ }).click()
+  await page.getByRole('searchbox', { name: 'Search worldwide' }).fill('Perth')
+  await page.getByRole('button', { name: /Perth/ }).first().click()
+  await expect(page.getByRole('button', { name: /Perth/ }).first()).toBeVisible()
+  await page.getByRole('group', { name: 'Viewing equipment' }).getByRole('button', { name: 'Binoculars' }).click()
+  await expect(page.getByRole('group', { name: 'Viewing equipment' }).getByRole('button', { name: 'Binoculars' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('region', { name: 'Daily observing focus' })).toBeVisible()
+  await page.getByRole('link', { name: /Open your sky/ }).click()
+  await expect(page.getByRole('button', { name: /Perth/ }).first()).toBeVisible()
 })
 
 test('city matches remain selectable while worldwide search is stalled', async ({ page }) => {
